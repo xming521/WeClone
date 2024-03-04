@@ -1,0 +1,11 @@
+{
+    "wechat-sft": {
+        "file_name": "./sft-my.json",
+        "columns": {
+            "prompt": "instruction",
+            "response": "output"
+        }
+    }
+}
+
+

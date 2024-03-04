@@ -1,4 +1,3 @@
-china_data/
 wandb/
 **/pycache/
 events.out.tfevents.*
@@ -136,4 +135,15 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-data
+
+data/csv.zip
+LLaMA-Factory
+chatglm3-6b
+cache
+archive
+model_output
+data/test
+.vscode
+*-my.*
+*.csv
+test.py
