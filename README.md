@@ -3,7 +3,7 @@
 使用微信聊天记录微调大语言模型，我使用了大概2万条整合后的有效数据，最后结果差强人意。
 
 > [!IMPORTANT]
-> ## 最终效果很大程度取决于聊天数据的数量和质量
+> ### 最终效果很大程度取决于聊天数据的数量和质量
 
 ### 硬件要求
 
@@ -58,13 +58,14 @@ pip install -r requirements.txt
 
 ### 配置参数并微调模型
 
-首先修改 [src/train_sft.py](src/train_sft.py) 选择本地下载好的[ChatGLM3](https://huggingface.co/THUDM/chatglm3-6b) 模型或者使用 modelscope 的模型。  
-修改per_device_train_batch_size以及gradient_accumulation_steps来调整显存占用。  
-可以根据自己数据集的数量和质量修改num_train_epochs、lora_rank、lora_dropout等参数。
+- 首先修改 [src/train_sft.py](src/train_sft.py) 选择本地下载好的[ChatGLM3](https://huggingface.co/THUDM/chatglm3-6b) 模型或者使用 modelscope 的模型。  
 ```python
 "model_name_or_path": './chatglm3-6b', # 本地下载好的模型
 "model_name_or_path": 'modelscope/ZhipuAI/chatglm3-6b',# 使用modelscope
 ```
+- 修改per_device_train_batch_size以及gradient_accumulation_steps来调整显存占用。  
+- 可以根据自己数据集的数量和质量修改num_train_epochs、lora_rank、lora_dropout等参数。
+
 
 如果您在 Hugging Face 模型的下载中遇到了问题，可以通过下述方法使用魔搭社区。
 
