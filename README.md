@@ -1,6 +1,6 @@
 # WeClone
 
-使用微信聊天记录微调大语言模型，我使用了大概2万条整合后的有效数据，最后结果差强人意。
+使用微信聊天记录微调大语言模型，我使用了大概2万条整合后的有效数据，最后结果只能说差强人意，但有时候真的很搞笑。
 
 > [!IMPORTANT]
 > ### 最终效果很大程度取决于聊天数据的数量和质量
@@ -63,8 +63,8 @@ pip install -r requirements.txt
 "model_name_or_path": './chatglm3-6b', # 本地下载好的模型
 "model_name_or_path": 'modelscope/ZhipuAI/chatglm3-6b',# 使用modelscope
 ```
-- 修改per_device_train_batch_size以及gradient_accumulation_steps来调整显存占用。  
-- 可以根据自己数据集的数量和质量修改num_train_epochs、lora_rank、lora_dropout等参数。
+- 修改`per_device_train_batch_size`以及`gradient_accumulation_steps`来调整显存占用。  
+- 可以根据自己数据集的数量和质量修改`num_train_epochs`、`lora_rank`、`lora_dropout`等参数。
 
 
 如果您在 Hugging Face 模型的下载中遇到了问题，可以通过下述方法使用魔搭社区。
@@ -90,15 +90,15 @@ deepspeed --num_gpus=使用显卡数量 src/train_sft.py
 
 
 ### 使用接口进行推理
-
-### 使用浏览器简单推理
+Todo
+### 使用浏览器demo简单推理
 ```bash
 python ./src/web_demo.py 
-
 ```
 ### 截图
-
-
+![alt text](img/1.png)
+![alt text](img/2.png)
+![alt text](img/3.png)
 ### 使用RAG补充知识
 Todo
 ### 常用聊天测试集
