@@ -205,7 +205,7 @@ def make_sft_dataset():
 
 
     csv_res_df = pd.DataFrame(csv_res)
-    print(f'数据量：{csv_res_df.shape[0]}')
+    print(f'处理后数据量：{csv_res_df.shape[0]}')
     csv_res_df.to_json('./data/res_csv/sft/sft-my.json', orient='records', force_ascii=False)
 
 

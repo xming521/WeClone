@@ -71,6 +71,8 @@ pip install -r requirements.txt
 
 ```bash
 export USE_MODELSCOPE_HUB=1 # Windows 使用 `set USE_MODELSCOPE_HUB=1`
+git lfs install
+git clone https://www.modelscope.cn/ZhipuAI/chatglm3-6b.git
 ```
 #### 单卡训练
 运行 `src/train_sft.py` 进行sft阶段微调，本人loss只降到了3.5左右，降低过多可能会过拟合。
@@ -92,6 +94,7 @@ deepspeed --num_gpus=使用显卡数量 src/train_sft.py
 ### 使用接口进行推理
 Todo
 ### 使用浏览器demo简单推理
+修改模型位置先
 ```bash
 python ./src/web_demo.py 
 ```
