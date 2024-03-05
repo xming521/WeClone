@@ -56,24 +56,24 @@ pip install -r requirements.txt
 项目默认去除了数据中的手机号、身份证号、邮箱、网址。还提供了一个禁用词词库[blocked_words](make_dataset/blocked_words.json)，可以自行添加需要过滤的词句（会默认去掉包括禁用词的整句）。
 执行 `./make_dataset/csv_to_json.py` 脚本对数据进行处理。
 
-### 配置参数并微调模型
+### 模型下载
 
-- 首先修改 [src/train_sft.py](src/train_sft.py) 选择本地下载好的[ChatGLM3](https://huggingface.co/THUDM/chatglm3-6b) 模型或者使用 modelscope 的模型。  
-```python
-"model_name_or_path": './chatglm3-6b', # 本地下载好的模型
-"model_name_or_path": 'modelscope/ZhipuAI/chatglm3-6b',# 使用modelscope
-```
-- 修改`per_device_train_batch_size`以及`gradient_accumulation_steps`来调整显存占用。  
-- 可以根据自己数据集的数量和质量修改`num_train_epochs`、`lora_rank`、`lora_dropout`等参数。
-
-
-如果您在 Hugging Face 模型的下载中遇到了问题，可以通过下述方法使用魔搭社区。
+首选在Hugging Face下载[ChatGLM3](https://huggingface.co/THUDM/chatglm3-6b) 模型。如果您在 Hugging Face 模型的下载中遇到了问题，可以通过下述方法使用魔搭社区。下载过程比较漫长请耐心等待。
 
 ```bash
 export USE_MODELSCOPE_HUB=1 # Windows 使用 `set USE_MODELSCOPE_HUB=1`
 git lfs install
 git clone https://www.modelscope.cn/ZhipuAI/chatglm3-6b.git
 ```
+
+### 配置参数并微调模型
+
+- (可选)修改 [src/train_sft.py](src/train_sft.py) 选择本地下载好的其他模型。  
+
+- 修改`per_device_train_batch_size`以及`gradient_accumulation_steps`来调整显存占用。  
+- 可以根据自己数据集的数量和质量修改`num_train_epochs`、`lora_rank`、`lora_dropout`等参数。
+
+
 #### 单卡训练
 运行 `src/train_sft.py` 进行sft阶段微调，本人loss只降到了3.5左右，降低过多可能会过拟合。
 
@@ -94,7 +94,6 @@ deepspeed --num_gpus=使用显卡数量 src/train_sft.py
 ### 使用接口进行推理
 Todo
 ### 使用浏览器demo简单推理
-修改模型位置先
 ```bash
 python ./src/web_demo.py 
 ```

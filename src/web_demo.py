@@ -14,8 +14,7 @@ def dict_to_argv(d):
 
 # 使用示例
 config = {
-    # 'model_name_or_path': './chatglm3-6b',
-    
+    'model_name_or_path': './chatglm3-6b',
     'adapter_name_or_path': './model_output',
     'template': 'chatglm3-weclone',
     'finetuning_type': 'lora',

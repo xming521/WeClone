@@ -4,8 +4,7 @@ from template import template_register
 train_args = {
     "stage": "sft",
     "do_train": True,
-    # "model_name_or_path": './chatglm3-6b', # 本地下载好的模型
-    # "model_name_or_path": 'modelscope/ZhipuAI/chatglm3-6b',# 使用modelscope
+    "model_name_or_path": './chatglm3-6b', # 本地下载好的模型
     "output_dir": "model_output",  # 保存模型的文件夹
     "dataset": "wechat-sft",
     "template": "chatglm3-weclone",
