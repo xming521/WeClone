@@ -1,5 +1,5 @@
 # LLaMA-Factory
-llmtuner
+llmtuner==0.5.3
 
 # others
 pandas

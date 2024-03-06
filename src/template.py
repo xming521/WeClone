@@ -1,10 +1,9 @@
 from llmtuner.data.formatter import FunctionFormatter, StringFormatter
-from llmtuner.data.template import register_template
+from llmtuner.data.template import _register_template
 
 
-    
 def template_register():
-    register_template(
+    _register_template(
         name="chatglm3-weclone",
         default_system=(
             "请你扮演一名人类，不要说自己是人工智能"
@@ -16,4 +15,5 @@ def template_register():
         format_observation=StringFormatter(slots=[{"token": "<|observation|>"}, "\n", "{{content}}"]),
         stop_words=["<|user|>", "<|observation|>"],
         efficient_eos=True,
+        force_system=True
     )
