@@ -1,22 +1,24 @@
 import os
-
+import sys
 import uvicorn
-
 from llmtuner import ChatModel, create_app
+from template import template_register
 
-# python LLaMA-Factory/src/web_demo.py \
 
-
+# 使用示例
 config = {
-    "model_name_or_path": "./chatglm3-6b",
-    "adapter_name_or_path": "./model_output",
-    "template": "chatglm3",
-    "finetuning_type": "lora",
-    "repetition_penalty": 1.2,
-    "temperature": 0.5,
-    "max_length": 50,
-    "top_p": 0.65
+    'model_name_or_path': './chatglm3-6b',
+    'adapter_name_or_path': './model_output',
+    'template': 'chatglm3-weclone',
+    'finetuning_type': 'lora',
+    'repetition_penalty': 1.2,
+    'temperature': 0.5,
+    'max_length': 50,
+    'top_p': 0.65
 }
+
+
+template_register()
 
 
 def main():

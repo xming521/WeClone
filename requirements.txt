@@ -3,3 +3,6 @@ llmtuner==0.5.3
 
 # others
 pandas
+chromadb
+langchain
+openai==0.28
