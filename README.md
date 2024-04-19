@@ -116,10 +116,10 @@ python ./src/api_service.py # 先启动api服务
 python ./src/wechat_bot/main.py 
 ```
 
-默认在终端显示二维码，扫码登录即可。
+默认在终端显示二维码，扫码登录即可。可以私聊或者在群聊中@机器人使用。
 
 ### 截图
-
+![alt text](img/4.png)
 ![alt text](img/1.png)
 ![alt text](img/2.png)
 ![alt text](img/3.png)
