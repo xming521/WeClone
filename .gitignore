@@ -1,4 +1,5 @@
 wandb/
+weclone_archive-my/
 **/pycache/
 events.out.tfevents.*
 归档/
