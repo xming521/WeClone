@@ -3,6 +3,7 @@
 使用微信聊天记录微调大语言模型，我使用了大概2万条整合后的有效数据，最后结果只能说差强人意，但有时候真的很搞笑。
 
 > [!IMPORTANT]
+>
 > ### 最终效果很大程度取决于聊天数据的数量和质量
 
 ### 硬件要求
@@ -74,38 +75,63 @@ git clone https://www.modelscope.cn/ZhipuAI/chatglm3-6b.git
 - 修改`per_device_train_batch_size`以及`gradient_accumulation_steps`来调整显存占用。  
 - 可以根据自己数据集的数量和质量修改`num_train_epochs`、`lora_rank`、`lora_dropout`等参数。
 
-
 #### 单卡训练
+
 运行 `src/train_sft.py` 进行sft阶段微调，本人loss只降到了3.5左右，降低过多可能会过拟合。
 
 ```bash
 python src/train_sft.py
 ```
+
 #### 多卡训练
 
 ```bash
 pip install deepspeed
 deepspeed --num_gpus=使用显卡数量 src/train_sft.py
 ```
+
 > [!NOTE]
 > 也可以先对pt阶段进行微调，似乎提升效果不明显，仓库也提供了pt阶段数据集预处理和训练的代码。
 
-
-
-### 使用接口进行推理
-Todo
 ### 使用浏览器demo简单推理
+
 ```bash
 python ./src/web_demo.py 
 ```
+
+### 使用接口进行推理
+
+```bash
+python ./src/api_service.py
+```
+
+### 部署微信聊天机器人
+
+> [!IMPORTANT]
+>
+> 微信有封号风险，建议使用小号，并且必须绑定银行卡才能使用
+
+```bash
+python ./src/api_service.py # 先启动api服务
+python ./src/wechat_bot/main.py 
+```
+
+默认在终端显示二维码，扫码登录即可。
+
 ### 截图
+
 ![alt text](img/1.png)
 ![alt text](img/2.png)
 ![alt text](img/3.png)
+
 ### 使用RAG补充知识
+
 Todo
+
 ### 常用聊天测试集
+
 Todo
 
 ### 多模态
+
 Todo

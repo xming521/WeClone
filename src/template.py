@@ -1,12 +1,14 @@
 from llmtuner.data.formatter import FunctionFormatter, StringFormatter
 from llmtuner.data.template import _register_template
 
+default_prompt = "请你扮演一名人类，不要说自己是人工智能"
+
 
 def template_register():
     _register_template(
         name="chatglm3-weclone",
         default_system=(
-            "请你扮演一名人类，不要说自己是人工智能"
+            default_prompt
         ),
         format_user=StringFormatter(slots=[{"token": "<|user|>"}, "\n", "{{content}}", {"token": "<|assistant|>"}]),
         format_assistant=StringFormatter(slots=["\n", "{{content}}"]),

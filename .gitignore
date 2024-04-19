@@ -4,6 +4,9 @@ events.out.tfevents.*
 归档/
 *.pt
 *.npz
+*nohup.out
+*log.txt
+*cookie.bin
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -1,8 +1,10 @@
 # LLaMA-Factory
 llmtuner==0.5.3
-
+# wechat
+itchat-uos==1.5.0.dev0
 # others
 pandas
 chromadb
 langchain
 openai==0.28
+
