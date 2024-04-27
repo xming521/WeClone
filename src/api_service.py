@@ -1,9 +1,8 @@
 import os
-import sys
 import uvicorn
 from llmtuner import ChatModel, create_app
 from template import template_register
-from src.utils.config import load_config
+from utils.config import load_config
 
 config = load_config('api_service')
 
