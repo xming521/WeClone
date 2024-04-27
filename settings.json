@@ -1,0 +1,52 @@
+{
+    "train_pt_args": {
+        "stage": "pt",
+        "dataset": "wechat-pt",
+        "dataset_dir": "./data/res_csv/pt",
+        "lora_target": "query_key_value",
+        "lora_rank": 2,
+        "lora_dropout": 0.1,
+        "output_dir": "model_output",
+        "overwrite_cache": true,
+        "per_device_train_batch_size": 1,
+        "gradient_accumulation_steps": 1,
+        "lr_scheduler_type": "cosine",
+        "logging_steps": 10,
+        "save_steps": 1000,
+        "learning_rate": 0.001,
+        "num_train_epochs": 30,
+        "plot_loss": true,
+        "fp16": true
+    },
+    "train_sft_args": {
+        "stage": "sft",
+        "dataset": "wechat-sft",
+        "dataset_dir": "./data/res_csv/sft",
+        "lora_target": "query_key_value",
+        "lora_rank": 4,
+        "lora_dropout": 0.5,
+        "overwrite_cache": true,
+        "per_device_train_batch_size": 4,
+        "gradient_accumulation_steps": 8,
+        "lr_scheduler_type": "cosine",
+        "logging_steps": 10,
+        "save_steps": 150,
+        "learning_rate": 0.0001,
+        "num_train_epochs": 3,
+        "plot_loss": true,
+        "fp16": true
+    },
+    "infer_args": {
+        "repetition_penalty": 1.2,
+        "temperature": 0.5,
+        "max_length": 50,
+        "top_p": 0.65
+    },
+    "common_args": {
+        "model_name_or_path": "./chatglm3-6b",
+        "adapter_name_or_path": "./model_output",
+        "template": "chatglm3-weclone",
+        "finetuning_type": "lora"
+    },
+    "_comment": "adapter_name_or_path同时做为train_sft_args的output_dir "
+}
