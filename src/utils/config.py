@@ -9,10 +9,10 @@ def load_config(arg_type: str):
     if arg_type == 'web_demo' or arg_type == 'api_service':
         # infer_args和common_args求并集
         config = {**config['infer_args'], **config['common_args']}
-    elif arg_type == 'train_pt_args':
-        config = {**config['train_args'], **config['common_args']}
+    elif arg_type == 'train_pt':
+        config = {**config['train_pt_args'], **config['common_args']}
     elif arg_type == 'train_sft':
-        config = {**config['train_sft'], **config['common_args']}
+        config = {**config['train_sft_args'], **config['common_args']}
     else:
         raise ValueError('暂不支持的类型')
 

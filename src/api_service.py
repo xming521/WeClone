@@ -3,19 +3,9 @@ import sys
 import uvicorn
 from llmtuner import ChatModel, create_app
 from template import template_register
+from src.utils.config import load_config
 
-
-# 使用示例
-config = {
-    'model_name_or_path': './chatglm3-6b',
-    'adapter_name_or_path': './model_output',
-    'template': 'chatglm3-weclone',
-    'finetuning_type': 'lora',
-    'repetition_penalty': 1.2,
-    'temperature': 0.5,
-    'max_length': 50,
-    'top_p': 0.65
-}
+config = load_config('api_service')
 
 
 template_register()

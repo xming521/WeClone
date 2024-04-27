@@ -6,7 +6,6 @@ config = load_config('web_demo')
 
 template_register()
 
-
 def main():
     demo = create_web_demo()
     demo.queue()
