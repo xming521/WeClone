@@ -47,7 +47,7 @@ conda activate weclone
 cd WeClone
 pip install -r requirements.txt
 ```
-
+训练以及推理相关配置统一在文件[settings.json](settings.json)
 ### 数据准备
 
 请使用[PyWxDump](https://github.com/xaoyaoo/PyWxDump)提取微信聊天记录。下载软件并解密数据库后，点击聊天备份，导出类型为CSV，可以导出多个联系人或群聊，然后将导出的位于`wxdump_tmp/export` 的 `csv` 文件夹放在`./data`目录即可，也就是不同人聊天记录的文件夹一起放在 `./data/csv`。 示例数据位于[data/example_chat.csv](data/example_chat.csv)。
@@ -70,7 +70,7 @@ git clone https://www.modelscope.cn/ZhipuAI/chatglm3-6b.git
 
 ### 配置参数并微调模型
 
-- (可选)修改 [src/train_sft.py](src/train_sft.py) 选择本地下载好的其他模型。  
+- (可选)修改 [settings.json](settings.json)选择本地下载好的其他模型。  
 
 - 修改`per_device_train_batch_size`以及`gradient_accumulation_steps`来调整显存占用。  
 - 可以根据自己数据集的数量和质量修改`num_train_epochs`、`lora_rank`、`lora_dropout`等参数。

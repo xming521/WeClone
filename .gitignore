@@ -145,7 +145,7 @@ LLaMA-Factory
 chatglm3-6b
 cache
 archive
-model_output
+model_output*
 data/test
 .vscode
 *-my.*
