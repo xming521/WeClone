@@ -47,7 +47,9 @@ conda activate weclone
 cd WeClone
 pip install -r requirements.txt
 ```
+
 训练以及推理相关配置统一在文件[settings.json](settings.json)
+
 ### 数据准备
 
 请使用[PyWxDump](https://github.com/xaoyaoo/PyWxDump)提取微信聊天记录。下载软件并解密数据库后，点击聊天备份，导出类型为CSV，可以导出多个联系人或群聊，然后将导出的位于`wxdump_tmp/export` 的 `csv` 文件夹放在`./data`目录即可，也就是不同人聊天记录的文件夹一起放在 `./data/csv`。 示例数据位于[data/example_chat.csv](data/example_chat.csv)。
@@ -105,6 +107,13 @@ python ./src/web_demo.py
 python ./src/api_service.py
 ```
 
+### 使用常见聊天问题测试
+
+```bash
+python ./src/api_service.py
+python ./src/test_model.py
+```
+
 ### 部署微信聊天机器人
 
 > [!IMPORTANT]
@@ -119,16 +128,13 @@ python ./src/wechat_bot/main.py
 默认在终端显示二维码，扫码登录即可。可以私聊或者在群聊中@机器人使用。
 
 ### 截图
+
 ![alt text](img/4.jpg)
 ![alt text](img/1.png)
 ![alt text](img/2.png)
 ![alt text](img/3.png)
 
 ### 使用RAG补充知识
-
-Todo
-
-### 常用聊天测试集
 
 Todo
 
