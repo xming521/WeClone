@@ -204,7 +204,7 @@ def make_sft_dataset():
                     # 没有相差一小时入队再全部出队
                     temp_res.append(row['content'])
                     temp_output_list = temp_res[1].split('，')
-                    output = max(temp_output_list, key=len)
+                    output = max(temp_output_list, key=len)# 只选选最长的回答作为最终数据
                     if output[-1] == '。':
                         output = output[:-1]
                     csv_res.append({'instruction': temp_res[0], 'output': output})
