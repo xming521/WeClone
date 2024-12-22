@@ -50,7 +50,7 @@ def make_pt_dataset():
 
 def handle_sft_csv(csvfile):
     chat_df = pd.read_csv(csvfile)
-    blocked_words = json.load(open('./make_dataset/blocked_words.json'))['blocked_words']
+    blocked_words = json.load(open('./make_dataset/blocked_words.json', encoding='utf-8'))['blocked_words']
     # 选择type_name为文本的行、is_sender为1的行
     # 需要保留的type_name字段名
     type_list = ['文本', '图片', '卡片式链接', '合并转发的聊天记录', '视频', '语言', '未知', '分享的小程序']
