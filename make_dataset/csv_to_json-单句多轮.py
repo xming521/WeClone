@@ -11,7 +11,10 @@ print(f'当前处理目录{csv_folder}')
 
 
 def handle_pt_csv(csvfile):
+    # 读取csv文
     chat_df = pd.read_csv(csvfile)
+    chat_df.itertuples()
+
     # 选择type_name为文本的行、is_sender为1的行
     chat_df = chat_df[chat_df['type_name'] == '文本']
     chat_df = chat_df[chat_df['is_sender'] == 1]
@@ -38,6 +41,8 @@ def make_pt_dataset():
     for chat_obj_folder in os.listdir(csv_folder):
         chat_obj_folder_path = os.path.join(csv_folder, chat_obj_folder)
         for csvfile in os.listdir(chat_obj_folder_path):
+            if not csvfile.endswith('.csv'):
+                continue
             csvfile_path = os.path.join(chat_obj_folder_path, csvfile)
             chat_df = handle_pt_csv(csvfile_path)
             csv_res.append(chat_df)
@@ -50,15 +55,16 @@ def make_pt_dataset():
 
 def handle_sft_csv(csvfile):
     chat_df = pd.read_csv(csvfile)
-    blocked_words = json.load(open('./make_dataset/blocked_words.json'))['blocked_words']
+    blocked_words = json.load(open('./make_dataset/blocked_words.json', encoding='utf-8'))['blocked_words']
     # 选择type_name为文本的行、is_sender为1的行
     # 需要保留的type_name字段名
     type_list = ['文本', '图片', '卡片式链接', '合并转发的聊天记录', '视频', '语言', '未知', '分享的小程序']
     chat_df = chat_df[chat_df['type_name'].isin(values=type_list)]
 
-    # 对每一行的content进行处理 转为dict 再取'msg'字段
-    chat_df['content'] = chat_df['content'].apply(func=lambda x: json.loads(x)['msg'])
-    # 如果type_name为文本 并且content 包含 手机号、身份证号、邮箱、网址则删除这行 用循环删除
+    # chat_df['content'] = chat_df['content'].apply(func=lambda x: json.loads(x)['msg'])
+    chat_df['content'] = chat_df['msg']
+
+    # 如果type_name为文本 并且content 包含 手机号、身份证号、邮箱、网址则删除这行
     for i in chat_df.index:
         if chat_df.loc[i, 'type_name'] == '文本':
             if ('1\d{10}' in chat_df.loc[i, 'content'] or
@@ -95,8 +101,6 @@ def handle_sft_csv(csvfile):
 
     # 遇到图片 连接 直接封装成一个句子
     for i, row in chat_df.iterrows():
-        if '跟最终成绩差1分' in row['content']:
-            pass
         if row['type_name'] in skip_list:
             if last_content != '':
                 if last_content[-1] == '，':
@@ -158,6 +162,8 @@ def make_sft_dataset():
     for chat_obj_folder in os.listdir(csv_folder):
         chat_obj_folder_path = os.path.join(csv_folder, chat_obj_folder)
         for csvfile in os.listdir(chat_obj_folder_path):
+            if not csvfile.endswith('.csv'):
+                continue
             csvfile_path = os.path.join(chat_obj_folder_path, csvfile)
             chat_df = handle_sft_csv(csvfile_path)
             csv_concat.append(chat_df)

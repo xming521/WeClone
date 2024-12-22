@@ -63,7 +63,7 @@ pip install -r requirements.txt
 | 文件 | 处理方式 |
 | --- | --- |
 | csv_to_json.py | 用逗号连接 |
-| csv_to_json-单句回答.py(已废弃) | 只选选最长的回答作为最终数据 |
+| csv_to_json-单句回答.py(已废弃) | 只选择最长的回答作为最终数据 |
 | csv_to_json-单句多轮.py | 放在了提示词的'history'中 |
 
 
