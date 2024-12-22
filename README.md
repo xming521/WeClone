@@ -59,6 +59,14 @@ pip install -r requirements.txt
 项目默认去除了数据中的手机号、身份证号、邮箱、网址。还提供了一个禁用词词库[blocked_words](make_dataset/blocked_words.json)，可以自行添加需要过滤的词句（会默认去掉包括禁用词的整句）。
 执行 `./make_dataset/csv_to_json.py` 脚本对数据进行处理。
 
+在同一人连续回答多句的情况下，有三种处理方式：
+| 文件 | 处理方式 |
+| --- | --- |
+| csv_to_json.py | 用逗号连接 |
+| csv_to_json-单句回答.py(已废弃) | 只选择最长的回答作为最终数据 |
+| csv_to_json-单句多轮.py | 放在了提示词的'history'中 |
+
+
 ### 模型下载
 
 首选在Hugging Face下载[ChatGLM3](https://huggingface.co/THUDM/chatglm3-6b) 模型。如果您在 Hugging Face 模型的下载中遇到了问题，可以通过下述方法使用魔搭社区，后续训练推理都需要先执行`export USE_MODELSCOPE_HUB=1`来使用魔搭社区的模型。  
