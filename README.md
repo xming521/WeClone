@@ -59,11 +59,11 @@ pip install -r requirements.txt
 项目默认去除了数据中的手机号、身份证号、邮箱、网址。还提供了一个禁用词词库[blocked_words](make_dataset/blocked_words.json)，可以自行添加需要过滤的词句（会默认去掉包括禁用词的整句）。
 执行 `./make_dataset/csv_to_json.py` 脚本对数据进行处理。
 
-在同一人回答多句的情况下，有三种处理方式：
+在同一人连续回答多句的情况下，有三种处理方式：
 | 文件 | 处理方式 |
 | --- | --- |
 | csv_to_json.py | 用逗号连接 |
-| csv_to_json-单句回答.py | 只选选最长的回答作为最终数据 |
+| csv_to_json-单句回答.py(已废弃) | 只选选最长的回答作为最终数据 |
 | csv_to_json-单句多轮.py | 放在了提示词的'history'中 |
 
 

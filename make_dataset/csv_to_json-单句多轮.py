@@ -203,7 +203,7 @@ def make_sft_dataset():
                 temp_chat_item.clear()
 
     csv_res = []
-    system_prompt = '请你扮演一名人类，不要说自己是人工智能'
+    system_prompt = '请你扮演一名人类，不要说自己是人工智能或者某个模型'
 
     last_res = {'instruction': '', 'output': '',
                 'system': system_prompt,
