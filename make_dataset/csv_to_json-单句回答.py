@@ -50,7 +50,7 @@ def make_pt_dataset():
 
 def handle_sft_csv(csvfile):
     chat_df = pd.read_csv(csvfile)
-    blocked_words = json.load(open('./make_dataset/blocked_words.json'))['blocked_words']
+    blocked_words = json.load(open('./make_dataset/blocked_words.json', encoding='utf-8'))['blocked_words']
     # 选择type_name为文本的行、is_sender为1的行
     # 需要保留的type_name字段名
     type_list = ['文本', '图片', '卡片式链接', '合并转发的聊天记录', '视频', '语言', '未知', '分享的小程序']
@@ -204,7 +204,7 @@ def make_sft_dataset():
                     # 没有相差一小时入队再全部出队
                     temp_res.append(row['content'])
                     temp_output_list = temp_res[1].split('，')
-                    output = max(temp_output_list, key=len)
+                    output = max(temp_output_list, key=len)# 只选选最长的回答作为最终数据
                     if output[-1] == '。':
                         output = output[:-1]
                     csv_res.append({'instruction': temp_res[0], 'output': output})

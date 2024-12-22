@@ -151,3 +151,4 @@ data/test
 *-my.*
 *.csv
 test.py
+*users.json   
