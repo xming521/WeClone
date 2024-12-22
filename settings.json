@@ -42,6 +42,11 @@
         "max_length": 50,
         "top_p": 0.65
     },
+    "make_dataset_args": {
+        "process_method": "connect_with_comma",
+        "enable_vision_model": false
+    },
+    "_comment_make_dataset_args": "connect_with_comma 用逗号拼接  connect_with_chatglm 用chatglm3-6b模型生成",
     "common_args": {
         "model_name_or_path": "./chatglm3-6b",
         "adapter_name_or_path": "./model_output",
