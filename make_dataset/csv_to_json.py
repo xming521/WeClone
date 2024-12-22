@@ -1,9 +1,16 @@
 import csv
 import json
 import os
+import sys
 
 import pandas as pd
 from collections import deque
+
+current_dir = os.path.dirname(os.path.abspath(__file__))
+root_dir = os.path.dirname(current_dir)
+sys.path.append(root_dir)
+
+from make_dataset.qa_generator import DataProcessor
 
 csv_folder = './data/csv'
 # csv_folder = './data/test'
@@ -143,32 +150,17 @@ def handle_sft_csv(csvfile):
 
 
 def make_sft_dataset():
-
-    #     [
-    #   {
-    #     "instruction": "用户指令（必填）",
-    #     "input": "用户输入（选填）",
-    #     "output": "模型回答（必填）",
-    #     "system": "系统提示词（选填）",
-    #     "history": [
-    #       ["第一轮指令（选填）", "第一轮回答（选填）"],
-    #       ["第二轮指令（选填）", "第二轮回答（选填）"]
-    #     ]
-    #   }
-    # ]
-
+    processor = DataProcessor()
+    csv_files = processor.get_csv_files()
+    
     csv_concat = []
     csv_res = []
-    # csv文件夹里全是不同聊天对象文件夹 每个文件夹里是csv文件 先遍历不同聊天对象文件夹 再遍历聊天对象的csv文件
-    for chat_obj_folder in os.listdir(csv_folder):
-        chat_obj_folder_path = os.path.join(csv_folder, chat_obj_folder)
-        for csvfile in os.listdir(chat_obj_folder_path):
-            if not csvfile.endswith('.csv'):
-                continue
-            csvfile_path = os.path.join(chat_obj_folder_path, csvfile)
-            chat_df = handle_sft_csv(csvfile_path)
-            csv_concat.append(chat_df)
+    
+    for csvfile_path in csv_files:
+        chat_df = handle_sft_csv(csvfile_path)
+        csv_concat.append(chat_df)
 
+    # 后续代码保持不变
     csv_concat = pd.concat(csv_concat)
     # csv_res里is_sender必须是01 01 01 的顺序 csv_concat里不一定是01 01
     # 相差超过1小时的时间戳分为不同的对话

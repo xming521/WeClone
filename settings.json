@@ -42,6 +42,15 @@
         "max_length": 50,
         "top_p": 0.65
     },
+    "make_dataset_args": {
+        "enable_vision_model": false,
+        "include_type": [
+            "文本",
+            "图片"
+        ],
+        "history_length": 10
+    },
+    "_comment_make_dataset_args": "",
     "common_args": {
         "model_name_or_path": "./chatglm3-6b",
         "adapter_name_or_path": "./model_output",
