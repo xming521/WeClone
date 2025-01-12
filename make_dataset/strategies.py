@@ -5,21 +5,24 @@ from .qa_generator import ChatMessage
 class ConversationStrategy(Protocol):
     def is_same_conversation(self, msg1: ChatMessage, msg2: ChatMessage) -> bool:
         """判断两条消息是否属于同一个对话"""
+        
         pass
+
 
 
 @dataclass
 class TimeWindowStrategy(ConversationStrategy):
     """基于时间窗口的判断策略"""
-    time_window: int  # 时间窗口（秒）
+    time_window: int  # 时间窗口（分钟）
+    
 
     def is_same_conversation(self, msg1: ChatMessage, msg2: ChatMessage) -> bool:
-        time_diff = abs((msg2.timestamp - msg1.timestamp).total_seconds())
+        time_diff = abs((msg2.timestamp - msg1.timestamp))
         return time_diff <= self.time_window
 
 
 @dataclass
-class UserContinuityStrategy(ConversationStrategy):
+class LagerModelStrategy(ConversationStrategy):
     """基于用户连续性的判断策略"""
     def is_same_conversation(self, msg1: ChatMessage, msg2: ChatMessage) -> bool:
         return msg1.user_id == msg2.user_id
