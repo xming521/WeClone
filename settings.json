@@ -48,14 +48,14 @@
             "文本",
             "图片"
         ],
-        "history_length": 10
+        "history_length": 10,
+        "prefer_comma": false //聊天时是不是喜欢使用逗号
     },
     "_comment_make_dataset_args": "",
     "common_args": {
         "model_name_or_path": "./chatglm3-6b",
-        "adapter_name_or_path": "./model_output",
+        "adapter_name_or_path": "./model_output", //同时做为train_sft_args的output_dir
         "template": "chatglm3-weclone",
         "finetuning_type": "lora"
-    },
-    "_comment": "adapter_name_or_path同时做为train_sft_args的output_dir "
+    }
 }

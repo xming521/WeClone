@@ -88,11 +88,14 @@ def handle_sft_csv(csvfile):
 
     chat_df = chat_df[['is_sender', 'type_name', 'content', 'CreateTime']]
     chat_df = chat_df.dropna()
-
     # 时间格式 2021-07-07 10:27:23
     # 遍历行 相同is_sender的行合并content（）遇到不同is_sender就重新开始
     # CreateTime字段保留最后的CreateTime
     chat_df['CreateTime'] = pd.to_datetime(chat_df['CreateTime'])
+
+    
+到这了
+
     type_list.remove('文本')
     skip_list = type_list
     res_df = []

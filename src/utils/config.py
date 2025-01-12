@@ -1,11 +1,11 @@
-import json
+import commentjson
 from src.utils.utils import dict_to_argv
 import sys
 
 
 def load_config(arg_type: str):
     with open("./settings.json", "r", encoding="utf-8") as f:
-        config: dict = json.load(f)
+        config: dict = commentjson.load(f)
     if arg_type == "web_demo" or arg_type == "api_service":
         # infer_args和common_args求并集
         config = {**config["infer_args"], **config["common_args"]}
