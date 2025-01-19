@@ -1,6 +1,6 @@
 from dataclasses import dataclass
-from typing import Protocol
-from .qa_generator import ChatMessage
+from typing import Protocol, List
+from .models import ChatMessage
 
 class ConversationStrategy(Protocol):
     def is_same_conversation(self, msg1: ChatMessage, msg2: ChatMessage) -> bool:
@@ -23,7 +23,7 @@ class TimeWindowStrategy(ConversationStrategy):
 
 @dataclass
 class LagerModelStrategy(ConversationStrategy):
-    """基于用户连续性的判断策略"""
+    """基于大模型判断策略"""
     def is_same_conversation(self, msg1: ChatMessage, msg2: ChatMessage) -> bool:
         return msg1.user_id == msg2.user_id
 
@@ -31,7 +31,7 @@ class LagerModelStrategy(ConversationStrategy):
 @dataclass
 class CompositeStrategy(ConversationStrategy):
     """组合多个策略的复合策略"""
-    strategies: list[ConversationStrategy]
+    strategies: List[ConversationStrategy]
     require_all: bool = True  # True表示所有策略都满足，False表示任一策略满足即可
 
     def is_same_conversation(self, msg1: ChatMessage, msg2: ChatMessage) -> bool:

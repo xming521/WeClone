@@ -49,9 +49,10 @@
             "图片"
         ],
         "history_length": 10,
-        "prefer_comma": false //聊天时是不是喜欢使用逗号
+        "prefer_comma": false, //聊天时是不是喜欢使用逗号，
+        "conversation_strategy": "time_window", // 基于时间窗口的判断策略
+        "time_window": 10 // 时间窗口（分钟）
     },
-    "_comment_make_dataset_args": "",
     "common_args": {
         "model_name_or_path": "./chatglm3-6b",
         "adapter_name_or_path": "./model_output", //同时做为train_sft_args的output_dir
