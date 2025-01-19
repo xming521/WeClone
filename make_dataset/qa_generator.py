@@ -7,23 +7,12 @@ from pandas import Timestamp
 import pandas as pd
 import json
 
-current_dir = os.path.dirname(os.path.abspath(__file__))
+current_dir = os.path.dirname(p=os.path.abspath(__file__))
 root_dir = os.path.dirname(current_dir)
 sys.path.append(root_dir)
 from src.utils.config import load_config
-
-
-@dataclass
-class ChatMessage:
-    id: int
-    MsgSvrID: int
-    type_name: str
-    is_sender: int
-    talker: str
-    room_name: str
-    msg: str
-    src: str
-    CreateTime: Timestamp
+from make_dataset.models import ChatMessage
+from make_dataset.strategies import TimeWindowStrategy, LagerModelStrategy
 
 
 class DataProcessor:
@@ -32,6 +21,13 @@ class DataProcessor:
         self.data = None
         self.processed_data = 1
         self.csv_folder = "./data/csv"
+        # 根据self.config.make_dataset_args.conversation_strategy 判断初始化哪一个策略类
+        if self.config["conversation_strategy"] == "time_window":
+            self.conversation_strategy = TimeWindowStrategy(
+                time_window=self.config["time_window"]
+            )
+        elif self.config["conversation_strategy"] == "lager_model":
+            self.conversation_strategy = LagerModelStrategy()
 
     def get_csv_files(self):
         """遍历文件夹获取所有CSV文件路径"""
@@ -49,7 +45,6 @@ class DataProcessor:
         csv_files = self.get_csv_files()
         for csv_file in csv_files:
             chat_messages = self.load_csv(csv_file)
-            print(chat_messages)
 
     def load_csv(self, file_path) -> List[ChatMessage]:
         chat_df = pd.read_csv(file_path)
@@ -99,8 +94,8 @@ class DataProcessor:
 
         return [ChatMessage(*row) for row in chat_df.values]
 
-    def load_excel(self, file_path):
-        # Excel处理逻辑
+    def process_text(self, chat_messages: List[ChatMessage]):
+
         pass
 
     def process_image(self):
@@ -111,7 +106,7 @@ class DataProcessor:
         # 处理方法2
         pass
 
-    def save_result(self, output_path):
+    def save_result(self):
         # 保存结果
         pass
 
