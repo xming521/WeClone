@@ -94,7 +94,7 @@ def handle_sft_csv(csvfile):
     chat_df['CreateTime'] = pd.to_datetime(chat_df['CreateTime'])
 
     
-到这了
+改到这了
 
     type_list.remove('文本')
     skip_list = type_list
