@@ -152,3 +152,4 @@ data/test
 *.csv
 test.py
 *users.json   
+WeClone-audio/src/output.wav
