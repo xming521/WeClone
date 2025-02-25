@@ -4,15 +4,16 @@
 
 我使用了大概2万条整合后的有效数据，最后结果只能说差强人意，但有时候真的很搞笑。
 
+## 特性与说明
+
 > [!TIP]
-> 新特性-[WeClone-audio](https://github.com/xming521/WeClone/WeClone-audio) 模块，支持对微信语音进行克隆。
+> 新特性：[WeClone-audio](https://github.com/xming521/WeClone/WeClone-audio) 模块，支持对微信语音进行克隆。
 
 > [!NOTE]
-> 聊天机器人后续使用AstrBot实现
+> 聊天机器人后续使用 AstrBot 实现
 
 > [!IMPORTANT]
->
-> ### 最终效果很大程度取决于聊天数据的数量和质量
+> 最终效果很大程度取决于聊天数据的数量和质量
 
 ### 硬件要求
 
@@ -111,7 +112,6 @@ deepspeed --num_gpus=使用显卡数量 src/train_sft.py
 ```
 
 > [!NOTE]
-> 也可以先对pt阶段进行微调，似乎提升效果不明显，仓库也提供了pt阶段数据集预处理和训练的代码。
 
 ### 使用浏览器demo简单推理
 
