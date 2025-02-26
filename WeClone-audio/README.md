@@ -1,4 +1,9 @@
-# WeClone Audio 项目
+# WeClone-Audio
+
+WeClone-Audio 是一个声音克隆模块，使用 Llasa 模型实现高质量语音合成。
+### 显存需求
+- **3B 模型**: 约 16GB 显存
+- **1B 模型**: 约 9GB 显存
 
 ## 1. 导出微信语音数据
 
@@ -8,9 +13,12 @@
 - 点击聊天备份，导出类型选择"解密文件"
 
 ### 1.2 环境配置
+语音导出仅支持Windows环境
+
+WeClone Audio使用uv作为包管理器，暂时独立于WeClone项目。请确保已安装uv。 
 ```bash
 # 为 PyWxDump 创建 Python 环境和安装依赖
-# 仅支持Windows环境
+# 
 cd ./WeClone-audio
 uv venv .venv-wx --python=3.9
 source .venv-wx/bin/activate
@@ -23,7 +31,7 @@ uv pip install -e '.[wx]'
 python ./WeClone-audio/get_sample_audio.py --db-path "导出数据库路径" --MsgSvrID "导出聊天记录的MsgSvrID字段"
 ```
 
-## 2. 语音推理
+## 2. 语音合成推理
 
 ### 2.1 环境配置
 ```bash
