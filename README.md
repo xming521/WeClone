@@ -1,5 +1,4 @@
-# WeClone
-![download (1)](https://github.com/user-attachments/assets/be8988c2-203d-40d0-9559-d3de1dfcbe6c)
+![download](https://github.com/user-attachments/assets/5842e84e-004f-4afd-9373-af64e9575b78)
 
 ## 核心功能✨
 - 💬 使用微信聊天记录微调LLM
