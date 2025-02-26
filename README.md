@@ -1,10 +1,12 @@
 # WeClone
+![download (1)](https://github.com/user-attachments/assets/be8988c2-203d-40d0-9559-d3de1dfcbe6c)
 
-使用微信聊天记录微调大语言模型，并绑定到微信机器人，实现自己的数字分身。
+## 核心功能✨
+- 💬 使用微信聊天记录微调LLM
+- 🎙️ 使用微信语音消息结合大模型实现声音克隆
+- 🔗 绑定到微信机器人，实现自己的数字分身
 
-我使用了大概2万条整合后的有效数据，最后结果只能说差强人意，但有时候真的很搞笑。
-
-## 特性与说明
+## 特性与说明📋
 
 > [!TIP]
 > 新特性：[WeClone-audio](https://github.com/xming521/WeClone/WeClone-audio) 模块，支持对微信语音进行克隆。
@@ -13,7 +15,7 @@
 > 聊天机器人后续使用 AstrBot 实现
 
 > [!IMPORTANT]
-> 最终效果很大程度取决于聊天数据的数量和质量
+> 微调LLM最终效果很大程度取决于聊天数据的数量和质量
 
 ### 硬件要求
 
@@ -75,9 +77,6 @@ pip install -r requirements.txt
 | csv_to_json-单句回答.py(已废弃) | 只选择最长的回答作为最终数据 |
 | csv_to_json-单句多轮.py | 放在了提示词的'history'中 |
 
-### 语音数据处理
-选择导出类型为`解密文件`, 然后执行`./make_dataset/handler_audio.py` 对解密的语音文件进行导出。
-
 ### 模型下载
 
 首选在Hugging Face下载[ChatGLM3](https://huggingface.co/THUDM/chatglm3-6b) 模型。如果您在 Hugging Face 模型的下载中遇到了问题，可以通过下述方法使用魔搭社区，后续训练推理都需要先执行`export USE_MODELSCOPE_HUB=1`来使用魔搭社区的模型。  
@@ -98,7 +97,7 @@ git clone https://www.modelscope.cn/ZhipuAI/chatglm3-6b.git
 
 #### 单卡训练
 
-运行 `src/train_sft.py` 进行sft阶段微调，本人loss只降到了3.5左右，降低过多可能会过拟合。
+运行 `src/train_sft.py` 进行sft阶段微调，本人loss只降到了3.5左右，降低过多可能会过拟合，我使用了大概2万条整合后的有效数据。
 
 ```bash
 python src/train_sft.py
@@ -111,7 +110,6 @@ pip install deepspeed
 deepspeed --num_gpus=使用显卡数量 src/train_sft.py
 ```
 
-> [!NOTE]
 
 ### 使用浏览器demo简单推理
 
