@@ -17,9 +17,9 @@ class TextToSpeech:
         self.llasa_3b_model = AutoModelForCausalLM.from_pretrained(
             llasa_3b,
             trust_remote_code=True,
-            device_map="cuda",
+            device_map="auto",
         )
-        self.llasa_3b_model.eval().cuda()
+        self.llasa_3b_model.eval()
 
         self.xcodec_model = XCodec2Model.from_pretrained(xcodec2)
         self.xcodec_model.eval().cuda()
@@ -126,6 +126,6 @@ if __name__ == "__main__":
     target_text = "晚上好啊，吃了吗您"
     result = tts.infer(target_text)
     sf.write(os.path.join(os.path.dirname(__file__), "output.wav"), result[1], result[0])
-    target_text = "真是笑死我了"
+    target_text = "我是老北京正黄旗！"
     result = tts.infer(target_text)
     sf.write(os.path.join(os.path.dirname(__file__), "output1.wav"), result[1], result[0])
