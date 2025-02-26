@@ -1,6 +1,6 @@
-# WeClone Audio 模块
+# WeClone-audio 模块
 
-WeClone Audio 是一个声音克隆模块，使用 Llasa 模型实现高质量语音合成。
+WeClone-audio 是一个使用微信语音消息克隆声音的模块，使用 Llasa 模型实现高质量语音合成。
 ### 显存需求
 - **3B 模型**: 约 16GB 显存
 - **1B 模型**: 约 9GB 显存
