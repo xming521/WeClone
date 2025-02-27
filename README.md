@@ -2,13 +2,13 @@
 
 ## 核心功能✨
 - 💬 使用微信聊天记录微调LLM
-- 🎙️ 使用微信语音消息结合大模型实现高质量声音克隆 👉[WeClone-audio](https://github.com/xming521/WeClone/WeClone-audio)
+- 🎙️ 使用微信语音消息结合大模型实现高质量声音克隆 👉[WeClone-audio](https://github.com/xming521/WeClone/tree/master/WeClone-audio)
 - 🔗 绑定到微信机器人，实现自己的数字分身
 
 ## 特性与说明📋
 
 > [!TIP]
-> 新特性：[WeClone-audio](https://github.com/xming521/WeClone/WeClone-audio) 模块，支持对微信语音进行克隆。
+> 新特性：[WeClone-audio](https://github.com/xming521/WeClone/tree/master/WeClone-audio) 模块，支持对微信语音进行克隆。
 
 > [!NOTE]
 > 聊天机器人后续使用 AstrBot 实现
