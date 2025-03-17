@@ -15,7 +15,7 @@ WeClone-audio 是一个使用微信语音消息克隆声音的模块，使用 Ll
 ### 1.2 环境配置
 语音导出仅支持Windows环境
 
-WeClone Audio使用uv作为包管理器，暂时独立于WeClone项目。请确保已安装uv。 
+WeClone Audio使用uv作为包管理器。 
 ```bash
 # 为 PyWxDump 创建 Python 环境和安装依赖
 # 
@@ -35,7 +35,8 @@ python ./WeClone-audio/get_sample_audio.py --db-path "导出数据库路径" --M
 
 ### 2.1 环境配置
 ```bash
-# 创建并配置推理环境
+# 创建并配置推理环境 
+## 可不创建新环境，与LLaMA-Factory环境共用
 uv venv .venv-xcodec --python=3.9
 source .venv-xcodec/bin/activate
 uv pip install -e '.[xcodec]'

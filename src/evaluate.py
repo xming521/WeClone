@@ -1,4 +1,4 @@
-from llmtuner import Evaluator
+from llmtuner.eval.evaluator import Evaluator
 
 
 def main():

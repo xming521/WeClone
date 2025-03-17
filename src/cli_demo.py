@@ -1,4 +1,4 @@
-from llmtuner import ChatModel
+from llmtuner.chat import ChatModel
 from llmtuner.extras.misc import torch_gc
 
 
