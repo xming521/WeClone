@@ -1,4 +1,4 @@
-from llmtuner import run_exp
+from llmtuner.train.tuner import run_exp
 from template import template_register
 from utils.config import load_config
 

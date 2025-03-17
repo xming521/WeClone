@@ -1,13 +1,17 @@
 [project]
-name = "WeClone-audio"
-version = "0.1.0"
+name = "WeClone"
+version = "0.1.2"
 description = ""
 authors = [
     {name = "xming521"}
 ]
 readme = "README.md"
 requires-python = ">=3.9,<3.10"
-dependencies = []
+dependencies = [
+    "llmtuner>=0.7.1",
+    "pandas",
+    "openai==0.28.0",
+]
 
 [project.optional-dependencies]
 xcodec = ["xcodec2==0.1.3"]

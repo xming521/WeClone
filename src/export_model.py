@@ -1,4 +1,4 @@
-from llmtuner import export_model
+from llmtuner.train.tuner import export_model
 
 
 def main():
