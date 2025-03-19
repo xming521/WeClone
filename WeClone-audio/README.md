@@ -1,9 +1,16 @@
 # WeClone-audio 模块
 
-WeClone-audio 是一个使用微信语音消息克隆声音的模块，使用 Llasa 模型实现高质量语音合成。
+WeClone-audio 是一个使用微信语音消息克隆声音的模块，使用模型实现高质量语音合成。
 ### 显存需求
+**Spark-TTS** 推荐
+- **0.5B 模型**: 约 4GB 显存
+
+**Llasa**
 - **3B 模型**: 约 16GB 显存
-- **1B 模型**: 约 9GB 显存
+- **1B 模型**: 约 9GB 显存  
+
+
+
 
 ## 1. 导出微信语音数据
 
@@ -14,12 +21,10 @@ WeClone-audio 是一个使用微信语音消息克隆声音的模块，使用 Ll
 
 ### 1.2 环境配置
 语音导出仅支持Windows环境
-
 WeClone Audio使用uv作为包管理器。 
 ```bash
 # 为 PyWxDump 创建 Python 环境和安装依赖
 # 
-cd ./WeClone-audio
 uv venv .venv-wx --python=3.9
 source .venv-wx/bin/activate
 # 安装 wx 依赖组
@@ -32,7 +37,46 @@ python ./WeClone-audio/get_sample_audio.py --db-path "导出数据库路径" --M
 ```
 
 ## 2. 语音合成推理
+### Spark-TTS模型
+**模型下载**
 
+通过python下载:
+```python
+from huggingface_hub import snapshot_download
+
+snapshot_download("SparkAudio/Spark-TTS-0.5B", local_dir="pretrained_models/Spark-TTS-0.5B")
+```
+
+或通过git下载:
+```sh
+cd WeClone-audio
+mkdir -p pretrained_models
+
+# Make sure you have git-lfs installed (https://git-lfs.com)
+git lfs install
+git clone https://huggingface.co/SparkAudio/Spark-TTS-0.5B pretrained_models/Spark-TTS-0.5B
+```
+使用代码推理
+```python
+import os
+import SparkTTS
+import soundfile as sf
+import torch
+
+from SparkTTS import SparkTTS
+
+model = SparkTTS("WeClone-audio/pretrained_models/Spark-TTS-0.5B", "cuda")
+
+
+with torch.no_grad():
+    wav = model.inference(
+        text="晚上好啊,小可爱们，该睡觉了哦",
+        prompt_speech_path=os.path.join(os.path.dirname(__file__), "sample.wav"),
+        prompt_text="对，这就是我万人敬仰的太乙真人，虽然有点婴儿肥，但也掩不住我逼人的帅气。",
+    )
+    sf.write(os.path.join(os.path.dirname(__file__), "output.wav"), wav, samplerate=16000)
+```
+### Llasa模型
 ### 2.1 环境配置
 ```bash
 # 创建并配置推理环境 
