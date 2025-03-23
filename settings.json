@@ -46,7 +46,8 @@
         "model_name_or_path": "./chatglm3-6b",
         "adapter_name_or_path": "./model_output",
         "template": "chatglm3-weclone",
-        "finetuning_type": "lora"
+        "finetuning_type": "lora",
+        "trust_remote_code": true
     },
     "_comment": "adapter_name_or_path同时做为train_sft_args的output_dir "
 }

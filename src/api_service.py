@@ -1,7 +1,7 @@
 import os
 import uvicorn
-from llmtuner.chat import ChatModel
-from llmtuner.api.app import create_app
+from llamafactory.chat import ChatModel
+from llamafactory.api.app import create_app
 from template import template_register
 from utils.config import load_config
 
