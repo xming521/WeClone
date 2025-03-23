@@ -60,7 +60,7 @@ git clone https://github.com/xming521/WeClone.git
 cd WeClone
 uv venv .venv --python=3.9
 source .venv/bin/activate
-uv pip install -e .'
+uv pip install -e .
 ```
 
 
