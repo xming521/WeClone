@@ -1,5 +1,5 @@
-from llmtuner.chat import ChatModel
-from llmtuner.extras.misc import torch_gc
+from llamafactory.chat import ChatModel
+from llamafactory.extras.misc import torch_gc
 
 
 try:

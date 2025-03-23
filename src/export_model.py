@@ -1,4 +1,4 @@
-from llmtuner.train.tuner import export_model
+from llamafactory.train.tuner import export_model
 
 
 def main():

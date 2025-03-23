@@ -1,4 +1,4 @@
-from llmtuner.webui.interface import create_web_demo
+from llamafactory.webui.interface import create_web_demo
 from template import template_register
 from utils.config import load_config
 

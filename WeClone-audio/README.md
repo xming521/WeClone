@@ -38,6 +38,19 @@ python ./WeClone-audio/get_sample_audio.py --db-path "导出数据库路径" --M
 
 ## 2. 语音合成推理
 ### Spark-TTS模型
+
+**环境安装**
+可不创建新环境，直接安装依赖组到WeClone共主环境
+
+```bash
+uv venv .venv-sparktts --python=3.9
+source .venv-sparktts/bin/activate
+uv pip install -e '.[sparktts]'
+
+cd WeClone-audio/src
+git clone https://github.com/SparkAudio/Spark-TTS.git
+```
+
 **模型下载**
 
 通过python下载:

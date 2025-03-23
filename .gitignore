@@ -155,3 +155,4 @@ test.*
 WeClone-audio/src/output*.wav
 WeClone-audio/uv.lock
 Spark-TTS-0.5B/
+uv.lock

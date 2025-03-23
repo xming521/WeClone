@@ -15,3 +15,4 @@ with torch.no_grad():
         prompt_text="对，这就是我万人敬仰的太乙真人，虽然有点婴儿肥，但也掩不住我逼人的帅气。",
     )
     sf.write(os.path.join(os.path.dirname(__file__), "output.wav"), wav, samplerate=16000)
+    print("生成成功！")

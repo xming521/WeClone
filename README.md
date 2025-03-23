@@ -93,6 +93,7 @@ export USE_MODELSCOPE_HUB=1 # Windows 使用 `set USE_MODELSCOPE_HUB=1`
 git lfs install
 git clone https://www.modelscope.cn/ZhipuAI/chatglm3-6b.git
 ```
+魔搭社区的`modeling_chatglm.py`文件需要更换为Hugging Face的
 
 ### 配置参数并微调模型
 
