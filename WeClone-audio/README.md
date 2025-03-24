@@ -28,7 +28,7 @@ WeClone Audio使用uv作为包管理器。
 uv venv .venv-wx --python=3.9
 source .venv-wx/bin/activate
 # 安装 wx 依赖组
-uv pip install -e '.[wx]'
+uv pip install --group wx -e .
 ```
 
 ### 1.3 导出语音文件
@@ -45,7 +45,7 @@ python ./WeClone-audio/get_sample_audio.py --db-path "导出数据库路径" --M
 ```bash
 uv venv .venv-sparktts --python=3.9
 source .venv-sparktts/bin/activate
-uv pip install -e '.[sparktts]'
+uv pip install --group sparktts -e .
 
 cd WeClone-audio/src
 git clone https://github.com/SparkAudio/Spark-TTS.git
@@ -96,8 +96,7 @@ with torch.no_grad():
 ## 可不创建新环境，与LLaMA-Factory环境共用
 uv venv .venv-xcodec --python=3.9
 source .venv-xcodec/bin/activate
-uv pip install -e '.[xcodec]'
-
+uv pip install --group xcodec -e .
 # 退出环境
 deactivate
 
