@@ -2,7 +2,7 @@
 
 ## 核心功能✨
 - 💬 使用微信聊天记录微调LLM
-- 🎙️ 使用微信语音消息结合大模型实现高质量声音克隆 👉[WeClone-audio](https://github.com/xming521/WeClone/tree/master/WeClone-audio)
+- 🎙️ 使用微信语音消息➕0.5B大模型实现高质量声音克隆 👉[WeClone-audio](https://github.com/xming521/WeClone/tree/master/WeClone-audio)
 - 🔗 绑定到微信机器人，实现自己的数字分身
 
 ## 特性与说明📋
@@ -21,44 +21,29 @@
 目前项目默认使用chatglm3-6b模型，LoRA方法对sft阶段微调，大约需要16GB显存。也可以使用[LLaMA Factory](https://github.com/hiyouga/LLaMA-Factory/blob/main/README_zh.md#%E6%A8%A1%E5%9E%8B)支持的其他模型和方法，占用显存更少，需要自行修改模板的system提示词等相关配置。
 
 需要显存的估算值：
-| 训练方法 | 精度 |   7B  |  13B  |  30B  |   65B  |   8x7B |
-| ------- | ---- | ----- | ----- | ----- | ------ | ------ |
-| 全参数   |  16  | 160GB | 320GB | 600GB | 1200GB |  900GB |
-| 部分参数 |  16  |  20GB |  40GB | 120GB |  240GB |  200GB |
-| LoRA    |  16  |  **16GB** |  32GB |  80GB |  160GB |  120GB |
-| QLoRA   |   8  |  10GB |  16GB |  40GB |   80GB |   80GB |
-| QLoRA   |   4  |   6GB |  12GB |  24GB |   48GB |   32GB |
+| 方法                             | 精度 |   7B  |  14B  |  30B  |   70B  |   `x`B  |
+| ------------------------------- | ---- | ----- | ----- | ----- | ------ | ------- |
+| Full (`bf16` or `fp16`)         |  32  | 120GB | 240GB | 600GB | 1200GB | `18x`GB |
+| Full (`pure_bf16`)              |  16  |  60GB | 120GB | 300GB |  600GB |  `8x`GB |
+| Freeze/LoRA/GaLore/APOLLO/BAdam |  16  |  16GB |  32GB |  64GB |  160GB |  `2x`GB |
+| QLoRA                           |   8  |  10GB |  20GB |  40GB |   80GB |   `x`GB |
+| QLoRA                           |   4  |   6GB |  12GB |  24GB |   48GB | `x/2`GB |
+| QLoRA                           |   2  |   4GB |   8GB |  16GB |   24GB | `x/4`GB |
 
-### 软件要求
-
-| 必需项       | 至少     | 推荐      |
-| ------------ | ------- | --------- |
-| python       | 3.8     | 3.10      |
-| torch        | 1.13.1  | 2.2.1     |
-| transformers | 4.37.2  | 4.38.1    |
-| datasets     | 2.14.3  | 2.17.1    |
-| accelerate   | 0.27.2  | 0.27.2    |
-| peft         | 0.9.0   | 0.9.0     |
-| trl          | 0.7.11  | 0.7.11    |
-
-| 可选项       | 至少     | 推荐      |
-| ------------ | ------- | --------- |
-| CUDA         | 11.6    | 12.2      |
-| deepspeed    | 0.10.0  | 0.13.4    |
-| bitsandbytes | 0.39.0  | 0.41.3    |
-| flash-attn   | 2.3.0   | 2.5.5     |
 
 ### 环境搭建
-
+建议使用 [uv](https://docs.astral.sh/uv/)，这是一个非常快速的 Python 环境管理器。安装uv后，您可以使用以下命令创建一个新的Python环境并安装依赖项，注意这不包含xcodec（音频克隆）功能的依赖：
 ```bash
 git clone https://github.com/xming521/WeClone.git
-conda create -n weclone python=3.10
-conda activate weclone
 cd WeClone
-pip install -r requirements.txt
+uv venv .venv --python=3.9
+source .venv/bin/activate
+uv pip install --group main -e . 
 ```
 
-训练以及推理相关配置统一在文件[settings.json](settings.json)
+> [!NOTE]
+> 训练以及推理相关配置统一在文件[settings.json](settings.json)
+
 
 ### 数据准备
 
@@ -86,6 +71,7 @@ export USE_MODELSCOPE_HUB=1 # Windows 使用 `set USE_MODELSCOPE_HUB=1`
 git lfs install
 git clone https://www.modelscope.cn/ZhipuAI/chatglm3-6b.git
 ```
+魔搭社区的`modeling_chatglm.py`文件需要更换为Hugging Face的
 
 ### 配置参数并微调模型
 
