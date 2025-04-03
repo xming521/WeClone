@@ -150,6 +150,9 @@ data/test
 .vscode
 *-my.*
 *.csv
-test.py
+test.*
 *users.json   
 WeClone-audio/src/output*.wav
+WeClone-audio/uv.lock
+Spark-TTS-0.5B/
+uv.lock
