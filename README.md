@@ -2,7 +2,7 @@
 
 ## 核心功能✨
 - 💬 使用微信聊天记录微调LLM
-- 🎙️ 使用微信语音消息大模➕0.5B大模型实现高质量声音克隆 👉[WeClone-audio](https://github.com/xming521/WeClone/tree/master/WeClone-audio)
+- 🎙️ 使用微信语音消息➕0.5B大模型实现高质量声音克隆 👉[WeClone-audio](https://github.com/xming521/WeClone/tree/master/WeClone-audio)
 - 🔗 绑定到微信机器人，实现自己的数字分身
 
 ## 特性与说明📋
@@ -41,9 +41,9 @@ source .venv/bin/activate
 uv pip install --group main -e . 
 ```
 
+> [!NOTE]
+> 训练以及推理相关配置统一在文件[settings.json](settings.json)
 
-### 训练数据准备
-训练以及推理相关配置统一在文件[settings.json](settings.json)
 
 ### 数据准备
 
