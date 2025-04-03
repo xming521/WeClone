@@ -5,7 +5,7 @@ description = ""
 authors = [{ name = "xming521" }]
 readme = "README.md"
 requires-python = ">=3.9,<3.10"
-dependencies = ["pandas"]
+dependencies = ["pandas", "pydantic==2.10.6"]
 
 # [project.optional-dependencies]
 # xcodec = ["xcodec2==0.1.3"]
