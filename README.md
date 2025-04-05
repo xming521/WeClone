@@ -115,8 +115,16 @@ python ./src/api_service.py
 python ./src/test_model.py
 ```
 
-### 部署微信聊天机器人
+### 部署到聊天机器人
 
+#### AstrBot
+AstrBot 是易上手的多平台 LLM 聊天机器人及开发框架 ✨ 平台支持 QQ、QQ频道、Telegram、微信、企微、飞书。
+
+微调后可能不支持工具调用，请先关掉默认的工具 `/tool off reminder`，否则会没有微调后的效果。
+
+
+
+#### itchat方案（已弃用）
 > [!IMPORTANT]
 >
 > 微信有封号风险，建议使用小号，并且必须绑定银行卡才能使用
