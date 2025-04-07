@@ -1,62 +1,47 @@
-# WeClone
+![download](https://github.com/user-attachments/assets/5842e84e-004f-4afd-9373-af64e9575b78)
 
-使用微信聊天记录微调大语言模型，并绑定到微信机器人，实现自己的数字分身。
+## 核心功能✨
+- 💬 使用微信聊天记录微调LLM
+- 🎙️ 使用微信语音消息➕0.5B大模型实现高质量声音克隆 👉[WeClone-audio](https://github.com/xming521/WeClone/tree/master/WeClone-audio)
+- 🔗 绑定到微信机器人，实现自己的数字分身
 
-我使用了大概2万条整合后的有效数据，最后结果只能说差强人意，但有时候真的很搞笑。
+## 特性与说明📋
 
 > [!TIP]
-> 新特性-[WeClone-audio](https://github.com/xming521/WeClone/WeClone-audio) 模块，支持对微信语音进行克隆。
+> 新特性：[WeClone-audio](https://github.com/xming521/WeClone/tree/master/WeClone-audio) 模块，支持对微信语音进行克隆。
 
-> [!NOTE]
-> 聊天机器人后续使用AstrBot实现
 
 > [!IMPORTANT]
->
-> ### 最终效果很大程度取决于聊天数据的数量和质量
+> 微调LLM最终效果很大程度取决于聊天数据的数量和质量
 
 ### 硬件要求
 
 目前项目默认使用chatglm3-6b模型，LoRA方法对sft阶段微调，大约需要16GB显存。也可以使用[LLaMA Factory](https://github.com/hiyouga/LLaMA-Factory/blob/main/README_zh.md#%E6%A8%A1%E5%9E%8B)支持的其他模型和方法，占用显存更少，需要自行修改模板的system提示词等相关配置。
 
 需要显存的估算值：
-| 训练方法 | 精度 |   7B  |  13B  |  30B  |   65B  |   8x7B |
-| ------- | ---- | ----- | ----- | ----- | ------ | ------ |
-| 全参数   |  16  | 160GB | 320GB | 600GB | 1200GB |  900GB |
-| 部分参数 |  16  |  20GB |  40GB | 120GB |  240GB |  200GB |
-| LoRA    |  16  |  **16GB** |  32GB |  80GB |  160GB |  120GB |
-| QLoRA   |   8  |  10GB |  16GB |  40GB |   80GB |   80GB |
-| QLoRA   |   4  |   6GB |  12GB |  24GB |   48GB |   32GB |
+| 方法                             | 精度 |   7B  |  14B  |  30B  |   70B  |   `x`B  |
+| ------------------------------- | ---- | ----- | ----- | ----- | ------ | ------- |
+| Full (`bf16` or `fp16`)         |  32  | 120GB | 240GB | 600GB | 1200GB | `18x`GB |
+| Full (`pure_bf16`)              |  16  |  60GB | 120GB | 300GB |  600GB |  `8x`GB |
+| Freeze/LoRA/GaLore/APOLLO/BAdam |  16  |  16GB |  32GB |  64GB |  160GB |  `2x`GB |
+| QLoRA                           |   8  |  10GB |  20GB |  40GB |   80GB |   `x`GB |
+| QLoRA                           |   4  |   6GB |  12GB |  24GB |   48GB | `x/2`GB |
+| QLoRA                           |   2  |   4GB |   8GB |  16GB |   24GB | `x/4`GB |
 
-### 软件要求
-
-| 必需项       | 至少     | 推荐      |
-| ------------ | ------- | --------- |
-| python       | 3.8     | 3.10      |
-| torch        | 1.13.1  | 2.2.1     |
-| transformers | 4.37.2  | 4.38.1    |
-| datasets     | 2.14.3  | 2.17.1    |
-| accelerate   | 0.27.2  | 0.27.2    |
-| peft         | 0.9.0   | 0.9.0     |
-| trl          | 0.7.11  | 0.7.11    |
-
-| 可选项       | 至少     | 推荐      |
-| ------------ | ------- | --------- |
-| CUDA         | 11.6    | 12.2      |
-| deepspeed    | 0.10.0  | 0.13.4    |
-| bitsandbytes | 0.39.0  | 0.41.3    |
-| flash-attn   | 2.3.0   | 2.5.5     |
 
 ### 环境搭建
-
+建议使用 [uv](https://docs.astral.sh/uv/)，这是一个非常快速的 Python 环境管理器。安装uv后，您可以使用以下命令创建一个新的Python环境并安装依赖项，注意这不包含xcodec（音频克隆）功能的依赖：
 ```bash
 git clone https://github.com/xming521/WeClone.git
-conda create -n weclone python=3.10
-conda activate weclone
 cd WeClone
-pip install -r requirements.txt
+uv venv .venv --python=3.9
+source .venv/bin/activate
+uv pip install --group main -e . 
 ```
 
-训练以及推理相关配置统一在文件[settings.json](settings.json)
+> [!NOTE]
+> 训练以及推理相关配置统一在文件[settings.json](settings.json)
+
 
 ### 数据准备
 
@@ -74,9 +59,6 @@ pip install -r requirements.txt
 | csv_to_json-单句回答.py(已废弃) | 只选择最长的回答作为最终数据 |
 | csv_to_json-单句多轮.py | 放在了提示词的'history'中 |
 
-### 语音数据处理
-选择导出类型为`解密文件`, 然后执行`./make_dataset/handler_audio.py` 对解密的语音文件进行导出。
-
 ### 模型下载
 
 首选在Hugging Face下载[ChatGLM3](https://huggingface.co/THUDM/chatglm3-6b) 模型。如果您在 Hugging Face 模型的下载中遇到了问题，可以通过下述方法使用魔搭社区，后续训练推理都需要先执行`export USE_MODELSCOPE_HUB=1`来使用魔搭社区的模型。  
@@ -87,6 +69,7 @@ export USE_MODELSCOPE_HUB=1 # Windows 使用 `set USE_MODELSCOPE_HUB=1`
 git lfs install
 git clone https://www.modelscope.cn/ZhipuAI/chatglm3-6b.git
 ```
+魔搭社区的`modeling_chatglm.py`文件需要更换为Hugging Face的
 
 ### 配置参数并微调模型
 
@@ -97,7 +80,7 @@ git clone https://www.modelscope.cn/ZhipuAI/chatglm3-6b.git
 
 #### 单卡训练
 
-运行 `src/train_sft.py` 进行sft阶段微调，本人loss只降到了3.5左右，降低过多可能会过拟合。
+运行 `src/train_sft.py` 进行sft阶段微调，本人loss只降到了3.5左右，降低过多可能会过拟合，我使用了大概2万条整合后的有效数据。
 
 ```bash
 python src/train_sft.py
@@ -106,12 +89,10 @@ python src/train_sft.py
 #### 多卡训练
 
 ```bash
-pip install deepspeed
+uv pip install deepspeed
 deepspeed --num_gpus=使用显卡数量 src/train_sft.py
 ```
 
-> [!NOTE]
-> 也可以先对pt阶段进行微调，似乎提升效果不明显，仓库也提供了pt阶段数据集预处理和训练的代码。
 
 ### 使用浏览器demo简单推理
 
@@ -132,10 +113,27 @@ python ./src/api_service.py
 python ./src/test_model.py
 ```
 
-### 部署微信聊天机器人
+### 部署到聊天机器人
+
+#### AstrBot方案
+[AstrBot](https://github.com/AstrBotDevs/AstrBot) 是易上手的多平台 LLM 聊天机器人及开发框架 ✨ 平台支持 QQ、QQ频道、Telegram、微信、企微、飞书。      
+
+使用步骤：
+1. 部署 AstrBot
+2. 在 AstrBot 中部署消息平台
+3. 执行 `python ./src/api_service.py ` 启动api服务
+4. 在 AstrBot 中新增服务提供商，类型选择OpenAI，API Base URL 根据AstrBot部署方式填写（例如docker部署可能为http://172.17.0.1:8005/v1） ，模型填写gpt-3.5-turbo  
+5. 微调后不支持工具调用，请先关掉默认的工具，消息平台发送指令： `/tool off reminder`，否则会没有微调后的效果。  
+6. 根据微调时使用的default_system，在 AstrBot 中设置系统提示词。
+![alt text](img/5.png)
+
+
+
+
+<details>
+<summary>itchat方案（已弃用）</summary>
 
 > [!IMPORTANT]
->
 > 微信有封号风险，建议使用小号，并且必须绑定银行卡才能使用
 
 ```bash
@@ -144,6 +142,7 @@ python ./src/wechat_bot/main.py
 ```
 
 默认在终端显示二维码，扫码登录即可。可以私聊或者在群聊中@机器人使用。
+</details>
 
 ### 截图
 
@@ -152,51 +151,50 @@ python ./src/wechat_bot/main.py
 ![alt text](img/2.png)
 ![alt text](img/3.png)
 
-### 使用RAG补充知识
-
-Todo
-
-### 多模态
-
-Todo
 
 
 # 免责声明
 > [!CAUTION]
 > 请勿用于非法用途，否则后果自负。
-
-### 1. 使用目的
+<details>
+<summary>1. 使用目的</summary>
 
 * 本项目仅供学习交流使用，**请勿用于非法用途**，**请勿用于非法用途**，**请勿用于非法用途**，否则后果自负。
 * 用户理解并同意，任何违反法律法规、侵犯他人合法权益的行为，均与本项目及其开发者无关，后果由用户自行承担。
 
-### 2. 使用期限
+2. 使用期限
 
 * 您应该在下载保存使用本项目的24小时内，删除本项目的源代码和程序；超出此期限的任何使用行为，一概与本项目及其开发者无关。
 
-### 3. 操作规范
+3. 操作规范
 
 * 本项目仅允许在授权情况下使用数据训练，严禁用于非法目的，否则自行承担所有相关责任；用户如因违反此规定而引发的任何法律责任，将由用户自行承担，与本项目及其开发者无关。
 * 严禁用于窃取他人隐私，严禁用于窃取他人隐私，严禁用于窃取他人隐私，否则自行承担所有相关责任。
 
-### 4. 免责声明接受
+4. 免责声明接受
 
 * 下载、保存、进一步浏览源代码或者下载安装、编译使用本程序，表示你同意本警告，并承诺遵守它;
 
-### 5. 禁止用于非法测试或渗透
+5. 禁止用于非法测试或渗透
 
 * 禁止利用本项目的相关技术从事非法测试或渗透，禁止利用本项目的相关代码或相关技术从事任何非法工作，如因此产生的一切不良后果与本项目及其开发者无关。
 * 任何因此产生的不良后果，包括但不限于数据泄露、系统瘫痪、侵犯隐私等，均与本项目及其开发者无关，责任由用户自行承担。
 
-### 6. 免责声明修改
+6. 免责声明修改
 
 * 本免责声明可能根据项目运行情况和法律法规的变化进行修改和调整。用户应定期查阅本页面以获取最新版本的免责声明，使用本项目时应遵守最新版本的免责声明。
 
-### 7. 其他
+7. 其他
 
 * 除本免责声明规定外，用户在使用本项目过程中应遵守相关的法律法规和道德规范。对于因用户违反相关规定而引发的任何纠纷或损失，本项目及其开发者不承担任何责任。
 
 * 请用户慎重阅读并理解本免责声明的所有内容，确保在使用本项目时严格遵守相关规定。
 
-
+</details>
 请用户慎重阅读并理解本免责声明的所有内容，确保在使用本项目时严格遵守相关规定。
+
+<br>  
+<br>  
+<br>  
+
+<div align="center"> 克隆我们，保留那灵魂的芬芳 </div>
