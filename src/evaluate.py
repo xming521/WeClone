@@ -1,4 +1,4 @@
-from llmtuner import Evaluator
+from llamafactory.eval.evaluator import Evaluator
 
 
 def main():
