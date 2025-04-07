@@ -91,7 +91,7 @@ python src/train_sft.py
 #### 多卡训练
 
 ```bash
-pip install deepspeed
+uv pip install deepspeed
 deepspeed --num_gpus=使用显卡数量 src/train_sft.py
 ```
 
