@@ -117,10 +117,17 @@ python ./src/test_model.py
 
 ### 部署到聊天机器人
 
-#### AstrBot
-AstrBot 是易上手的多平台 LLM 聊天机器人及开发框架 ✨ 平台支持 QQ、QQ频道、Telegram、微信、企微、飞书。
+#### AstrBot方案
+[AstrBot](https://github.com/AstrBotDevs/AstrBot) 是易上手的多平台 LLM 聊天机器人及开发框架 ✨ 平台支持 QQ、QQ频道、Telegram、微信、企微、飞书。  
+使用步骤：
+1. 部署 AstrBot
+2. 在 AstrBot 中部署消息平台
+3. 执行 `python ./src/api_service.py ` 启动api服务
+4. 在 AstrBot 中新增服务提供商，类型选择OpenAI，API Base URL 根据AstrBot部署方式填写（例如docker部署可能为http://172.17.0.1:8005/v1） ，模型填写gpt-3.5-turbo  
+5. 微调后不支持工具调用，请先关掉默认的工具 `/tool off reminder`，否则会没有微调后的效果。  
+6. 根据微调时使用的default_system，在 AstrBot 中设置系统提示词。
+![alt text](img/5.png)
 
-微调后可能不支持工具调用，请先关掉默认的工具 `/tool off reminder`，否则会没有微调后的效果。
 
 
 
