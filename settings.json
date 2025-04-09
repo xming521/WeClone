@@ -49,7 +49,6 @@
             "图片"
         ],
         "history_length": 10,
-        "prefer_comma": false, //聊天时是不是喜欢使用逗号，
         "conversation_strategy": "time_window", // 基于时间窗口的判断策略
         "time_window": 10, // 时间窗口（分钟）,
         "prompt_with_history": false // 是否在prompt中包含历史对话
