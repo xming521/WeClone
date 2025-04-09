@@ -197,4 +197,15 @@ python ./src/wechat_bot/main.py
 <br>  
 <br>  
 
+## ⭐ Star History
+> [!TIP] 
+> 如果本项目对您有帮助，或者您关注本项目的未来发展，请给项目 Star，谢谢 
+
+<div align="center">
+
+[![Star History Chart](https://api.star-history.com/svg?repos=xming521/WeClone&type=Date)](https://www.star-history.com/#xming521/WeClone&Date)
+
+</div>
+
+
 <div align="center"> 克隆我们，保留那灵魂的芬芳 </div>
