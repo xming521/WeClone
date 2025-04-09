@@ -21,6 +21,18 @@ class DataProcessor:
         self.data = None
         self.processed_data = 1
         self.csv_folder = "./data/csv"
+        self.type_list = [
+            "文本",
+            "图片",
+            "卡片式链接",
+            "合并转发的聊天记录",
+            "视频",
+            "语言",
+            "未知",
+            "分享的小程序",
+        ]
+        self.skip_type_list = self.type_list.copy()
+        self.skip_type_list.remove("文本")
         # 根据self.config.make_dataset_args.conversation_strategy 判断初始化哪一个策略类
         if self.config["conversation_strategy"] == "time_window":
             self.conversation_strategy = TimeWindowStrategy(
@@ -47,7 +59,7 @@ class DataProcessor:
         for csv_file in csv_files:
             chat_messages = self.load_csv(csv_file)
             # 第一次预处理后 将chat_message 加入rcsv_df_list
-            message_list.append(self.group_consecutive_messages(chat_messages))
+            message_list.append(self.group_consecutive_messages(messages=chat_messages))
             # self.process_by_msgtype(chat_message)
 
     def group_consecutive_messages(
@@ -65,68 +77,24 @@ class DataProcessor:
         if not messages:
             return []
 
-        grouped_messages = []
-        current_group = [messages[0]]
+        def _combine_messages(messages: List[ChatMessage]) -> ChatMessage:
+            """
+            合并多条消息为一条
 
-        for i in range(1, len(messages)):
-            current_msg = messages[i]
-            last_msg = current_group[-1]
+            Args:
+                messages: 要合并的消息列表
 
-            # 判断是否是同一个人的连续消息
-            if (
-                current_msg.is_sender == last_msg.is_sender
-                and current_msg.talker == last_msg.talker
-                and (current_msg.CreateTime - last_msg.CreateTime).total_seconds()
-                < self.config.get("message_time_window", 3600)
-            ):
+            Returns:
+                ChatMessage: 合并后的消息
+            """
+            base_msg = messages[0]
+            combined_content = messages[0].msg.strip()
 
-                # 同一个人的连续消息，添加到当前组
-                current_group.append(current_msg)
-            else:
-                # 不是同一个人的消息，处理当前组并开始新组
-                if len(current_group) > 1:
-                    # 合并消息内容
-                    combined_msg = self._combine_messages(current_group)
-                    grouped_messages.append(combined_msg)
-                else:
-                    # 只有一条消息，直接添加
-                    grouped_messages.append(current_group[0])
+            for i in messages[1:]:
+                content = i.msg.strip()
+                if not content:
+                    continue
 
-                # 开始新组
-                current_group = [current_msg]
-
-        # 处理最后一组消息
-        if current_group:
-            if len(current_group) > 1:
-                combined_msg = self._combine_messages(current_group)
-                grouped_messages.append(combined_msg)
-            else:
-                grouped_messages.append(current_group[0])
-
-        return grouped_messages
-
-    def _combine_messages(self, messages: List[ChatMessage]) -> ChatMessage:
-        """
-        合并多条消息为一条
-
-        Args:
-            messages: 要合并的消息列表
-
-        Returns:
-            ChatMessage: 合并后的消息
-        """
-        # 以第一条消息为基础
-        base_msg = messages[0]
-
-        # 合并消息内容
-        combined_content = ""
-        for i, msg in enumerate(messages):
-            content = msg.msg.strip()
-            if not content:
-                continue
-
-            if i > 0:
-                # 如果前一条消息没有以标点符号结尾，添加一个句号
                 if combined_content and combined_content[-1] not in [
                     "。",
                     "！",
@@ -137,32 +105,64 @@ class DataProcessor:
                 ]:
                     combined_content += "，"
 
-            combined_content += content
+                combined_content += content
 
-        # 确保最后一条消息以句号结尾
-        if combined_content and combined_content[-1] not in [
-            "。",
-            "！",
-            "？",
-            "…",
-            ".",
-        ]:
-            combined_content += "。"
+            combined_message = ChatMessage(
+                id=base_msg.id,
+                MsgSvrID=base_msg.MsgSvrID,
+                type_name=base_msg.type_name,
+                is_sender=base_msg.is_sender,
+                talker=base_msg.talker,
+                room_name=base_msg.room_name,
+                msg=combined_content,
+                src=base_msg.src,
+                CreateTime=messages[-1].CreateTime,  # 使用最后一条消息的时间
+            )
 
-        # 创建新的合并消息
-        combined_message = ChatMessage(
-            id=base_msg.id,
-            MsgSvrID=base_msg.MsgSvrID,
-            type_name=base_msg.type_name,
-            is_sender=base_msg.is_sender,
-            talker=base_msg.talker,
-            room_name=base_msg.room_name,
-            msg=combined_content,
-            src=base_msg.src,
-            CreateTime=messages[-1].CreateTime,  # 使用最后一条消息的时间
-        )
+            return combined_message
 
-        return combined_message
+        grouped_messages = []
+        current_group = []
+
+        for _, current_msg in enumerate(messages):
+
+            if current_msg.type_name in self.skip_type_list:
+                continue
+
+            if not current_group:
+                current_group = [current_msg]
+                continue
+
+            last_msg = current_group[-1]
+
+            # 判断是否是同一个人的连续消息
+            if (
+                current_msg.is_sender == last_msg.is_sender
+                and current_msg.talker == last_msg.talker
+                and (current_msg.CreateTime - last_msg.CreateTime).total_seconds()
+                < 3600
+            ):
+                current_group.append(current_msg)
+            else:
+                # 不是同一个人的消息，处理当前组并开始新组
+                if len(current_group) > 1:
+                    combined_msg = _combine_messages(current_group)
+                    grouped_messages.append(combined_msg)
+                else:
+                    grouped_messages.append(current_group[0])
+
+                # 开始新组
+                current_group = [current_msg]
+
+        # 处理最后一组消息
+        if current_group:
+            if len(current_group) > 1:
+                combined_msg = _combine_messages(current_group)
+                grouped_messages.append(combined_msg)
+            else:
+                grouped_messages.append(current_group[0])
+
+        return grouped_messages
 
     def create_conversation_data(self, messages: List[ChatMessage]) -> dict:
         """
@@ -180,8 +180,8 @@ class DataProcessor:
                 conversation.append(
                     {
                         "role": "user" if msg.is_sender == 0 else "assistant",
-                        "content": msg.content,
-                        "timestamp": msg.timestamp,
+                        "content": msg.msg,
+                        "timestamp": msg.CreateTime,
                     }
                 )
 
@@ -195,8 +195,8 @@ class DataProcessor:
         return {
             "conversation": conversation,
             "metadata": {
-                "conversation_id": messages[0].conversation_id if messages else None,
-                "timestamp": messages[-1].timestamp if messages else None,
+                "conversation_id": str(messages[0].id) if messages else None,
+                "timestamp": messages[-1].CreateTime if messages else None,
             },
         }
 
