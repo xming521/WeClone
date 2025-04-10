@@ -11,7 +11,7 @@ current_dir = os.path.dirname(p=os.path.abspath(__file__))
 root_dir = os.path.dirname(current_dir)
 sys.path.append(root_dir)
 from src.utils.config import load_config
-from make_dataset.models import ChatMessage
+from make_dataset.models import ChatMessage, CutMessage, skip_type_list
 from make_dataset.strategies import TimeWindowStrategy, LagerModelStrategy
 
 
@@ -19,20 +19,22 @@ class DataProcessor:
     def __init__(self):
         self.config = load_config(arg_type="make_dataset")
         self.data = None
-        self.processed_data = 1
         self.csv_folder = "./data/csv"
-        self.type_list = [
-            "文本",
+        self.cut_type_list = [
             "图片",
-            "卡片式链接",
-            "合并转发的聊天记录",
             "视频",
-            "语言",
-            "未知",
-            "分享的小程序",
+            "合并转发的聊天记录",
+            "语音",
+            "(分享)音乐",
+            "(分享)卡片式链接",
+            "(分享)笔记",
+            "(分享)小程序",
+            "(分享)收藏夹",
+            "(分享)小说(猜)",
+            "(分享)视频号名片",
+            "(分享)视频号视频",
         ]
-        self.skip_type_list = self.type_list.copy()
-        self.skip_type_list.remove("文本")
+
         # 根据self.config.make_dataset_args.conversation_strategy 判断初始化哪一个策略类
         if self.config["conversation_strategy"] == "time_window":
             self.conversation_strategy = TimeWindowStrategy(
@@ -66,7 +68,7 @@ class DataProcessor:
         self, messages: List[ChatMessage]
     ) -> List[ChatMessage]:
         """
-        将同一个人连续发送的多条消息组合成一条消息
+        将同一个人连续发送的多条消息组合成一条消息，遇到cut_type添加cut
 
         Args:
             messages: 消息列表
@@ -77,7 +79,7 @@ class DataProcessor:
         if not messages:
             return []
 
-        def _combine_messages(messages: List[ChatMessage]) -> ChatMessage:
+        def _combine_text(messages: List[ChatMessage]) -> ChatMessage:
             """
             合并多条消息为一条
 
@@ -121,12 +123,55 @@ class DataProcessor:
 
             return combined_message
 
+        def _create_cut_message(message: ChatMessage) -> CutMessage:
+            """
+            创建一个CutMessage实例
+
+            Args:
+                message: 当前处理的消息，用于获取属性
+
+            Returns:
+                CutMessage: 创建的CutMessage实例
+            """
+            return CutMessage(
+                is_sender=message.is_sender,
+                cut_type=message.type_name,
+                CreateTime=message.CreateTime,
+            )
+
+        def _combine_current_group(group):
+            """
+            处理当前消息组并添加到grouped_messages
+
+            Args:
+                group: 当前消息组
+            """
+            if len(group) > 1:
+                combined_msg = _combine_text(group)
+                grouped_messages.append(combined_msg)
+            else:
+                grouped_messages.append(group[0])
+
         grouped_messages = []
         current_group = []
 
         for _, current_msg in enumerate(messages):
 
-            if current_msg.type_name in self.skip_type_list:
+            if current_msg.type_name in self.cut_type_list:
+                if current_group:
+                    # 当前组有消息，合并当前组，并添加一条cut
+                    _combine_current_group(current_group)
+                    current_group = []
+
+                    cut_msg = _create_cut_message(current_msg)
+                    grouped_messages.append(cut_msg)
+                else:
+                    # 当前组没消息，检查上一个组
+                    if grouped_messages:
+                        if not isinstance(grouped_messages[-1], CutMessage):
+                            cut_msg = _create_cut_message(current_msg)
+                            grouped_messages.append(cut_msg)
+                    # 如果上一个组没消息或最后一条是CutMessage，直接continue
                 continue
 
             if not current_group:
@@ -145,22 +190,13 @@ class DataProcessor:
                 current_group.append(current_msg)
             else:
                 # 不是同一个人的消息，处理当前组并开始新组
-                if len(current_group) > 1:
-                    combined_msg = _combine_messages(current_group)
-                    grouped_messages.append(combined_msg)
-                else:
-                    grouped_messages.append(current_group[0])
-
+                _combine_current_group(current_group)
                 # 开始新组
                 current_group = [current_msg]
 
         # 处理最后一组消息
         if current_group:
-            if len(current_group) > 1:
-                combined_msg = _combine_messages(current_group)
-                grouped_messages.append(combined_msg)
-            else:
-                grouped_messages.append(current_group[0])
+            _combine_current_group(current_group)
 
         return grouped_messages
 
@@ -214,54 +250,42 @@ class DataProcessor:
 
     def load_csv(self, file_path) -> List[ChatMessage]:
         """
-        做整体第一次预处理，删除不符合条件的行
+        做整体第一次预处理，过滤不符合条件的行
         """
-        chat_df = pd.read_csv(file_path)
+        df = pd.read_csv(file_path, encoding="utf-8", dtype={"msg": str})
 
         blocked_words = json.load(
             open("./make_dataset/blocked_words.json", encoding="utf-8")
         )["blocked_words"]
 
-        type_list = [
-            "文本",
-            "图片",
-            "卡片式链接",
-            "合并转发的聊天记录",
-            "视频",
-            "语言",
-            "未知",
-            "分享的小程序",
-        ]
-        # chat_df = chat_df[chat_df["type_name"].isin(values=type_list)]
-
-        # chat_df["content"] = chat_df["msg"]
+        df = df[~df["type_name"].isin(values=skip_type_list)]
 
         # 如果type_name为文本 并且msg 包含 手机号、身份证号、邮箱、网址则删除这行
-        for i in chat_df.index:
-            if chat_df.loc[i, "type_name"] == "文本":
+        for i in df.index:
+            if df.loc[i, "type_name"] == "文本":
                 if (
-                    "1\d{10}" in chat_df.loc[i, "msg"]
-                    or "\d{18}" in chat_df.loc[i, "msg"]
-                    or "\w+@\w+" in chat_df.loc[i, "msg"]
-                    or "http" in chat_df.loc[i, "msg"]
-                    or r"\\xa0" in chat_df.loc[i, "msg"]
-                    or r"\\u" in chat_df.loc[i, "msg"]
+                    "1\d{10}" in df.loc[i, "msg"]
+                    or "\d{18}" in df.loc[i, "msg"]
+                    or "\w+@\w+" in df.loc[i, "msg"]
+                    or "http" in df.loc[i, "msg"]
+                    or r"\\xa0" in df.loc[i, "msg"]
+                    or r"\\u" in df.loc[i, "msg"]
                 ):
-                    chat_df = chat_df.drop(index=i)
+                    df = df.drop(index=i)
                     continue
                 for blocked_word in blocked_words:
-                    if blocked_word in chat_df.loc[i, "msg"]:
-                        chat_df = chat_df.drop(index=i)
+                    if blocked_word in df.loc[i, "msg"]:
+                        df = df.drop(index=i)
                         break
             else:
-                chat_df.loc[i, "msg"] = ""
+                df.loc[i, "msg"] = ""
 
-        chat_df = chat_df.dropna(how="all")
+        df = df.dropna(how="all")
         # 时间格式 2021-07-07 10:27:23
         # 遍历行 相同is_sender的行合并msg（）遇到不同is_sender就重新开始
-        chat_df["CreateTime"] = pd.to_datetime(chat_df["CreateTime"])
+        df["CreateTime"] = pd.to_datetime(df["CreateTime"])
 
-        return [ChatMessage(*row) for row in chat_df.values]
+        return [ChatMessage(*row) for row in df.values]
 
     def process_text(self, chat_message: ChatMessage):
 
