@@ -54,4 +54,4 @@ skip_type_list = [
     "未知-11000,0",
 ]
 # 没处理的类型
-unprocessed_type_list = ["粘贴的文本"]
+unprocessed_type_list = []

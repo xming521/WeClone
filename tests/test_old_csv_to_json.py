@@ -64,7 +64,7 @@ def handle_sft_csv(csvfile):
     blocked_words = json.load(open('./make_dataset/blocked_words.json', encoding='utf-8'))['blocked_words']
     # 选择type_name为文本的行、is_sender为1的行
     # 需要保留的type_name字段名
-    type_list = ['文本', '图片', '卡片式链接', '合并转发的聊天记录', '视频', '语言', '未知', '分享的小程序']
+    type_list = ['文本', '图片', '卡片式链接', '合并转发的聊天记录', '视频', '语音', '未知', '分享的小程序']
     chat_df = chat_df[chat_df['type_name'].isin(values=type_list)]
 
     # chat_df['content'] = chat_df['content'].apply(func=lambda x: json.loads(x)['msg'])
@@ -166,7 +166,47 @@ def make_sft_dataset():
         csv_concat.append(chat_df)
 
     # 后续代码保持不变
-    csv_concat = pd.concat(csv_concat)
+    csv_concat = pd.concat(csv_concat) 
+    
+    # 更全面地处理cut标记
+    # 1. 将连续的cut标记合并为一个
+    # 2. 标记数据区块的开始和结束
+    processed_rows = []
+    skip_row = False
+    last_row_was_cut = False
+    
+    for i in range(len(csv_concat)):
+        if skip_row:
+            skip_row = False
+            continue
+            
+        current_row = csv_concat.iloc[i].copy()
+        
+        # 处理当前行是cut的情况
+        if current_row['content'] == 'cut':
+            # 如果上一行已经是cut，则跳过当前行
+            if last_row_was_cut:
+                continue
+                
+            # 查找连续的cut
+            j = i + 1
+            while j < len(csv_concat) and csv_concat.iloc[j]['content'] == 'cut':
+                j += 1
+                
+            # 如果有连续的cut，只保留最后一个
+            if j > i + 1:
+                current_row = csv_concat.iloc[j-1].copy()
+                skip_row = True
+                
+            last_row_was_cut = True
+        else:
+            last_row_was_cut = False
+            
+        processed_rows.append(current_row)
+    
+    # 创建新的DataFrame
+    csv_concat = pd.DataFrame(processed_rows)
+    
     # csv_res里is_sender必须是01 01 01 的顺序 csv_concat里不一定是01 01
     # 相差超过1小时的时间戳分为不同的对话
     # temp_res为一个长度为2的队列
@@ -176,7 +216,7 @@ def make_sft_dataset():
     # 生成带时间戳的文件名
     import datetime
     now = datetime.datetime.now()
-    output_file = os.path.join(output_dir, f"csv_old_{now.strftime('%Y%m%d_%H%M%S')}.csv")
+    output_file = os.path.join(output_dir, f"csv_old_.csv")
     
     # 保存合并后的数据
     csv_concat.to_csv(output_file, index=False, encoding="utf-8-sig")
