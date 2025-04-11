@@ -33,6 +33,7 @@ class DataProcessor:
             "(分享)小说(猜)",
             "(分享)视频号名片",
             "(分享)视频号视频",
+            "粘贴的文本",  # 无法解析的分享链接
         ]
 
         # 根据self.config.make_dataset_args.conversation_strategy 判断初始化哪一个策略类
