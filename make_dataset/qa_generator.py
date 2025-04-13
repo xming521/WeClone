@@ -1,9 +1,9 @@
-from dataclasses import dataclass
 import sys
 import os
-from typing import List
+from typing import Dict, List
+from collections import deque
+import re
 
-from pandas import Timestamp
 import pandas as pd
 import json
 
@@ -12,13 +12,12 @@ root_dir = os.path.dirname(current_dir)
 sys.path.append(root_dir)
 from src.utils.config import load_config
 from make_dataset.models import ChatMessage, CutMessage, skip_type_list
-from make_dataset.strategies import TimeWindowStrategy, LagerModelStrategy
+from make_dataset.strategies import TimeWindowStrategy, LLMStrategy
 
 
 class DataProcessor:
     def __init__(self):
         self.config = load_config(arg_type="make_dataset")
-        self.data = None
         self.csv_folder = "./data/csv"
         self.cut_type_list = [
             "图片",
@@ -36,13 +35,25 @@ class DataProcessor:
             "粘贴的文本",  # 无法解析的分享链接
         ]
 
-        # 根据self.config.make_dataset_args.conversation_strategy 判断初始化哪一个策略类
-        if self.config["conversation_strategy"] == "time_window":
-            self.conversation_strategy = TimeWindowStrategy(
-                time_window=self.config["time_window"]
+        if self.config["single_combine_strategy"] == "time_window":
+            self.single_combine_strategy = TimeWindowStrategy(
+                time_window=self.config["single_combine_time_window"] * 60,
+                is_single_chat=True,
             )
-        elif self.config["conversation_strategy"] == "lager_model":
-            self.conversation_strategy = LagerModelStrategy()
+        elif self.config["single_combine_strategy"] == "llm":
+            self.single_combine_strategy = LLMStrategy(
+                is_single_chat=True,
+            )
+
+        if self.config["qa_match_strategy"] == "time_window":
+            self.qa_match_strategy = TimeWindowStrategy(
+                time_window=self.config["qa_match_time_window"] * 60,
+                is_single_chat=False,
+            )
+        elif self.config["qa_match_strategy"] == "llm":
+            self.qa_match_strategy = LLMStrategy(is_single_chat=False)
+
+        self.c = self.config
 
     def get_csv_files(self):
         """遍历文件夹获取所有CSV文件路径"""
@@ -61,9 +72,94 @@ class DataProcessor:
         message_list: List[ChatMessage] = []
         for csv_file in csv_files:
             chat_messages = self.load_csv(csv_file)
-            # 第一次预处理后 将chat_message 加入rcsv_df_list
-            message_list.append(self.group_consecutive_messages(messages=chat_messages))
+            message_list.extend(self.group_consecutive_messages(messages=chat_messages))
             # self.process_by_msgtype(chat_message)
+        qa_res = self.match_qa(message_list)
+        if self.c["prompt_with_history"]:
+            qa_res = self.add_history_to_qa(qa_res)
+        self.save_result(qa_res)
+
+    def match_qa(self, messages: List[ChatMessage]) -> List[Dict]:
+        """
+        匹配问答对
+
+        Args:
+            messages: 消息列表
+
+        Returns:
+            List[Dict]: 包含指令和输出的问答对列表
+        """
+        # 状态定义
+        WAITING_INSTRUCTION = "waiting_instruction"  # 等待指令
+        WAITING_RESPONSE = "waiting_response"  # 等待回复
+
+        current_state = WAITING_INSTRUCTION
+        qa_res = []
+        last_message = None
+        current_instruction = None
+
+        for msg in messages:
+            # 检查是否为CutMessage
+            if isinstance(msg, CutMessage):
+                current_state = WAITING_INSTRUCTION
+                current_instruction = None
+                last_message = None
+                if self.c["prompt_with_history"]:
+                    qa_res.append(msg)
+                continue
+
+            if current_state == WAITING_INSTRUCTION:
+                if msg.is_sender == 0:  # 收到对方消息
+                    current_instruction = msg.msg
+                    last_message = msg
+                    current_state = WAITING_RESPONSE
+
+            elif current_state == WAITING_RESPONSE:
+                if msg.is_sender == 0:  # 收到对方消息
+                    current_instruction = msg.msg
+                    last_message = msg
+                    # 状态保持不变
+                else:  # 自己的回复 使用策略判断是否属于同一对话
+                    if last_message and self.qa_match_strategy.is_same_conversation(
+                        [last_message], msg
+                    ):
+                        qa_res.append(
+                            {"instruction": current_instruction, "output": msg.msg}
+                        )
+                    # 无论是否匹配，都重置状态
+                    current_state = WAITING_INSTRUCTION
+                    current_instruction = None
+                    last_message = None
+
+        return qa_res
+
+    def add_history_to_qa(self, qa_res: List[Dict]):
+        qa_res_with_history = []
+        last_res = {"instruction": "", "output": "", "history": []}
+
+        for _, qa in enumerate(qa_res):
+            if isinstance(qa, CutMessage):
+                if len(last_res["history"]) == 0:
+                    continue
+                else:
+                    if len(last_res["history"]) == 1:
+                        last_res = {
+                            "instruction": last_res["history"][0][0],
+                            "output": last_res["history"][0][1],
+                            "history": [],
+                        }
+                    else:
+                        last_res = {
+                            "instruction": last_res["history"][-1][0],
+                            "output": last_res["history"][-1][1],
+                            "history": last_res["history"][:-1],
+                        }
+                    qa_res_with_history.append(last_res)
+                    last_res = {"instruction": "", "output": "", "history": []}
+            else:
+                last_res["history"].append([qa["instruction"], qa["output"]])
+
+        return qa_res_with_history
 
     def group_consecutive_messages(
         self, messages: List[ChatMessage]
@@ -125,15 +221,7 @@ class DataProcessor:
             return combined_message
 
         def _create_cut_message(message: ChatMessage) -> CutMessage:
-            """
-            创建一个CutMessage实例
 
-            Args:
-                message: 当前处理的消息，用于获取属性
-
-            Returns:
-                CutMessage: 创建的CutMessage实例
-            """
             return CutMessage(
                 is_sender=message.is_sender,
                 cut_type=message.type_name,
@@ -185,8 +273,9 @@ class DataProcessor:
             if (
                 current_msg.is_sender == last_msg.is_sender
                 and current_msg.talker == last_msg.talker
-                and (current_msg.CreateTime - last_msg.CreateTime).total_seconds()
-                < 3600
+                and self.single_combine_strategy.is_same_conversation(
+                    [last_msg], current_msg
+                )
             ):
                 current_group.append(current_msg)
             else:
@@ -200,48 +289,6 @@ class DataProcessor:
             _combine_current_group(current_group)
 
         return grouped_messages
-
-    def create_conversation_data(self, messages: List[ChatMessage]) -> dict:
-        """
-        将一组消息组成一条对话数据
-
-        Args:
-            messages: 属于同一对话的消息列表
-
-        Returns:
-            dict: 包含对话历史的数据字典
-        """
-        conversation = []
-        for msg in messages:
-            if msg.type_name in self.config["include_type"]:
-                conversation.append(
-                    {
-                        "role": "user" if msg.is_sender == 0 else "assistant",
-                        "content": msg.msg,
-                        "timestamp": msg.CreateTime,
-                    }
-                )
-
-        # 确保对话是按时间顺序排列的
-        conversation.sort(key=lambda x: x["timestamp"])
-
-        # 限制历史长度
-        if len(conversation) > self.config["history_length"]:
-            conversation = conversation[-self.config["history_length"] :]
-
-        return {
-            "conversation": conversation,
-            "metadata": {
-                "conversation_id": str(messages[0].id) if messages else None,
-                "timestamp": messages[-1].CreateTime if messages else None,
-            },
-        }
-
-    def process_by_msgtype(self, chat_message: ChatMessage):
-        if chat_message.type_name == "文本":
-            self.process_text(chat_message)
-        # elif chat_message.type_name == "图片":
-        #     self.process_image(chat_message)
 
     def process_by_msgtype(self, chat_message: ChatMessage):
         if chat_message.type_name == "文本":
@@ -264,18 +311,19 @@ class DataProcessor:
         # 如果type_name为文本 并且msg 包含 手机号、身份证号、邮箱、网址则删除这行
         for i in df.index:
             if df.loc[i, "type_name"] == "文本":
+                msg_str = str(df.loc[i, "msg"])
                 if (
-                    "1\d{10}" in df.loc[i, "msg"]
-                    or "\d{18}" in df.loc[i, "msg"]
-                    or "\w+@\w+" in df.loc[i, "msg"]
-                    or "http" in df.loc[i, "msg"]
-                    or r"\\xa0" in df.loc[i, "msg"]
-                    or r"\\u" in df.loc[i, "msg"]
+                    re.search(r"1\d{10}", msg_str)
+                    or re.search(r"\d{18}", msg_str)
+                    or re.search(r"\w+@\w+", msg_str)
+                    or "http" in msg_str
+                    or r"\\xa0" in msg_str
+                    or r"\\u" in msg_str
                 ):
                     df = df.drop(index=i)
                     continue
                 for blocked_word in blocked_words:
-                    if blocked_word in df.loc[i, "msg"]:
+                    if blocked_word in msg_str:
                         df = df.drop(index=i)
                         break
             else:
@@ -292,17 +340,15 @@ class DataProcessor:
 
         pass
 
-    def process_image(self):
-        # 处理方法1
-        pass
-
-    def process_method2(self):
-        # 处理方法2
-        pass
-
-    def save_result(self):
+    def save_result(self, qa_res: List[Dict]):
         # 保存结果
-        pass
+        with open(
+            f"./data/res_csv/sft/sft-{self.c['single_combine_strategy']}-{self.c['qa_match_strategy']}-my.json",
+            "w",
+            encoding="utf-8",
+        ) as f:
+            json.dump(qa_res, f, ensure_ascii=False)
+        print(f"聊天记录处理成功，共{len(qa_res)}条，保存到{f.name}")
 
 
 if __name__ == "__main__":
