@@ -45,3 +45,16 @@ conflicts = [
 [[tool.uv.index]]
 url = "https://pypi.tuna.tsinghua.edu.cn/simple/"
 default = true
+
+[tool.pyright]
+typeCheckingMode = "basic"
+include = ["src"]
+exclude = ["**/archive","**/tests"]
+ignore = ["**/archive"]
+
+reportMissingImports = "error"
+reportMissingTypeStubs = false
+
+pythonVersion = "3.9"
+pythonPlatform = "Linux"
+

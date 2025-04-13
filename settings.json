@@ -43,14 +43,14 @@
         "top_p": 0.65
     },
     "make_dataset_args": {
-        "enable_vision_model": false,
+        // "enable_vision_model": false,//后续实现
         "include_type": [
-            "文本",
-            "图片"
+            "文本"
         ],
-        "history_length": 10,
-        "conversation_strategy": "time_window", // 基于时间窗口的判断策略
-        "time_window": 10, // 时间窗口（分钟）,
+        "single_combine_strategy": "time_window", // 单人组成单句策略
+        "qa_match_strategy": "time_window", // 多人组成qa策略
+        "single_combine_time_window": 10, // 单人组成单句时间窗口（分钟）,
+        "qa_match_time_window": 60, // 多人组成qa时间窗口（分钟）,
         "prompt_with_history": false // 是否在prompt中包含历史对话
     },
     "common_args": {
@@ -59,6 +59,5 @@
         "template": "chatglm3-weclone",
         "finetuning_type": "lora",
         "trust_remote_code": true
-    },
-    "_comment": "adapter_name_or_path同时做为train_sft_args的output_dir "
+    }
 }
