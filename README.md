@@ -3,7 +3,7 @@
 ## 核心功能✨
 - 💬 使用微信聊天记录微调LLM
 - 🎙️ 使用微信语音消息➕0.5B大模型实现高质量声音克隆 👉[WeClone-audio](https://github.com/xming521/WeClone/tree/master/WeClone-audio)
-- 🔗 绑定到微信机器人，实现自己的数字分身
+- 🔗 绑定到微信、QQ、Telegram、企微、飞书机器人，实现自己的数字分身
 
 ## 特性与说明📋
 
@@ -196,5 +196,16 @@ python ./src/wechat_bot/main.py
 <br>  
 <br>  
 <br>  
+
+## ⭐ Star History
+> [!TIP] 
+> 如果本项目对您有帮助，或者您关注本项目的未来发展，请给项目 Star，谢谢 
+
+<div align="center">
+
+[![Star History Chart](https://api.star-history.com/svg?repos=xming521/WeClone&type=Date)](https://www.star-history.com/#xming521/WeClone&Date)
+
+</div>
+
 
 <div align="center"> 克隆我们，保留那灵魂的芬芳 </div>

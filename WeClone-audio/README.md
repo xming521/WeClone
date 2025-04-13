@@ -26,7 +26,7 @@ WeClone Audio使用uv作为包管理器。
 # 为 PyWxDump 创建 Python 环境和安装依赖
 # 
 uv venv .venv-wx --python=3.9
-source .venv-wx/bin/activate
+.venv-wx\Scripts\activate
 # 安装 wx 依赖组
 uv pip install --group wx -e .
 ```
