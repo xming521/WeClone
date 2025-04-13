@@ -50,9 +50,9 @@ uv pip install --group main -e .
 
 ### 数据预处理
 
-项目默认去除了数据中的手机号、身份证号、邮箱、网址。还提供了一个禁用词词库[blocked_words](make_dataset/blocked_words.json)，可以自行添加需要过滤的词句（会默认去掉包括禁用词的整句）。  
-执行 `python ./make_dataset/qa_generator.py` 对数据进行处理，可以根据自己的聊天风格修改settings.json的`make_dataset_args`。  
-目前仅支持时间窗口策略，根据`single_combine_time_window`将单人连续消息通过逗号连接合并为一句，根据`qa_match_time_window`匹配问答对。后续将增加大模型清洗数据的功能。
+- 项目默认去除了数据中的手机号、身份证号、邮箱、网址。还提供了一个禁用词词库[blocked_words](make_dataset/blocked_words.json)，可以自行添加需要过滤的词句（会默认去掉包括禁用词的整句）。  
+- 执行 `python ./make_dataset/qa_generator.py` 对数据进行处理，可以根据自己的聊天风格修改settings.json的`make_dataset_args`。  
+- 目前仅支持时间窗口策略，根据`single_combine_time_window`将单人连续消息通过逗号连接合并为一句，根据`qa_match_time_window`匹配问答对。后续将增加大模型清洗数据的功能。
 
 ### 模型下载
 
