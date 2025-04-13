@@ -126,6 +126,15 @@ class DataProcessor:
                         qa_res.append(
                             {"instruction": current_instruction, "output": msg.msg}
                         )
+                    else:
+                        if self.c["prompt_with_history"]:
+                            qa_res.append(
+                                CutMessage(
+                                    is_sender=msg.is_sender,
+                                    cut_type=msg.type_name,
+                                    CreateTime=msg.CreateTime,
+                                )
+                            )
                     # 无论是否匹配，都重置状态
                     current_state = WAITING_INSTRUCTION
                     current_instruction = None
@@ -133,7 +142,7 @@ class DataProcessor:
 
         return qa_res
 
-    def add_history_to_qa(self, qa_res: List[Dict]):
+    def add_history_to_qa(self, qa_res: List[Dict]) -> List[Dict]:
         qa_res_with_history = []
         last_res = {"instruction": "", "output": "", "history": []}
 
@@ -187,10 +196,10 @@ class DataProcessor:
                 ChatMessage: 合并后的消息
             """
             base_msg = messages[0]
-            combined_content = messages[0].msg.strip()
+            combined_content = messages[0].msg
 
             for i in messages[1:]:
-                content = i.msg.strip()
+                content = i.msg
                 if not content:
                     continue
 
@@ -343,7 +352,7 @@ class DataProcessor:
     def save_result(self, qa_res: List[Dict]):
         # 保存结果
         with open(
-            f"./data/res_csv/sft/sft-{self.c['single_combine_strategy']}-{self.c['qa_match_strategy']}-my.json",
+            f"./data/res_csv/sft/sft-my.json",
             "w",
             encoding="utf-8",
         ) as f:
