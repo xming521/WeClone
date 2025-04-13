@@ -7,7 +7,7 @@ import re
 import pandas as pd
 import json
 
-current_dir = os.path.dirname(p=os.path.abspath(__file__))
+current_dir = os.path.dirname(os.path.abspath(__file__))
 root_dir = os.path.dirname(current_dir)
 sys.path.append(root_dir)
 from src.utils.config import load_config
