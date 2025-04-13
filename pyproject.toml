@@ -48,7 +48,7 @@ default = true
 
 [tool.pyright]
 typeCheckingMode = "basic"
-include = ["src"]
+include = ["make_dataset"]  
 exclude = ["**/archive","**/tests"]
 ignore = ["**/archive"]
 

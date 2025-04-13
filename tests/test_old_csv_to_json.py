@@ -1,6 +1,7 @@
 import csv
 import json
 import os
+import re
 import sys
 
 import pandas as pd
@@ -91,12 +92,12 @@ def handle_sft_csv(csvfile):
     for i in chat_df.index:
         if chat_df.loc[i, "type_name"] == "文本":
             if (
-                re.search(r"1\d{10}", msg_str)
-                or re.search(r"\d{18}", msg_str)
-                or re.search(r"\w+@\w+", msg_str)
-                or "http" in msg_str
-                or r"\\xa0" in msg_str
-                or r"\\u" in msg_str
+                re.search(r"1\d{10}", chat_df.loc[i, "content"])
+                or re.search(r"\d{18}", chat_df.loc[i, "content"])
+                or re.search(r"\w+@\w+", chat_df.loc[i, "content"])
+                or "http" in chat_df.loc[i, "content"]
+                or r"\\xa0" in chat_df.loc[i, "content"]
+                or r"\\u" in chat_df.loc[i, "content"]
             ):
                 chat_df = chat_df.drop(index=i)
                 continue
@@ -156,7 +157,7 @@ def handle_sft_csv(csvfile):
             last_CreateTime = row["CreateTime"]
             continue
         if row["is_sender"] == last_is_sender:
-            if row["CreateTime"] - last_CreateTime > pd.Timedelta(value="10m"):
+            if row["CreateTime"] - last_CreateTime > pd.Timedelta(value="2m"):
                 # 如果超时 前面的添加到res_df 并重新开始
                 if last_content[-1] == "，":
                     last_content = last_content[:-1] 
@@ -290,7 +291,7 @@ def make_sft_dataset():
                 temp_res.append(row["content"])
                 last_CreateTime = row["CreateTime"]
             else:
-                if row["CreateTime"] - last_CreateTime > pd.Timedelta("1h"):
+                if row["CreateTime"] - last_CreateTime > pd.Timedelta("5m"):
                     # 相差超过1小时清空队列
                     temp_res.clear()
                     last_CreateTime = row["CreateTime"]
