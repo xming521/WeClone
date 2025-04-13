@@ -1,0 +1,11 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# Your rule content
+- You can @ files here
+- The project uses uv as the package manager and pyproject.toml as the project configuration file.
+
+
