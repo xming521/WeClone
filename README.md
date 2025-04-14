@@ -151,8 +151,15 @@ python ./src/wechat_bot/main.py
 ![alt text](img/3.png)
 
 
+### ❤️ 贡献代码
 
-# 免责声明
+欢迎任何 Issues/Pull Requests！
+
+你可以通过查看Issues或帮助审核 PR（拉取请求）来贡献。对于新功能的添加，请先通过 Issue 讨论。
+
+
+
+### 免责声明
 > [!CAUTION]
 > 请勿用于非法用途，否则后果自负。
 <details>
@@ -196,7 +203,7 @@ python ./src/wechat_bot/main.py
 <br>  
 <br>  
 
-## ⭐ Star History
+### ⭐ Star History
 > [!TIP] 
 > 如果本项目对您有帮助，或者您关注本项目的未来发展，请给项目 Star，谢谢 
 
