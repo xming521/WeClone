@@ -1,5 +1,4 @@
 import os
-import SparkTTS
 import soundfile as sf
 import torch
 
