@@ -5,7 +5,7 @@ from llamafactory.api.app import create_app
 from template import template_register
 from utils.config import load_config
 
-config = load_config('api_service')
+config = load_config("api_service")
 
 
 template_register()
