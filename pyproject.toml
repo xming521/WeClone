@@ -11,7 +11,7 @@ dependencies = [
   "pydantic==2.10.6",
   "setuptools>=78.1.0",
   "loguru>=0.7.3",
-  "torch>=2.5.1",
+  "torch>=2.5.1"
 ]
 
 [dependency-groups]
@@ -43,7 +43,7 @@ conflicts = [
 [tool.uv.sources]
 torch = [
   { index = "pytorch-cu121", marker = "platform_system == 'Windows'" },
-  { index = "pytorch-cu121", marker = "platform_system == 'Linux'" },
+  { index = "pytorch-cu121", marker = "platform_system == 'Linux'" }
 ]
 torchaudio = [
   { index = "pytorch-cu121", marker = "platform_system == 'Windows'" },
@@ -96,3 +96,4 @@ lint.select = [
   "Q",     # flake8-quotes
 ]
 target-version = "py39"
+
