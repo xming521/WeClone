@@ -169,10 +169,9 @@ python ./src/wechat_bot/main.py
 
 欢迎任何 Issues/Pull Requests！
 
-你可以通过查看Issues或帮助审核 PR（拉取请求）来贡献。对于新功能的添加，请先通过 Issue 讨论。
-运行`uv pip install --group dev -e .`安装开发依赖。  
+你可以通过查看Issues或帮助审核 PR（拉取请求）来贡献。对于新功能的添加，请先通过 Issue 讨论。   
+运行`uv pip install --group dev -e .`安装开发依赖。   
 项目使用`pytest`测试，`pyright`检查类型，`ruff`检查代码格式。
-
 
 
 ### 免责声明
