@@ -8,16 +8,16 @@ import json
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 root_dir = os.path.dirname(current_dir)
-sys.path.append(root_dir)
-from src.utils.config import load_config
-from make_dataset.models import ChatMessage, CutMessage, skip_type_list
-from make_dataset.strategies import TimeWindowStrategy, LLMStrategy
+sys.path.append(os.path.dirname(root_dir))
+from weclone.utils.config import load_config
+from weclone.data.models import ChatMessage, CutMessage, skip_type_list
+from weclone.data.strategies import TimeWindowStrategy, LLMStrategy
 
 
 class DataProcessor:
     def __init__(self):
         self.config = load_config(arg_type="make_dataset")
-        self.csv_folder = "./data/csv"
+        self.csv_folder = "./dataset/csv"
         self.cut_type_list = [
             "图片",
             "视频",
@@ -293,7 +293,7 @@ class DataProcessor:
         """
         df = pd.read_csv(file_path, encoding="utf-8", dtype={"msg": str})
 
-        blocked_words = json.load(open("./make_dataset/blocked_words.json", encoding="utf-8"))["blocked_words"]
+        blocked_words = json.load(open("./dataset/blocked_words.json", encoding="utf-8"))["blocked_words"]
 
         df = df[~df["type_name"].isin(values=skip_type_list)]
 
@@ -331,7 +331,7 @@ class DataProcessor:
     def save_result(self, qa_res: List[Dict]):
         # 保存结果
         with open(
-            "./data/res_csv/sft/sft-my.json",
+            "./dataset/res_csv/sft/sft-my.json",
             "w",
             encoding="utf-8",
         ) as f:
