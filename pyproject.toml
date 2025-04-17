@@ -67,7 +67,7 @@ explicit = true
 
 [tool.pyright]
 typeCheckingMode = "basic"
-include = ["make_dataset"]
+include = ["weclone/data"]
 exclude = ["**/archive", "**/tests"]
 ignore = ["**/archive"]
 
@@ -81,8 +81,8 @@ pythonPlatform = "Linux"
 exclude = [
   "**/archive",
   "**/tests",
-  "WeClone-audio/src/server未完工",
-  "WeClone-audio/src/Spark-TTS",
+  "weclone-audio/src/server未完工",
+  "weclone-audio/src/Spark-TTS",
 ]
 line-length = 120
 

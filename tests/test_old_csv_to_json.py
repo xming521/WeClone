@@ -11,9 +11,9 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 root_dir = os.path.dirname(current_dir)
 sys.path.append(root_dir)
 
-from make_dataset.qa_generator import DataProcessor
+from weclone.data.qa_generator import DataProcessor
 
-csv_folder = "./data/csv"
+csv_folder = "./dataset/csv"
 # csv_folder = './data/test'
 os.chdir(root_dir)
 
