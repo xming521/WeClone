@@ -3,8 +3,9 @@ import commentjson
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from log import logger 
-from tools import dict_to_argv 
+from log import logger
+from tools import dict_to_argv
+
 
 def load_config(arg_type: str):
     with open("./settings.json", "r", encoding="utf-8") as f:

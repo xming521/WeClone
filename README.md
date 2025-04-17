@@ -1,6 +1,15 @@
 ![download](https://github.com/user-attachments/assets/5842e84e-004f-4afd-9373-af64e9575b78)
-<div align="center">🚀从聊天记录创造数字分身的一站式解决方案💡</div>
+<h3 align="center">🚀从聊天记录创造数字分身的一站式解决方案💡</h3>  
 
+<div align="center">
+
+[![GitHub stars](https://img.shields.io/github/stars/xming521/WeClone?style=for-the-badge&logo=github&label=Stars&logoColor=white&color=ffda65)](https://github.com/xming521/WeClone/stargazers)
+[![GitHub release](https://img.shields.io/github/v/release/xming521/WeClone?style=for-the-badge&logo=github&label=Release&logoColor=white&color=06d094)](https://github.com/xming521/WeClone/releases)
+<a href="https://qm.qq.com/cgi-bin/qm/qr?k=wNdgbOVT6oFOJ2wlMLsolUXErW9ESLpk&jump_from=webapi&authKey=z/reOp6YLyvR4Tl2k2nYMsLoMC3w9/99ucgKMX0oRGlxDV/WbYnvq2QxODoIkfxn" target="_blank">
+  <img src="https://img.shields.io/badge/QQ群-708067078-12B7F5?style=for-the-badge&logo=qq&logoColor=white" alt="WeClone①" title="WeClone①">
+</a>
+
+</div>
 
 ## 核心功能✨
 - 💫 涵盖打造数字分身的全链路方案，包括聊天数据导出、预处理、模型训练、部署
@@ -42,6 +51,11 @@ cd WeClone
 uv venv .venv --python=3.9
 source .venv/bin/activate
 uv pip install --group main -e . 
+```
+
+使用以下命令测试CUDA环境是否正确配置并可被PyTorch识别，Mac不需要：
+```bash
+python -c "import torch; print('CUDA是否可用:', torch.cuda.is_available());"
 ```
 
 > [!NOTE]
@@ -111,7 +125,7 @@ python ./src/api_service.py
 python ./src/api_service.py
 python ./src/test_model.py
 ```
-
+测试结果在test_result-my.txt
 ### 部署到聊天机器人
 
 #### AstrBot方案
@@ -155,8 +169,9 @@ python ./src/wechat_bot/main.py
 
 欢迎任何 Issues/Pull Requests！
 
-你可以通过查看Issues或帮助审核 PR（拉取请求）来贡献。对于新功能的添加，请先通过 Issue 讨论。
-
+你可以通过查看Issues或帮助审核 PR（拉取请求）来贡献。对于新功能的添加，请先通过 Issue 讨论。   
+运行`uv pip install --group dev -e .`安装开发依赖。   
+项目使用`pytest`测试，`pyright`检查类型，`ruff`检查代码格式。
 
 
 ### 免责声明

@@ -1,7 +1,6 @@
 import sys
 import os
 from typing import Dict, List
-from collections import deque
 import re
 
 import pandas as pd
@@ -120,12 +119,8 @@ class DataProcessor:
                     last_message = msg
                     # 状态保持不变
                 else:  # 自己的回复 使用策略判断是否属于同一对话
-                    if last_message and self.qa_match_strategy.is_same_conversation(
-                        [last_message], msg
-                    ):
-                        qa_res.append(
-                            {"instruction": current_instruction, "output": msg.msg}
-                        )
+                    if last_message and self.qa_match_strategy.is_same_conversation([last_message], msg):
+                        qa_res.append({"instruction": current_instruction, "output": msg.msg})
                     else:
                         if self.c["prompt_with_history"]:
                             qa_res.append(
@@ -170,9 +165,7 @@ class DataProcessor:
 
         return qa_res_with_history
 
-    def group_consecutive_messages(
-        self, messages: List[ChatMessage]
-    ) -> List[ChatMessage]:
+    def group_consecutive_messages(self, messages: List[ChatMessage]) -> List[ChatMessage]:
         """
         将同一个人连续发送的多条消息组合成一条消息，遇到cut_type添加cut
 
@@ -203,14 +196,7 @@ class DataProcessor:
                 if not content:
                     continue
 
-                if combined_content and combined_content[-1] not in [
-                    "。",
-                    "！",
-                    "？",
-                    "…",
-                    "，",
-                    ".",
-                ]:
+                if combined_content and combined_content[-1] not in ["。", "！", "？", "…", "，", "."]:
                     combined_content += "，"
 
                 combined_content += content
@@ -230,7 +216,6 @@ class DataProcessor:
             return combined_message
 
         def _create_cut_message(message: ChatMessage) -> CutMessage:
-
             return CutMessage(
                 is_sender=message.is_sender,
                 cut_type=message.type_name,
@@ -254,7 +239,6 @@ class DataProcessor:
         current_group = []
 
         for _, current_msg in enumerate(messages):
-
             if current_msg.type_name in self.cut_type_list:
                 if current_group:
                     # 当前组有消息，合并当前组，并添加一条cut
@@ -282,9 +266,7 @@ class DataProcessor:
             if (
                 current_msg.is_sender == last_msg.is_sender
                 and current_msg.talker == last_msg.talker
-                and self.single_combine_strategy.is_same_conversation(
-                    [last_msg], current_msg
-                )
+                and self.single_combine_strategy.is_same_conversation([last_msg], current_msg)
             ):
                 current_group.append(current_msg)
             else:
@@ -311,9 +293,7 @@ class DataProcessor:
         """
         df = pd.read_csv(file_path, encoding="utf-8", dtype={"msg": str})
 
-        blocked_words = json.load(
-            open("./make_dataset/blocked_words.json", encoding="utf-8")
-        )["blocked_words"]
+        blocked_words = json.load(open("./make_dataset/blocked_words.json", encoding="utf-8"))["blocked_words"]
 
         df = df[~df["type_name"].isin(values=skip_type_list)]
 
@@ -346,13 +326,12 @@ class DataProcessor:
         return [ChatMessage(*row) for row in df.values]
 
     def process_text(self, chat_message: ChatMessage):
-
         pass
 
     def save_result(self, qa_res: List[Dict]):
         # 保存结果
         with open(
-            f"./data/res_csv/sft/sft-my.json",
+            "./data/res_csv/sft/sft-my.json",
             "w",
             encoding="utf-8",
         ) as f:
