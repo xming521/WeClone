@@ -1,4 +1,3 @@
-import sys
 import os
 from typing import Dict, List
 import re
@@ -6,9 +5,6 @@ import re
 import pandas as pd
 import json
 
-current_dir = os.path.dirname(os.path.abspath(__file__))
-root_dir = os.path.dirname(current_dir)
-sys.path.append(os.path.dirname(root_dir))
 from weclone.utils.config import load_config
 from weclone.data.models import ChatMessage, CutMessage, skip_type_list
 from weclone.data.strategies import TimeWindowStrategy, LLMStrategy
