@@ -37,11 +37,3 @@ python -m tests.test_weclone_pipeline
 python -m unittest tests.test_weclone_pipeline.TestWeclonePipeline.test_qa_generator
 ```
 
-## 环境要求
-
-运行测试前，请确保安装了所有依赖：
-
-```bash
-# 使用uv安装依赖
-uv pip install -r requirements.txt
-``` 

@@ -1,6 +1,6 @@
 from llamafactory.webui.interface import create_web_demo
-from template import template_register
-from utils.config import load_config
+from weclone.train.template import template_register
+from weclone.utils.config import load_config
 
 config = load_config("web_demo")
 

@@ -22,6 +22,9 @@
 > [!TIP]
 > 新特性：[WeClone-audio](https://github.com/xming521/WeClone/tree/master/WeClone-audio) 模块，支持对微信语音进行克隆。
 
+> [!IMPORTANT]
+> 0.2.0版本进行了全面重构，数据目录 和脚本路径全部进行了修改 ，拉取新代码后数据放在`./dataset/csv`目录下，并且需要重新安装依赖。
+
 
 > [!IMPORTANT]
 > WeClone仍在快速迭代期，当前效果不代表最终效果。  

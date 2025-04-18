@@ -4,7 +4,7 @@ import torch
 
 from SparkTTS import SparkTTS
 
-model = SparkTTS("WeClone-audio/pretrained_models/Spark-TTS-0.5B", "cuda")
+model = SparkTTS("weclone-audio/pretrained_models/Spark-TTS-0.5B", "cuda")
 
 
 with torch.no_grad():

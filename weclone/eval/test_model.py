@@ -1,10 +1,7 @@
 import json
-import os
-import sys
 import openai
 
-sys.path.append(os.getcwd())
-from src.template import default_prompt
+from weclone.train.template import default_prompt
 from tqdm import tqdm
 
 
@@ -39,7 +36,7 @@ def handler_text(content: str, history: [], config):
 
 
 def main():
-    test_list = json.loads(open("data/test_data.json", "r", encoding="utf-8").read())["questions"]
+    test_list = json.loads(open("dataset/test_data.json", "r", encoding="utf-8").read())["questions"]
     res = []
     for questions in tqdm(test_list, desc=" Testing..."):
         history = []
