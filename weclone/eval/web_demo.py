@@ -1,10 +1,8 @@
 from llamafactory.webui.interface import create_web_demo
-from weclone.train.template import template_register
 from weclone.utils.config import load_config
 
 config = load_config("web_demo")
 
-template_register()
 
 def main():
     demo = create_web_demo()

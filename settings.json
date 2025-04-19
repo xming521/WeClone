@@ -56,7 +56,8 @@
     "common_args": {
         "model_name_or_path": "./chatglm3-6b",
         "adapter_name_or_path": "./model_output", //同时做为train_sft_args的output_dir
-        "template": "chatglm3-weclone",
+        "template": "chatglm3",
+        "default_system": "请你扮演一名人类，不要说自己是人工智能",
         "finetuning_type": "lora",
         "trust_remote_code": true
     }

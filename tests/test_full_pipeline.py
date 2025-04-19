@@ -11,9 +11,10 @@ from subprocess import Popen
 
 # 配置 Loguru
 logger.remove() # 移除默认处理器
-log_file_path = os.path.join(os.path.dirname(__file__), "pipeline_test.log") # 日志文件放在 tests 目录下
-logger.add(log_file_path, rotation="10 MB", encoding='utf-8', level="INFO") # 添加文件处理器
-logger.add(sys.stdout, colorize=True, format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <level>{message}</level>", level="INFO") # 添加控制台处理器
+current_time = time.strftime('%Y%m%d_%H%M%S')
+log_file_path = os.path.join(os.path.dirname(__file__), f"pipeline_test_{current_time}.log") # 日志文件名包含执行时间
+logger.add(log_file_path, rotation="10 MB", encoding='utf-8', level="DEBUG", enqueue=True) # 文件记录 DEBUG 级别
+logger.add(sys.stdout, colorize=True, format="[test] <green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level.name[0]}</level> | <level>{message}</level>", level="INFO", enqueue=True) # 控制台保持 INFO 级别
 
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 logger.info(f"项目根目录: {project_root}")
@@ -126,7 +127,7 @@ def run_script(script_relative_path: str, timeout: Optional[Union[int, float]] =
         )
 
         # 使用辅助函数启动日志线程
-        stdout_thread, stderr_thread = _start_stream_logging_threads(process, logger.info, logger.info) # stdout/stderr 都用 info
+        stdout_thread, stderr_thread = _start_stream_logging_threads(process, logger.debug, logger.debug) # stdout/stderr 都用 debug
 
         # 等待子进程完成或超时
         try:
@@ -208,8 +209,8 @@ def start_api_service_background() -> Popen:
             bufsize=1 # 行缓冲
         )
 
-        # 使用辅助函数启动日志线程 (stderr 也使用 logger.info 记录)
-        stdout_thread, stderr_thread = _start_stream_logging_threads(process, logger.info, logger.info)
+        # 使用辅助函数启动日志线程
+        stdout_thread, stderr_thread = _start_stream_logging_threads(process, logger.debug, logger.debug) # stdout/stderr 都用 debug
 
         logger.info(f"等待 {API_STARTUP_WAIT} 秒让服务初步启动 (日志将实时显示)...")
         time.sleep(API_STARTUP_WAIT)
@@ -324,7 +325,7 @@ def start_web_demo_background() -> Popen:
         )
 
         # 使用辅助函数启动日志线程 (stdout/stderr 都用 info)
-        stdout_thread, stderr_thread = _start_stream_logging_threads(process, logger.info, logger.info)
+        stdout_thread, stderr_thread = _start_stream_logging_threads(process, logger.debug, logger.debug) # stdout/stderr 都用 debug
 
 
         logger.info(f"等待 {WEB_DEMO_STARTUP_WAIT} 秒让 Web Demo 初步启动 (日志将实时显示)...")
@@ -445,7 +446,18 @@ if __name__ == "__main__":
         # 步骤 2: Train SFT
         if run_train:
             logger.info("-" * 10 + " 步骤 2: SFT 训练 " + "-" * 10)
-            run_script(train_script, timeout=DEFAULT_TIMEOUT, ignore_timeout_error=True)
+            # 删除 model_output 目录
+            model_output_dir = os.path.join(project_root, "model_output")
+            if os.path.exists(model_output_dir):
+                logger.info(f"删除现有的 model_output 目录: {model_output_dir}")
+                try:
+                    shutil.rmtree(model_output_dir)
+                    logger.success("成功删除 model_output 目录")
+                except Exception as e:
+                    logger.error(f"删除 model_output 目录时出错: {e}")
+
+            # 尝试禁用 tqdm
+            run_script(train_script, timeout=DEFAULT_TIMEOUT, ignore_timeout_error=True, env={'TQDM_DISABLE': '1'})
             steps_completed.append(f"{STEP_TRAIN}: 成功或超时跳过")
 
             # 步骤 2.1: 复制 Checkpoint (只有在训练运行后才可能执行)
