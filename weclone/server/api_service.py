@@ -2,13 +2,9 @@ import os
 import uvicorn
 from llamafactory.chat import ChatModel
 from llamafactory.api.app import create_app
-from weclone.train.template import template_register
 from weclone.utils.config import load_config
 
 config = load_config("api_service")
-
-
-template_register()
 
 
 def main():

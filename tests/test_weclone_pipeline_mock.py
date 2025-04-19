@@ -12,7 +12,6 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # 导入需要测试的模块
 from weclone.data.qa_generator import DataProcessor
-from weclone.template import template_register
 from weclone.utils.config import load_config
 
 
@@ -215,8 +214,6 @@ class TestWeclonePipeline(unittest.TestCase):
             # 导入训练模块并运行
             from weclone.train.train_sft import run_exp
             
-            # 调用前先注册模板
-            template_register()
             
             # 验证是否正确调用了训练函数
             self.assertTrue(mock_run_exp.called)

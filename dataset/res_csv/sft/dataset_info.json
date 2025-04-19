@@ -3,7 +3,8 @@
         "file_name": "./sft-my.json",
         "columns": {
             "prompt": "instruction",
-            "response": "output"
+            "response": "output",
+            "system": "system"
         }
     },
     "wechat-sft-with-history": {
@@ -11,6 +12,7 @@
         "columns": {
             "prompt": "instruction",
             "response": "output",
+            "system": "system",
             "history": "history"
         }
     }
