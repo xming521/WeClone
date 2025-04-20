@@ -22,7 +22,7 @@ def load_config(arg_type: str):
             if dataset_info["columns"].get("history") is None:
                 logger.warning(f"{config['dataset']}数据集不包history字段，尝试使用wechat-sft-with-history数据集")
                 s_config["make_dataset_args"]["dataset"] = "wechat-sft-with-history"
-        
+
     elif arg_type == "make_dataset":
         config = {**s_config["make_dataset_args"], **s_config["common_args"]}
     else:
