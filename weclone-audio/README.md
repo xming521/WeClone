@@ -34,7 +34,7 @@ uv pip install --group wx -e .
 ### 1.3 导出语音文件
 ```bash
 # 假设 get_sample_audio.py 现在位于 src/ 目录下
-python ./src/get_sample_audio.py --db-path "导出数据库路径" --MsgSvrID "导出聊天记录的MsgSvrID字段"
+python weclone-audio/src/get_sample_audio.py --db-path "导出数据库路径" --MsgSvrID "导出聊天记录的MsgSvrID字段"
 ```
 
 ## 2. 语音合成推理
@@ -48,10 +48,9 @@ uv venv .venv-sparktts --python=3.10
 source .venv-sparktts/bin/activate
 uv pip install --group sparktts -e .
 
-cd src # 进入 src 目录克隆 Spark-TTS
-git clone https://github.com/SparkAudio/Spark-TTS.git
-cd .. # 返回 weclone-audio 目录
+git clone https://github.com/SparkAudio/Spark-TTS.git weclone-audio/src/Spark-TTS
 ```
+
 
 **模型下载**
 
@@ -59,8 +58,7 @@ cd .. # 返回 weclone-audio 目录
 ```python
 from huggingface_hub import snapshot_download
 
-# 假设此 Python 代码在 weclone-audio 目录下运行
-# 模型将下载到 weclone-audio/pretrained_models/Spark-TTS-0.5B
+# 假设此 Python 代码在 weclone-audio 目录下运行 模型将下载到 weclone-audio/pretrained_models/Spark-TTS-0.5B
 snapshot_download("SparkAudio/Spark-TTS-0.5B", local_dir="pretrained_models/Spark-TTS-0.5B")
 ```
 
@@ -71,30 +69,24 @@ mkdir -p pretrained_models
 
 # Make sure you have git-lfs installed (https://git-lfs.com)
 git lfs install
-# 克隆模型到 weclone-audio/pretrained_models/Spark-TTS-0.5B
 git clone https://huggingface.co/SparkAudio/Spark-TTS-0.5B pretrained_models/Spark-TTS-0.5B
 ```
 使用代码推理
 ```python
 import os
-import SparkTTS # 假设 SparkTTS 包已安装或在 Python 路径中
+import SparkTTS  
 import soundfile as sf
 import torch
 
-# 假设 src/Spark-TTS 在 Python 路径中，或者需要相应调整导入
-# from src.SparkTTS import SparkTTS
-from SparkTTS import SparkTTS # 保持原样，假设安装后可直接导入
+from SparkTTS import SparkTTS 
 
 # 假设此 Python 代码在 weclone-audio 目录下运行
 # 模型路径相对于当前目录
 model_path = "pretrained_models/Spark-TTS-0.5B"
-# 示例音频路径相对于当前目录
 sample_audio = "sample.wav"
 output_audio = "output.wav"
 
-
 model = SparkTTS(model_path, "cuda")
-
 
 with torch.no_grad():
     wav = model.inference(
