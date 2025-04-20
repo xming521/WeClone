@@ -207,6 +207,9 @@ class DataProcessor:
                     combined_content += "，"
 
                 combined_content += content
+            if len(combined_content) > self.c["combine_msg_max_length"]:
+                logger.warning(f"组合后消息长度超过{self.c['combine_msg_max_length']}将截断：\n {combined_content}")
+                combined_content = combined_content[: self.c["combine_msg_max_length"]]
 
             combined_message = ChatMessage(
                 id=base_msg.id,

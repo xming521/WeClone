@@ -47,11 +47,14 @@
 
 
 ### 环境搭建
+cuda安装：
+https://llamafactory.readthedocs.io/zh-cn/latest/getting_started/installation.html
+
 建议使用 [uv](https://docs.astral.sh/uv/)，这是一个非常快速的 Python 环境管理器。安装uv后，您可以使用以下命令创建一个新的Python环境并安装依赖项，注意这不包含xcodec（音频克隆）功能的依赖：
 ```bash
 git clone https://github.com/xming521/WeClone.git
 cd WeClone
-uv venv .venv --python=3.9
+uv venv .venv --python=3.10
 source .venv/bin/activate
 uv pip install --group main -e . 
 ```
@@ -71,8 +74,8 @@ python -c "import torch; print('CUDA是否可用:', torch.cuda.is_available());"
 
 ### 数据预处理
 
-- 项目默认去除了数据中的手机号、身份证号、邮箱、网址。还提供了一个禁用词词库[blocked_words](make_dataset/blocked_words.json)，可以自行添加需要过滤的词句（会默认去掉包括禁用词的整句）。  
-- 执行 `python ./make_dataset/qa_generator.py` 对数据进行处理，可以根据自己的聊天风格修改settings.json的`make_dataset_args`。  
+- 项目默认去除了数据中的手机号、身份证号、邮箱、网址。还提供了一个禁用词词库[blocked_words](dataset/blocked_words.json)，可以自行添加需要过滤的词句（会默认去掉包括禁用词的整句）。
+- 执行 `python weclone/data/qa_generator.py` 对数据进行处理，可以根据自己的聊天风格修改settings.json的`make_dataset_args`。
 - 目前仅支持时间窗口策略，根据`single_combine_time_window`将单人连续消息通过逗号连接合并为一句，根据`qa_match_time_window`匹配问答对。后续将增加大模型清洗数据的功能。
 
 ### 模型下载
@@ -96,37 +99,37 @@ git clone https://www.modelscope.cn/ZhipuAI/chatglm3-6b.git
 
 #### 单卡训练
 
-运行 `src/train_sft.py` 进行sft阶段微调，本人loss只降到了3.5左右，降低过多可能会过拟合，我使用了大概2万条整合后的有效数据。
+运行 `weclone/train/train_sft.py` 进行sft阶段微调，本人loss只降到了3.5左右，降低过多可能会过拟合，我使用了大概2万条整合后的有效数据。
 
 ```bash
-python src/train_sft.py
+python weclone/train/train_sft.py
 ```
 
 #### 多卡训练
 
 ```bash
 uv pip install deepspeed
-deepspeed --num_gpus=使用显卡数量 src/train_sft.py
+deepspeed --num_gpus=使用显卡数量 weclone/train/train_sft.py
 ```
 
 
 ### 使用浏览器demo简单推理
 
 ```bash
-python ./src/web_demo.py 
+python weclone/eval/web_demo.py
 ```
 
 ### 使用接口进行推理
 
 ```bash
-python ./src/api_service.py
+python weclone/server/api_service.py
 ```
 
 ### 使用常见聊天问题测试
 
 ```bash
-python ./src/api_service.py
-python ./src/test_model.py
+python weclone/server/api_service.py
+python weclone/eval/test_model.py
 ```
 测试结果在test_result-my.txt
 ### 部署到聊天机器人
@@ -137,7 +140,7 @@ python ./src/test_model.py
 使用步骤：
 1. 部署 AstrBot
 2. 在 AstrBot 中部署消息平台
-3. 执行 `python ./src/api_service.py ` 启动api服务
+3. 执行 `python weclone/server/api_service.py ` 启动api服务
 4. 在 AstrBot 中新增服务提供商，类型选择OpenAI，API Base URL 根据AstrBot部署方式填写（例如docker部署可能为http://172.17.0.1:8005/v1） ，模型填写gpt-3.5-turbo  
 5. 微调后不支持工具调用，请先关掉默认的工具，消息平台发送指令： `/tool off reminder`，否则会没有微调后的效果。  
 6. 根据微调时使用的default_system，在 AstrBot 中设置系统提示词。
@@ -145,20 +148,6 @@ python ./src/test_model.py
 
 
 
-
-<details>
-<summary>itchat方案（已弃用）</summary>
-
-> [!IMPORTANT]
-> 微信有封号风险，建议使用小号，并且必须绑定银行卡才能使用
-
-```bash
-python ./src/api_service.py # 先启动api服务
-python ./src/wechat_bot/main.py 
-```
-
-默认在终端显示二维码，扫码登录即可。可以私聊或者在群聊中@机器人使用。
-</details>
 
 ### 截图
 
