@@ -155,6 +155,6 @@ test.*
 *users.json   
 Spark-TTS-0.5B/
 uv.lock
-*output.wav
+*.wav
 
 Qwen*/
