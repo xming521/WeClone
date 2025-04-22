@@ -23,7 +23,7 @@
 > 新特性：[WeClone-audio](https://github.com/xming521/WeClone/tree/master/weclone-audio) 模块，支持对微信语音进行克隆。
 
 > [!IMPORTANT]
-> <h3>0.2.0版本进行了全面重构，数据集目录和脚本路径全部进行了修改，拉取新代码后，数据放在`./dataset/csv`目录下，并且需要重新安装依赖。</h3>
+> <h3>0.2.0版本进行了全面重构，数据集目录和脚本路径全部进行了修改，拉取新代码后，`csv`文件夹放在`dataset`下，并且需要重新安装依赖。</h3>
 
 
 > [!IMPORTANT]
@@ -73,7 +73,7 @@ python -c "import torch; print('CUDA是否可用:', torch.cuda.is_available());"
 
 ### 数据准备
 
-请使用[PyWxDump](https://github.com/xaoyaoo/PyWxDump)提取微信聊天记录。下载软件并解密数据库后，点击聊天备份，导出类型为CSV，可以导出多个联系人或群聊，然后将导出的位于`wxdump_tmp/export` 的 `csv` 文件夹放在`./dataset`目录即可，也就是不同人聊天记录的文件夹一起放在 `./dataset/csv`。 示例数据位于[dataset/example_chat.csv](dataset/example_chat.csv)。
+请使用[PyWxDump](https://github.com/xaoyaoo/PyWxDump)提取微信聊天记录。下载软件并解密数据库后，点击聊天备份，导出类型为CSV，可以导出多个联系人或群聊，然后将导出的位于`wxdump_tmp/export` 的 `csv` 文件夹放在`./dataset`目录即可，也就是不同人聊天记录的文件夹一起放在 `./dataset/csv`。  
 
 ### 数据预处理
 
@@ -105,7 +105,7 @@ python weclone/train/train_sft.py
 ```
 
 #### 多卡训练
-
+取消`settings.json`中`deepspeed`行代码注释，使用以下命令多卡训练：
 ```bash
 uv pip install deepspeed
 deepspeed --num_gpus=使用显卡数量 weclone/train/train_sft.py

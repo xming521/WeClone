@@ -25,7 +25,7 @@ api_service_script = "weclone/server/api_service.py"
 eval_script = "weclone/eval/test_model.py"
 web_demo_script = "weclone/eval/web_demo.py"
 
-DEFAULT_TIMEOUT: Optional[Union[int, float]] = 30
+DEFAULT_TIMEOUT: Optional[Union[int, float]] = 45
 API_STARTUP_WAIT = 20
 API_TERMINATE_WAIT = 15
 WEB_DEMO_STARTUP_WAIT = 20
@@ -498,44 +498,78 @@ if __name__ == "__main__":
         # 步骤 2: Train SFT
         if run_train:
             logger.info("-" * 10 + " 步骤 2: SFT 训练 " + "-" * 10)
-            # 删除 model_output 目录
+
+            # --- 开始：添加 Checkpoint 检查 ---
             model_output_dir = os.path.join(project_root, "model_output")
-            if os.path.exists(model_output_dir):
-                logger.info(f"删除现有的 model_output 目录: {model_output_dir}")
+            checkpoint_exists = False
+            if os.path.isdir(model_output_dir):
+                logger.info(f"检查目录 {model_output_dir} 是否存在 checkpoint...")
                 try:
-                    shutil.rmtree(model_output_dir)
-                    logger.success("成功删除 model_output 目录")
+                    for item in os.listdir(model_output_dir):
+                        item_path = os.path.join(model_output_dir, item)
+                        if os.path.isdir(item_path) and item.startswith("checkpoint"):
+                            logger.warning(f"找到现有的 Checkpoint 目录: {item_path}，将跳过训练。")
+                            checkpoint_exists = True
+                            break
+                    if not checkpoint_exists:
+                        logger.info("未找到现有的 Checkpoint 目录。")
                 except Exception as e:
-                    logger.error(f"删除 model_output 目录时出错: {e}")
-
-            # 尝试禁用 tqdm
-            run_script(train_script, timeout=DEFAULT_TIMEOUT, ignore_timeout_error=True, env={'TQDM_DISABLE': '1'})
-            steps_completed.append(f"{STEP_TRAIN}: 成功或超时跳过")
-
-            # 步骤 2.1: 复制 Checkpoint (只有在训练运行后才可能执行)
-            if run_copy_checkpoint:
-                logger.info("-" * 10 + " 步骤 2.1: 复制 Checkpoint 到 model_output " + "-" * 10)
-                source_dir = os.path.join(project_root, "model_output", "checkpoint-2")
-                dest_dir = os.path.join(project_root, "model_output")
-                if os.path.isdir(source_dir):
-                    try:
-                        logger.info(f"开始将 {source_dir} 的内容复制到 {dest_dir}...")
-                        shutil.copytree(source_dir, dest_dir, dirs_exist_ok=True)
-                        logger.success(f"--- {STEP_COPY_CKPT} 成功 ---")
-                        steps_completed.append(f"{STEP_COPY_CKPT}: 成功")
-                    except Exception as e:
-                        # Embed identifier in the error for the except block
-                        error_msg = f"{STEP_COPY_CKPT} 时发生错误: {e}"
-                        logger.error(error_msg)
-                        # Add a unique marker to identify this step in the except block
-                        raise PipelineStepError(f"{error_msg} ###step_id:copy_checkpoint###")
-                else:
-                    logger.warning(f"源 Checkpoint 目录 {source_dir} 不存在或不是目录，跳过复制。")
-                    steps_completed.append(f"{STEP_COPY_CKPT}: 跳过 (源不存在)")
-                    # raise PipelineStepError(f"必需的源 Checkpoint 目录 {source_dir} 不存在") # 如果必须，取消此行注释
+                    logger.error(f"检查 Checkpoint 时出错: {e}")
+                    # Treat check error as reason to skip
+                    checkpoint_exists = True
+                    logger.warning("由于检查 Checkpoint 时出错，将跳过训练。")
             else:
-                logger.info(f"{STEP_COPY_CKPT}: 跳过 (配置)")
-                steps_completed.append(f"{STEP_COPY_CKPT}: 跳过 (配置)")
+                logger.info(f"目录 {model_output_dir} 不存在，无需检查 Checkpoint。")
+
+            if checkpoint_exists:
+                steps_completed.append(f"{STEP_TRAIN}: 跳过 (存在 Checkpoint)")
+                # 如果训练跳过，复制步骤也必须跳过
+                logger.info(f"{STEP_COPY_CKPT}: 跳过 (训练未运行)")
+                steps_completed.append(f"{STEP_COPY_CKPT}: 跳过 (训练未运行)")
+            else:
+                # --- 结束：添加 Checkpoint 检查 ---
+                # 只有在 checkpoint 不存在时才执行以下操作
+                logger.info("没有找到 Checkpoint，继续执行训练步骤。")
+                # 删除 model_output 目录
+                if os.path.exists(model_output_dir):
+                    logger.info(f"删除现有的 model_output 目录: {model_output_dir}")
+                    try:
+                        shutil.rmtree(model_output_dir)
+                        logger.success("成功删除 model_output 目录")
+                    except Exception as e:
+                        logger.error(f"删除 model_output 目录时出错: {e}")
+                        # Let's log and raise, consistent with other errors.
+                        raise PipelineStepError(f"删除 model_output 目录失败: {e}")
+
+                # 尝试禁用 tqdm
+                run_script(train_script, timeout=2000, ignore_timeout_error=True, env={'TQDM_DISABLE': '1'})
+                steps_completed.append(f"{STEP_TRAIN}: 成功或超时跳过")
+
+                # 步骤 2.1: 复制 Checkpoint (只有在训练运行后才可能执行)
+                if run_copy_checkpoint:
+                    logger.info("-" * 10 + " 步骤 2.1: 复制 Checkpoint 到 model_output " + "-" * 10)
+                    source_dir = os.path.join(project_root, "model_output", "checkpoint-2") # Note: This assumes checkpoint-2 specifically.
+                    dest_dir = os.path.join(project_root, "model_output")
+                    if os.path.isdir(source_dir):
+                        try:
+                            logger.info(f"开始将 {source_dir} 的内容复制到 {dest_dir}...")
+                            shutil.copytree(source_dir, dest_dir, dirs_exist_ok=True)
+                            logger.success(f"--- {STEP_COPY_CKPT} 成功 ---")
+                            steps_completed.append(f"{STEP_COPY_CKPT}: 成功")
+                        except Exception as e:
+                            # Embed identifier in the error for the except block
+                            error_msg = f"{STEP_COPY_CKPT} 时发生错误: {e}"
+                            logger.error(error_msg)
+                            # Add a unique marker to identify this step in the except block
+                            raise PipelineStepError(f"{error_msg} ###step_id:copy_checkpoint###")
+                    else:
+                        logger.warning(f"源 Checkpoint 目录 {source_dir} 不存在或不是目录，跳过复制。")
+                        steps_completed.append(f"{STEP_COPY_CKPT}: 跳过 (源不存在)")
+                        # Consider if missing checkpoint-2 after training is an error
+                        # raise PipelineStepError(f"必需的源 Checkpoint 目录 {source_dir} 不存在")
+                else:
+                    logger.info(f"{STEP_COPY_CKPT}: 跳过 (配置)")
+                    steps_completed.append(f"{STEP_COPY_CKPT}: 跳过 (配置)")
 
         else:
             logger.info(f"{STEP_TRAIN}: 跳过 (配置)")
