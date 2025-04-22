@@ -40,7 +40,7 @@
         "plot_loss": true,
         "fp16": true,
         "flash_attn": "fa2",
-        "deepspeed": "ds_config.json"
+        // "deepspeed": "ds_config.json" //多卡训练
     },
     "infer_args": {
         "repetition_penalty": 1.2,
