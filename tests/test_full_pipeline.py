@@ -267,35 +267,59 @@ def start_api_service_background() -> Popen:
         raise PipelineStepError(error_msg)
 
 def stop_api_service(process: Optional[Popen]):
-    """停止指定的 API 服务进程。"""
+    """停止指定的 API 服务进程，采用更健壮的终止和清理逻辑。"""
     if process and process.poll() is None:
-        logger.info(f"--- 尝试停止 API 服务 (PID: {process.pid}) ---")
+        pid = process.pid # Get PID for logging
+        logger.info(f"--- 尝试停止 API 服务 (PID: {pid}) ---")
         try:
-            # 先关闭流，再终止进程，避免 log_stream 线程因流关闭而出错
-            if process.stdout: process.stdout.close()
-            if process.stderr: process.stderr.close()
+            logger.info(f"发送 SIGTERM 信号到进程 {pid}...")
             process.terminate()
-            logger.info(f"发送终止信号，等待 {API_TERMINATE_WAIT} 秒让服务优雅终止...")
             try:
-                process.wait(timeout=API_TERMINATE_WAIT) # 等待进程实际结束
-                logger.info(f"API 服务进程已优雅终止，返回码: {process.returncode}")
+                logger.info(f"等待最多 {API_TERMINATE_WAIT} 秒让进程 {pid} 优雅终止...")
+                process.wait(timeout=API_TERMINATE_WAIT)
+                logger.info(f"API 服务进程 {pid} 已优雅终止，返回码: {process.returncode}")
+                # 进程已终止，尝试获取最终输出
+                try:
+                    stdout, stderr = process.communicate(timeout=2)
+                    if stdout: logger.debug(f"进程 {pid} 最终 STDOUT:\n{stdout.strip()}")
+                    if stderr: logger.debug(f"进程 {pid} 最终 STDERR:\n{stderr.strip()}")
+                except subprocess.TimeoutExpired:
+                    logger.warning(f"获取进程 {pid} 最终输出时超时。")
+                except Exception as comm_e:
+                    logger.warning(f"获取进程 {pid} 最终输出时出错: {comm_e}")
+
             except subprocess.TimeoutExpired:
-                logger.warning(f"优雅终止超时 ({API_TERMINATE_WAIT}s)，强制终止进程...")
+                logger.warning(f"进程 {pid} 优雅终止超时 ({API_TERMINATE_WAIT}s)，发送 SIGKILL 信号...")
                 process.kill()
-                process.wait() # 等待强制终止完成
-                logger.info("API 服务进程已被强制终止。")
-            # communicate() 在这里可能不再需要，因为我们主动关闭了流并且等待了进程
-            # 如果需要最后的输出，可能需要在 kill/terminate 前读取
+                logger.info(f"等待进程 {pid} 被强制终止...")
+                # 在 kill 后等待，应该很快返回。增加安全超时。
+                try:
+                    process.wait(timeout=5)
+                    logger.info(f"API 服务进程 {pid} 已被强制终止。")
+                except subprocess.TimeoutExpired:
+                     logger.error(f"进程 {pid} 在发送 SIGKILL 后仍然没有终止！")
+                except Exception as wait_kill_e:
+                     logger.error(f"等待强制终止进程 {pid} 时发生错误: {wait_kill_e}")
+
+                # 尝试在 kill 后获取输出
+                try:
+                    # 在 kill 后也使用 communicate，它隐式处理等待
+                    stdout, stderr = process.communicate(timeout=2)
+                    if stdout: logger.warning(f"来自进程 {pid} 的 Kill 后输出 (STDOUT):\n{stdout.strip()}")
+                    if stderr: logger.warning(f"来自进程 {pid} 的 Kill 后输出 (STDERR):\n{stderr.strip()}")
+                except Exception as comm_e:
+                    logger.warning(f"获取进程 {pid} (强制终止后) 输出时出错: {comm_e}")
+
         except Exception as e:
-            logger.error(f"停止 API 服务时发生错误: {e}")
-            # 如果停止过程中出错，尝试强制kill
-            if process.poll() is None:
-                 logger.warning("停止过程中出现错误，尝试强制终止...")
-                 try:
-                     process.kill()
-                     process.wait()
-                 except Exception as kill_e:
-                     logger.error(f"停止过程中强制终止进程时出错: {kill_e}")
+            logger.error(f"停止 API 服务 (PID: {pid if process else '未知'}) 时发生意外错误: {e}")
+            # 如果进程仍然存活，尝试最后一次强制 kill
+            if process and process.poll() is None:
+                logger.warning(f"最终尝试强制终止进程 {pid}...")
+                try:
+                    process.kill()
+                    process.wait(timeout=5)
+                except Exception as final_kill_e:
+                    logger.error(f"最终强制终止进程 {pid} 时出错: {final_kill_e}")
 
     elif process:
         logger.info(f"--- API 服务进程 (PID: {process.pid}) 在尝试停止前已经退出。 ---")
@@ -377,32 +401,58 @@ def start_web_demo_background() -> Popen:
         raise PipelineStepError(error_msg)
 
 def stop_web_demo(process: Optional[Popen]):
-    """停止指定的 Web Demo 进程。"""
+    """停止指定的 Web Demo 进程，采用更健壮的终止和清理逻辑。"""
     if process and process.poll() is None:
-        logger.info(f"--- 尝试停止 Web Demo 服务 (PID: {process.pid}) ---")
+        pid = process.pid # Get PID for logging
+        logger.info(f"--- 尝试停止 Web Demo 服务 (PID: {pid}) ---")
         try:
-            # 先关闭流，再终止进程
-            if process.stdout: process.stdout.close()
-            if process.stderr: process.stderr.close()
+            logger.info(f"发送 SIGTERM 信号到进程 {pid}...")
             process.terminate()
-            logger.info(f"发送终止信号，等待 {WEB_DEMO_TERMINATE_WAIT} 秒让服务优雅终止...")
             try:
+                logger.info(f"等待最多 {WEB_DEMO_TERMINATE_WAIT} 秒让进程 {pid} 优雅终止...")
                 process.wait(timeout=WEB_DEMO_TERMINATE_WAIT)
-                logger.info(f"Web Demo 服务进程已优雅终止，返回码: {process.returncode}")
+                logger.info(f"Web Demo 服务进程 {pid} 已优雅终止，返回码: {process.returncode}")
+                # 进程已终止，尝试获取最终输出
+                try:
+                    stdout, stderr = process.communicate(timeout=2)
+                    if stdout: logger.debug(f"进程 {pid} 最终 STDOUT:\n{stdout.strip()}")
+                    if stderr: logger.debug(f"进程 {pid} 最终 STDERR:\n{stderr.strip()}")
+                except subprocess.TimeoutExpired:
+                    logger.warning(f"获取进程 {pid} 最终输出时超时。")
+                except Exception as comm_e:
+                    logger.warning(f"获取进程 {pid} 最终输出时出错: {comm_e}")
+
             except subprocess.TimeoutExpired:
-                logger.warning(f"优雅终止超时 ({WEB_DEMO_TERMINATE_WAIT}s)，强制终止进程...")
+                logger.warning(f"进程 {pid} 优雅终止超时 ({WEB_DEMO_TERMINATE_WAIT}s)，发送 SIGKILL 信号...")
                 process.kill()
-                process.wait()
-                logger.info("Web Demo 服务进程已被强制终止。")
+                logger.info(f"等待进程 {pid} 被强制终止...")
+                try:
+                    process.wait(timeout=5)
+                    logger.info(f"Web Demo 服务进程 {pid} 已被强制终止。")
+                except subprocess.TimeoutExpired:
+                     logger.error(f"进程 {pid} 在发送 SIGKILL 后仍然没有终止！")
+                except Exception as wait_kill_e:
+                     logger.error(f"等待强制终止进程 {pid} 时发生错误: {wait_kill_e}")
+
+                # 尝试在 kill 后获取输出
+                try:
+                    stdout, stderr = process.communicate(timeout=2)
+                    if stdout: logger.warning(f"来自进程 {pid} 的 Kill 后输出 (STDOUT):\n{stdout.strip()}")
+                    if stderr: logger.warning(f"来自进程 {pid} 的 Kill 后输出 (STDERR):\n{stderr.strip()}")
+                except Exception as comm_e:
+                    logger.warning(f"获取进程 {pid} (强制终止后) 输出时出错: {comm_e}")
+
         except Exception as e:
-            logger.error(f"停止 Web Demo 服务时发生错误: {e}")
-            if process.poll() is None:
-                 logger.warning("停止过程中出现错误，尝试强制终止...")
-                 try:
-                     process.kill()
-                     process.wait()
-                 except Exception as kill_e:
-                     logger.error(f"停止过程中强制终止进程时出错: {kill_e}")
+            logger.error(f"停止 Web Demo 服务 (PID: {pid if process else '未知'}) 时发生意外错误: {e}")
+            # 如果进程仍然存活，尝试最后一次强制 kill
+            if process and process.poll() is None:
+                logger.warning(f"最终尝试强制终止进程 {pid}...")
+                try:
+                    process.kill()
+                    process.wait(timeout=5)
+                except Exception as final_kill_e:
+                    logger.error(f"最终强制终止进程 {pid} 时出错: {final_kill_e}")
+
     elif process:
         logger.info(f"--- Web Demo 服务进程 (PID: {process.pid}) 在尝试停止前已经退出。 ---")
     else:
