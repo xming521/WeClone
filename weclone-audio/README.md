@@ -25,15 +25,13 @@ WeClone Audio使用uv作为包管理器。
 ```bash
 # 为 PyWxDump 创建 Python 环境和安装依赖
 # 
-uv venv .venv-wx --python=3.9
+uv venv .venv-wx --python=3.10
 .venv-wx\Scripts\activate
-# 安装 wx 依赖组
-uv pip install --group wx -e .
+uv pip install pywxdump
 ```
 
 ### 1.3 导出语音文件
 ```bash
-# 假设 get_sample_audio.py 现在位于 src/ 目录下
 python weclone-audio/src/get_sample_audio.py --db-path "导出数据库路径" --MsgSvrID "导出聊天记录的MsgSvrID字段"
 ```
 
@@ -41,7 +39,7 @@ python weclone-audio/src/get_sample_audio.py --db-path "导出数据库路径" -
 ### Spark-TTS模型
 
 **环境安装**
-可不创建新环境，直接安装依赖组到WeClone共主环境
+可不创建新环境，直接安装`sparktts`依赖组到WeClone共主环境
 
 ```bash
 uv venv .venv-sparktts --python=3.10
@@ -63,7 +61,7 @@ snapshot_download("SparkAudio/Spark-TTS-0.5B", local_dir="pretrained_models/Spar
 ```
 
 或通过git下载:
-```sh
+```bash
 # 假设当前在 weclone-audio 目录
 mkdir -p pretrained_models
 

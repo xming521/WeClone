@@ -33,13 +33,14 @@
         "lr_scheduler_type": "cosine",
         "cutoff_len": 512, //后续自动计算
         "logging_steps": 10,
-        "save_steps": 200,
+        "save_steps": 100,
         "learning_rate": 1e-4,
         "warmup_ratio": 0.1,
         "num_train_epochs": 3,
         "plot_loss": true,
         "fp16": true,
-        "flash_attn": "fa2"
+        "flash_attn": "fa2",
+        "deepspeed": "ds_config.json"
     },
     "infer_args": {
         "repetition_penalty": 1.2,

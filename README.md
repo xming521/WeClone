@@ -14,13 +14,13 @@
 ## 核心功能✨
 - 💫 涵盖打造数字分身的全链路方案，包括聊天数据导出、预处理、模型训练、部署
 - 💬 使用微信聊天记录微调LLM
-- 🎙️ 使用微信语音消息➕0.5B大模型实现高质量声音克隆 👉[WeClone-audio](https://github.com/xming521/WeClone/tree/master/WeClone-audio)
+- 🎙️ 使用微信语音消息➕0.5B大模型实现高质量声音克隆 👉[WeClone-audio](https://github.com/xming521/WeClone/tree/master/weclone-audio)
 - 🔗 绑定到微信、QQ、Telegram、企微、飞书机器人，实现自己的数字分身
 
 ## 特性与说明📋
 
 > [!TIP]
-> 新特性：[WeClone-audio](https://github.com/xming521/WeClone/tree/master/WeClone-audio) 模块，支持对微信语音进行克隆。
+> 新特性：[WeClone-audio](https://github.com/xming521/WeClone/tree/master/weclone-audio) 模块，支持对微信语音进行克隆。
 
 > [!IMPORTANT]
 > <h3>0.2.0版本进行了全面重构，数据集目录和脚本路径全部进行了修改，拉取新代码后，数据放在`./dataset/csv`目录下，并且需要重新安装依赖。</h3>
@@ -64,6 +64,9 @@ uv pip install --group main -e .
 python -c "import torch; print('CUDA是否可用:', torch.cuda.is_available());"
 ```
 
+（可选）安装FlashAttention，加速训练和推理：`uv pip install flash-attn --no-build-isolation`
+
+
 > [!NOTE]
 > 训练以及推理相关配置统一在文件[settings.json](settings.json)
 
@@ -75,7 +78,10 @@ python -c "import torch; print('CUDA是否可用:', torch.cuda.is_available());"
 ### 数据预处理
 
 - 项目默认去除了数据中的手机号、身份证号、邮箱、网址。还提供了一个禁用词词库[blocked_words](dataset/blocked_words.json)，可以自行添加需要过滤的词句（会默认去掉包括禁用词的整句）。
-- 执行 `python weclone/data/qa_generator.py` 对数据进行处理，可以根据自己的聊天风格修改settings.json的`make_dataset_args`。
+- 执行以下命令对数据进行处理，可以根据自己的聊天风格修改settings.json的`make_dataset_args`。
+```bash
+python weclone/data/qa_generator.py
+```
 - 目前仅支持时间窗口策略，根据`single_combine_time_window`将单人连续消息通过逗号连接合并为一句，根据`qa_match_time_window`匹配问答对。后续将增加大模型清洗数据的功能。
 
 ### 模型下载
@@ -86,8 +92,7 @@ git clone https://www.modelscope.cn/Qwen/Qwen2.5-7B-Instruct.git
 
 ### 配置参数并微调模型
 
-- (可选)修改[settings.json](settings.json)的`model_name_or_path`选择本地下载好的其他模型。  
-
+- (可选)修改[settings.json](settings.json)的`model_name_or_path`和`template`选择本地下载好的其他模型。  
 - 修改`per_device_train_batch_size`以及`gradient_accumulation_steps`来调整显存占用。  
 - 可以根据自己数据集的数量和质量修改`lora_rank`、`lora_dropout`等参数。
 
@@ -149,6 +154,8 @@ python weclone/eval/test_model.py
 ![alt text](img/2.png)
 ![alt text](img/3.png)
 
+### 问题解决
+- 微调问题：[LLaMA-Factory| FAQs | 常见问题](https://github.com/hiyouga/LLaMA-Factory/issues/4614)
 
 ### ❤️ 贡献代码
 
