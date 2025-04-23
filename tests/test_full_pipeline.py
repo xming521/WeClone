@@ -9,6 +9,8 @@ import torch
 from loguru import logger
 from subprocess import Popen
 
+#TODO 放弃了改成测cli吧
+
 # 配置 Loguru
 logger.remove() # 移除默认处理器
 current_time = time.strftime('%Y%m%d_%H%M%S')
@@ -458,6 +460,215 @@ def stop_web_demo(process: Optional[Popen]):
     else:
         logger.debug("--- 无需停止 Web Demo 服务 (进程不存在或已为 None) ---")
 
+# --- 新增：监控 Checkpoint 目录的函数 ---
+def monitor_checkpoints(process: Popen, model_output_dir: str, stop_event: threading.Event, check_interval: float = 5.0):
+    """
+    在后台线程中监控指定目录，如果发现 checkpoint* 目录，则尝试终止目标进程。
+    """
+    logger.info(f"[Monitor] 开始监控目录 {model_output_dir} 的 checkpoint...")
+    while not stop_event.is_set():
+        if not os.path.isdir(model_output_dir):
+            # 目录可能尚未创建，等待下一个间隔
+            time.sleep(check_interval)
+            continue
+
+        try:
+            found_checkpoint = False
+            for item in os.listdir(model_output_dir):
+                item_path = os.path.join(model_output_dir, item)
+                if os.path.isdir(item_path) and item.startswith("checkpoint"):
+                    logger.warning(f"[Monitor] 检测到 Checkpoint 目录: {item_path}。尝试停止训练进程 (PID: {process.pid})...")
+                    found_checkpoint = True
+                    break # 找到一个就足够了
+
+            if found_checkpoint:
+                # 发送终止信号
+                try:
+                    logger.info(f"[Monitor] 发送 SIGTERM 到进程 {process.pid}...")
+                    process.terminate()
+                    # 给进程一点时间响应 SIGTERM
+                    try:
+                        process.wait(timeout=5)
+                        logger.info(f"[Monitor] 进程 {process.pid} 已通过 SIGTERM 终止。")
+                    except subprocess.TimeoutExpired:
+                        logger.warning(f"[Monitor] 进程 {process.pid} 未在 5 秒内响应 SIGTERM，发送 SIGKILL...")
+                        process.kill()
+                        process.wait(timeout=5) # 等待 SIGKILL 生效
+                        logger.info(f"[Monitor] 进程 {process.pid} 已通过 SIGKILL 终止。")
+                except Exception as term_err:
+                    logger.error(f"[Monitor] 尝试终止进程 {process.pid} 时出错: {term_err}")
+                finally:
+                    stop_event.set() # 通知主线程停止等待
+                    logger.info("[Monitor] 已设置停止事件，监控结束。")
+                    return # 找到 checkpoint 并处理后，监控任务完成
+
+        except FileNotFoundError:
+            # 目录可能在检查时被删除，忽略
+            pass
+        except Exception as e:
+            logger.error(f"[Monitor] 监控时发生错误: {e}")
+            # 出现错误也设置停止信号，防止无限循环或未处理的异常
+            stop_event.set()
+            return
+
+        # 如果没有找到，且进程仍在运行，则等待下一个检查周期
+        if process.poll() is None:
+            time.sleep(check_interval)
+        else:
+            # 如果进程已经结束（无论何种原因），监控也应结束
+            logger.info(f"[Monitor] 训练进程 {process.pid} 似乎已结束，停止监控。")
+            break # 进程已结束，退出循环
+    logger.info("[Monitor] 监控循环正常结束。")
+
+
+# --- 新增：运行训练并进行监控的函数 ---
+def run_train_with_checkpoint_monitoring(
+    script_relative_path: str,
+    model_output_dir: str,
+    timeout: Optional[Union[int, float]] = DEFAULT_TIMEOUT,
+    ignore_timeout_error: bool = False,
+    env: Optional[dict] = None
+) -> str:
+    """
+    执行训练脚本，同时启动一个后台线程监控 checkpoint 目录。
+    如果检测到 checkpoint，会尝试停止训练进程。
+    返回执行状态: "success", "stopped_by_monitor", "timeout", "failed"
+    """
+    script_full_path = os.path.join(project_root, script_relative_path)
+    timeout_str = '无限制' if timeout is None else f'{timeout}s'
+    env_str = f" (环境变量: {env})" if env else ""
+    logger.info(f"--- 开始执行 (带监控): {script_relative_path} (超时: {timeout_str}){env_str} ---")
+    if not os.path.exists(script_full_path):
+        error_msg = f"脚本文件不存在 {script_full_path}"
+        logger.error(error_msg)
+        raise PipelineStepError(error_msg)
+
+    process: Optional[Popen] = None
+    stdout_thread: Optional[threading.Thread] = None
+    stderr_thread: Optional[threading.Thread] = None
+    monitor_thread: Optional[threading.Thread] = None
+    stop_event = threading.Event()
+    status = "failed" # 默认状态
+
+    # 准备环境变量
+    run_env = os.environ.copy()
+    if env:
+        run_env.update(env)
+
+    try:
+        process = Popen(
+            [sys.executable, script_full_path],
+            cwd=project_root,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            encoding='utf-8',
+            bufsize=1, # 行缓冲
+            env=run_env
+        )
+
+        # 启动日志线程
+        stdout_thread, stderr_thread = _start_stream_logging_threads(process, logger.debug, logger.debug)
+
+        # 启动监控线程
+        monitor_thread = threading.Thread(
+            target=monitor_checkpoints,
+            args=(process, model_output_dir, stop_event),
+            daemon=True
+        )
+        monitor_thread.start()
+
+        # 等待进程完成、被监控停止或超时
+        start_time = time.time()
+        wait_interval = 1 # seconds to wait between checks
+        while True:
+            # 检查进程是否结束
+            return_code = process.poll()
+            if return_code is not None:
+                # 进程已结束
+                if stop_event.is_set(): # 如果是监控线程停止的
+                    logger.warning(f"{script_relative_path} 被监控线程停止。返回码可能为 {return_code}。")
+                    status = "stopped_by_monitor"
+                elif return_code == 0:
+                    logger.success(f"{script_relative_path} 成功完成。")
+                    status = "success"
+                else:
+                    logger.error(f"{script_relative_path} 执行失败，返回码 {return_code}")
+                    status = "failed"
+                stop_event.set() # 确保监控线程也会退出
+                break
+
+            # 检查是否被监控线程要求停止
+            if stop_event.is_set():
+                logger.warning(f"{script_relative_path} 被监控线程标记为停止。")
+                # 进程可能仍在运行，等待 monitor_checkpoints 中的终止逻辑生效
+                # 但我们这里也应该退出等待循环
+                status = "stopped_by_monitor"
+                # 不需要再次 kill，monitor 线程会处理
+                break
+
+            # 检查是否超时
+            if timeout is not None and (time.time() - start_time) > timeout:
+                warn_msg = f"{script_relative_path} 执行超时 ({timeout}s)。"
+                logger.warning(warn_msg)
+                stop_event.set() # 通知监控线程停止
+                # 尝试优雅地关闭流
+                if process.stdout: process.stdout.close()
+                if process.stderr: process.stderr.close()
+                process.kill() # 强制终止超时进程
+                logger.warning(f"已强制终止进程 {process.pid}")
+                status = "timeout"
+                break
+
+            # 短暂休眠后继续检查
+            time.sleep(wait_interval)
+
+        # --- 等待所有线程完成 ---
+        logger.info("等待日志和监控线程完成...")
+        if stdout_thread: stdout_thread.join(timeout=5)
+        if stderr_thread: stderr_thread.join(timeout=5)
+        if monitor_thread: monitor_thread.join(timeout=5) # 监控线程也需要 join
+
+        # 处理最终状态
+        if status == "failed":
+             raise PipelineStepError(f"{script_relative_path} 执行失败。")
+        elif status == "timeout":
+            if not ignore_timeout_error:
+                error_msg = f"{script_relative_path} 执行超时 ({timeout}s) 且未忽略。"
+                logger.error(error_msg)
+                raise PipelineStepError(error_msg)
+            else:
+                logger.info("--- 根据设置，超时不视为错误，继续执行后续步骤。 ---")
+                # 即使忽略超时错误，状态仍然是 "timeout"
+                return status # 返回 "timeout" 状态
+
+        # 对于 success 和 stopped_by_monitor，直接返回状态
+        logger.info(f"--- {script_relative_path} 执行结束，状态: {status} ---")
+        return status
+
+    except FileNotFoundError:
+        error_msg = f"Python 解释器 '{sys.executable}' 或脚本 '{script_full_path}' 未找到。"
+        logger.error(error_msg)
+        raise PipelineStepError(error_msg)
+    except Exception as e:
+        # 捕获其他潜在错误 (例如 Popen 本身失败)
+        error_msg = f"执行 {script_relative_path} (带监控) 时发生意外错误: {e}"
+        logger.error(error_msg)
+        stop_event.set() # 确保监控线程停止
+        # 尝试确保进程和线程被清理
+        if process and process.poll() is None:
+            try:
+                if process.stdout: process.stdout.close()
+                if process.stderr: process.stderr.close()
+                process.kill()
+                logger.warning(f"因异常 {e}，强制终止进程 {process.pid}")
+            except Exception as kill_e:
+                logger.error(f"清理过程中强制终止进程失败: {kill_e}")
+        if stdout_thread and stdout_thread.is_alive(): stdout_thread.join(timeout=1)
+        if stderr_thread and stderr_thread.is_alive(): stderr_thread.join(timeout=1)
+        if monitor_thread and monitor_thread.is_alive(): monitor_thread.join(timeout=1)
+        raise PipelineStepError(error_msg)
+
 
 if __name__ == "__main__":
     logger.info("="*20 + " 开始执行 WeClone Pipeline 脚本 " + "="*20)
@@ -495,60 +706,46 @@ if __name__ == "__main__":
             logger.info(f"{STEP_QA}: 跳过 (配置)")
             steps_completed.append(f"{STEP_QA}: 跳过")
 
-        # 步骤 2: Train SFT
+        # 步骤 2: Train SFT (with monitoring)
         if run_train:
-            logger.info("-" * 10 + " 步骤 2: SFT 训练 " + "-" * 10)
-
-            # --- 开始：添加 Checkpoint 检查 ---
+            logger.info("-" * 10 + " 步骤 2: SFT 训练 (带 Checkpoint 监控) " + "-" * 10)
             model_output_dir = os.path.join(project_root, "model_output")
-            checkpoint_exists = False
-            if os.path.isdir(model_output_dir):
-                logger.info(f"检查目录 {model_output_dir} 是否存在 checkpoint...")
+
+            # --- 删除 model_output 目录 ---
+            if os.path.exists(model_output_dir):
+                logger.info(f"删除现有的 model_output 目录: {model_output_dir}")
                 try:
-                    for item in os.listdir(model_output_dir):
-                        item_path = os.path.join(model_output_dir, item)
-                        if os.path.isdir(item_path) and item.startswith("checkpoint"):
-                            logger.warning(f"找到现有的 Checkpoint 目录: {item_path}，将跳过训练。")
-                            checkpoint_exists = True
-                            break
-                    if not checkpoint_exists:
-                        logger.info("未找到现有的 Checkpoint 目录。")
+                    shutil.rmtree(model_output_dir)
+                    logger.success("成功删除 model_output 目录")
                 except Exception as e:
-                    logger.error(f"检查 Checkpoint 时出错: {e}")
-                    # Treat check error as reason to skip
-                    checkpoint_exists = True
-                    logger.warning("由于检查 Checkpoint 时出错，将跳过训练。")
-            else:
-                logger.info(f"目录 {model_output_dir} 不存在，无需检查 Checkpoint。")
+                    logger.error(f"删除 model_output 目录时出错: {e}")
+                    # Treat failure to delete as a critical error before training
+                    raise PipelineStepError(f"删除 model_output 目录失败: {e} ###step_id:{train_script}###")
 
-            if checkpoint_exists:
-                steps_completed.append(f"{STEP_TRAIN}: 跳过 (存在 Checkpoint)")
-                # 如果训练跳过，复制步骤也必须跳过
-                logger.info(f"{STEP_COPY_CKPT}: 跳过 (训练未运行)")
-                steps_completed.append(f"{STEP_COPY_CKPT}: 跳过 (训练未运行)")
-            else:
-                # --- 结束：添加 Checkpoint 检查 ---
-                # 只有在 checkpoint 不存在时才执行以下操作
-                logger.info("没有找到 Checkpoint，继续执行训练步骤。")
-                # 删除 model_output 目录
-                if os.path.exists(model_output_dir):
-                    logger.info(f"删除现有的 model_output 目录: {model_output_dir}")
-                    try:
-                        shutil.rmtree(model_output_dir)
-                        logger.success("成功删除 model_output 目录")
-                    except Exception as e:
-                        logger.error(f"删除 model_output 目录时出错: {e}")
-                        # Let's log and raise, consistent with other errors.
-                        raise PipelineStepError(f"删除 model_output 目录失败: {e}")
+            # --- 执行训练脚本并进行监控 ---
+            train_status = run_train_with_checkpoint_monitoring(
+                train_script,
+                model_output_dir, # Pass the directory to monitor
+                timeout=2000,
+                ignore_timeout_error=True,
+                env={'TQDM_DISABLE': '1'}
+            )
 
-                # 尝试禁用 tqdm
-                run_script(train_script, timeout=2000, ignore_timeout_error=True, env={'TQDM_DISABLE': '1'})
-                steps_completed.append(f"{STEP_TRAIN}: 成功或超时跳过")
+            # --- 根据训练状态更新完成列表 ---
+            if train_status == "success":
+                steps_completed.append(f"{STEP_TRAIN}: 成功")
+            elif train_status == "stopped_by_monitor":
+                steps_completed.append(f"{STEP_TRAIN}: 已停止 (检测到 Checkpoint)")
+            elif train_status == "timeout":
+                steps_completed.append(f"{STEP_TRAIN}: 超时 (已忽略)")
+            else: # "failed" or other unexpected status handled by exception
+                steps_completed.append(f"{STEP_TRAIN}: 失败") # Should be caught by exception, but added for completeness
 
-                # 步骤 2.1: 复制 Checkpoint (只有在训练运行后才可能执行)
-                if run_copy_checkpoint:
+            # 步骤 2.1: 复制 Checkpoint (只有在训练 *成功* 完成后才执行)
+            if run_copy_checkpoint:
+                if train_status == "success":
                     logger.info("-" * 10 + " 步骤 2.1: 复制 Checkpoint 到 model_output " + "-" * 10)
-                    source_dir = os.path.join(project_root, "model_output", "checkpoint-2") # Note: This assumes checkpoint-2 specifically.
+                    source_dir = os.path.join(project_root, "model_output", "checkpoint-2") # Note: Still assumes checkpoint-2 specifically.
                     dest_dir = os.path.join(project_root, "model_output")
                     if os.path.isdir(source_dir):
                         try:
@@ -557,26 +754,28 @@ if __name__ == "__main__":
                             logger.success(f"--- {STEP_COPY_CKPT} 成功 ---")
                             steps_completed.append(f"{STEP_COPY_CKPT}: 成功")
                         except Exception as e:
-                            # Embed identifier in the error for the except block
                             error_msg = f"{STEP_COPY_CKPT} 时发生错误: {e}"
                             logger.error(error_msg)
-                            # Add a unique marker to identify this step in the except block
                             raise PipelineStepError(f"{error_msg} ###step_id:copy_checkpoint###")
                     else:
-                        logger.warning(f"源 Checkpoint 目录 {source_dir} 不存在或不是目录，跳过复制。")
+                        logger.warning(f"训练成功后，源 Checkpoint 目录 {source_dir} 不存在或不是目录，跳过复制。")
                         steps_completed.append(f"{STEP_COPY_CKPT}: 跳过 (源不存在)")
-                        # Consider if missing checkpoint-2 after training is an error
-                        # raise PipelineStepError(f"必需的源 Checkpoint 目录 {source_dir} 不存在")
+                        # Consider if missing checkpoint-2 after successful training is an error
+                        # raise PipelineStepError(f"训练成功但必需的源 Checkpoint 目录 {source_dir} 不存在")
                 else:
-                    logger.info(f"{STEP_COPY_CKPT}: 跳过 (配置)")
-                    steps_completed.append(f"{STEP_COPY_CKPT}: 跳过 (配置)")
+                    # If training didn't succeed (stopped, timeout, failed), skip copy
+                    logger.info(f"{STEP_COPY_CKPT}: 跳过 (训练未成功完成，状态: {train_status})")
+                    steps_completed.append(f"{STEP_COPY_CKPT}: 跳过 (训练未成功)")
+            else:
+                logger.info(f"{STEP_COPY_CKPT}: 跳过 (配置)")
+                steps_completed.append(f"{STEP_COPY_CKPT}: 跳过 (配置)")
 
         else:
+            # If run_train is false
             logger.info(f"{STEP_TRAIN}: 跳过 (配置)")
             steps_completed.append(f"{STEP_TRAIN}: 跳过 (配置)")
             logger.info(f"{STEP_COPY_CKPT}: 跳过 (训练未运行)")
             steps_completed.append(f"{STEP_COPY_CKPT}: 跳过 (训练未运行)")
-
 
         # 步骤 3: Start API Service
         if run_api:

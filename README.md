@@ -28,7 +28,7 @@
 
 > [!IMPORTANT]
 > - WeClone仍在快速迭代期，当前效果不代表最终效果。  
-> - 微调LLM效果很大程度取决于聊天数据的数量和质量。   
+> - 微调LLM效果很大程度取决于模型大小、聊天数据的数量和质量，理论上模型越大，数据越多，效果越好。   
 > - Windows环境未进行严格测试，可以使用WSL作为运行环境。
 
 ### 硬件要求
@@ -98,8 +98,6 @@ git clone https://www.modelscope.cn/Qwen/Qwen2.5-7B-Instruct.git
 
 #### 单卡训练
 
-运行 `weclone/train/train_sft.py` 进行sft阶段微调，本人loss只降到了3.5左右，降低过多可能会过拟合，我使用了大概2万条整合后的有效数据。
-
 ```bash
 python weclone/train/train_sft.py
 ```
@@ -129,9 +127,18 @@ python weclone/server/api_service.py
 python weclone/server/api_service.py
 python weclone/eval/test_model.py
 ```
+### 微调效果
+使用Qwen2.5-14B-Instruct模型，大概3万条处理后的有效数据，loss降到了3.5左右的效果。
+<details>
+<summary>截图</summary>
+<img src="img/1.jpg" alt="alt text">
+<img src="img/2.png" alt="alt text">
+<img src="img/3.png" alt="alt text">
+<img src="img/4.png" alt="alt text">
+</details>
+
 
 ### 部署到聊天机器人
-
 
 [AstrBot](https://github.com/AstrBotDevs/AstrBot) 是易上手的多平台 LLM 聊天机器人及开发框架 ✨ 平台支持 QQ、QQ频道、Telegram、微信、企微、飞书。      
 
@@ -144,15 +151,6 @@ python weclone/eval/test_model.py
 6. 根据微调时使用的default_system，在 AstrBot 中设置系统提示词。
 ![alt text](img/5.png)
 
-
-
-
-### 截图
-
-![alt text](img/4.jpg)
-![alt text](img/1.png)
-![alt text](img/2.png)
-![alt text](img/3.png)
 
 ### 问题解决
 - 微调问题：[LLaMA-Factory| FAQs | 常见问题](https://github.com/hiyouga/LLaMA-Factory/issues/4614)
