@@ -131,10 +131,10 @@ python weclone/eval/test_model.py
 使用Qwen2.5-14B-Instruct模型，大概3万条处理后的有效数据，loss降到了3.5左右的效果。
 <details>
 <summary>截图</summary>
-<img src="img/1.jpg" alt="alt text">
-<img src="img/2.png" alt="alt text">
-<img src="img/3.png" alt="alt text">
-<img src="img/4.png" alt="alt text">
+<img src="https://github.com/user-attachments/assets/0775ec52-452b-485f-9785-c6eb7b277132" alt="alt text">
+<img src="https://github.com/user-attachments/assets/8c7628b5-da70-4c37-9e51-fdfb0eadd2df" alt="alt text">
+<img src="https://github.com/user-attachments/assets/523aa742-2aa3-40e9-bd67-b98b336e83a8" alt="alt text">
+<img src="https://github.com/user-attachments/assets/dabf0603-dcc4-4a47-b5c3-2bbc036820d9" alt="alt text">
 </details>
 
 
@@ -149,7 +149,7 @@ python weclone/eval/test_model.py
 4. 在 AstrBot 中新增服务提供商，类型选择OpenAI，API Base URL 根据AstrBot部署方式填写（例如docker部署可能为http://172.17.0.1:8005/v1） ，模型填写gpt-3.5-turbo,API Key随意填写一个
 5. 微调后不支持工具调用，请先关掉默认的工具，消息平台发送指令： `/tool off reminder`，否则会没有微调后的效果。  
 6. 根据微调时使用的default_system，在 AstrBot 中设置系统提示词。
-![alt text](img/5.png)
+![5](https://github.com/user-attachments/assets/19de7072-076a-4cdf-8ae6-46b9b89f536a)
 
 
 ### 问题解决
