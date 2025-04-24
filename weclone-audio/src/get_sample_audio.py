@@ -24,7 +24,7 @@ def main():
 
     t1 = MediaHandler(config)
     t1.get_audio(
-        MsgSvrID=args.msg_id,
+        MsgSvrID=args.MsgSvrID,
         is_play=True,
         is_wave=True,
         save_path=args.save_path,
