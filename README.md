@@ -131,10 +131,12 @@ python weclone/eval/test_model.py
 使用Qwen2.5-14B-Instruct模型，大概3万条处理后的有效数据，loss降到了3.5左右的效果。
 <details>
 <summary>截图</summary>
-<img src="https://github.com/user-attachments/assets/0775ec52-452b-485f-9785-c6eb7b277132" alt="alt text">
-<img src="https://github.com/user-attachments/assets/8c7628b5-da70-4c37-9e51-fdfb0eadd2df" alt="alt text">
-<img src="https://github.com/user-attachments/assets/523aa742-2aa3-40e9-bd67-b98b336e83a8" alt="alt text">
-<img src="https://github.com/user-attachments/assets/dabf0603-dcc4-4a47-b5c3-2bbc036820d9" alt="alt text">
+<div style="display: flex; flex-wrap: wrap; gap: 10px;">
+  <img src="https://github.com/user-attachments/assets/0775ec52-452b-485f-9785-c6eb7b277132" alt="alt text" style="width: 48%; min-width: 150px;">
+  <img src="https://github.com/user-attachments/assets/8c7628b5-da70-4c37-9e51-fdfb0eadd2df" alt="alt text" style="width: 48%; min-width: 150px;">
+  <img src="https://github.com/user-attachments/assets/523aa742-2aa3-40e9-bd67-b98b336e83a8" alt="alt text" style="width: 48%; min-width: 150px;">
+  <img src="https://github.com/user-attachments/assets/dabf0603-dcc4-4a47-b5c3-2bbc036820d9" alt="alt text" style="width: 48%; min-width: 150px;">
+</div>
 </details>
 
 
@@ -147,9 +149,14 @@ python weclone/eval/test_model.py
 2. 在 AstrBot 中部署消息平台
 3. 执行 `python weclone/server/api_service.py ` 启动api服务
 4. 在 AstrBot 中新增服务提供商，类型选择OpenAI，API Base URL 根据AstrBot部署方式填写（例如docker部署可能为http://172.17.0.1:8005/v1） ，模型填写gpt-3.5-turbo,API Key随意填写一个
-5. 微调后不支持工具调用，请先关掉默认的工具，消息平台发送指令： `/tool off reminder`，否则会没有微调后的效果。  
+5. 微调后不支持工具调用，请先关掉默认的工具，消息平台发送指令： `/tool off all`，否则会没有微调后的效果。 
 6. 根据微调时使用的default_system，在 AstrBot 中设置系统提示词。
 ![5](https://github.com/user-attachments/assets/19de7072-076a-4cdf-8ae6-46b9b89f536a)
+> [!IMPORTANT]
+> 检查api_service的日志，尽量保证大模型服务请求的参数和微调时一致，tool插件能力都关掉。
+7. 调整采样参数，例如temperature、top_p、top_k等
+[配置自定义的模型参数](https://astrbot.app/config/model-config.html#%E9%85%8D%E7%BD%AE%E8%87%AA%E5%AE%9A%E4%B9%89%E7%9A%84%E6%A8%A1%E5%9E%8B%E5%8F%82%E6%95%B0)
+
 
 
 ### 问题解决
