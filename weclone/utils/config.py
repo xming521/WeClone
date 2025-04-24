@@ -2,9 +2,8 @@ import os
 import commentjson
 import sys
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from log import logger
-from tools import dict_to_argv
+from .log import logger
+from .tools import dict_to_argv
 
 
 def load_config(arg_type: str):
@@ -19,14 +18,11 @@ def load_config(arg_type: str):
         config = {**s_config["train_sft_args"], **s_config["common_args"]}
         if s_config["make_dataset_args"]["prompt_with_history"]:
             dataset_info_path = os.path.join(config["dataset_dir"], "dataset_info.json")
-            dataset_info = commentjson.load(
-                open(dataset_info_path, "r", encoding="utf-8")
-            )[config["dataset"]]
+            dataset_info = commentjson.load(open(dataset_info_path, "r", encoding="utf-8"))[config["dataset"]]
             if dataset_info["columns"].get("history") is None:
-                logger.warning(
-                    f"{config['dataset']}数据集不包history字段，尝试使用wechat-sft-with-history数据集"
-                )
+                logger.warning(f"{config['dataset']}数据集不包history字段，尝试使用wechat-sft-with-history数据集")
                 s_config["make_dataset_args"]["dataset"] = "wechat-sft-with-history"
+
     elif arg_type == "make_dataset":
         config = {**s_config["make_dataset_args"], **s_config["common_args"]}
     else:

@@ -1,4 +1,3 @@
-import sys
 import os
 from typing import Dict, List
 import re
@@ -6,18 +5,17 @@ import re
 import pandas as pd
 import json
 
-current_dir = os.path.dirname(os.path.abspath(__file__))
-root_dir = os.path.dirname(current_dir)
-sys.path.append(root_dir)
-from src.utils.config import load_config
-from make_dataset.models import ChatMessage, CutMessage, skip_type_list
-from make_dataset.strategies import TimeWindowStrategy, LLMStrategy
+from weclone.utils.config import load_config
+from weclone.utils.log import logger
+from weclone.data.models import ChatMessage, CutMessage, skip_type_list
+from weclone.data.strategies import TimeWindowStrategy, LLMStrategy
 
 
 class DataProcessor:
     def __init__(self):
         self.config = load_config(arg_type="make_dataset")
-        self.csv_folder = "./data/csv"
+        self.csv_folder = "./dataset/csv"
+        self.system_prompt = self.config["default_system"]
         self.cut_type_list = [
             "图片",
             "视频",
@@ -54,19 +52,11 @@ class DataProcessor:
 
         self.c = self.config
 
-    def get_csv_files(self):
-        """遍历文件夹获取所有CSV文件路径"""
-        csv_files = []
-        for chat_obj_folder in os.listdir(self.csv_folder):
-            chat_obj_folder_path = os.path.join(self.csv_folder, chat_obj_folder)
-            for csvfile in os.listdir(chat_obj_folder_path):
-                if not csvfile.endswith(".csv"):
-                    continue
-                csvfile_path = os.path.join(chat_obj_folder_path, csvfile)
-                csv_files.append(csvfile_path)
-        return csv_files
-
     def main(self):
+        if not os.path.exists(self.csv_folder) or not os.listdir(self.csv_folder):
+            logger.error(f"错误：目录 '{self.csv_folder}' 不存在或为空，请检查路径并确保其中包含 CSV 聊天数据文件。")
+            return
+
         csv_files = self.get_csv_files()
         message_list: List[ChatMessage] = []
         for csv_file in csv_files:
@@ -77,6 +67,19 @@ class DataProcessor:
         if self.c["prompt_with_history"]:
             qa_res = self.add_history_to_qa(qa_res)
         self.save_result(qa_res)
+
+    def get_csv_files(self):
+        """遍历文件夹获取所有CSV文件路径"""
+
+        csv_files = []
+        for chat_obj_folder in os.listdir(self.csv_folder):
+            chat_obj_folder_path = os.path.join(self.csv_folder, chat_obj_folder)
+            for csvfile in os.listdir(chat_obj_folder_path):
+                if not csvfile.endswith(".csv"):
+                    continue
+                csvfile_path = os.path.join(chat_obj_folder_path, csvfile)
+                csv_files.append(csvfile_path)
+        return csv_files
 
     def match_qa(self, messages: List[ChatMessage]) -> List[Dict]:
         """
@@ -120,7 +123,9 @@ class DataProcessor:
                     # 状态保持不变
                 else:  # 自己的回复 使用策略判断是否属于同一对话
                     if last_message and self.qa_match_strategy.is_same_conversation([last_message], msg):
-                        qa_res.append({"instruction": current_instruction, "output": msg.msg})
+                        qa_res.append(
+                            {"instruction": current_instruction, "output": msg.msg, "system": self.system_prompt}
+                        )
                     else:
                         if self.c["prompt_with_history"]:
                             qa_res.append(
@@ -139,7 +144,7 @@ class DataProcessor:
 
     def add_history_to_qa(self, qa_res: List[Dict]) -> List[Dict]:
         qa_res_with_history = []
-        last_res = {"instruction": "", "output": "", "history": []}
+        last_res = {"instruction": "", "output": "", "history": [], "system": self.system_prompt}
 
         for _, qa in enumerate(qa_res):
             if isinstance(qa, CutMessage):
@@ -148,18 +153,20 @@ class DataProcessor:
                 else:
                     if len(last_res["history"]) == 1:
                         last_res = {
+                            "system": self.system_prompt,
                             "instruction": last_res["history"][0][0],
                             "output": last_res["history"][0][1],
                             "history": [],
                         }
                     else:
                         last_res = {
+                            "system": self.system_prompt,
                             "instruction": last_res["history"][-1][0],
                             "output": last_res["history"][-1][1],
                             "history": last_res["history"][:-1],
                         }
                     qa_res_with_history.append(last_res)
-                    last_res = {"instruction": "", "output": "", "history": []}
+                    last_res = {"instruction": "", "output": "", "history": [], "system": self.system_prompt}
             else:
                 last_res["history"].append([qa["instruction"], qa["output"]])
 
@@ -200,6 +207,9 @@ class DataProcessor:
                     combined_content += "，"
 
                 combined_content += content
+            if len(combined_content) > self.c["combine_msg_max_length"]:
+                logger.warning(f"组合后消息长度超过{self.c['combine_msg_max_length']}将截断：\n {combined_content}")
+                combined_content = combined_content[: self.c["combine_msg_max_length"]]
 
             combined_message = ChatMessage(
                 id=base_msg.id,
@@ -293,7 +303,7 @@ class DataProcessor:
         """
         df = pd.read_csv(file_path, encoding="utf-8", dtype={"msg": str})
 
-        blocked_words = json.load(open("./make_dataset/blocked_words.json", encoding="utf-8"))["blocked_words"]
+        blocked_words = json.load(open("./dataset/blocked_words.json", encoding="utf-8"))["blocked_words"]
 
         df = df[~df["type_name"].isin(values=skip_type_list)]
 
@@ -331,12 +341,12 @@ class DataProcessor:
     def save_result(self, qa_res: List[Dict]):
         # 保存结果
         with open(
-            "./data/res_csv/sft/sft-my.json",
+            "./dataset/res_csv/sft/sft-my.json",
             "w",
             encoding="utf-8",
         ) as f:
             json.dump(qa_res, f, ensure_ascii=False)
-        print(f"聊天记录处理成功，共{len(qa_res)}条，保存到{f.name}")
+        logger.success(f"聊天记录处理成功，共{len(qa_res)}条，保存到 {f.name}")
 
 
 if __name__ == "__main__":
