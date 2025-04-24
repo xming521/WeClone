@@ -8,6 +8,7 @@ events.out.tfevents.*
 *nohup.out
 *log.txt
 *cookie.bin
+*.gradio/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -140,7 +141,7 @@ dmypy.json
 .pyre/
 
 
-data/csv.zip
+*.zip
 LLaMA-Factory
 chatglm3-6b
 cache
@@ -152,7 +153,8 @@ data/test
 *.csv
 test.*
 *users.json   
-WeClone-audio/src/output*.wav
-WeClone-audio/uv.lock
 Spark-TTS-0.5B/
 uv.lock
+output*
+
+Qwen*/

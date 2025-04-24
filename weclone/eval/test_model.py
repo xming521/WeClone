@@ -1,15 +1,15 @@
 import json
-import os
-import sys
 import openai
 
-sys.path.append(os.getcwd())
-from src.template import default_prompt
 from tqdm import tqdm
+from typing import List, Dict
 
+from weclone.utils.config import load_config
+
+config = load_config("web_demo")
 
 config = {
-    "default_prompt": default_prompt,
+    "default_prompt": config["default_system"],
     "model": "gpt-3.5-turbo",
     "history_len": 15,
 }
@@ -20,7 +20,7 @@ openai.api_key = """sk-test"""
 openai.api_base = "http://127.0.0.1:8005/v1"
 
 
-def handler_text(content: str, history: [], config):
+def handler_text(content: str, history: List[Dict[str, str]], config):
     messages = [{"role": "system", "content": f"{config.default_prompt}"}]
     for item in history:
         messages.append(item)
@@ -32,14 +32,14 @@ def handler_text(content: str, history: [], config):
         history.pop()
         return "AI接口出错,请重试\n" + str(e)
 
-    resp = str(response.choices[0].message.content)
+    resp = str(response.choices[0].message.content) # type: ignore
     resp = resp.replace("\n ", "")
     history.append({"role": "assistant", "content": resp})
     return resp
 
 
 def main():
-    test_list = json.loads(open("data/test_data.json", "r", encoding="utf-8").read())["questions"]
+    test_list = json.loads(open("dataset/test_data.json", "r", encoding="utf-8").read())["questions"]
     res = []
     for questions in tqdm(test_list, desc=" Testing..."):
         history = []

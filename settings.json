@@ -2,8 +2,8 @@
     "train_pt_args": {
         "stage": "pt",
         "dataset": "wechat-pt",
-        "dataset_dir": "./data/res_csv/pt",
-        "lora_target": "query_key_value",
+        "dataset_dir": "./dataset/res_csv/pt",
+        "lora_target": "q_proj,v_proj",
         "lora_rank": 2,
         "lora_dropout": 0.1,
         "output_dir": "model_output",
@@ -21,20 +21,26 @@
     "train_sft_args": {
         "stage": "sft",
         "dataset": "wechat-sft",
-        "dataset_dir": "./data/res_csv/sft",
-        "lora_target": "query_key_value",
+        "dataset_dir": "./dataset/res_csv/sft",
+        "use_fast_tokenizer": true,
+        "lora_target": "q_proj,v_proj",
         "lora_rank": 4,
-        "lora_dropout": 0.5,
-        "overwrite_cache": true,
-        "per_device_train_batch_size": 4,
-        "gradient_accumulation_steps": 8,
+        "lora_dropout": 0.4,
+        "weight_decay": 0.1,
+        "overwrite_cache": true, 
+        "per_device_train_batch_size": 8,
+        "gradient_accumulation_steps": 4,
         "lr_scheduler_type": "cosine",
+        "cutoff_len": 512, //后续自动计算
         "logging_steps": 10,
-        "save_steps": 150,
-        "learning_rate": 0.0001,
+        "save_steps": 100,
+        "learning_rate": 1e-4,
+        "warmup_ratio": 0.1,
         "num_train_epochs": 3,
         "plot_loss": true,
-        "fp16": true
+        "fp16": true,
+        "flash_attn": "fa2",
+        // "deepspeed": "ds_config.json" //多卡训练
     },
     "infer_args": {
         "repetition_penalty": 1.2,
@@ -51,12 +57,14 @@
         "qa_match_strategy": "time_window", // 组成qa策略
         "single_combine_time_window": 2, // 单人组成单句时间窗口（分钟）,
         "qa_match_time_window": 5, // 组成qa时间窗口（分钟）,
+        "combine_msg_max_length": 256, // 组合后消息最大长度 配合cutoff_len 使用
         "prompt_with_history": false // 是否在prompt中包含历史对话
     },
     "common_args": {
-        "model_name_or_path": "./chatglm3-6b",
+        "model_name_or_path": "./Qwen2.5-7B-Instruct",
         "adapter_name_or_path": "./model_output", //同时做为train_sft_args的output_dir
-        "template": "chatglm3-weclone",
+        "template": "qwen",
+        "default_system": "请你扮演一名人类，不要说自己是人工智能",
         "finetuning_type": "lora",
         "trust_remote_code": true
     }
