@@ -13,7 +13,7 @@
 
 ## 核心功能✨
 - 💫 涵盖打造数字分身的全链路方案，包括聊天数据导出、预处理、模型训练、部署
-- 💬 使用微信聊天记录微调LLM
+- 💬 使用微信聊天记录微调LLM，让大模型有“那味儿”
 - 🎙️ 使用微信语音消息➕0.5B大模型实现高质量声音克隆 👉[WeClone-audio](https://github.com/xming521/WeClone/tree/master/weclone-audio)
 - 🔗 绑定到微信、QQ、Telegram、企微、飞书机器人，实现自己的数字分身
 
@@ -73,7 +73,7 @@ python -c "import torch; print('CUDA是否可用:', torch.cuda.is_available());"
 
 ### 数据准备
 
-请使用[PyWxDump](https://github.com/xaoyaoo/PyWxDump)提取微信聊天记录。下载软件并解密数据库后，点击聊天备份，导出类型为CSV，可以导出多个联系人或群聊，然后将导出的位于`wxdump_tmp/export` 的 `csv` 文件夹放在`./dataset`目录即可，也就是不同人聊天记录的文件夹一起放在 `./dataset/csv`。  
+请使用[PyWxDump](https://github.com/xaoyaoo/PyWxDump)提取微信聊天记录。可以先将手机的聊天记录迁移（备份）到电脑，数据量更多一些。下载软件并解密数据库后，点击聊天备份，导出类型为CSV，可以导出多个联系人或群聊，然后将导出的位于`wxdump_tmp/export` 的 `csv` 文件夹放在`./dataset`目录即可，也就是不同人聊天记录的文件夹一起放在 `./dataset/csv`。   
 
 ### 数据预处理
 
