@@ -9,6 +9,7 @@ from weclone.utils.config import load_config
 from weclone.utils.log import logger
 from weclone.data.models import ChatMessage, CutMessage, skip_type_list
 from weclone.data.strategies import TimeWindowStrategy, LLMStrategy
+from weclone.utils.length_cdf import length_cdf
 
 
 class DataProcessor:
@@ -67,6 +68,13 @@ class DataProcessor:
         if self.c["prompt_with_history"]:
             qa_res = self.add_history_to_qa(qa_res)
         self.save_result(qa_res)
+        length_cdf(
+            model_name_or_path=self.c["model_name_or_path"],
+            dataset=self.c["dataset"],
+            dataset_dir=self.c["dataset_dir"],
+            template=self.c["template"],
+            interval=self.c["cutoff_len"],
+        )
 
     def get_csv_files(self):
         """遍历文件夹获取所有CSV文件路径"""

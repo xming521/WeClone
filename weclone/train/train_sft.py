@@ -5,7 +5,6 @@ from llamafactory.extras.misc import get_current_device
 from weclone.utils.config import load_config
 from weclone.utils.log import logger
 
-# todo 添加一个test的环境变量 放一个test的配置文件
 
 def main():
     config = load_config(arg_type="train_sft")
