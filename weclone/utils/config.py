@@ -7,8 +7,18 @@ from .tools import dict_to_argv
 
 
 def load_config(arg_type: str):
-    with open("./settings.json", "r", encoding="utf-8") as f:
-        s_config: dict = commentjson.load(f)
+    config_path = os.environ.get("WECLONE_CONFIG_PATH", "./settings.json")
+    logger.info(f"Loading configuration from: {config_path}")  # Add logging to see which file is loaded
+    try:
+        with open(config_path, "r", encoding="utf-8") as f:
+            s_config: dict = commentjson.load(f)
+    except FileNotFoundError:
+        logger.error(f"Configuration file not found: {config_path}")
+        sys.exit(1)  # Exit if config file is not found
+    except Exception as e:
+        logger.error(f"Error loading configuration file {config_path}: {e}")
+        sys.exit(1)
+
     if arg_type == "web_demo" or arg_type == "api_service":
         # infer_args和common_args求并集
         config = {**s_config["infer_args"], **s_config["common_args"]}
@@ -25,6 +35,9 @@ def load_config(arg_type: str):
 
     elif arg_type == "make_dataset":
         config = {**s_config["make_dataset_args"], **s_config["common_args"]}
+        config["dataset"] = s_config["train_sft_args"]["dataset"]
+        config["dataset_dir"] = s_config["train_sft_args"]["dataset_dir"]
+        config["cutoff_len"] = s_config["train_sft_args"]["cutoff_len"]
     else:
         raise ValueError("暂不支持的参数类型")
 
