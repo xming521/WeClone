@@ -151,7 +151,7 @@ data/test
 .vscode
 *-my.*
 *.csv
-test.*
+*test.*
 *users.json   
 Spark-TTS-0.5B/
 uv.lock
