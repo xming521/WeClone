@@ -13,7 +13,7 @@
 
 ## 核心功能✨
 - 💫 涵盖打造数字分身的全链路方案，包括聊天数据导出、预处理、模型训练、部署
-- 💬 使用微信聊天记录微调LLM
+- 💬 使用微信聊天记录微调LLM，让大模型有“那味儿”
 - 🎙️ 使用微信语音消息➕0.5B大模型实现高质量声音克隆 👉[WeClone-audio](https://github.com/xming521/WeClone/tree/master/weclone-audio)
 - 🔗 绑定到微信、QQ、Telegram、企微、飞书机器人，实现自己的数字分身
 
