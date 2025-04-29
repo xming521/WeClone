@@ -13,7 +13,7 @@ dependencies = [
   "pydantic==2.10.6",
   "setuptools>=78.1.0",
   "loguru>=0.7.3",
-  "torch>=2.5.1",
+  "torch>=2.6.0",
   "transformers==4.49.0",
   "tomli; python_version < '3.11'",
 ]
@@ -38,10 +38,10 @@ sparktts = [
   "safetensors>=0.5.2",
   "soundfile>=0.12.1",
   "soxr>=0.5.0.post1",
-  "torchaudio>=2.5.1",
+  "torchaudio>=2.6.0",
   "tqdm>=4.66.5",
 ]
-main = ["llamafactory>=0.9.2", "openai==0.28.0"]
+main = ["llamafactory>=0.9.2", "openai==1.76.0", "vllm==0.8.0"]
 dev = ["pytest", "pyright", "ruff"]
 
 [project.scripts]
@@ -54,16 +54,16 @@ conflicts = [
 
 [tool.uv.sources]
 torch = [
-  { index = "pytorch-cu121", marker = "platform_system == 'Windows'" },
-  { index = "pytorch-cu121", marker = "platform_system == 'Linux'" },
+  { index = "pytorch-cu124", marker = "platform_system == 'Windows'" },
+  { index = "pytorch-cu124", marker = "platform_system == 'Linux'" },
 ]
 torchaudio = [
-  { index = "pytorch-cu121", marker = "platform_system == 'Windows'" },
-  { index = "pytorch-cu121", marker = "platform_system == 'Linux'" },
+  { index = "pytorch-cu124", marker = "platform_system == 'Windows'" },
+  { index = "pytorch-cu124", marker = "platform_system == 'Linux'" },
 ]
 torchvision = [
-  { index = "pytorch-cu121", marker = "platform_system == 'Windows'" },
-  { index = "pytorch-cu121", marker = "platform_system == 'Linux'" },
+  { index = "pytorch-cu124", marker = "platform_system == 'Windows'" },
+  { index = "pytorch-cu124", marker = "platform_system == 'Linux'" },
 ]
 
 
@@ -72,8 +72,8 @@ url = "https://pypi.tuna.tsinghua.edu.cn/simple/"
 default = true
 
 [[tool.uv.index]]
-name = "pytorch-cu121"
-url = "https://download.pytorch.org/whl/cu121"
+name = "pytorch-cu124"
+url = "https://download.pytorch.org/whl/cu124"
 explicit = true
 
 [tool.setuptools.packages.find]
