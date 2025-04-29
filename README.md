@@ -13,7 +13,7 @@
 
 ## 核心功能✨
 - 💫 涵盖打造数字分身的全链路方案，包括聊天数据导出、预处理、模型训练、部署
-- 💬 使用微信聊天记录微调LLM，让大模型有“那味儿”
+- 💬 使用微信聊天记录微调LLM，让大模型有"那味儿"
 - 🎙️ 使用微信语音消息➕0.5B大模型实现高质量声音克隆 👉[WeClone-audio](https://github.com/xming521/WeClone/tree/master/weclone-audio)
 - 🔗 绑定到微信、QQ、Telegram、企微、飞书机器人，实现自己的数字分身
 
@@ -62,6 +62,13 @@ source .venv/bin/activate
 uv pip install --group main -e . 
 ```
 
+将配置文件模板复制一份并重命名为`settings.json`，后续配置修改在此文件进行：
+```bash
+cp settings.template.json settings.json
+```
+> [!NOTE]
+> 训练以及推理相关配置统一在文件[settings.json](settings.json)
+
 使用以下命令测试CUDA环境是否正确配置并可被PyTorch识别，Mac不需要：
 ```bash
 python -c "import torch; print('CUDA是否可用:', torch.cuda.is_available());"
@@ -70,13 +77,9 @@ python -c "import torch; print('CUDA是否可用:', torch.cuda.is_available());"
 （可选）安装FlashAttention，加速训练和推理：`uv pip install flash-attn --no-build-isolation`
 
 
-> [!NOTE]
-> 训练以及推理相关配置统一在文件[settings.json](settings.json)
-
-
 ### 数据准备
 
-请使用[PyWxDump](https://github.com/xaoyaoo/PyWxDump)提取微信聊天记录。可以先将手机的聊天记录迁移（备份）到电脑，数据量更多一些。下载软件并解密数据库后，点击聊天备份，导出类型为CSV，可以导出多个联系人或群聊，然后将导出的位于`wxdump_tmp/export` 的 `csv` 文件夹放在`./dataset`目录即可，也就是不同人聊天记录的文件夹一起放在 `./dataset/csv`。   
+请使用[PyWxDump](https://github.com/xaoyaoo/PyWxDump)提取微信聊天记录。可以先将手机的聊天记录迁移（备份）到电脑，数据量更多一些。下载软件并解密数据库后，点击聊天备份，导出类型为CSV，可以导出多个联系人（不建议使用群聊记录），然后将导出的位于`wxdump_tmp/export` 的 `csv` 文件夹放在`./dataset`目录即可，也就是不同人聊天记录的文件夹一起放在 `./dataset/csv`。   
 
 ### 数据预处理
 
@@ -97,7 +100,7 @@ git clone https://www.modelscope.cn/Qwen/Qwen2.5-7B-Instruct.git
 
 - (可选)修改[settings.json](settings.json)的`model_name_or_path`和`template`选择本地下载好的其他模型。  
 - 修改`per_device_train_batch_size`以及`gradient_accumulation_steps`来调整显存占用。  
-- 可以根据自己数据集的数量和质量修改`lora_rank`、`lora_dropout`等参数。
+- 可以根据自己数据集的数量和质量修改`train_sft_args`的`num_train_epochs`、`lora_rank`、`lora_dropout`等参数。
 
 #### 单卡训练
 
