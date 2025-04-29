@@ -15,7 +15,17 @@ dependencies = [
   "loguru>=0.7.3",
   "torch>=2.5.1",
   "transformers==4.49.0",
+  "tomli; python_version < '3.11'",
 ]
+
+[tool.weclone]
+# 配置文件的版本号，当配置文件结构或重要默认值发生变化时，应增加此版本号
+config_version = "0.2.1"
+
+# 配置文件更新日志
+config_changelog = """
+[0.2.1] - 2025-04-29 - 初始配置版本。
+"""
 
 [dependency-groups]
 # xcodec = ["xcodec2==0.1.3"] 
