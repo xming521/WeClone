@@ -50,10 +50,9 @@
 
 
 ### 环境搭建
-cuda安装(已安装可跳过)：[LLaMA Factory](https://llamafactory.readthedocs.io/zh-cn/latest/getting_started/installation.html#cuda)
+1.cuda安装(已安装可跳过，**要求版本12.4及以上**)：[LLaMA Factory](https://llamafactory.readthedocs.io/zh-cn/latest/getting_started/installation.html#cuda) 
 
-
-建议使用 [uv](https://docs.astral.sh/uv/)，这是一个非常快速的 Python 环境管理器。安装uv后，您可以使用以下命令创建一个新的Python环境并安装依赖项，注意这不包含音频克隆功能的依赖：
+2.建议使用 [uv](https://docs.astral.sh/uv/)安装依赖，这是一个非常快速的 Python 环境管理器。安装uv后，您可以使用以下命令创建一个新的Python环境并安装依赖项，注意这不包含音频克隆功能的依赖：
 ```bash
 git clone https://github.com/xming521/WeClone.git
 cd WeClone
@@ -61,21 +60,19 @@ uv venv .venv --python=3.10
 source .venv/bin/activate
 uv pip install --group main -e . 
 ```
-
-将配置文件模板复制一份并重命名为`settings.json`，后续配置修改在此文件进行：
+3.将配置文件模板复制一份并重命名为`settings.json`，后续配置修改在此文件进行：
 ```bash
 cp settings.template.json settings.json
 ```
 > [!NOTE]
 > 训练以及推理相关配置统一在文件[settings.json](settings.json)
 
-使用以下命令测试CUDA环境是否正确配置并可被PyTorch识别，Mac不需要：
+4.使用以下命令测试CUDA环境是否正确配置并可被PyTorch识别，Mac不需要：
 ```bash
 python -c "import torch; print('CUDA是否可用:', torch.cuda.is_available());"
 ```
 
-（可选）安装FlashAttention，加速训练和推理：`uv pip install flash-attn --no-build-isolation`
-
+5.（可选）安装FlashAttention，加速训练和推理：`uv pip install flash-attn --no-build-isolation`
 
 ### 数据准备
 

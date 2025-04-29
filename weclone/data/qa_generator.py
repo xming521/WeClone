@@ -75,6 +75,7 @@ class DataProcessor:
             template=self.c["template"],
             interval=self.c["cutoff_len"],
         )
+        logger.success(f"聊天记录处理成功，共{len(qa_res)}条，保存到./dataset/res_csv/sft/sft-my.json")
 
     def get_csv_files(self):
         """遍历文件夹获取所有CSV文件路径"""
@@ -354,7 +355,6 @@ class DataProcessor:
             encoding="utf-8",
         ) as f:
             json.dump(qa_res, f, ensure_ascii=False)
-        logger.success(f"聊天记录处理成功，共{len(qa_res)}条，保存到 {f.name}")
 
 
 if __name__ == "__main__":
