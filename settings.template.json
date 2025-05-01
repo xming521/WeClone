@@ -1,5 +1,5 @@
 {
-    "version": "0.2.1",
+    "version": "0.2.2",
     "common_args": {
         "model_name_or_path": "./Qwen2.5-7B-Instruct",
         "adapter_name_or_path": "./model_output", //同时做为train_sft_args的output_dir
@@ -10,7 +10,7 @@
     },
     "make_dataset_args": {
         //数据处理配置
-        "enable_vision_model": false,//后续实现
+        "enable_vision_model": false, //后续实现
         "include_type": [
             "文本"
         ],
@@ -19,7 +19,12 @@
         "single_combine_time_window": 2, // 单人组成单句时间窗口（分钟）,
         "qa_match_time_window": 5, // 组成qa时间窗口（分钟）,
         "combine_msg_max_length": 256, // 组合后消息最大长度 配合cutoff_len 使用
-        "prompt_with_history": false // 是否在prompt中包含历史对话
+        "prompt_with_history": false, // 是否在prompt中包含历史对话
+        "clean_dataset": {
+            "enable_clean": true,
+            "enable_clean_by_llm": true,
+            "accept_score": 4, //可以接受的llm打分阈值,1分最差，5分最好,低于此分数的数据不会用于训练
+        }
     },
     "train_pt_args": {
         //预训练微调配置
