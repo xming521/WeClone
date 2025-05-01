@@ -65,7 +65,7 @@ def web_demo():
     web_demo_main()
 
 
-# @cli.command("evaluate", help="使用常见问题测试微调后模型的效果。")
+# TODO 添加评估功能 @cli.command("evaluate", help="使用常见问题测试微调后模型的效果。")
 @clear_argv
 def evaluate():
     """使用常见问题测试微调后模型的效果。"""
@@ -142,7 +142,7 @@ def _check_versions():
                 pyproject_data = tomllib.load(f)
                 weclone_tool_data = pyproject_data.get("tool", {}).get("weclone", {})
                 config_guide_version = weclone_tool_data.get("config_version")
-                # config_changelog = weclone_tool_data.get("config_changelog", "N/A")
+                config_changelog = weclone_tool_data.get("config_changelog", "N/A")
         except Exception as e:
             logger.warning(f"警告：无法读取或解析 {PYPROJECT_PATH}: {e}。无法检查配置文件是否为最新。")
     else:
@@ -159,6 +159,8 @@ def _check_versions():
                 f"警告：您的 settings.json 文件版本 ({settings_version}) 与项目建议的配置版本 ({config_guide_version}) 不一致。"
             )
             logger.warning("这可能导致意外行为或错误。请从 settings.template.json 复制或更新您的 settings.json 文件。")
+            # TODO 根据版本号打印更新日志
+            logger.warning(f"配置文件更新日志：\n{config_changelog}")
     elif PYPROJECT_PATH.exists():  # 如果文件存在但未读到版本
         logger.warning(
             f"警告：在 {PYPROJECT_PATH} 的 [tool.weclone] 下未找到 'config_version' 字段。"
