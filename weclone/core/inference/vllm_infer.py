@@ -139,6 +139,7 @@ def vllm_infer(
         "pipeline_parallel_size": pipeline_parallel_size,
         "disable_log_stats": True,
         "enable_lora": model_args.adapter_name_or_path is not None,
+        "enable_prefix_caching": True,  # 是否启用前缀缓存
     }
     if template_obj.mm_plugin.__class__.__name__ != "BasePlugin":
         engine_args["limit_mm_per_prompt"] = {"image": 4, "video": 2, "audio": 2}
@@ -155,5 +156,3 @@ def vllm_infer(
     print("*" * 70)
     print(f"{len(prompts)} generated results have been saved at {save_name}.")
     print("*" * 70)
-
-

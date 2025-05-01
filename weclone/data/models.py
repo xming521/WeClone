@@ -22,6 +22,18 @@ class CutMessage:
     CreateTime: Timestamp
 
 
+# TODO 未使用QaPair
+@dataclass
+class QaPair:
+    id: int
+    system: str
+    instruction: str
+    output: str
+    history: list[ChatMessage]
+    time: Timestamp
+    score: int
+
+
 skip_type_list = [
     "添加好友",
     "推荐公众号",
