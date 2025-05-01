@@ -65,7 +65,7 @@ def web_demo():
     web_demo_main()
 
 
-@cli.command("evaluate", help="使用常见问题测试微调后模型的效果。")
+# @cli.command("evaluate", help="使用常见问题测试微调后模型的效果。")
 @clear_argv
 def evaluate():
     """使用常见问题测试微调后模型的效果。"""
