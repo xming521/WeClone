@@ -15,7 +15,6 @@
 import json
 from typing import Optional
 
-import fire
 from transformers import Seq2SeqTrainingArguments
 
 from llamafactory.data import get_dataset, get_template_and_fix_tokenizer
@@ -33,7 +32,7 @@ if is_vllm_available():
 
 def vllm_infer(
     model_name_or_path: str,
-    adapter_name_or_path: str = None,
+    adapter_name_or_path: Optional[str] = None,
     dataset: str = "alpaca_en_demo",
     dataset_dir: str = "data",
     template: str = "default",
@@ -158,5 +157,3 @@ def vllm_infer(
     print("*" * 70)
 
 
-if __name__ == "__main__":
-    fire.Fire(vllm_infer)
