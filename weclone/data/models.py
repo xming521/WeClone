@@ -22,14 +22,13 @@ class CutMessage:
     CreateTime: Timestamp
 
 
-# TODO 未使用QaPair
 @dataclass
 class QaPair:
     id: int
     system: str
     instruction: str
     output: str
-    history: list[ChatMessage]
+    history: list[list[str]]
     time: Timestamp
     score: int
 

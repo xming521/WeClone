@@ -1,13 +1,15 @@
 import os
-from typing import Dict, List
+from typing import Dict, List, Union
 import re
 
 import pandas as pd
 import json
+from pandas import Timestamp
 
+from weclone.data.clean.strategies import LLMCleaningStrategy
 from weclone.utils.config import load_config
 from weclone.utils.log import logger
-from weclone.data.models import ChatMessage, CutMessage, skip_type_list
+from weclone.data.models import ChatMessage, CutMessage, skip_type_list, QaPair
 from weclone.data.strategies import TimeWindowStrategy, LLMStrategy
 from weclone.utils.length_cdf import length_cdf
 
@@ -33,6 +35,10 @@ class DataProcessor:
             "粘贴的文本",  # 无法解析的分享链接
         ]
 
+        if self.config["clean_dataset"]["enable_clean"] and self.config["prompt_with_history"]:
+            logger.warning("开启 prompt_with_history 不支持 clean_dataset 功能")
+            exit()
+
         if self.config["single_combine_strategy"] == "time_window":
             self.single_combine_strategy = TimeWindowStrategy(
                 time_window=self.config["single_combine_time_window"] * 60,
@@ -51,6 +57,8 @@ class DataProcessor:
         elif self.config["qa_match_strategy"] == "llm":
             self.qa_match_strategy = LLMStrategy(is_single_chat=False)
 
+        if self.config["clean_dataset"]["enable_clean"]:
+            self.clean_strategy = LLMCleaningStrategy(config=self.config["clean_dataset"])
         self.c = self.config
 
     def main(self):
@@ -67,7 +75,12 @@ class DataProcessor:
         qa_res = self.match_qa(message_list)
         if self.c["prompt_with_history"]:
             qa_res = self.add_history_to_qa(qa_res)
+        else:
+            qa_res = [item for item in qa_res if isinstance(item, QaPair)]
+
         self.save_result(qa_res)
+        if self.c["clean_dataset"]["enable_clean"]:
+            self.clean_strategy.clean(qa_res)
         length_cdf(
             model_name_or_path=self.c["model_name_or_path"],
             dataset=self.c["dataset"],
@@ -90,7 +103,7 @@ class DataProcessor:
                 csv_files.append(csvfile_path)
         return csv_files
 
-    def match_qa(self, messages: List[ChatMessage]) -> List[Dict]:
+    def match_qa(self, messages: List[ChatMessage]) -> List[Union[QaPair, CutMessage]]:
         """
         匹配问答对
 
@@ -98,14 +111,14 @@ class DataProcessor:
             messages: 消息列表
 
         Returns:
-            List[Dict]: 包含指令和输出的问答对列表
+            List[Union[QaPair, CutMessage]]: 包含指令和输出的问答对列表
         """
         # 状态定义
         WAITING_INSTRUCTION = "waiting_instruction"  # 等待指令
         WAITING_RESPONSE = "waiting_response"  # 等待回复
 
         current_state = WAITING_INSTRUCTION
-        qa_res = []
+        qa_res: List[Union[QaPair, CutMessage]] = []
         last_message = None
         current_instruction = None
 
@@ -132,9 +145,19 @@ class DataProcessor:
                     # 状态保持不变
                 else:  # 自己的回复 使用策略判断是否属于同一对话
                     if last_message and self.qa_match_strategy.is_same_conversation([last_message], msg):
-                        qa_res.append(
-                            {"instruction": current_instruction, "output": msg.msg, "system": self.system_prompt}
+                        assert current_instruction is not None, (
+                            "current_instruction should not be None when creating a QA pair"
                         )
+                        qa_pair = QaPair(
+                            id=-1,  # Placeholder ID, will be assigned later
+                            system=self.system_prompt,
+                            instruction=current_instruction,
+                            output=msg.msg,
+                            history=[],  # No history in this context yet
+                            time=msg.CreateTime,  # Use the response message time
+                            score=0,  # Default score
+                        )
+                        qa_res.append(qa_pair)
                     else:
                         if self.c["prompt_with_history"]:
                             qa_res.append(
@@ -151,33 +174,60 @@ class DataProcessor:
 
         return qa_res
 
-    def add_history_to_qa(self, qa_res: List[Dict]) -> List[Dict]:
-        qa_res_with_history = []
-        last_res = {"instruction": "", "output": "", "history": [], "system": self.system_prompt}
+    # TODO: need review
+    def add_history_to_qa(self, qa_res: List[Union[QaPair, CutMessage]]) -> List[QaPair]:
+        """
+        Adds conversation history to QaPair objects.
 
-        for _, qa in enumerate(qa_res):
-            if isinstance(qa, CutMessage):
-                if len(last_res["history"]) == 0:
-                    continue
-                else:
-                    if len(last_res["history"]) == 1:
-                        last_res = {
-                            "system": self.system_prompt,
-                            "instruction": last_res["history"][0][0],
-                            "output": last_res["history"][0][1],
-                            "history": [],
-                        }
-                    else:
-                        last_res = {
-                            "system": self.system_prompt,
-                            "instruction": last_res["history"][-1][0],
-                            "output": last_res["history"][-1][1],
-                            "history": last_res["history"][:-1],
-                        }
-                    qa_res_with_history.append(last_res)
-                    last_res = {"instruction": "", "output": "", "history": [], "system": self.system_prompt}
-            else:
-                last_res["history"].append([qa["instruction"], qa["output"]])
+        Args:
+            qa_res: A list containing QaPair and CutMessage objects.
+
+        Returns:
+            A list of QaPair objects with history populated.
+        """
+        qa_res_with_history: List[QaPair] = []
+        current_history: List[List[str]] = []
+        last_timestamp: Timestamp = None  # type: ignore
+
+        for item in qa_res:
+            if isinstance(item, CutMessage):
+                if current_history:
+                    instruction = current_history[-1][0]
+                    output = current_history[-1][1]
+                    history = current_history[:-1]
+                    qa_pair_with_history = QaPair(
+                        id=-1,
+                        system=self.system_prompt,
+                        instruction=instruction,
+                        output=output,
+                        history=history,
+                        time=last_timestamp,
+                        score=0,
+                    )
+                    qa_res_with_history.append(qa_pair_with_history)
+                current_history = []
+                last_timestamp = None  # type: ignore
+            elif isinstance(item, QaPair):
+                current_history.append([item.instruction, item.output])
+                last_timestamp = item.time
+
+        if current_history:
+            instruction = current_history[-1][0]
+            output = current_history[-1][1]
+            history = current_history[:-1]
+            # Ensure last_timestamp is not None before assignment
+            final_timestamp_end = last_timestamp
+            assert final_timestamp_end is not None, "Timestamp cannot be None for the final QaPair"
+            qa_pair_with_history = QaPair(
+                id=-1,
+                system=self.system_prompt,
+                instruction=instruction,
+                output=output,
+                history=history,
+                time=final_timestamp_end,
+                score=0,
+            )
+            qa_res_with_history.append(qa_pair_with_history)
 
         return qa_res_with_history
 
@@ -347,18 +397,31 @@ class DataProcessor:
     def process_text(self, chat_message: ChatMessage):
         pass
 
-    def save_result(self, qa_res: List[Dict]):
+    def save_result(self, qa_res: List[QaPair]):
+        """
+        Saves the list of QaPair objects to a JSON file after converting them to dictionaries.
+
+        Args:
+            qa_res: A list of QaPair objects.
+        """
         processed_qa_res = []
         for idx, item in enumerate(qa_res):
-            if isinstance(item, dict):
-                item = {"id": idx, **item}
-                processed_qa_res.append(item)
-        with open(
-            "./dataset/res_csv/sft/sft-my.json",
-            "w",
-            encoding="utf-8",
-        ) as f:
-            json.dump(processed_qa_res, f, ensure_ascii=False)
+            item_dict = {
+                "id": idx,
+                "system": item.system,
+                "instruction": item.instruction,
+                "output": item.output,
+                "history": item.history,
+                "time": item.time.isoformat() if item.time else None,
+                "score": item.score,
+            }
+            processed_qa_res.append(item_dict)
+
+        output_path = "./dataset/res_csv/sft/sft-my.json"
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        with open(output_path, "w", encoding="utf-8") as f:
+            json.dump(processed_qa_res, f, ensure_ascii=False, indent=4)
+        logger.success(f"聊天记录处理成功，共{len(qa_res)}条，保存到 {output_path}")
 
 
 if __name__ == "__main__":
