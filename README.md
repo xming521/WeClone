@@ -59,12 +59,15 @@ uv venv .venv --python=3.10
 source .venv/bin/activate
 uv pip install --group main -e . 
 ```
+> [!TIP]
+> 如果要使用最新的模型进行微调，需要手动安装最新版LLaMA Factory：`uv pip install --upgrade git+https://github.com/hiyouga/LLaMA-Factory.git`
+
 3.将配置文件模板复制一份并重命名为`settings.json`，后续配置修改在此文件进行：
 ```bash
 cp settings.template.json settings.json
 ```
 > [!NOTE]
-> 训练以及推理相关配置统一在文件[settings.json](settings.json)
+> 训练以及推理相关配置统一在文件`settings.json`
 
 4.使用以下命令测试CUDA环境是否正确配置并可被PyTorch识别，Mac不需要：
 ```bash
