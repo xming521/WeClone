@@ -16,6 +16,7 @@ dependencies = [
   "torch>=2.6.0",
   "transformers==4.49.0",
   "tomli; python_version < '3.11'",
+  "langchain",
 ]
 
 [tool.weclone]
