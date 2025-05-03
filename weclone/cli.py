@@ -110,12 +110,12 @@ def _check_project_root():
 
 
 def _check_versions():
-    """比较本地 settings.json 版本和 pyproject.toml 中的配置文件指南版本"""
+    """比较本地 settings.jsonc 版本和 pyproject.toml 中的配置文件指南版本"""
     if tomllib is None:  # Skip check if toml parser failed to import
         return
 
     ROOT_DIR = Path(__file__).parent.parent
-    SETTINGS_PATH = ROOT_DIR / "settings.json"
+    SETTINGS_PATH = ROOT_DIR / "settings.jsonc"
     PYPROJECT_PATH = ROOT_DIR / "pyproject.toml"
 
     settings_version = None
@@ -129,11 +129,11 @@ def _check_versions():
                 settings_version = settings_data.get("version")
         except Exception as e:
             logger.error(f"错误：无法读取或解析 {SETTINGS_PATH}: {e}")
-            logger.error("请确保 settings.json 文件存在且格式正确。")
+            logger.error("请确保 settings.jsonc 文件存在且格式正确。")
             sys.exit(1)
     else:
         logger.error(f"错误：未找到配置文件 {SETTINGS_PATH}。")
-        logger.error("请确保 settings.json 文件位于项目根目录。")
+        logger.error("请确保 settings.jsonc 文件位于项目根目录。")
         sys.exit(1)
 
     if PYPROJECT_PATH.exists():
@@ -150,21 +150,21 @@ def _check_versions():
 
     if not settings_version:
         logger.error(f"错误：在 {SETTINGS_PATH} 中未找到 'version' 字段。")
-        logger.error("请从 settings.template.json 复制或更新您的 settings.json 文件。")
+        logger.error("请从 settings.template.json 复制或更新您的 settings.jsonc 文件。")
         sys.exit(1)
 
     if config_guide_version:
         if settings_version != config_guide_version:
             logger.warning(
-                f"警告：您的 settings.json 文件版本 ({settings_version}) 与项目建议的配置版本 ({config_guide_version}) 不一致。"
+                f"警告：您的 settings.jsonc 文件版本 ({settings_version}) 与项目建议的配置版本 ({config_guide_version}) 不一致。"
             )
-            logger.warning("这可能导致意外行为或错误。请从 settings.template.json 复制或更新您的 settings.json 文件。")
+            logger.warning("这可能导致意外行为或错误。请从 settings.template.json 复制或更新您的 settings.jsonc 文件。")
             # TODO 根据版本号打印更新日志
             logger.warning(f"配置文件更新日志：\n{config_changelog}")
     elif PYPROJECT_PATH.exists():  # 如果文件存在但未读到版本
         logger.warning(
             f"警告：在 {PYPROJECT_PATH} 的 [tool.weclone] 下未找到 'config_version' 字段。"
-            "无法确认您的 settings.json 是否为最新配置版本。"
+            "无法确认您的 settings.jsonc 是否为最新配置版本。"
         )
 
 

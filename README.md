@@ -62,12 +62,12 @@ uv pip install --group main -e .
 > [!TIP]
 > 如果要使用最新的模型进行微调，需要手动安装最新版LLaMA Factory：`uv pip install --upgrade git+https://github.com/hiyouga/LLaMA-Factory.git`
 
-3.将配置文件模板复制一份并重命名为`settings.json`，后续配置修改在此文件进行：
+3.将配置文件模板复制一份并重命名为`settings.jsonc`，后续配置修改在此文件进行：
 ```bash
-cp settings.template.json settings.json
+cp settings.template.json settings.jsonc
 ```
 > [!NOTE]
-> 训练以及推理相关配置统一在文件`settings.json`
+> 训练以及推理相关配置统一在文件`settings.jsonc`
 
 4.使用以下命令测试CUDA环境是否正确配置并可被PyTorch识别，Mac不需要：
 ```bash
@@ -83,7 +83,7 @@ python -c "import torch; print('CUDA是否可用:', torch.cuda.is_available());"
 ### 数据预处理
 
 - 项目默认去除了数据中的手机号、身份证号、邮箱、网址。还提供了一个禁用词词库[blocked_words](dataset/blocked_words.json)，可以自行添加需要过滤的词句（会默认去掉包括禁用词的整句）。
-- 执行以下命令对数据进行处理，可以根据自己的聊天风格修改settings.json的`make_dataset_args`。
+- 执行以下命令对数据进行处理，可以根据自己的聊天风格修改settings.jsonc的`make_dataset_args`。
 ```bash
 python weclone/data/qa_generator.py
 ```
@@ -97,7 +97,7 @@ git clone https://www.modelscope.cn/Qwen/Qwen2.5-7B-Instruct.git
 
 ### 配置参数并微调模型
 
-- (可选)修改[settings.json](settings.json)的`model_name_or_path`和`template`选择本地下载好的其他模型。  
+- (可选)修改[settings.jsonc](settings.jsonc)的`model_name_or_path`和`template`选择本地下载好的其他模型。  
 - 修改`per_device_train_batch_size`以及`gradient_accumulation_steps`来调整显存占用。  
 - 可以根据自己数据集的数量和质量修改`train_sft_args`的`num_train_epochs`、`lora_rank`、`lora_dropout`等参数。
 
@@ -108,14 +108,14 @@ python weclone/train/train_sft.py
 ```
 
 #### 多卡训练
-取消`settings.json`中`deepspeed`行代码注释，使用以下命令多卡训练：
+取消`settings.jsonc`中`deepspeed`行代码注释，使用以下命令多卡训练：
 ```bash
 uv pip install deepspeed
 deepspeed --num_gpus=使用显卡数量 weclone/train/train_sft.py
 ```
 
 ### 使用浏览器demo简单推理
-可以在这一步测试出合适的temperature、top_p值，修改settings.json的`infer_args`后，供后续推理时使用。
+可以在这一步测试出合适的temperature、top_p值，修改settings.jsonc的`infer_args`后，供后续推理时使用。
 ```bash
 python weclone/eval/web_demo.py
 ```
