@@ -227,3 +227,8 @@ python weclone/eval/test_model.py
 
 
 <div align="center"> 克隆我们，保留那灵魂的芬芳 </div>
+
+
+
+
+![image](https://github.com/user-attachments/assets/9d9cd501-165b-4ef8-9424-0ae98880ce4d)
