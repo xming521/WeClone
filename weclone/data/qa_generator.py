@@ -58,7 +58,7 @@ class DataProcessor:
             self.qa_match_strategy = LLMStrategy(is_single_chat=False)
 
         if self.config["clean_dataset"]["enable_clean"]:
-            self.clean_strategy = LLMCleaningStrategy(config=self.config["clean_dataset"])
+            self.clean_strategy = LLMCleaningStrategy(make_dataset_config=self.config)
         self.c = self.config
 
     def main(self):
@@ -78,9 +78,11 @@ class DataProcessor:
         else:
             qa_res = [item for item in qa_res if isinstance(item, QaPair)]
 
-        self.save_result(qa_res)
         if self.c["clean_dataset"]["enable_clean"]:
-            self.clean_strategy.clean(qa_res)
+            self.clean_strategy.get_score(qa_res)
+            # qa_res = self.clean_strategy.clean(qa_res)
+
+        self.save_result(qa_res)
         length_cdf(
             model_name_or_path=self.c["model_name_or_path"],
             dataset=self.c["dataset"],
@@ -121,9 +123,9 @@ class DataProcessor:
         qa_res: List[Union[QaPair, CutMessage]] = []
         last_message = None
         current_instruction = None
+        qa_id_counter = 0
 
         for msg in messages:
-            # 检查是否为CutMessage
             if isinstance(msg, CutMessage):
                 current_state = WAITING_INSTRUCTION
                 current_instruction = None
@@ -149,7 +151,7 @@ class DataProcessor:
                             "current_instruction should not be None when creating a QA pair"
                         )
                         qa_pair = QaPair(
-                            id=-1,  # Placeholder ID, will be assigned later
+                            id=qa_id_counter,
                             system=self.system_prompt,
                             instruction=current_instruction,
                             output=msg.msg,
@@ -158,6 +160,7 @@ class DataProcessor:
                             score=0,  # Default score
                         )
                         qa_res.append(qa_pair)
+                        qa_id_counter += 1  # 增加计数器
                     else:
                         if self.c["prompt_with_history"]:
                             qa_res.append(
