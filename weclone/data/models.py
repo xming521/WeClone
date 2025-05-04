@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from pandas import Timestamp
+from pydantic import BaseModel
 
 
 @dataclass
@@ -30,6 +31,11 @@ class QaPair:
     output: str
     history: list[list[str]]
     time: Timestamp
+    score: int
+
+
+class QaPairScore(BaseModel):
+    id: int
     score: int
 
 
