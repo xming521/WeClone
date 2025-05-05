@@ -111,8 +111,9 @@ def infer(
         "trust_remote_code": True,
         "dtype": model_args.infer_dtype,
         "max_model_len": cutoff_len + max_new_tokens,
-        "tensor_parallel_size": (get_device_count() // pipeline_parallel_size) or 1,
-        "pipeline_parallel_size": pipeline_parallel_size,
+        # "tensor_parallel_size":  1,
+        # "pipeline_parallel_size": pipeline_parallel_size,
+        # "data_parallel_size": get_device_count(), // vllm0.8.5版本支持DP
         "disable_log_stats": True,
         "enable_lora": model_args.adapter_name_or_path is not None,
         "enable_prefix_caching": True,  # 是否启用前缀缓存

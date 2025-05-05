@@ -38,6 +38,7 @@ class LLMCleaningStrategy(CleaningStrategy):
         """
         调用llm打分，并将分数直接赋值给传入的QaPair。
         """
+        logger.info("开始使用llm对数据打分")
         inputs = []
         prompt_template = PromptTemplate.from_template(CLEAN_PROMPT)
         for qa in data:
@@ -84,5 +85,8 @@ class LLMCleaningStrategy(CleaningStrategy):
         根据打分结果，删除分数低于阈值的数据。
         """
         return [
-            qa for qa in data if qa.score is not None and qa.score >= self.make_dataset_config.get("clean_dataset", {}).get("llm", {}).get("accept_score", 1)
+            qa
+            for qa in data
+            if qa.score is not None
+            and qa.score >= self.make_dataset_config.get("clean_dataset", {}).get("llm", {}).get("accept_score", 1)
         ]
