@@ -34,9 +34,9 @@ class CleaningStrategy(ABC):
 class LLMCleaningStrategy(CleaningStrategy):
     """使用大模型进行数据清洗的策略"""
 
-    def get_score(self, data: List[QaPair]) -> None:
+    def judge(self, data: List[QaPair]) -> None:
         """
-        调用llm打分，并将分数直接赋值给传入的QaPair列表。
+        调用llm打分，并将分数直接赋值给传入的QaPair。
         """
         inputs = []
         prompt_template = PromptTemplate.from_template(CLEAN_PROMPT)
@@ -79,5 +79,9 @@ class LLMCleaningStrategy(CleaningStrategy):
         logger.info(f"llm打分分数分布情况:\n{distribution_df.to_string()}")
 
     def clean(self, data: List[QaPair]) -> List[QaPair]:
-        self.get_score(data)  # 原地修改 data
-        return data
+        """
+        根据打分结果，删除分数低于阈值的数据。
+        """
+        return [
+            qa for qa in data if qa.score is not None and qa.score >= self.make_dataset_config.get("clean_dataset", {}).get("llm", {}).get("accept_score", 1)
+        ]
