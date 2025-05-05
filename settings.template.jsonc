@@ -23,7 +23,9 @@
         "clean_dataset": {
             "enable_clean": true,
             "clean_strategy": "llm",
-            "accept_score": 4, //可以接受的llm打分阈值,1分最差，5分最好,低于此分数的数据不会用于训练
+            "llm": {
+                "accept_score": 2, //可以接受的llm打分阈值,1分最差，5分最好,低于此分数的数据不会用于训练
+            }
         }
     },
     "train_pt_args": {

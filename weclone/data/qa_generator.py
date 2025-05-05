@@ -35,7 +35,9 @@ class DataProcessor:
             "粘贴的文本",  # 无法解析的分享链接
         ]
 
-        if self.config["clean_dataset"]["enable_clean"] and self.config["prompt_with_history"]:
+        if self.config.get("clean_dataset", {}).get("enable_clean", False) and self.config.get(
+            "prompt_with_history", False
+        ):
             logger.warning("开启 prompt_with_history 不支持 clean_dataset 功能")
             exit()
 
@@ -57,8 +59,9 @@ class DataProcessor:
         elif self.config["qa_match_strategy"] == "llm":
             self.qa_match_strategy = LLMStrategy(is_single_chat=False)
 
-        if self.config["clean_dataset"]["enable_clean"]:
-            self.clean_strategy = LLMCleaningStrategy(make_dataset_config=self.config)
+        if self.config.get("clean_dataset", {}).get("enable_clean", False):
+            if self.config.get("clean_dataset", {}).get("clean_strategy", "llm") == "llm":
+                self.clean_strategy = LLMCleaningStrategy(make_dataset_config=self.config)
         self.c = self.config
 
     def main(self):
@@ -78,10 +81,9 @@ class DataProcessor:
         else:
             qa_res = [item for item in qa_res if isinstance(item, QaPair)]
 
-        if self.c["clean_dataset"]["enable_clean"]:
-            self.clean_strategy.get_score(qa_res)
+        if self.c.get("clean_dataset", {}).get("enable_clean", False):
+            self.clean_strategy.judge(qa_res)
             # qa_res = self.clean_strategy.clean(qa_res)
-
         self.save_result(qa_res)
         length_cdf(
             model_name_or_path=self.c["model_name_or_path"],
