@@ -85,13 +85,26 @@ class DataProcessor:
             self.clean_strategy.judge(qa_res)
             # qa_res = self.clean_strategy.clean(qa_res)
         self.save_result(qa_res)
-        length_cdf(
-            model_name_or_path=self.c["model_name_or_path"],
-            dataset=self.c["dataset"],
-            dataset_dir=self.c["dataset_dir"],
-            template=self.c["template"],
-            interval=self.c["cutoff_len"],
-        )
+
+        original_cuda_devices = os.environ.get("CUDA_VISIBLE_DEVICES")
+        try:
+            # logger.info("设置 CUDA_VISIBLE_DEVICES=0 以运行 length_cdf")
+            os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+            length_cdf(
+                model_name_or_path=self.c["model_name_or_path"],
+                dataset=self.c["dataset"],
+                dataset_dir=self.c["dataset_dir"],
+                template=self.c["template"],
+                interval=self.c["cutoff_len"],
+            )
+        finally:
+            # logger.info("恢复原始 CUDA_VISIBLE_DEVICES 设置")
+            if original_cuda_devices is None:
+                if "CUDA_VISIBLE_DEVICES" in os.environ:
+                    del os.environ["CUDA_VISIBLE_DEVICES"]
+            else:
+                os.environ["CUDA_VISIBLE_DEVICES"] = original_cuda_devices
+
         logger.success(f"聊天记录处理成功，共{len(qa_res)}条，保存到 ./dataset/res_csv/sft/sft-my.json")
 
     def get_csv_files(self):
