@@ -115,6 +115,7 @@ def infer(
         "disable_log_stats": True,
         "enable_lora": model_args.adapter_name_or_path is not None,
         "enable_prefix_caching": True,  # 是否启用前缀缓存
+        "bad_words": [r"\n"],
     }
     if template_obj.mm_plugin.__class__.__name__ != "BasePlugin":
         engine_args["limit_mm_per_prompt"] = {"image": 4, "video": 2, "audio": 2}

@@ -58,7 +58,7 @@ source .venv/bin/activate
 uv pip install --group main -e . 
 ```
 > [!TIP]
-> 如果要使用最新的模型进行微调，需要手动安装最新版LLaMA Factory：`uv pip install --upgrade git+https://github.com/hiyouga/LLaMA-Factory.git`
+> 如果要使用最新的模型进行微调，需要手动安装最新版LLaMA Factory：`uv pip install --upgrade git+https://github.com/hiyouga/LLaMA-Factory.git`,同时其他依赖版本也可能需要修改，例如vllm pytorch transforms
 
 3.将配置文件模板复制一份并重命名为`settings.jsonc`，后续配置修改在此文件进行：
 ```bash
