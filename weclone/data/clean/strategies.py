@@ -78,7 +78,7 @@ class LLMCleaningStrategy(CleaningStrategy):
                 "占比(%)": score_percentages.round(2),
             }
         )
-        logger.info(f"llm打分分数分布情况:\n{distribution_df.to_string()}")
+        logger.success(f"llm打分分数分布情况:\n{distribution_df.to_string()}")
 
     def clean(self, data: List[QaPair]) -> List[QaPair]:
         """

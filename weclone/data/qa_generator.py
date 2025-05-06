@@ -1,4 +1,6 @@
 import os
+import sys
+import subprocess
 from typing import Dict, List, Union
 import re
 
@@ -11,7 +13,6 @@ from weclone.utils.config import load_config
 from weclone.utils.log import logger
 from weclone.data.models import ChatMessage, CutMessage, skip_type_list, QaPair
 from weclone.data.strategies import TimeWindowStrategy, LLMStrategy
-from weclone.utils.length_cdf import length_cdf
 
 
 class DataProcessor:
@@ -83,29 +84,51 @@ class DataProcessor:
 
         if self.c.get("clean_dataset", {}).get("enable_clean", False):
             self.clean_strategy.judge(qa_res)
-            # qa_res = self.clean_strategy.clean(qa_res)
+            qa_res = self.clean_strategy.clean(qa_res)
         self.save_result(qa_res)
-
-        original_cuda_devices = os.environ.get("CUDA_VISIBLE_DEVICES")
-        try:
-            # logger.info("设置 CUDA_VISIBLE_DEVICES=0 以运行 length_cdf")
-            os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-            length_cdf(
-                model_name_or_path=self.c["model_name_or_path"],
-                dataset=self.c["dataset"],
-                dataset_dir=self.c["dataset_dir"],
-                template=self.c["template"],
-                interval=self.c["cutoff_len"],
-            )
-        finally:
-            # logger.info("恢复原始 CUDA_VISIBLE_DEVICES 设置")
-            if original_cuda_devices is None:
-                if "CUDA_VISIBLE_DEVICES" in os.environ:
-                    del os.environ["CUDA_VISIBLE_DEVICES"]
-            else:
-                os.environ["CUDA_VISIBLE_DEVICES"] = original_cuda_devices
+        self._execute_length_cdf_script()
 
         logger.success(f"聊天记录处理成功，共{len(qa_res)}条，保存到 ./dataset/res_csv/sft/sft-my.json")
+
+    def _execute_length_cdf_script(self):
+        """执行 length_cdf.py 脚本来计算cutoff_len。"""
+        try:
+            python_executable = sys.executable
+            # 脚本路径是相对于项目根目录的
+            script_path = os.path.join("weclone", "utils", "length_cdf.py")
+
+            command_parts = [
+                python_executable,
+                script_path,
+                f'--model_name_or_path="{self.c["model_name_or_path"]}"',
+                f'--dataset="{self.c["dataset"]}"',
+                f'--dataset_dir="{self.c["dataset_dir"]}"',
+                f'--template="{self.c["template"]}"',
+                f"--interval={self.c['cutoff_len']}",
+            ]
+
+            child_env = os.environ.copy()
+            child_env["CUDA_VISIBLE_DEVICES"] = "0"
+            child_env["LLAMAFACTORY_VERBOSITY"] = "ERROR"
+
+            process = subprocess.Popen(
+                command_parts,
+                env=child_env,
+                stdout=None,  # 使用 None 表示使用父进程的标准输出（即终端）
+                stderr=None,  # 使用 None 表示使用父进程的标准错误（即终端）
+                text=True,
+                bufsize=1,  # 行缓冲
+            )
+            return_code = process.wait()
+            if return_code != 0:
+                logger.error(f"命令 '{' '.join(command_parts)}' 执行失败，返回码 {return_code}")
+        except FileNotFoundError:
+            # command_parts[0] 是 python_executable, command_parts[1] 是 script_path
+            logger.error(f"命令执行失败: 找不到可执行文件 '{command_parts[0]}' 或脚本 '{command_parts[1]}'")
+        except KeyError as e:
+            logger.error(f"执行 length_cdf.py 脚本失败：配置项缺失 {str(e)}")
+        except Exception as e:
+            logger.error(f"执行 length_cdf.py 脚本时发生未知错误: {str(e)}")
 
     def get_csv_files(self):
         """遍历文件夹获取所有CSV文件路径"""
