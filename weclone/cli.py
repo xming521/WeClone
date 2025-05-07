@@ -14,8 +14,8 @@ except ImportError:
 
 def clear_argv(func):
     """
-    装饰器：在调用被装饰函数前，清理 sys.argv，只保留脚本名。
-    调用后恢复原始 sys.argv。
+    装饰器：在调用被装饰函数前，清理 sys.argv，只保留脚本名。调用后恢复原始 sys.argv。
+    用于防止参数被 Hugging Face HfArgumentParser 解析造成 ValueError。
     """
 
     @functools.wraps(func)
@@ -65,13 +65,22 @@ def web_demo():
     web_demo_main()
 
 
-# TODO 添加评估功能 @cli.command("evaluate", help="使用常见问题测试微调后模型的效果。")
+# TODO 添加评估功能 @cli.command("eval-model", help="使用从训练数据中划分出来的验证集评估。")
 @clear_argv
-def evaluate():
-    """使用常见问题测试微调后模型的效果。"""
+def eval_model():
+    """使用从训练数据中划分出来的验证集评估。"""
     from weclone.eval.eval_model import main as evaluate_main
 
     evaluate_main()
+
+
+@cli.command("test-model", help="使用常见聊天问题测试模型。")
+@clear_argv
+def test_model():
+    """测试"""
+    from weclone.eval.test_model import main as test_main
+
+    test_main()
 
 
 @cli.command("server", help="启动API服务，提供模型推理接口。")

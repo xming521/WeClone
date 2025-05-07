@@ -83,7 +83,7 @@ python -c "import torch; print('CUDA是否可用:', torch.cuda.is_available());"
 - 项目默认去除了数据中的手机号、身份证号、邮箱、网址。还提供了一个禁用词词库[blocked_words](dataset/blocked_words.json)，可以自行添加需要过滤的词句（会默认去掉包括禁用词的整句）。
 - 执行以下命令对数据进行处理，可以根据自己的聊天风格修改settings.jsonc的`make_dataset_args`。
 ```bash
-python weclone/data/qa_generator.py
+weclone make-dataset
 ```
 - 目前仅支持时间窗口策略，根据`single_combine_time_window`将单人连续消息通过逗号连接合并为一句，根据`qa_match_time_window`匹配问答对。后续将增加大模型清洗数据的功能。
 
@@ -102,7 +102,7 @@ git clone https://www.modelscope.cn/Qwen/Qwen2.5-7B-Instruct.git
 #### 单卡训练
 
 ```bash
-python weclone/train/train_sft.py
+weclone train-sft
 ```
 
 #### 多卡训练
@@ -115,20 +115,20 @@ deepspeed --num_gpus=使用显卡数量 weclone/train/train_sft.py
 ### 使用浏览器demo简单推理
 可以在这一步测试出合适的temperature、top_p值，修改settings.jsonc的`infer_args`后，供后续推理时使用。
 ```bash
-python weclone/eval/web_demo.py
+weclone webchat-demo
 ```
 
 ### 使用接口进行推理
 
 ```bash
-python weclone/server/api_service.py
+weclone server
 ```
 
 ### 使用常见聊天问题测试
 有些答案比较抽象，主要原因是训练数据没有覆盖，后续通过ＲＡＧ来解决。测试结果在test_result-my.txt。
 ```bash
-python weclone/server/api_service.py
-python weclone/eval/test_model.py
+weclone server
+weclone test-model
 ```
 ### 微调效果
 使用Qwen2.5-14B-Instruct模型，大概3万条处理后的有效数据，loss降到了3.5左右的效果。
@@ -150,7 +150,7 @@ python weclone/eval/test_model.py
 使用步骤：
 1. 部署 AstrBot
 2. 在 AstrBot 中部署消息平台
-3. 执行 `python weclone/server/api_service.py ` 启动api服务
+3. 执行 `weclone server` 启动api服务
 4. 在 AstrBot 中新增服务提供商，类型选择OpenAI，API Base URL 根据AstrBot部署方式填写（例如docker部署可能为http://172.17.0.1:8005/v1） ，模型填写gpt-3.5-turbo,API Key随意填写一个
 5. 微调后不支持工具调用，请先关掉默认的工具，消息平台发送指令： `/tool off all`，否则会没有微调后的效果。 
 6. 根据微调时使用的default_system，在 AstrBot 中设置系统提示词。
