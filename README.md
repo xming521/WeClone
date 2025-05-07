@@ -21,7 +21,7 @@
 ## 📋特性与说明
 
 > [!IMPORTANT]
-> ## 0.2.1版本支持了命令行工具，使用前需要重新执行 `uv pip install -e .` 
+> ### 0.2.1版本支持了命令行工具，使用前需要重新执行 `uv pip install -e .` 
 
 > [!IMPORTANT]
 > 0.2.0版本进行了全面重构，数据集目录和脚本路径全部进行了修改，拉取新代码后，`csv`文件夹放在`dataset`下，并且需要重新安装依赖。
@@ -85,7 +85,9 @@ python -c "import torch; print('CUDA是否可用:', torch.cuda.is_available());"
 ```bash
 weclone-cli make-dataset
 ```
-- 目前仅支持时间窗口策略，根据`single_combine_time_window`将单人连续消息通过逗号连接合并为一句，根据`qa_match_time_window`匹配问答对。后续将增加大模型清洗数据的功能。
+- 目前仅支持时间窗口策略，根据`single_combine_time_window`将单人连续消息通过逗号连接合并为一句，根据`qa_match_time_window`匹配问答对。
+- 可以启用`clean_dataset`中的`enable_clean`选项，对数据进行清洗，以达到更好效果。当前使用llm judge对聊天记录进行打分，使用vllm进行离线推理。在得到`llm打分分数分布情况`后，调整`accept_score`选择可以接受的分数，再适当降低`train_sft_args`的`lora_dropout`参数提升拟合效果。
+
 
 ### 模型下载
 ```bash
@@ -100,10 +102,10 @@ git clone https://www.modelscope.cn/Qwen/Qwen2.5-7B-Instruct.git
 - 可以根据自己数据集的数量和质量修改`train_sft_args`的`num_train_epochs`、`lora_rank`、`lora_dropout`等参数。
 
 #### 单卡训练
-
 ```bash
 weclone-cli train-sft
 ```
+多卡环境单卡训练，需要先执行 `export CUDA_VISIBLE_DEVICES=0`
 
 #### 多卡训练
 取消`settings.jsonc`中`deepspeed`行代码注释，使用以下命令多卡训练：

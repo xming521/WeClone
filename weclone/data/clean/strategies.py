@@ -72,13 +72,16 @@ class LLMCleaningStrategy(CleaningStrategy):
         score_series = pd.Series(scores)
         score_counts = score_series.value_counts().sort_index()
         score_percentages = score_series.value_counts(normalize=True).sort_index() * 100
+        pd.set_option('display.unicode.east_asian_width', True) # 尝试修正对齐问题
         distribution_df = pd.DataFrame(  # 合并数量和百分比到一个 DataFrame 中以便打印
             {
                 "数量": score_counts,
                 "占比(%)": score_percentages.round(2),
             }
         )
-        logger.success(f"llm打分分数分布情况:\n{distribution_df.to_string()}")
+        distribution_df.index.name = "分数"  # 给第一列加上列名：分数
+        printable_df_str = distribution_df.reset_index().to_string(index=False)
+        logger.success(f"llm打分分数分布情况:\n{printable_df_str}")
 
     def clean(self, data: List[QaPair]) -> List[QaPair]:
         """
