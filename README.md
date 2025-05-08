@@ -54,7 +54,7 @@
 git clone https://github.com/xming521/WeClone.git
 cd WeClone
 uv venv .venv --python=3.10
-source .venv/bin/activate
+source .venv/bin/activate # windows下执行 .venv\Scripts\activate
 uv pip install --group main -e . 
 ```
 > [!TIP]
@@ -80,7 +80,7 @@ python -c "import torch; print('CUDA是否可用:', torch.cuda.is_available());"
 
 ### 数据预处理
 
-- 项目默认去除了数据中的手机号、身份证号、邮箱、网址。还提供了一个禁用词词库[blocked_words](dataset/blocked_words.json)，可以自行添加需要过滤的词句（会默认去掉包括禁用词的整句）。
+- 项目默认去除了数据中的手机号、身份证号、邮箱、网址。还在`settings.jsonc`中提供了一个禁用词词库`blocked_words`，可以自行添加需要过滤的词句（会默认去掉包括禁用词的整句）。
 > [!IMPORTANT]
 > 请一定注意保护个人隐私，不要泄露个人信息！
 
