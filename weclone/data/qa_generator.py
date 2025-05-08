@@ -36,6 +36,18 @@ class DataProcessor:
             "粘贴的文本",  # 无法解析的分享链接
         ]
 
+        # blocked_words
+        config_blocked_words = self.config.get("blocked_words", []) if hasattr(self, "config") else []
+        file_blocked_words = []
+        try:
+            with open("./dataset/blocked_words.json", encoding="utf-8") as f:
+                file_blocked_words = json.load(f).get("blocked_words", [])
+        except (FileNotFoundError, json.JSONDecodeError):
+            pass
+
+        self.blocked_words = list(set(config_blocked_words + file_blocked_words))
+        logger.info(f"聊天记录禁用词: {self.blocked_words}")
+
         if self.config.get("clean_dataset", {}).get("enable_clean", False) and self.config.get(
             "prompt_with_history", False
         ):
@@ -403,8 +415,6 @@ class DataProcessor:
         """
         df = pd.read_csv(file_path, encoding="utf-8", dtype={"msg": str})
 
-        blocked_words = json.load(open("./dataset/blocked_words.json", encoding="utf-8"))["blocked_words"]
-
         df = df[~df["type_name"].isin(values=skip_type_list)]
 
         # 如果type_name为文本 并且msg 包含 手机号、身份证号、邮箱、网址则删除这行
@@ -421,7 +431,7 @@ class DataProcessor:
                 ):
                     df = df.drop(index=i)
                     continue
-                for blocked_word in blocked_words:
+                for blocked_word in self.blocked_words:
                     if blocked_word in msg_str:
                         df = df.drop(index=i)
                         break
