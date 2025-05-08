@@ -81,6 +81,9 @@ python -c "import torch; print('CUDA是否可用:', torch.cuda.is_available());"
 ### 数据预处理
 
 - 项目默认去除了数据中的手机号、身份证号、邮箱、网址。还提供了一个禁用词词库[blocked_words](dataset/blocked_words.json)，可以自行添加需要过滤的词句（会默认去掉包括禁用词的整句）。
+> [!IMPORTANT]
+> 请一定注意保护个人隐私，不要泄露个人信息！
+
 - 执行以下命令对数据进行处理，可以根据自己的聊天风格修改settings.jsonc的`make_dataset_args`。
 ```bash
 weclone-cli make-dataset

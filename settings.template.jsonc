@@ -10,9 +10,13 @@
     },
     "make_dataset_args": {
         //数据处理配置
-        "enable_vision_model": false, //后续实现
         "include_type": [
             "文本"
+        ],
+        "blocked_words": [ // 禁用词
+            "例如 姓名",
+            "例如 密码",
+            "//....."
         ],
         "single_combine_strategy": "time_window", // 单人组成单句策略
         "qa_match_strategy": "time_window", // 组成qa策略
