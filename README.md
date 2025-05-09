@@ -82,7 +82,7 @@ python -c "import torch; print('CUDA是否可用:', torch.cuda.is_available());"
 
 - 项目默认去除了数据中的手机号、身份证号、邮箱、网址。还在`settings.jsonc`中提供了一个禁用词词库`blocked_words`，可以自行添加需要过滤的词句（会默认去掉包括禁用词的整句）。
 > [!IMPORTANT]
-> 请一定注意保护个人隐私，不要泄露个人信息！
+> 🚨 请一定注意保护个人隐私，不要泄露个人信息！
 
 - 执行以下命令对数据进行处理，可以根据自己的聊天风格修改settings.jsonc的`make_dataset_args`。
 ```bash
@@ -135,7 +135,7 @@ weclone-cli server
 weclone-cli server
 weclone-cli test-model
 ```
-## 微调效果
+## 🖼️ 微调效果
 使用Qwen2.5-14B-Instruct模型，大概3万条处理后的有效数据，loss降到了3.5左右的效果。
 <details>
 <summary>截图</summary>
@@ -148,7 +148,7 @@ weclone-cli test-model
 </details>
 
 
-## 部署到聊天机器人
+## 🤖 部署到聊天机器人
 
 [AstrBot](https://github.com/AstrBotDevs/AstrBot) 是易上手的多平台 LLM 聊天机器人及开发框架 ✨ 平台支持 QQ、QQ频道、Telegram、微信、企微、飞书。      
 
@@ -184,7 +184,7 @@ weclone-cli test-model
 项目使用`pytest`测试，`pyright`检查类型，`ruff`检查代码格式。
 
 
-## 免责声明
+## ⚠️ 免责声明
 > [!CAUTION]
 > 请勿用于非法用途，否则后果自负。
 <details>
