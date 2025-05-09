@@ -165,6 +165,11 @@ weclone-cli test-model
 7. 调整采样参数，例如temperature、top_p、top_k等
 [配置自定义的模型参数](https://astrbot.app/config/model-config.html#%E9%85%8D%E7%BD%AE%E8%87%AA%E5%AE%9A%E4%B9%89%E7%9A%84%E6%A8%A1%E5%9E%8B%E5%8F%82%E6%95%B0)
 
+### 📌 路线图
+- [ ] 更丰富的上下文：包括上下文对话、聊天对象信息、时间等 + 思考
+- [ ] Memory 支持
+- [ ] 支持多模态
+- [ ] 数据增强
 
 
 ### 问题解决
