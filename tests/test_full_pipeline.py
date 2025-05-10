@@ -52,7 +52,7 @@ step_identifiers = {
 # Order for fallback logic
 step_order = [STEP_QA, STEP_TRAIN, STEP_COPY_CKPT, STEP_API_START, STEP_EVAL, STEP_WEB_DEMO]
 
-#todo 需要测试前替换成测试的settings.json 测试完再替换回来
+#todo 需要测试前替换成测试的settings.jsonc 测试完再替换回来
 
 class PipelineStepError(Exception):
     """自定义异常类，用于表示 Pipeline 步骤执行失败。"""

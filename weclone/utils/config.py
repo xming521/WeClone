@@ -7,7 +7,7 @@ from .tools import dict_to_argv
 
 
 def load_config(arg_type: str):
-    config_path = os.environ.get("WECLONE_CONFIG_PATH", "./settings.json")
+    config_path = os.environ.get("WECLONE_CONFIG_PATH", "./settings.jsonc")
     logger.info(f"Loading configuration from: {config_path}")  # Add logging to see which file is loaded
     try:
         with open(config_path, "r", encoding="utf-8") as f:

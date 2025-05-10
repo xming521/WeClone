@@ -2,16 +2,15 @@ from llamafactory.chat import ChatModel
 from llamafactory.extras.misc import torch_gc
 
 
-try:
-    import platform
-
-    if platform.system() != "Windows":
-        import readline  # noqa: F401
-except ImportError:
-    print("Install `readline` for a better experience.")
-
-
 def main():
+    try:
+        import platform
+
+        if platform.system() != "Windows":
+            import readline  # noqa: F401
+    except ImportError:
+        print("Install `readline` for a better experience.")
+
     chat_model = ChatModel()
     messages = []
     print("Welcome to the CLI application, use `clear` to remove the history, use `exit` to exit the application.")

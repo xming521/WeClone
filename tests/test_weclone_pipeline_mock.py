@@ -41,7 +41,7 @@ class TestWeclonePipeline(unittest.TestCase):
         # 创建简单的测试CSV数据
         cls._create_test_csv(os.path.join(chat_folder, "test_chat.csv"))
         
-        # 创建测试用的settings.json
+        # 创建测试用的settings.jsonc
         cls._create_test_settings()
         
         # 创建测试用的test_data.json用于模型评估
@@ -77,7 +77,7 @@ class TestWeclonePipeline(unittest.TestCase):
     
     @classmethod
     def _create_test_settings(cls):
-        """创建测试用的settings.json"""
+        """创建测试用的settings.jsonc"""
         # 简化版的设置文件，只包含测试所需的最小配置
         settings = {
             "train_sft_args": {
@@ -121,7 +121,7 @@ class TestWeclonePipeline(unittest.TestCase):
         }
         
         # 保存到临时目录
-        with open(os.path.join(cls.test_dir, "settings.json"), "w", encoding="utf-8") as f:
+        with open(os.path.join(cls.test_dir, "settings.jsonc"), "w", encoding="utf-8") as f:
             json.dump(settings, f, indent=4)
     
     @classmethod

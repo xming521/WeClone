@@ -4,10 +4,10 @@ from llamafactory.chat import ChatModel
 from llamafactory.api.app import create_app
 from weclone.utils.config import load_config
 
-config = load_config("api_service")
 
 
 def main():
+    config = load_config("api_service")
     chat_model = ChatModel(config)
     app = create_app(chat_model)
     print("Visit http://localhost:{}/docs for API document.".format(os.environ.get("API_PORT", 8005)))
