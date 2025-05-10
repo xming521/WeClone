@@ -124,7 +124,9 @@ python weclone/server/api_service.py
 ### 使用QLoRA微调
 由于 LlamaFactory 暂未提供直接暴露和管理量化参数（`BitsAndBytesConfig`）的接口，使得在使用 QLoRA 4-bit 量化时，需要修改框架内部模型加载方法。我们通过 Monkey-patch 的方式：在运行脚本最前面，统一注入 `quantization_config`，从而对所有调用 `AutoModelForCausalLM.from_pretrained` 的地方生效。
 
-**使用方法：**在你的训练脚本和推理脚本开头，只需引入并调用：
+#### 使用方法
+
+在你的训练脚本和推理脚本开头，只需引入并调用：
 
 ```python
 from weclone.utils.qlora_patch import apply_qlora_patch
