@@ -9,6 +9,7 @@
   <img src="https://img.shields.io/badge/QQ群-708067078-12B7F5?style=for-the-badge&logo=qq&logoColor=white" alt="WeClone①" title="WeClone①">
 </a>
 <a href="https://hellogithub.com/repository/12ab209b56cb4cfd885c8cfd4cfdd53e" target="_blank"><img src="https://abroad.hellogithub.com/v1/widgets/recommend.svg?rid=12ab209b56cb4cfd885c8cfd4cfdd53e&claim_uid=RThlPDoGrFvdMY5" alt="Featured｜HelloGitHub" style="width: 134px; height: 28px;" width="134" height="28" /></a>
+<a href="https://deepwiki.com/xming521/WeClone"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"  style="width: 134px; height: 23px;margin-bottom: 3px;"></a>
 </div>
 
 
@@ -130,11 +131,12 @@ weclone-cli server
 ```
 
 ### 使用常见聊天问题测试
-有些答案比较抽象，主要原因是训练数据没有覆盖，后续通过ＲＡＧ来解决。测试结果在test_result-my.txt。
+不包含询问个人信息的问题，仅有日常聊天。测试结果在test_result-my.txt。
 ```bash
 weclone-cli server
 weclone-cli test-model
 ```
+
 ## 🖼️ 微调效果
 使用Qwen2.5-14B-Instruct模型，大概3万条处理后的有效数据，loss降到了3.5左右的效果。
 <details>
@@ -170,10 +172,10 @@ weclone-cli test-model
 - [ ] Memory 支持
 - [ ] 支持多模态
 - [ ] 数据增强
-
+- [ ] 支持GUI
 
 ## 问题解决
-- 微调问题：[LLaMA-Factory| FAQs | 常见问题](https://github.com/hiyouga/LLaMA-Factory/issues/4614)
+- 微调问题：[LLaMA-Factory| FAQs | 常见问题](https://github.com/hiyouga/LLaMA-Factory/issues/4614) 或者更方便的 [![更方便的Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/hiyouga/LLaMA-Factory)
 
 ## ❤️ 贡献代码
 
@@ -181,7 +183,7 @@ weclone-cli test-model
 
 你可以通过查看Issues或帮助审核 PR（拉取请求）来贡献。对于新功能的添加，请先通过 Issue 讨论。   
 运行`uv pip install --group dev -e .`安装开发依赖。   
-项目使用`pytest`测试，`pyright`检查类型，`ruff`检查代码格式。
+项目使用`pytest`测试(测试脚本待完善)，`pyright`检查类型，`ruff`检查代码格式。
 
 
 ## ⚠️ 免责声明
