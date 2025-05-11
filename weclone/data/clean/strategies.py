@@ -50,6 +50,7 @@ class LLMCleaningStrategy(CleaningStrategy):
             temperature=0,
             guided_decoding_class=QaPairScore,
             repetition_penalty=1.2,
+            bad_words=[r"\n"],
         )
 
         parsed_scores: List[QaPairScore] = []

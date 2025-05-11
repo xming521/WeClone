@@ -46,6 +46,7 @@ def infer(
     top_p: float = 0.7,
     top_k: int = 50,
     guided_decoding_class: Optional[type[BaseModel]] = None,
+    bad_words: Optional[List[str]] = None,
     logprobs: Optional[int] = None,
     max_new_tokens: int = 1024,
     repetition_penalty: float = 1.0,
@@ -99,7 +100,7 @@ def infer(
         skip_special_tokens=skip_special_tokens,
         seed=seed,
         guided_decoding=guided_decoding_params,
-        bad_words=[r"\n"],
+        bad_words=bad_words,
     )
     if model_args.adapter_name_or_path is not None:
         lora_request = LoRARequest("default", 1, model_args.adapter_name_or_path[0])

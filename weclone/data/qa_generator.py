@@ -37,7 +37,7 @@ class DataProcessor:
         ]
 
         # blocked_words
-        config_blocked_words = self.config.get("blocked_words", []) if hasattr(self, "config") else []
+        config_blocked_words = self.config.get("blocked_words", [])
         file_blocked_words = []
         try:
             with open("./dataset/blocked_words.json", encoding="utf-8") as f:
