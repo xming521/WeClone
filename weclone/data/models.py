@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from pandas import Timestamp
+from pydantic import BaseModel
 
 
 @dataclass
@@ -20,6 +21,22 @@ class CutMessage:
     is_sender: int
     cut_type: str
     CreateTime: Timestamp
+
+
+@dataclass
+class QaPair:
+    id: int
+    system: str
+    instruction: str
+    output: str
+    history: list[list[str]]
+    time: Timestamp
+    score: int
+
+
+class QaPairScore(BaseModel):
+    id: int
+    score: int
 
 
 skip_type_list = [

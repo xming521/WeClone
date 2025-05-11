@@ -156,5 +156,9 @@ data/test
 Spark-TTS-0.5B/
 uv.lock
 output*
+*.out
 
 Qwen*/
+settings.jsonc
+settings.json
+dataset/blocked_words.json
