@@ -11,6 +11,7 @@
 [![Telegram](https://img.shields.io/badge/Telegram-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/+JEdak4m0XEQ3NGNl)
 
 <a href="https://hellogithub.com/repository/12ab209b56cb4cfd885c8cfd4cfdd53e" target="_blank"><img src="https://abroad.hellogithub.com/v1/widgets/recommend.svg?rid=12ab209b56cb4cfd885c8cfd4cfdd53e&claim_uid=RThlPDoGrFvdMY5" alt="Featured｜HelloGitHub" style="width: 150px; height: 28px;" /></a>
+<a href="https://trendshift.io/repositories/13759" target="_blank"><img src="https://trendshift.io/api/badge/repositories/13759" alt="xming521%2FWeClone | Trendshift" style="width: 220px; height: 50px;" /></a>
 <a href="https://deepwiki.com/xming521/WeClone"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"  style="width: 134px; height: 23px;margin-bottom: 3px;"></a>
 </div>
 
@@ -77,9 +78,17 @@ python -c "import torch; print('CUDA是否可用:', torch.cuda.is_available());"
 
 5.（可选）安装FlashAttention，加速训练和推理：`uv pip install flash-attn --no-build-isolation`
 
+## 模型下载
+```bash
+git lfs install
+git clone https://www.modelscope.cn/Qwen/Qwen2.5-7B-Instruct.git
+```
+下载有问题使用其他方式下载：[模型的下载](https://www.modelscope.cn/docs/models/download)
+
+
 ## 数据准备
 
-请使用[PyWxDump](https://github.com/xaoyaoo/PyWxDump)提取微信聊天记录。可以先将手机的聊天记录迁移（备份）到电脑，数据量更多一些。下载软件并解密数据库后，点击聊天备份，导出类型为CSV，可以导出多个联系人（不建议使用群聊记录），然后将导出的位于`wxdump_tmp/export` 的 `csv` 文件夹放在`./dataset`目录即可，也就是不同人聊天记录的文件夹一起放在 `./dataset/csv`。   
+请使用[PyWxDump](https://github.com/xaoyaoo/PyWxDump)提取微信聊天记录（不支持4.0版本微信）。可以先将手机的聊天记录迁移（备份）到电脑，数据量更多一些。下载软件并解密数据库后，点击聊天备份，导出类型为CSV，可以导出多个联系人（不建议使用群聊记录），然后将导出的位于`wxdump_tmp/export` 的 `csv` 文件夹放在`./dataset`目录即可，也就是不同人聊天记录的文件夹一起放在 `./dataset/csv`。   
 
 ## 数据预处理
 
@@ -93,13 +102,6 @@ weclone-cli make-dataset
 ```
 - 目前仅支持时间窗口策略，根据`single_combine_time_window`将单人连续消息通过逗号连接合并为一句，根据`qa_match_time_window`匹配问答对。
 - 可以启用`clean_dataset`中的`enable_clean`选项，对数据进行清洗，以达到更好效果。当前使用llm judge对聊天记录进行打分，使用vllm进行离线推理。在得到`llm打分分数分布情况`后，调整`accept_score`选择可以接受的分数，再适当降低`train_sft_args`的`lora_dropout`参数提升拟合效果。
-
-
-## 模型下载
-```bash
-git lfs install
-git clone https://www.modelscope.cn/Qwen/Qwen2.5-7B-Instruct.git
-```
 
 ## 配置参数并微调模型
 
