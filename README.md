@@ -179,8 +179,13 @@ weclone-cli test-model
 
 1. [部署 LangBot](https://github.com/RockChinQ/LangBot#-%E5%BC%80%E5%A7%8B%E4%BD%BF%E7%94%A8)
 2. 在 LangBot 中添加一个机器人
-3. 在模型页添加新模型，名称`gpt-3.5-turbo`，供应商选择 OpenAI，填写 请求 URL 为 WeClone 的地址，详细连接方式可以参考[文档](https://docs.langbot.app/zh/workshop/network-details.html)
-4. 在流水线配置中选择刚才添加的模型，或修改提示词配置
+4. 在模型页添加新模型，名称`gpt-3.5-turbo`，供应商选择 OpenAI，填写 请求 URL 为 WeClone 的地址，详细连接方式可以参考[文档](https://docs.langbot.app/zh/workshop/network-details.html)，API Key 任意填写。
+
+<img width="400px" alt="image" src="https://github.com/user-attachments/assets/fc167dea-7c93-4d94-9c5f-db709d0320ba" />
+
+6. 在流水线配置中选择刚才添加的模型，或修改提示词配置
+
+<img width="400px" alt="image" src="https://github.com/user-attachments/assets/dbb0fd0a-f760-42db-acd0-bb99c859b52e" />
 
 ## 📌 路线图
 - [ ] 更丰富的上下文：包括上下文对话、聊天对象信息、时间等 + 思考
