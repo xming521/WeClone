@@ -66,7 +66,7 @@ uv pip install --group main -e .
 
 3.将配置文件模板复制一份并重命名为`settings.jsonc`，后续配置修改在此文件进行：
 ```bash
-cp settings.template.json settings.jsonc
+cp settings.template.jsonc settings.jsonc
 ```
 > [!NOTE]
 > 训练以及推理相关配置统一在文件`settings.jsonc`
