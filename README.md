@@ -11,13 +11,13 @@
 [![Telegram](https://img.shields.io/badge/Telegram-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/+JEdak4m0XEQ3NGNl)
 
 <a href="https://hellogithub.com/repository/12ab209b56cb4cfd885c8cfd4cfdd53e" target="_blank"><img src="https://abroad.hellogithub.com/v1/widgets/recommend.svg?rid=12ab209b56cb4cfd885c8cfd4cfdd53e&claim_uid=RThlPDoGrFvdMY5" alt="Featured｜HelloGitHub" style="width: 150px; height: 28px;" /></a>
-<a href="https://trendshift.io/repositories/13759" target="_blank"><img src="https://trendshift.io/api/badge/repositories/13759" alt="xming521%2FWeClone | Trendshift" style="width: 220px; height: 50px;" /></a>
 <a href="https://deepwiki.com/xming521/WeClone"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"  style="width: 134px; height: 23px;margin-bottom: 3px;"></a>
-<br />
-
-<a href="https://blog.051088.xyz/2025/05/14/WeClone-%E7%94%A8%E5%BE%AE%E4%BF%A1%E8%81%8A%E5%A4%A9%E8%AE%B0%E5%BD%95%E6%89%93%E9%80%A0%E8%87%AA%E5%B7%B1%E7%9A%84AI%E6%95%B0%E5%AD%97%E5%88%86%E8%BA%AB/" target="_blank">Windows部署指南</a>
-
-
+</div>
+<p align="center">
+  <a href="https://blog.051088.xyz/2025/05/14/WeClone-%E7%94%A8%E5%BE%AE%E4%BF%A1%E8%81%8A%E5%A4%A9%E8%AE%B0%E5%BD%95%E6%89%93%E9%80%A0%E8%87%AA%E5%B7%B1%E7%9A%84AI%E6%95%B0%E5%AD%97%E5%88%86%E8%BA%AB/" target="_blank">
+    Windows部署指南
+  </a>
+</p>
 
 
 ## ✨核心功能
@@ -37,7 +37,7 @@
 > [!IMPORTANT]
 > - WeClone仍在快速迭代期，当前效果不代表最终效果。  
 > - 微调LLM效果很大程度取决于模型大小、聊天数据的数量和质量，理论上模型越大，数据越多，效果越好。   
-> - Windows环境未进行严格测试，可以使用WSL作为运行环境。详细教程可点击[Windows部署指南](https://blog.051088.xyz/2025/05/14/WeClone-用微信聊天记录打造自己的AI数字分身/)查看。
+> - Windows环境未进行严格测试，可以使用WSL作为运行环境。详细教程可点击[Windows部署指南](https://blog.051088.xyz/2025/05/14/WeClone-%E7%94%A8%E5%BE%AE%E4%BF%A1%E8%81%8A%E5%A4%A9%E8%AE%B0%E5%BD%95%E6%89%93%E9%80%A0%E8%87%AA%E5%B7%B1%E7%9A%84AI%E6%95%B0%E5%AD%97%E5%88%86%E8%BA%AB/)查看。
 
 ### 硬件要求
 
@@ -70,7 +70,7 @@ uv pip install --group main -e .
 
 3.将配置文件模板复制一份并重命名为`settings.jsonc`，后续配置修改在此文件进行：
 ```bash
-cp settings.template.jsonc settings.jsonc
+cp settings.template.json settings.jsonc
 ```
 > [!NOTE]
 > 训练以及推理相关配置统一在文件`settings.jsonc`
@@ -82,17 +82,9 @@ python -c "import torch; print('CUDA是否可用:', torch.cuda.is_available());"
 
 5.（可选）安装FlashAttention，加速训练和推理：`uv pip install flash-attn --no-build-isolation`
 
-## 模型下载
-```bash
-git lfs install
-git clone https://www.modelscope.cn/Qwen/Qwen2.5-7B-Instruct.git
-```
-下载有问题使用其他方式下载：[模型的下载](https://www.modelscope.cn/docs/models/download)
-
-
 ## 数据准备
 
-请使用[PyWxDump](https://github.com/xaoyaoo/PyWxDump)提取微信聊天记录（不支持4.0版本微信）。可以先将手机的聊天记录迁移（备份）到电脑，数据量更多一些。下载软件并解密数据库后，点击聊天备份，导出类型为CSV，可以导出多个联系人（不建议使用群聊记录），然后将导出的位于`wxdump_tmp/export` 的 `csv` 文件夹放在`./dataset`目录即可，也就是不同人聊天记录的文件夹一起放在 `./dataset/csv`。   
+请使用[PyWxDump](https://github.com/xaoyaoo/PyWxDump)提取微信聊天记录。可以先将手机的聊天记录迁移（备份）到电脑，数据量更多一些。下载软件并解密数据库后，点击聊天备份，导出类型为CSV，可以导出多个联系人（不建议使用群聊记录），然后将导出的位于`wxdump_tmp/export` 的 `csv` 文件夹放在`./dataset`目录即可，也就是不同人聊天记录的文件夹一起放在 `./dataset/csv`。   
 
 ## 数据预处理
 
@@ -106,6 +98,13 @@ weclone-cli make-dataset
 ```
 - 目前仅支持时间窗口策略，根据`single_combine_time_window`将单人连续消息通过逗号连接合并为一句，根据`qa_match_time_window`匹配问答对。
 - 可以启用`clean_dataset`中的`enable_clean`选项，对数据进行清洗，以达到更好效果。当前使用llm judge对聊天记录进行打分，使用vllm进行离线推理。在得到`llm打分分数分布情况`后，调整`accept_score`选择可以接受的分数，再适当降低`train_sft_args`的`lora_dropout`参数提升拟合效果。
+
+
+## 模型下载
+```bash
+git lfs install
+git clone https://www.modelscope.cn/Qwen/Qwen2.5-7B-Instruct.git
+```
 
 ## 配置参数并微调模型
 
@@ -160,8 +159,6 @@ weclone-cli test-model
 
 ## 🤖 部署到聊天机器人
 
-### AstrBot
-
 [AstrBot](https://github.com/AstrBotDevs/AstrBot) 是易上手的多平台 LLM 聊天机器人及开发框架 ✨ 平台支持 QQ、QQ频道、Telegram、微信、企微、飞书。      
 
 使用步骤：
@@ -176,20 +173,6 @@ weclone-cli test-model
 > 检查api_service的日志，尽量保证大模型服务请求的参数和微调时一致，tool插件能力都关掉。
 7. 调整采样参数，例如temperature、top_p、top_k等
 [配置自定义的模型参数](https://astrbot.app/config/model-config.html#%E9%85%8D%E7%BD%AE%E8%87%AA%E5%AE%9A%E4%B9%89%E7%9A%84%E6%A8%A1%E5%9E%8B%E5%8F%82%E6%95%B0)
-
-### LangBot
-
-[LangBot](https://github.com/RockChinQ/LangBot) 是一个开源的接入全球多种即时通信平台的 LLM 机器人平台，适合各种场景使用。
-
-1. [部署 LangBot](https://github.com/RockChinQ/LangBot#-%E5%BC%80%E5%A7%8B%E4%BD%BF%E7%94%A8)
-2. 在 LangBot 中添加一个机器人
-4. 在模型页添加新模型，名称`gpt-3.5-turbo`，供应商选择 OpenAI，填写 请求 URL 为 WeClone 的地址，详细连接方式可以参考[文档](https://docs.langbot.app/zh/workshop/network-details.html)，API Key 任意填写。
-
-<img width="400px" alt="image" src="https://github.com/user-attachments/assets/fc167dea-7c93-4d94-9c5f-db709d0320ba" />
-
-6. 在流水线配置中选择刚才添加的模型，或修改提示词配置
-
-<img width="400px" alt="image" src="https://github.com/user-attachments/assets/dbb0fd0a-f760-42db-acd0-bb99c859b52e" />
 
 ## 📌 路线图
 - [ ] 更丰富的上下文：包括上下文对话、聊天对象信息、时间等 + 思考
