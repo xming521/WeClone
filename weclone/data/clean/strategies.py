@@ -6,7 +6,8 @@ from typing import Any, Dict, List, Union
 from langchain_core.prompts import PromptTemplate
 from weclone.data.models import QaPair, CutMessage, QaPairScore
 from weclone.prompts.clean_data import CLEAN_PROMPT
-from weclone.core.inference.vllm_infer import infer as infer
+from llamafactory.extras.packages import is_vllm_available
+
 from weclone.utils.log import logger
 
 
@@ -33,6 +34,18 @@ class CleaningStrategy(ABC):
 @dataclass
 class LLMCleaningStrategy(CleaningStrategy):
     """使用大模型进行数据清洗的策略"""
+
+    def __init__(self, make_dataset_config: Dict):
+        super().__init__(make_dataset_config)
+        if is_vllm_available():
+            from weclone.core.inference.vllm_infer import infer as vllm_infer
+            self.inference_fn = vllm_infer
+            logger.info("使用 vLLM 推理引擎。")
+        else:
+            from llamafactory.hparams import get_infer_args
+
+            self.inference_fn = 
+            logger.info("vLLM 不可用，使用 Transformers 推理引擎。")
 
     def judge(self, data: List[QaPair]) -> None:
         """
@@ -73,7 +86,7 @@ class LLMCleaningStrategy(CleaningStrategy):
         score_series = pd.Series(scores)
         score_counts = score_series.value_counts().sort_index()
         score_percentages = score_series.value_counts(normalize=True).sort_index() * 100
-        pd.set_option('display.unicode.east_asian_width', True) # 尝试修正对齐问题
+        pd.set_option("display.unicode.east_asian_width", True)  # 尝试修正对齐问题
         distribution_df = pd.DataFrame(  # 合并数量和百分比到一个 DataFrame 中以便打印
             {
                 "数量": score_counts,

@@ -127,11 +127,3 @@ def infer(
 
     results = LLM(**engine_args).generate(inputs, sampling_params, lora_request=lora_request)
     return results
-    # preds = [result.outputs[0].text for result in results]
-    # with open(save_name, "w", encoding="utf-8") as f:
-    #     for text, pred, label in zip(prompts, preds, labels):
-    #         f.write(json.dumps({"prompt": text, "predict": pred, "label": label}, ensure_ascii=False) + "\n")
-
-    # print("*" * 70)
-    # print(f"{len(prompts)} generated results have been saved at {save_name}.")
-    # print("*" * 70)
