@@ -6,7 +6,6 @@ from typing import Any, Dict, List, Union
 from langchain_core.prompts import PromptTemplate
 from weclone.data.models import QaPair, CutMessage, QaPairScore
 from weclone.prompts.clean_data import CLEAN_PROMPT
-from llamafactory.extras.packages import is_vllm_available
 
 from weclone.utils.log import logger
 
@@ -35,28 +34,18 @@ class CleaningStrategy(ABC):
 class LLMCleaningStrategy(CleaningStrategy):
     """使用大模型进行数据清洗的策略"""
 
-    def __init__(self, make_dataset_config: Dict):
-        super().__init__(make_dataset_config)
-        if is_vllm_available():
-            from weclone.core.inference.vllm_infer import infer as vllm_infer
-            self.inference_fn = vllm_infer
-            logger.info("使用 vLLM 推理引擎。")
-        else:
-            from llamafactory.hparams import get_infer_args
-
-            self.inference_fn = 
-            logger.info("vLLM 不可用，使用 Transformers 推理引擎。")
 
     def judge(self, data: List[QaPair]) -> None:
         """
         调用llm打分，并将分数直接赋值给传入的QaPair。
         """
+        from weclone.core.inference.offline_infer import vllm_infer
         logger.info("开始使用llm对数据打分")
         inputs = []
         prompt_template = PromptTemplate.from_template(CLEAN_PROMPT)
         for qa in data:
             inputs.append(prompt_template.invoke({"id": qa.id, "Q": qa.instruction, "A": qa.output}).text)  # type: ignore
-        outputs = infer(
+        outputs = vllm_infer(
             inputs,
             self.make_dataset_config["model_name_or_path"],
             template=self.make_dataset_config["template"],
