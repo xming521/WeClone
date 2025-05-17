@@ -83,11 +83,14 @@ class DataProcessor:
             return
 
         csv_files = self.get_csv_files()
+        logger.info(f"共发现 {len(csv_files)} 个 CSV 文件，开始处理")
         message_list: List[ChatMessage] = []
         for csv_file in csv_files:
+            logger.debug(f"开始处理 CSV 文件: {csv_file}")
             chat_messages = self.load_csv(csv_file)
             message_list.extend(self.group_consecutive_messages(messages=chat_messages))
             # self.process_by_msgtype(chat_message)
+            logger.debug(f"处理完成: {csv_file}，共加载 {len(chat_messages)} 条消息")
         qa_res = self.match_qa(message_list)
         if self.c["prompt_with_history"]:
             qa_res = self.add_history_to_qa(qa_res)
@@ -143,7 +146,7 @@ class DataProcessor:
             logger.error(f"执行 length_cdf.py 脚本时发生未知错误: {str(e)}")
 
     def get_csv_files(self):
-        """遍历文件夹获取所有CSV文件路径"""
+        """遍历文件夹获取所有CSV文件路径，并按文件名中的起始序号排序"""
 
         csv_files = []
         for chat_obj_folder in os.listdir(self.csv_folder):
@@ -153,11 +156,20 @@ class DataProcessor:
                     continue
                 csvfile_path = os.path.join(chat_obj_folder_path, csvfile)
                 csv_files.append(csvfile_path)
+        # 提取文件名中的起始数字，比如 wxid_..._0_5000.csv → 0
+        pattern = re.compile(r'_(\d+)_\d+\.csv$')
+        def extract_start(fp: str) -> int:
+            name = os.path.basename(fp)
+            m = pattern.search(name)
+            return int(m.group(1)) if m else 0
+
+        # 按起始数字升序排序
+        csv_files.sort(key=extract_start)
         return csv_files
 
     def match_qa(self, messages: List[ChatMessage]) -> List[Union[QaPair, CutMessage]]:
         """
-        匹配问答对
+        匹配问答对，通过is_sender区分对话角色
 
         Args:
             messages: 消息列表
@@ -185,13 +197,13 @@ class DataProcessor:
                 continue
 
             if current_state == WAITING_INSTRUCTION:
-                if msg.is_sender == 0:  # 收到对方消息
+                if msg.is_sender == 0:  # is_sender=0代表对方发送的消息(作为指令)，可修改为is_sender=1: 自己发送的消息作为instruction（问题）
                     current_instruction = msg.msg
                     last_message = msg
                     current_state = WAITING_RESPONSE
 
             elif current_state == WAITING_RESPONSE:
-                if msg.is_sender == 0:  # 收到对方消息
+                if msg.is_sender == 0:  # 再次收到对方消息
                     current_instruction = msg.msg
                     last_message = msg
                     # 状态保持不变
