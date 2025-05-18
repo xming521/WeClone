@@ -1,17 +1,3 @@
-# Copyright 2025 the LlamaFactory team.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 import json
 from typing import List, Optional, Union
 
@@ -26,12 +12,14 @@ from pydantic import BaseModel
 from vllm.sampling_params import GuidedDecodingParams
 
 
-if is_vllm_available():
-    from vllm import LLM, SamplingParams
-    from vllm.lora.request import LoRARequest
+from vllm import LLM, SamplingParams
+from vllm.lora.request import LoRARequest
 
 
-def infer(
+# 这里不需要写太好，transforms库后续更新自带vllm
+
+
+def vllm_infer(
     inputs: Union[str, List[str]],
     model_name_or_path: str,
     adapter_name_or_path: Optional[str] = None,
@@ -118,6 +106,7 @@ def infer(
         "disable_log_stats": True,
         "enable_lora": model_args.adapter_name_or_path is not None,
         "enable_prefix_caching": True,  # 是否启用前缀缓存
+        "gpu_memory_utilization": 0.95,
         # "quantization": "bitsandbytes", # 是否启用vllm的 bitsandbytes 的量化加载
         # "load_format": "bitsandbytes",
     }
@@ -129,11 +118,3 @@ def infer(
 
     results = LLM(**engine_args).generate(inputs, sampling_params, lora_request=lora_request)
     return results
-    # preds = [result.outputs[0].text for result in results]
-    # with open(save_name, "w", encoding="utf-8") as f:
-    #     for text, pred, label in zip(prompts, preds, labels):
-    #         f.write(json.dumps({"prompt": text, "predict": pred, "label": label}, ensure_ascii=False) + "\n")
-
-    # print("*" * 70)
-    # print(f"{len(prompts)} generated results have been saved at {save_name}.")
-    # print("*" * 70)
