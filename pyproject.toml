@@ -1,6 +1,6 @@
 [project]
 name = "WeClone"
-version = "0.2.2"
+version = "0.2.21"
 description = "从聊天记录创造数字分身的一站式解决方案"
 authors = [{ name = "xming521" }]
 readme = "README.md"

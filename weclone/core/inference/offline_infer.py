@@ -18,6 +18,7 @@ from vllm.lora.request import LoRARequest
 
 # 这里不需要写太好，transforms库后续更新自带vllm
 
+
 def vllm_infer(
     inputs: Union[str, List[str]],
     model_name_or_path: str,
@@ -105,6 +106,7 @@ def vllm_infer(
         "disable_log_stats": True,
         "enable_lora": model_args.adapter_name_or_path is not None,
         "enable_prefix_caching": True,  # 是否启用前缀缓存
+        "gpu_memory_utilization": 0.95,
         # "quantization": "bitsandbytes", # 是否启用vllm的 bitsandbytes 的量化加载
         # "load_format": "bitsandbytes",
     }
@@ -116,7 +118,3 @@ def vllm_infer(
 
     results = LLM(**engine_args).generate(inputs, sampling_params, lora_request=lora_request)
     return results
-
-
-
-
