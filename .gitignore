@@ -149,7 +149,7 @@ archive
 model_output*
 data/test
 .vscode
-*-my.*
+*-my*.*
 *.csv
 *test.*
 *users.json   

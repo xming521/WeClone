@@ -7,6 +7,7 @@ import re
 import pandas as pd
 import json
 from pandas import Timestamp
+from llamafactory.extras.packages import is_vllm_available
 
 from weclone.data.clean.strategies import LLMCleaningStrategy
 from weclone.utils.config import load_config
@@ -48,12 +49,6 @@ class DataProcessor:
         self.blocked_words = list(set(config_blocked_words + file_blocked_words))
         logger.info(f"聊天记录禁用词: {self.blocked_words}")
 
-        if self.config.get("clean_dataset", {}).get("enable_clean", False) and self.config.get(
-            "prompt_with_history", False
-        ):
-            logger.warning("开启 prompt_with_history 不支持 clean_dataset 功能")
-            exit()
-
         if self.config["single_combine_strategy"] == "time_window":
             self.single_combine_strategy = TimeWindowStrategy(
                 time_window=self.config["single_combine_time_window"] * 60,
@@ -71,6 +66,18 @@ class DataProcessor:
             )
         elif self.config["qa_match_strategy"] == "llm":
             self.qa_match_strategy = LLMStrategy(is_single_chat=False)
+
+        clean_dataset_config = self.config.get("clean_dataset", {})
+        enable_clean = clean_dataset_config.get("enable_clean", False)
+
+        if enable_clean:
+            if self.config.get("prompt_with_history", False):
+                logger.warning("开启 prompt_with_history 不支持 clean_dataset 功能")
+                exit()
+            
+            if not is_vllm_available():
+                logger.warning("vLLM 不可用，暂不清洗数据集。")
+                clean_dataset_config["enable_clean"] = False
 
         if self.config.get("clean_dataset", {}).get("enable_clean", False):
             if self.config.get("clean_dataset", {}).get("clean_strategy", "llm") == "llm":
@@ -332,7 +339,7 @@ class DataProcessor:
 
                 combined_content += content
             if len(combined_content) > self.c["combine_msg_max_length"]:
-                logger.warning(f"组合后消息长度超过{self.c['combine_msg_max_length']}将截断：\n {combined_content}")
+                logger.warning(f"组合后消息长度超过{self.c['combine_msg_max_length']}将截断：\n {combined_content[: 50]}")
                 combined_content = combined_content[: self.c["combine_msg_max_length"]]
 
             combined_message = ChatMessage(
