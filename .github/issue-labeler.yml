@@ -1,0 +1,47 @@
+# 添加 Discussion 标签
+Discussion:
+  - '(讨论|交流|分享|意见|建议|思考|探讨|交换意见|brainstorm|discussion)'
+
+# 添加 bug 标签
+bug:
+  - '(bug|错误|问题|失败|崩溃|异常|报错|不工作|无法运行|broken|crash|error|exception|fails)'
+
+# 添加 chatbot 标签
+chatbot:
+  - '(聊天机器人|chatbot|chat bot|对话机器人|聊天助手|AI助手|机器人对话|bot|assistant)'
+
+# 添加 documentation 标签
+documentation:
+  - '(文档|说明|使用指南|指导|手册|教程|文档更新|documentation|docs|guide|tutorial|readme)'
+
+# 添加 duplicate 标签
+duplicate:
+  - '(重复|已有|duplicate|已经存在|已提交过|重复问题|重复报告|dup)'
+
+# 添加 feature 标签
+feature:
+  - '(功能|特性|新增|增加|添加|实现|feature|enhancement|新功能|功能请求|feature request)'
+
+# 添加 good first issue 标签
+good first issue:
+  - '(入门|简单|容易|新手|初学者|开始|first|beginner|starter|easy|简单任务|good first issue)'
+
+# 添加 help wanted 标签
+help wanted:
+  - '(需要帮助|寻求帮助|请求协助|help|求助|协助|帮忙|help wanted|need help|assistance)'
+
+# 添加 invalid 标签
+invalid:
+  - '(无效|不适用|不相关|无关|错误提交|invalid|not relevant|irrelevant|not applicable)'
+
+# 添加 Mac 标签
+Mac:
+  - '(Mac|MacOS|macOS|OSX|Mac系统|苹果系统|苹果电脑|MacBook)'
+
+# 添加 question 标签
+question:
+  - '(问题|疑问|如何|怎么|请问|是否|能否|可以吗|question|how to|what is|why)'
+
+# 添加 Windows 标签
+Windows:
+  - '(Windows|微软|Win10|Win11|Windows系统|微软系统|win)'
