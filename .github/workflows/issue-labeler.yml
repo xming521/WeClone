@@ -28,3 +28,4 @@ jobs:
           configuration-path: .github/issue-labeler.yml
           enable-versioned-regex: 0
           not-before: ${{ steps.last_run.outputs.date }}
+          batch-size: 20  # 一次处理20个issue
