@@ -1,0 +1,29 @@
+name: add labels to Issues
+
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+jobs:
+  label_issues:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: checkout
+        uses: actions/checkout@v3
+        
+      - name: get_last_run_time
+        id: last_run
+        run: |
+          # 获取当前日期减去 1 天作为默认值（处理最近一天的 issues）
+          echo "date=$(date -d '1 day ago' -u +"%Y-%m-%dT%H:%M:%SZ")" >> $GITHUB_OUTPUT
+      
+      - name: RegEx Issue Labeler
+        uses: github/issue-labeler@v3.4
+        with:
+          repo-token: "${{ secrets.GITHUB_TOKEN }}"
+          configuration-path: .github/issue-labeler.yml
+          enable-versioned-regex: 0
+          not-before: ${{ steps.last_run.outputs.date }}
