@@ -47,7 +47,7 @@ class DataProcessor:
             pass
 
         self.blocked_words = list(set(config_blocked_words + file_blocked_words))
-        logger.info(f"聊天记录禁用词: {self.blocked_words}")
+        # logger.info(f"聊天记录禁用词: {self.blocked_words}")
 
         if self.config["single_combine_strategy"] == "time_window":
             self.single_combine_strategy = TimeWindowStrategy(

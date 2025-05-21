@@ -8,6 +8,9 @@
         "finetuning_type": "lora",
         "trust_remote_code": true
     },
+    "cli_args": {
+        "full_log": false
+    },
     "make_dataset_args": {
         //数据处理配置
         "include_type": [
@@ -60,7 +63,7 @@
         "use_fast_tokenizer": true,
         "lora_target": "q_proj,v_proj",
         "lora_rank": 4,
-        "lora_dropout": 0.4,
+        "lora_dropout": 0.3,
         "weight_decay": 0.1,
         "overwrite_cache": true,
         "per_device_train_batch_size": 8,
@@ -71,7 +74,7 @@
         "save_steps": 100,
         "learning_rate": 1e-4,
         "warmup_ratio": 0.1,
-        "num_train_epochs": 3,
+        "num_train_epochs": 2,
         "plot_loss": true,
         "fp16": true,
         "flash_attn": "fa2",
