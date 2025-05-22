@@ -47,7 +47,7 @@ class DataProcessor:
             pass
 
         self.blocked_words = list(set(config_blocked_words + file_blocked_words))
-        logger.info(f"聊天记录禁用词: {self.blocked_words}")
+        # logger.info(f"聊天记录禁用词: {self.blocked_words}")
 
         if self.config["single_combine_strategy"] == "time_window":
             self.single_combine_strategy = TimeWindowStrategy(
@@ -74,7 +74,7 @@ class DataProcessor:
             if self.config.get("prompt_with_history", False):
                 logger.warning("开启 prompt_with_history 不支持 clean_dataset 功能")
                 exit()
-            
+
             if not is_vllm_available():
                 logger.warning("vLLM 不可用，暂不清洗数据集。")
                 clean_dataset_config["enable_clean"] = False
@@ -164,7 +164,8 @@ class DataProcessor:
                 csvfile_path = os.path.join(chat_obj_folder_path, csvfile)
                 csv_files.append(csvfile_path)
         # 提取文件名中的起始数字，比如 wxid_..._0_5000.csv → 0
-        pattern = re.compile(r'_(\d+)_\d+\.csv$')
+        pattern = re.compile(r"_(\d+)_\d+\.csv$")
+
         def extract_start(fp: str) -> int:
             name = os.path.basename(fp)
             m = pattern.search(name)
@@ -339,7 +340,9 @@ class DataProcessor:
 
                 combined_content += content
             if len(combined_content) > self.c["combine_msg_max_length"]:
-                logger.warning(f"组合后消息长度超过{self.c['combine_msg_max_length']}将截断：\n {combined_content[: 50]}")
+                logger.warning(
+                    f"组合后消息长度超过{self.c['combine_msg_max_length']}将截断：\n {combined_content[:50]}"
+                )
                 combined_content = combined_content[: self.c["combine_msg_max_length"]]
 
             combined_message = ChatMessage(
