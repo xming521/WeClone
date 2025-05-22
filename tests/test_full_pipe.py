@@ -62,7 +62,7 @@ def run_cli_command(command: list[str], timeout: int | None = None, background: 
         If background=True, returns a Popen object; otherwise, returns a CompletedProcess object.
     """
     env = os.environ.copy()
-    env["WECLONE_CONFIG_PATH"] = "tests/test.jsonc" # Set environment variable
+    env["WECLONE_CONFIG_PATH"] = "tests/full_pipe.jsonc" # Set environment variable
 
     if background:
         process = subprocess.Popen(
