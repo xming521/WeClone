@@ -12,7 +12,7 @@ alwaysApply: true
 # Your rule content
 - You can @ files here
 - The project uses uv as the package manager and pyproject.toml as the project configuration file.
-- Unless I ask you to, code comments don't need to be excessive.You should prioritize using Chinese to comment code.
+- Unless I ask you to, code comments don't need to be excessive.
 - Prefer using the encapsulated logger `from weclone.utils.log import logger` for printing.
 - When retrieving values from a parameter dictionary read from a configuration file, the `get` method should be preferred whenever possible.
 
