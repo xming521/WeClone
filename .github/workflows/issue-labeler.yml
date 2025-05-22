@@ -3,8 +3,7 @@ name: add labels to Issues
 on:
   issues:
     types: [opened, edited]
-  pull_request:
-    types: [opened, edited]
+
 
 jobs:
   label_issues:
