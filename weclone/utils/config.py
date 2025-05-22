@@ -19,7 +19,9 @@ def load_config(arg_type: str):
         logger.error(f"Error loading configuration file {config_path}: {e}")
         sys.exit(1)
 
-    if arg_type == "web_demo" or arg_type == "api_service":
+    if arg_type == "cli_args":
+        config = s_config["cli_args"]
+    elif arg_type == "web_demo" or arg_type == "api_service":
         # infer_args和common_args求并集
         config = {**s_config["infer_args"], **s_config["common_args"]}
     elif arg_type == "train_pt":
