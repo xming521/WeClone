@@ -4,7 +4,11 @@ from pathlib import Path
 import os
 import sys
 import functools
-from weclone.utils.log import logger
+
+from weclone.utils.log import logger, capture_output
+from weclone.utils.config import load_config
+
+cli_config: dict | None = None
 
 try:
     import tomllib  # type: ignore Python 3.11+
@@ -30,15 +34,37 @@ def clear_argv(func):
     return wrapper
 
 
+def apply_common_decorators(capture_output_enabled=False):
+    """
+    A unified decorator for applications
+    """
+
+    def decorator(original_cmd_func):
+        @functools.wraps(original_cmd_func)
+        def new_runtime_wrapper(*args, **kwargs):
+            if cli_config and cli_config.get("full_log", False):
+                return capture_output(original_cmd_func)(*args, **kwargs)
+            else:
+                return original_cmd_func(*args, **kwargs)
+
+        func_with_clear_argv = clear_argv(new_runtime_wrapper)
+
+        return functools.wraps(original_cmd_func)(func_with_clear_argv)
+
+    return decorator
+
+
 @click.group()
 def cli():
     """WeClone: 从聊天记录创造数字分身的一站式解决方案"""
     _check_project_root()
     _check_versions()
+    global cli_config
+    cli_config = load_config(arg_type="cli_args")
 
 
 @cli.command("make-dataset", help="处理聊天记录CSV文件，生成问答对数据集。")
-@clear_argv
+@apply_common_decorators()
 def qa_generator():
     """处理聊天记录CSV文件，生成问答对数据集。"""
     from weclone.data.qa_generator import DataProcessor
@@ -48,7 +74,7 @@ def qa_generator():
 
 
 @cli.command("train-sft", help="使用准备好的数据集对模型进行微调。")
-@clear_argv
+@apply_common_decorators()
 def train_sft():
     """使用准备好的数据集对模型进行微调。"""
     from weclone.train.train_sft import main as train_sft_main
@@ -57,7 +83,7 @@ def train_sft():
 
 
 @cli.command("webchat-demo", help="启动 Web UI 与微调后的模型进行交互测试。")  # 命令名修改为 web-demo
-@clear_argv
+@apply_common_decorators()
 def web_demo():
     """启动 Web UI 与微调后的模型进行交互测试。"""
     from weclone.eval.web_demo import main as web_demo_main
@@ -66,7 +92,7 @@ def web_demo():
 
 
 # TODO 添加评估功能 @cli.command("eval-model", help="使用从训练数据中划分出来的验证集评估。")
-@clear_argv
+@apply_common_decorators()
 def eval_model():
     """使用从训练数据中划分出来的验证集评估。"""
     from weclone.eval.eval_model import main as evaluate_main
@@ -75,7 +101,7 @@ def eval_model():
 
 
 @cli.command("test-model", help="使用常见聊天问题测试模型。")
-@clear_argv
+@apply_common_decorators()
 def test_model():
     """测试"""
     from weclone.eval.test_model import main as test_main
@@ -84,7 +110,7 @@ def test_model():
 
 
 @cli.command("server", help="启动API服务，提供模型推理接口。")
-@clear_argv
+@apply_common_decorators()
 def server():
     """启动API服务，提供模型推理接口。"""
     from weclone.server.api_service import main as server_main
