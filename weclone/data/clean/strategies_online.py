@@ -71,7 +71,8 @@ class OlineLLMCleaningStrategy(CleaningStrategy):
                 for item in score_list:
                     parsed_scores.append(QaPairScore(**item))
             except Exception as e:
-                logger.error(f"调用在线模型或解析结果失败，QA ID {qa.id}: {str(e)}")
+                ids_in_batch = [qa["id"] for qa in qa_list]
+                logger.error(f"调用在线模型或解析结果失败，当前 batch QA ID 列表: {ids_in_batch}，错误信息: {str(e)}")
 
         score_map = {score.id: score.score for score in parsed_scores}
         for qa in data:
