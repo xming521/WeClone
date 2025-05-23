@@ -10,6 +10,7 @@ from pandas import Timestamp
 from llamafactory.extras.packages import is_vllm_available
 
 from weclone.data.clean.strategies import LLMCleaningStrategy
+from weclone.data.clean.strategies_online import OlineLLMCleaningStrategy
 from weclone.utils.config import load_config
 from weclone.utils.log import logger
 from weclone.data.models import ChatMessage, CutMessage, skip_type_list, QaPair
@@ -81,7 +82,10 @@ class DataProcessor:
 
         if self.config.get("clean_dataset", {}).get("enable_clean", False):
             if self.config.get("clean_dataset", {}).get("clean_strategy", "llm") == "llm":
-                self.clean_strategy = LLMCleaningStrategy(make_dataset_config=self.config)
+                if self.config.get("online_llm_clear"):
+                    self.clean_strategy = OlineLLMCleaningStrategy(make_dataset_config=self.config)
+                else:
+                    self.clean_strategy = LLMCleaningStrategy(make_dataset_config=self.config)
         self.c = self.config
 
     def main(self):
@@ -408,9 +412,9 @@ class DataProcessor:
 
             # 判断是否是同一个人的连续消息
             if (
-                current_msg.is_sender == last_msg.is_sender
-                and current_msg.talker == last_msg.talker
-                and self.single_combine_strategy.is_same_conversation([last_msg], current_msg)
+                    current_msg.is_sender == last_msg.is_sender
+                    and current_msg.talker == last_msg.talker
+                    and self.single_combine_strategy.is_same_conversation([last_msg], current_msg)
             ):
                 current_group.append(current_msg)
             else:
@@ -444,12 +448,12 @@ class DataProcessor:
             if df.loc[i, "type_name"] == "文本":
                 msg_str = str(df.loc[i, "msg"])
                 if (
-                    re.search(r"1\d{10}", msg_str)
-                    or re.search(r"\d{18}", msg_str)
-                    or re.search(r"\w+@\w+", msg_str)
-                    or "http" in msg_str
-                    or r"\\xa0" in msg_str
-                    or r"\\u" in msg_str
+                        re.search(r"1\d{10}", msg_str)
+                        or re.search(r"\d{18}", msg_str)
+                        or re.search(r"\w+@\w+", msg_str)
+                        or "http" in msg_str
+                        or r"\\xa0" in msg_str
+                        or r"\\u" in msg_str
                 ):
                     df = df.drop(index=i)
                     continue

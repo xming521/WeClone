@@ -33,7 +33,12 @@
             "llm": {
                 "accept_score": 2, //可以接受的llm打分阈值,1分最差，5分最好,低于此分数的数据不会用于训练
             }
-        }
+        },
+        "online_llm_clear":false,
+        "base_url":"https://xxx/v1",
+        "llm_api_key":"xxxxx",
+        "model_name":"xxx",   //建议使用参数较大的模型，例如DeepSeek-V3
+        "clean_batch_size":10
     },
     "train_pt_args": {
         //预训练微调配置
