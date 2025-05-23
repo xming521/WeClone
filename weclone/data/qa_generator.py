@@ -110,7 +110,7 @@ class DataProcessor:
 
         if self.c.get("clean_dataset", {}).get("enable_clean", False):
             self.clean_strategy.judge(qa_res)
-            qa_res = self.clean_strategy.clean(qa_res)
+            # qa_res = self.clean_strategy.clean(qa_res)
         self.save_result(qa_res)
         self._execute_length_cdf_script()
 
