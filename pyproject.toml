@@ -1,6 +1,6 @@
 [project]
 name = "WeClone"
-version = "0.2.21"
+version = "0.2.22"
 description = "从聊天记录创造数字分身的一站式解决方案"
 authors = [{ name = "xming521" }]
 readme = "README.md"
@@ -21,7 +21,7 @@ dependencies = [
 
 [tool.weclone]
 # 配置文件的版本号，当配置文件结构或重要默认值发生变化时，应增加此版本号
-config_version = "0.2.21"
+config_version = "0.2.22"
 
 # 配置文件更新日志
 config_changelog = """
