@@ -6,7 +6,8 @@ from typing import Any, Dict, List, Union
 from langchain_core.prompts import PromptTemplate
 from weclone.data.models import QaPair, CutMessage, QaPairScore
 from weclone.prompts.clean_data import CLEAN_PROMPT
-
+import os
+import commentjson
 from weclone.utils.log import logger
 
 
@@ -86,13 +87,59 @@ class LLMCleaningStrategy(CleaningStrategy):
         printable_df_str = distribution_df.reset_index().to_string(index=False)
         logger.success(f"llm打分分数分布情况:\n{printable_df_str}")
 
-    def clean(self, data: List[QaPair]) -> List[QaPair]:
+    def clean(self) -> str:
         """
-        根据打分结果，删除分数低于阈值的数据。
+        清洗 SFT 数据并返回清洗后的文件路径。
+        如果未启用清洗，则返回原始路径。
         """
-        return [
-            qa
-            for qa in data
-            if qa.score is not None
-            and qa.score >= self.make_dataset_config.get("clean_dataset", {}).get("llm", {}).get("accept_score", 1)
-        ]
+        config = self.make_dataset_config
+        dataset_dir = config["dataset_dir"]
+        dataset_info_path = os.path.join(dataset_dir, "dataset_info.json")
+
+        sft_json_path = os.path.join(dataset_dir, "sft-my.json")
+        output_json_path = os.path.join(dataset_dir, "sft-my-l.json")
+        accept_score = config.get("clean_dataset", {}).get("llm", {}).get("accept_score", 1)
+
+        if not config.get("clean_dataset", {}).get("enable_clean"):
+            logger.info("未启用清洗功能")
+            self._update_dataset_info_file(dataset_info_path, new_file_name="sft-my.json")
+            return sft_json_path
+
+        try:
+            with open(sft_json_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            filtered_data = [item for item in data if item.get("score", 0) >= accept_score]
+
+            with open(output_json_path, 'w', encoding='utf-8') as f:
+                json.dump(filtered_data, f, ensure_ascii=False, indent=4)
+
+            logger.success(f"已筛出低于{accept_score}分的数据，共保留 {len(filtered_data)} 条数据")
+            self._update_dataset_info_file(dataset_info_path, new_file_name="sft-my-l.json")
+            return output_json_path
+
+        except Exception as e:
+            logger.error(f"清洗数据失败，使用原始数据: {str(e)}")
+            self._update_dataset_info_file(dataset_info_path, new_file_name="sft-my.json")
+            return sft_json_path
+
+    def _update_dataset_info_file(self, dataset_info_path: str, new_file_name: str):
+        """
+        修改 dataset_info.json 文件中的 file_name 字段
+        """
+        try:
+            with open(dataset_info_path, "r", encoding="utf-8") as f:
+                dataset_info = commentjson.load(f)
+
+            # 更新所有支持的数据集的 file_name
+            for key in ["wechat-sft", "wechat-sft-with-history"]:
+                if key in dataset_info:
+                    dataset_info[key]["file_name"] = new_file_name
+
+            # 写回文件
+            with open(dataset_info_path, "w", encoding="utf-8") as f:
+                commentjson.dump(dataset_info, f, indent=4, ensure_ascii=False)
+
+            logger.info(f"已更新 dataset_info.json 中的 file_name 为 {new_file_name}")
+
+        except Exception as e:
+            logger.warning(f"无法更新 dataset_info.json: {e}")

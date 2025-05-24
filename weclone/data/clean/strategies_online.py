@@ -95,14 +95,3 @@ class OlineLLMCleaningStrategy(CleaningStrategy):
         distribution_df.index.name = "分数"
         printable_df_str = distribution_df.reset_index().to_string(index=False)
         logger.success(f"在线模型打分分数分布情况:\n{printable_df_str}")
-
-    def clean(self, data: List[QaPair]) -> List[QaPair]:
-        """
-        根据打分结果，删除分数低于阈值的数据。
-        """
-        threshold = self.make_dataset_config.get("clean_dataset", {}).get("llm", {}).get("accept_score", 1)
-        return [
-            qa
-            for qa in data
-            if qa.score is not None and qa.score >= threshold
-        ]
