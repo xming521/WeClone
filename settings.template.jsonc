@@ -1,5 +1,5 @@
 {
-    "version": "0.2.21",
+    "version": "0.2.22",
     "common_args": {
         "model_name_or_path": "./Qwen2.5-7B-Instruct",
         "adapter_name_or_path": "./model_output", //同时做为train_sft_args的output_dir
