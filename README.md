@@ -3,7 +3,7 @@
 <h3 align="center">🚀从聊天记录创造数字分身的一站式解决方案💡</h3>  
 
 
-<div align="center">v
+<div align="center">
 
 [![GitHub stars](https://img.shields.io/github/stars/xming521/WeClone?style=for-the-badge&logo=github&label=Stars&logoColor=white&color=ffda65)](https://github.com/xming521/WeClone/stargazers)
 [![GitHub release](https://img.shields.io/github/v/release/xming521/WeClone?style=for-the-badge&logo=github&label=Release&logoColor=white&color=06d094)](https://github.com/xming521/WeClone/releases)
