@@ -71,7 +71,8 @@ class OlineLLMCleaningStrategy(CleaningStrategy):
                 for item in score_list:
                     parsed_scores.append(QaPairScore(**item))
             except Exception as e:
-                logger.error(f"调用在线模型或解析结果失败，QA ID {qa.id}: {str(e)}")
+                ids_in_batch = [qa["id"] for qa in qa_list]
+                logger.error(f"调用在线模型或解析结果失败，当前 batch QA ID 列表: {ids_in_batch}，错误信息: {str(e)}")
 
         score_map = {score.id: score.score for score in parsed_scores}
         for qa in data:
@@ -94,14 +95,3 @@ class OlineLLMCleaningStrategy(CleaningStrategy):
         distribution_df.index.name = "分数"
         printable_df_str = distribution_df.reset_index().to_string(index=False)
         logger.success(f"在线模型打分分数分布情况:\n{printable_df_str}")
-
-    def clean(self, data: List[QaPair]) -> List[QaPair]:
-        """
-        根据打分结果，删除分数低于阈值的数据。
-        """
-        threshold = self.make_dataset_config.get("clean_dataset", {}).get("llm", {}).get("accept_score", 1)
-        return [
-            qa
-            for qa in data
-            if qa.score is not None and qa.score >= threshold
-        ]
