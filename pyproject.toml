@@ -45,7 +45,7 @@ sparktts = [
   "tqdm>=4.66.5",
 ]
 main = [
-  "llamafactory>=0.9.2",
+  "llamafactory @ git+https://github.com/hiyouga/LLaMA-Factory.git",
   "openai==1.76.0",
   "vllm==0.8.2; platform_system == 'Linux'",
 ]

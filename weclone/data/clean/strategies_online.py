@@ -95,3 +95,7 @@ class OlineLLMCleaningStrategy(CleaningStrategy):
         distribution_df.index.name = "分数"
         printable_df_str = distribution_df.reset_index().to_string(index=False)
         logger.success(f"在线模型打分分数分布情况:\n{printable_df_str}")
+
+    def clean(self, data: Any) -> Any:
+        raise NotImplementedError
+
