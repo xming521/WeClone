@@ -13,7 +13,7 @@ from weclone.data.clean.strategies import LLMCleaningStrategy
 from weclone.data.clean.strategies_online import OlineLLMCleaningStrategy
 from weclone.utils.config import load_config
 from weclone.utils.log import logger
-from weclone.data.models import ChatMessage, CutMessage, skip_type_list, QaPair
+from weclone.data.models import ChatMessage, CutMessage, skip_type_list, QaPair, cut_type_list
 from weclone.data.strategies import TimeWindowStrategy, LLMStrategy
 
 
@@ -22,21 +22,19 @@ class DataProcessor:
         self.config = load_config(arg_type="make_dataset")
         self.csv_folder = "./dataset/csv"
         self.system_prompt = self.config["default_system"]
-        self.cut_type_list = [
-            "图片",
-            "视频",
-            "合并转发的聊天记录",
-            "语音",
-            "(分享)音乐",
-            "(分享)卡片式链接",
-            "(分享)笔记",
-            "(分享)小程序",
-            "(分享)收藏夹",
-            "(分享)小说(猜)",
-            "(分享)视频号名片",
-            "(分享)视频号视频",
-            "粘贴的文本",  # 无法解析的分享链接
-        ]
+
+        # msg_type
+        self.include_type = self.config.get("include_type", [])
+        if self.config["platform"] == "wechat":
+            self.cut_type_list = cut_type_list.get_items(lang="zh_CN")
+            self.include_type = cut_type_list.translate_batch(texts=[t for t in self.include_type if t != "text"])
+            self.cut_type_list = [t for t in self.cut_type_list if t not in self.include_type]
+        else:
+            self.cut_type_list = cut_type_list.get_items(lang="en")
+
+        if "image" in self.config.get("include_type", []):
+            logger.info("开启 image 类型消息，将自动开启 prompt_with_history 功能")
+            self.config["prompt_with_history"] = True
 
         # blocked_words
         config_blocked_words = self.config.get("blocked_words", [])
@@ -50,6 +48,7 @@ class DataProcessor:
         self.blocked_words = list(set(config_blocked_words + file_blocked_words))
         # logger.info(f"聊天记录禁用词: {self.blocked_words}")
 
+        # combine_strategy
         if self.config["single_combine_strategy"] == "time_window":
             self.single_combine_strategy = TimeWindowStrategy(
                 time_window=self.config["single_combine_time_window"] * 60,
@@ -68,12 +67,17 @@ class DataProcessor:
         elif self.config["qa_match_strategy"] == "llm":
             self.qa_match_strategy = LLMStrategy(is_single_chat=False)
 
+        # clean_dataset
         clean_dataset_config = self.config.get("clean_dataset", {})
         enable_clean = clean_dataset_config.get("enable_clean", False)
 
         if enable_clean:
             if self.config.get("prompt_with_history", False):
-                logger.warning("开启 prompt_with_history 不支持 clean_dataset 功能")
+                logger.error("开启 prompt_with_history 不支持 clean_dataset 功能")
+                exit()
+
+            if "image" in self.config.get("include_type", []):
+                logger.error("开启 clean_dataset 不支持 image 类型消息")
                 exit()
 
             if not is_vllm_available():
@@ -412,9 +416,9 @@ class DataProcessor:
 
             # 判断是否是同一个人的连续消息
             if (
-                    current_msg.is_sender == last_msg.is_sender
-                    and current_msg.talker == last_msg.talker
-                    and self.single_combine_strategy.is_same_conversation([last_msg], current_msg)
+                current_msg.is_sender == last_msg.is_sender
+                and current_msg.talker == last_msg.talker
+                and self.single_combine_strategy.is_same_conversation([last_msg], current_msg)
             ):
                 current_group.append(current_msg)
             else:
@@ -437,7 +441,7 @@ class DataProcessor:
 
     def load_csv(self, file_path) -> List[ChatMessage]:
         """
-        做整体第一次预处理，过滤不符合条件的行
+        做整体第一次预处理，过滤不符合条件的行，检查图片是否存不存在类型改为cut
         """
         df = pd.read_csv(file_path, encoding="utf-8", dtype={"msg": str})
 
@@ -448,12 +452,12 @@ class DataProcessor:
             if df.loc[i, "type_name"] == "文本":
                 msg_str = str(df.loc[i, "msg"])
                 if (
-                        re.search(r"1\d{10}", msg_str)
-                        or re.search(r"\d{18}", msg_str)
-                        or re.search(r"\w+@\w+", msg_str)
-                        or "http" in msg_str
-                        or r"\\xa0" in msg_str
-                        or r"\\u" in msg_str
+                    re.search(r"1\d{10}", msg_str)
+                    or re.search(r"\d{18}", msg_str)
+                    or re.search(r"\w+@\w+", msg_str)
+                    or "http" in msg_str
+                    or r"\\xa0" in msg_str
+                    or r"\\u" in msg_str
                 ):
                     df = df.drop(index=i)
                     continue
@@ -461,6 +465,10 @@ class DataProcessor:
                     if blocked_word in msg_str:
                         df = df.drop(index=i)
                         break
+            elif df.loc[i, "type_name"] == "图片":
+                if self.c["platform"] == "wechat":
+                    
+                    df.loc[i, "type_name"] = "Cut"
             else:
                 df.loc[i, "msg"] = ""
 
