@@ -11,7 +11,6 @@ from weclone.prompts.clean_data import CLEAN_PROMPT,ONLINE_LLM_CLEAN_PROMPT
 from weclone.core.inference.online_infer import OnlineLLM
 from weclone.utils.log import logger
 import os
-import commentjson
 
 @dataclass
 class CleaningStrategy(ABC):
@@ -139,7 +138,7 @@ class OlineLLMCleaningStrategy(CleaningStrategy):
         """
         try:
             with open(dataset_info_path, "r", encoding="utf-8") as f:
-                dataset_info = commentjson.load(f)
+                dataset_info = json.load(f)
 
             # 更新所有支持的数据集的 file_name
             for key in ["wechat-sft", "wechat-sft-with-history"]:
@@ -148,7 +147,7 @@ class OlineLLMCleaningStrategy(CleaningStrategy):
 
             # 写回文件
             with open(dataset_info_path, "w", encoding="utf-8") as f:
-                commentjson.dump(dataset_info, f, indent=4, ensure_ascii=False)
+                json.dump(dataset_info, f, indent=4, ensure_ascii=False)
 
             logger.info(f"已更新 dataset_info.json 中的 file_name 为 {new_file_name}")
 
