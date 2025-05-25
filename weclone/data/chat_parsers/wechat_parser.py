@@ -1,8 +1,10 @@
 import os
 from pathlib import Path
 import shutil
+import pandas as pd
 from tqdm import tqdm
 
+from weclone.data.models import ChatMessage
 from weclone.data.qa_generator import DataProcessor
 from weclone.utils.log import logger
 
@@ -26,14 +28,13 @@ def copy_wechat_image_dat():
     message_list = []
     for csv_file in csv_files:
         print(f"开始处理 CSV 文件: {csv_file}")
-        chat_messages = data_processor.load_csv(csv_file)
-        message_list.extend(chat_messages)
-        # self.process_by_msgtype(chat_message)
-        print(f"处理完成: {csv_file}，共加载 {len(chat_messages)} 条消息")
+        df = pd.read_csv(csv_file, encoding="utf-8", dtype={"msg": str}, escapechar=None)
+        message_list.extend([ChatMessage(*row) for row in df.values])
+        print(f"处理完成: {csv_file}，共加载 {len(message_list)} 条消息")
     error_count = 0
     image_count = 0
     for message in tqdm(message_list):
-        if message.type_name == "图片":
+        if message.type_name == "图片" and message.is_sender == 0:  # 只要对方发送的图片
             # 跨平台路径处理：统一处理路径分隔符
             # 首先将所有反斜杠替换为正斜杠，然后使用pathlib处理
             image_count += 1
@@ -44,6 +45,9 @@ def copy_wechat_image_dat():
             if src_path.is_absolute():
                 # 取路径的相对部分（去掉根目录）
                 src_path = Path(*src_path.parts[1:]) if len(src_path.parts) > 1 else Path(src_path.name)
+
+            # 将文件扩展名改为.dat
+            src_path = src_path.with_suffix(".dat")
 
             # 构建完整路径
             image_path = Path(wechat_data_dir) / src_path
