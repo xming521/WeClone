@@ -15,5 +15,20 @@
             "system": "system",
             "history": "history"
         }
+    },
+    "wechat-mllm": {
+        "file_name": "./sft-my.json",
+        "formatting": "sharegpt",
+        "columns": {
+            "messages": "messages",
+            "system": "system",
+            "images": "images"
+        },
+        "tags": {
+            "role_tag": "role",
+            "content_tag": "content",
+            "user_tag": "user",
+            "assistant_tag": "assistant"
+        }
     }
 }

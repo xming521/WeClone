@@ -1,4 +1,6 @@
 from dataclasses import dataclass
+from enum import Enum
+from typing import Union, Optional
 from pandas import Timestamp
 from pydantic import BaseModel
 from weclone.utils.i18n import MultiLangList
@@ -9,11 +11,11 @@ class ChatMessage:
     id: int
     MsgSvrID: int
     type_name: str
-    is_sender: int
+    is_sender: int  # 0: 对方 1: 自己
     talker: str
     room_name: str
     msg: str
-    src: str
+    src: list[str]
     CreateTime: Timestamp
 
 
@@ -24,8 +26,15 @@ class CutMessage:
     CreateTime: Timestamp
 
 
+class QaPairFormat(Enum):
+    ALPACA = "alpaca"
+    SHAREGPT = "sharegpt"
+
+
 @dataclass
 class QaPair:
+    """原始QaPair类，保持向后兼容"""
+
     id: int
     system: str
     instruction: str
@@ -33,6 +42,26 @@ class QaPair:
     history: list[list[str]]
     time: Timestamp
     score: int
+
+
+@dataclass
+class Message:
+    role: str
+    content: str
+
+
+@dataclass
+class QaPairV2:
+    """支持sharegpt格式的QA对类"""
+
+    id: int
+    time: Timestamp
+    score: int
+    messages: list[Message]
+    images: list[str]
+    system: str
+    format_type: QaPairFormat = QaPairFormat.SHAREGPT
+    # data: Union[AlpacaQaPair, ShareGPTQaPair]
 
 
 class QaPairScore(BaseModel):

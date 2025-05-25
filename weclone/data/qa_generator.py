@@ -13,8 +13,9 @@ from weclone.data.clean.strategies import LLMCleaningStrategy
 from weclone.data.clean.strategies_online import OlineLLMCleaningStrategy
 from weclone.utils.config import load_config
 from weclone.utils.log import logger
-from weclone.data.models import ChatMessage, CutMessage, skip_type_list, QaPair, cut_type_list
+from weclone.data.models import ChatMessage, CutMessage, skip_type_list, QaPair, cut_type_list, QaPairV2, Message
 from weclone.data.strategies import TimeWindowStrategy, LLMStrategy
+from weclone.data.utils import check_image_file_exists
 
 
 class DataProcessor:
@@ -24,6 +25,13 @@ class DataProcessor:
         self.system_prompt = self.config["default_system"]
 
         # msg_type
+        if "image" in self.config.get("include_type", []):
+            logger.info("开启 image 类型消息，将自动开启 prompt_with_history 功能,使用sharegpt格式")
+            self.QaPair = QaPairV2
+            self.config["prompt_with_history"] = True
+        else:
+            self.QaPair = QaPair
+
         self.include_type = self.config.get("include_type", [])
         if self.config["platform"] == "wechat":
             self.cut_type_list = cut_type_list.get_items(lang="zh_CN")
@@ -31,10 +39,6 @@ class DataProcessor:
             self.cut_type_list = [t for t in self.cut_type_list if t not in self.include_type]
         else:
             self.cut_type_list = cut_type_list.get_items(lang="en")
-
-        if "image" in self.config.get("include_type", []):
-            logger.info("开启 image 类型消息，将自动开启 prompt_with_history 功能")
-            self.config["prompt_with_history"] = True
 
         # blocked_words
         config_blocked_words = self.config.get("blocked_words", [])
@@ -110,11 +114,11 @@ class DataProcessor:
         if self.c["prompt_with_history"]:
             qa_res = self.add_history_to_qa(qa_res)
         else:
-            qa_res = [item for item in qa_res if isinstance(item, QaPair)]
+            qa_res = [item for item in qa_res if isinstance(item, self.QaPair)]
 
         if self.c.get("clean_dataset", {}).get("enable_clean", False):
-            self.clean_strategy.judge(qa_res)
-            # qa_res = self.clean_strategy.clean(qa_res)
+            self.clean_strategy.judge(qa_res)  # type: ignore
+            # qa_res = self.clean_strategy.clean(qa_res) #改到sft.py中
         self.save_result(qa_res)
         self._execute_length_cdf_script()
 
@@ -183,7 +187,7 @@ class DataProcessor:
         csv_files.sort(key=extract_start)
         return csv_files
 
-    def match_qa(self, messages: List[ChatMessage]) -> List[Union[QaPair, CutMessage]]:
+    def match_qa(self, messages: List[ChatMessage]) -> List[Union[QaPair, QaPairV2, CutMessage]]:
         """
         匹配问答对
 
@@ -191,14 +195,14 @@ class DataProcessor:
             messages: 消息列表
 
         Returns:
-            List[Union[QaPair, CutMessage]]: 包含指令和输出的问答对列表
+            List[Union[QaPair, QaPairV2, CutMessage]]: 包含指令和输出的问答对列表
         """
         # 状态定义
         WAITING_INSTRUCTION = "waiting_instruction"  # 等待指令
         WAITING_RESPONSE = "waiting_response"  # 等待回复
 
         current_state = WAITING_INSTRUCTION
-        qa_res: List[Union[QaPair, CutMessage]] = []
+        qa_res: List[Union[QaPair, QaPairV2, CutMessage]] = []
         last_message = None
         current_instruction = None
         qa_id_counter = 0
@@ -337,6 +341,7 @@ class DataProcessor:
             """
             base_msg = messages[0]
             combined_content = messages[0].msg
+            combined_src_list = [messages[0].src] if messages[0].type_name in ["图片", "image"] else []
 
             for i in messages[1:]:
                 content = i.msg
@@ -346,8 +351,13 @@ class DataProcessor:
                 if combined_content and combined_content[-1] not in ["。", "！", "？", "…", "，", "."]:
                     combined_content += "，"
 
+                if i.type_name == "图片":
+                    # combined_content += "<image>"
+                    combined_src_list.append(i.src)
+
                 combined_content += content
             if len(combined_content) > self.c["combine_msg_max_length"]:
+                # TODO: 可能会截断<image>
                 logger.warning(
                     f"组合后消息长度超过{self.c['combine_msg_max_length']}将截断：\n {combined_content[:50]}"
                 )
@@ -361,7 +371,7 @@ class DataProcessor:
                 talker=base_msg.talker,
                 room_name=base_msg.room_name,
                 msg=combined_content,
-                src=base_msg.src,
+                src=combined_src_list,  # type: ignore
                 CreateTime=messages[-1].CreateTime,  # 使用最后一条消息的时间
             )
 
@@ -391,7 +401,9 @@ class DataProcessor:
         current_group = []
 
         for _, current_msg in enumerate(messages):
-            if current_msg.type_name in self.cut_type_list:
+            if current_msg.type_name in self.cut_type_list or (
+                current_msg.type_name in ["图片", "image"] and current_msg.is_sender == 1
+            ):  # 自己发图要cut
                 if current_group:
                     # 当前组有消息，合并当前组，并添加一条cut
                     _combine_current_group(current_group)
@@ -443,7 +455,7 @@ class DataProcessor:
         """
         做整体第一次预处理，过滤不符合条件的行，检查图片是否存不存在类型改为cut
         """
-        df = pd.read_csv(file_path, encoding="utf-8", dtype={"msg": str})
+        df = pd.read_csv(file_path, encoding="utf-8", dtype={"msg": str}, escapechar=None)
 
         df = df[~df["type_name"].isin(values=skip_type_list)]
 
@@ -467,8 +479,13 @@ class DataProcessor:
                         break
             elif df.loc[i, "type_name"] == "图片":
                 if self.c["platform"] == "wechat":
-                    
-                    df.loc[i, "type_name"] = "Cut"
+                    result = check_image_file_exists(str(df.loc[i, "src"]))
+                    if isinstance(result, str):
+                        df.loc[i, "src"] = result
+                        df.loc[i, "msg"] = "<image>"
+                    else:
+                        df.loc[i, "type_name"] = "Cut"
+
             else:
                 df.loc[i, "msg"] = ""
 
