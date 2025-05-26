@@ -2,7 +2,7 @@
 <h3 align="center">🚀 One-stop solution for creating your digital avatar from chat history 💡</h3>  
 <h3 align="center">🚀从聊天记录创造数字分身的一站式解决方案💡</h3>  
 
-
+3242
 <div align="center">
 
 [![GitHub stars](https://img.shields.io/github/stars/xming521/WeClone?style=for-the-badge&logo=github&label=Stars&logoColor=white&color=ffda65)](https://github.com/xming521/WeClone/stargazers)
