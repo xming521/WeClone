@@ -1,6 +1,6 @@
 {
     "wechat-sft": {
-        "file_name": "./sft-my.json",
+        "file_name": "sft-my.json",
         "columns": {
             "prompt": "instruction",
             "response": "output",
@@ -8,7 +8,7 @@
         }
     },
     "wechat-sft-with-history": {
-        "file_name": "./sft-my.json",
+        "file_name": "sft-my.json",
         "columns": {
             "prompt": "instruction",
             "response": "output",
@@ -16,7 +16,7 @@
             "history": "history"
         }
     },
-    "wechat-mllm": {
+    "wechat-mllm-sft": {
         "file_name": "./sft-my.json",
         "formatting": "sharegpt",
         "columns": {

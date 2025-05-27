@@ -5,7 +5,7 @@ import pandas as pd
 from tqdm import tqdm
 
 from weclone.data.models import ChatMessage
-from weclone.data.qa_generator import DataProcessor
+from weclone.data.qa_generatorV2 import DataProcessor
 from weclone.utils.log import logger
 
 data_dir = "./dataset/wechat/dat"

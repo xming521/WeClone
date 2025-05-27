@@ -13,8 +13,9 @@ from weclone.data.clean.strategies import LLMCleaningStrategy
 from weclone.data.clean.strategies_online import OlineLLMCleaningStrategy
 from weclone.utils.config import load_config
 from weclone.utils.log import logger
-from weclone.data.models import ChatMessage, CutMessage, skip_type_list, QaPair
+from weclone.data.models import ChatMessage, CutMessage, skip_type_list, cut_type_list, QaPairV2, Message
 from weclone.data.strategies import TimeWindowStrategy, LLMStrategy
+from weclone.data.utils import check_image_file_exists
 
 
 class DataProcessor:
@@ -22,21 +23,19 @@ class DataProcessor:
         self.config = load_config(arg_type="make_dataset")
         self.csv_folder = "./dataset/csv"
         self.system_prompt = self.config["default_system"]
-        self.cut_type_list = [
-            "图片",
-            "视频",
-            "合并转发的聊天记录",
-            "语音",
-            "(分享)音乐",
-            "(分享)卡片式链接",
-            "(分享)笔记",
-            "(分享)小程序",
-            "(分享)收藏夹",
-            "(分享)小说(猜)",
-            "(分享)视频号名片",
-            "(分享)视频号视频",
-            "粘贴的文本",  # 无法解析的分享链接
-        ]
+
+        # msg_type
+        logger.info("image 类型消息，将自动开启 prompt_with_history 功能,使用sharegpt格式")
+        self.QaPair = QaPairV2
+        self.config["prompt_with_history"] = True
+
+        self.include_type = self.config.get("include_type", [])
+        if self.config["platform"] == "wechat":
+            self.cut_type_list = cut_type_list.get_items(lang="zh_CN")
+            self.include_type = cut_type_list.translate_batch(texts=[t for t in self.include_type if t != "text"])
+            self.cut_type_list = [t for t in self.cut_type_list if t not in self.include_type]
+        else:
+            self.cut_type_list = cut_type_list.get_items(lang="en")
 
         # blocked_words
         config_blocked_words = self.config.get("blocked_words", [])
@@ -50,6 +49,7 @@ class DataProcessor:
         self.blocked_words = list(set(config_blocked_words + file_blocked_words))
         # logger.info(f"聊天记录禁用词: {self.blocked_words}")
 
+        # combine_strategy
         if self.config["single_combine_strategy"] == "time_window":
             self.single_combine_strategy = TimeWindowStrategy(
                 time_window=self.config["single_combine_time_window"] * 60,
@@ -68,12 +68,17 @@ class DataProcessor:
         elif self.config["qa_match_strategy"] == "llm":
             self.qa_match_strategy = LLMStrategy(is_single_chat=False)
 
+        # clean_dataset
         clean_dataset_config = self.config.get("clean_dataset", {})
         enable_clean = clean_dataset_config.get("enable_clean", False)
 
         if enable_clean:
             if self.config.get("prompt_with_history", False):
-                logger.warning("开启 prompt_with_history 不支持 clean_dataset 功能")
+                logger.error("开启 prompt_with_history 不支持 clean_dataset 功能")
+                exit()
+
+            if "image" in self.config.get("include_type", []):
+                logger.error("开启 clean_dataset 不支持 image 类型消息")
                 exit()
 
             if not is_vllm_available():
@@ -103,14 +108,11 @@ class DataProcessor:
             # self.process_by_msgtype(chat_message)
             logger.debug(f"处理完成: {csv_file}，共加载 {len(chat_messages)} 条消息")
         qa_res = self.match_qa(message_list)
-        if self.c["prompt_with_history"]:
-            qa_res = self.add_history_to_qa(qa_res)
-        else:
-            qa_res = [item for item in qa_res if isinstance(item, QaPair)]
+        qa_res = [item for item in qa_res if isinstance(item, QaPairV2)]
 
         if self.c.get("clean_dataset", {}).get("enable_clean", False):
-            self.clean_strategy.judge(qa_res)
-            # qa_res = self.clean_strategy.clean(qa_res)
+            self.clean_strategy.judge(qa_res)  # type: ignore
+            # qa_res = self.clean_strategy.clean(qa_res) #改到sft.py中
         self.save_result(qa_res)
         self._execute_length_cdf_script()
 
@@ -179,33 +181,66 @@ class DataProcessor:
         csv_files.sort(key=extract_start)
         return csv_files
 
-    def match_qa(self, messages: List[ChatMessage]) -> List[Union[QaPair, CutMessage]]:
+    def match_qa(self, messages: List[ChatMessage]) -> List[Union[QaPairV2, CutMessage]]:
         """
-        匹配问答对
+        匹配问答对，直接处理历史对话
 
         Args:
             messages: 消息列表
 
         Returns:
-            List[Union[QaPair, CutMessage]]: 包含指令和输出的问答对列表
+            List[Union[QaPairV2, CutMessage]]: 包含指令和输出的问答对列表
         """
         # 状态定义
         WAITING_INSTRUCTION = "waiting_instruction"  # 等待指令
         WAITING_RESPONSE = "waiting_response"  # 等待回复
 
         current_state = WAITING_INSTRUCTION
-        qa_res: List[Union[QaPair, CutMessage]] = []
+        qa_res: List[Union[QaPairV2, CutMessage]] = []
         last_message = None
         current_instruction = None
         qa_id_counter = 0
 
+        # 用于构建历史对话的变量
+        conversation_messages: List[Message] = []
+        conversation_images: List[str] = []
+        last_images: List[str] = []
+
+        def _calculate_messages_length(
+            messages: List[Message], new_user_content: str, new_assistant_content: str
+        ) -> int:
+            """计算messages加上新消息后的总字符长度"""
+            total_length = 0
+            for msg in messages:
+                total_length += len(msg.content)
+            total_length += len(new_user_content) + len(new_assistant_content)
+            return total_length
+
         for msg in messages:
+            # if isinstance(msg, ChatMessage) and isinstance(msg.src, list) and len(msg.src) > 0:
+            #     pass
+
             if isinstance(msg, CutMessage):
+                # 遇到 CutMessage，保存当前对话并重置状态
+                if conversation_messages:
+                    qa_pair = QaPairV2(
+                        id=qa_id_counter,
+                        time=last_message.CreateTime if last_message else msg.CreateTime,
+                        score=0,
+                        messages=conversation_messages.copy(),
+                        images=conversation_images.copy(),
+                        system=self.system_prompt,
+                    )
+                    qa_res.append(qa_pair)
+                    qa_id_counter += 1
+
+                # 重置状态
                 current_state = WAITING_INSTRUCTION
                 current_instruction = None
                 last_message = None
-                if self.c["prompt_with_history"]:
-                    qa_res.append(msg)
+                conversation_messages = []
+                conversation_images = []
+                last_images = []
                 continue
 
             if current_state == WAITING_INSTRUCTION:
@@ -214,99 +249,74 @@ class DataProcessor:
                     last_message = msg
                     current_state = WAITING_RESPONSE
 
+                    last_images = []
+                    if hasattr(msg, "src") and msg.src:
+                        if isinstance(msg.src, list):
+                            last_images.extend(msg.src)
+                        else:
+                            last_images.append(msg.src)
+
             elif current_state == WAITING_RESPONSE:
                 if msg.is_sender == 0:  # 收到对方消息
                     current_instruction = msg.msg
                     last_message = msg
                     # 状态保持不变
+
+                    last_images = []
+                    if hasattr(msg, "src") and msg.src:
+                        if isinstance(msg.src, list):
+                            last_images.extend(msg.src)
+                        else:
+                            last_images.append(msg.src)
                 else:  # 自己的回复 使用策略判断是否属于同一对话
                     if last_message and self.qa_match_strategy.is_same_conversation([last_message], msg):
                         assert current_instruction is not None, (
                             "current_instruction should not be None when creating a QA pair"
                         )
-                        qa_pair = QaPair(
-                            id=qa_id_counter,
-                            system=self.system_prompt,
-                            instruction=current_instruction,
-                            output=msg.msg,
-                            history=[],  # No history in this context yet
-                            time=msg.CreateTime,  # Use the response message time
-                            score=0,  # Default score
-                        )
-                        qa_res.append(qa_pair)
-                        qa_id_counter += 1  # 增加计数器
-                    else:
-                        if self.c["prompt_with_history"]:
+
+                        # 检查添加新消息后是否超过长度限制
+                        # TODO 没效果
+                        total_length = _calculate_messages_length(conversation_messages, current_instruction, msg.msg)
+                        if total_length <= self.config.get("messages_max_length", 4096):
+                            conversation_messages.append(Message(role="user", content=current_instruction))
+                            conversation_messages.append(Message(role="assistant", content=msg.msg))
+                            conversation_images.extend(last_images)
+                        else:
                             qa_res.append(
                                 CutMessage(
                                     is_sender=msg.is_sender,
-                                    cut_type=msg.type_name,
+                                    cut_type="messages_too_long",
                                     CreateTime=msg.CreateTime,
                                 )
                             )
+
+                    else:
+                        qa_res.append(
+                            CutMessage(
+                                is_sender=msg.is_sender,
+                                cut_type=msg.type_name,
+                                CreateTime=msg.CreateTime,
+                            )
+                        )
                     # 无论是否匹配，都重置状态
                     current_state = WAITING_INSTRUCTION
                     current_instruction = None
                     last_message = None
+                    last_images = []
+
+        # 处理最后的对话
+        if conversation_messages and last_message:
+            qa_pair = QaPairV2(
+                id=qa_id_counter,
+                time=last_message.CreateTime,
+                score=0,
+                messages=conversation_messages.copy(),
+                images=conversation_images.copy(),
+                system=self.system_prompt,
+            )
+            qa_res.append(qa_pair)
 
         return qa_res
-
-    # TODO: need review
-    def add_history_to_qa(self, qa_res: List[Union[QaPair, CutMessage]]) -> List[QaPair]:
-        """
-        Adds conversation history to QaPair objects.
-
-        Args:
-            qa_res: A list containing QaPair and CutMessage objects.
-
-        Returns:
-            A list of QaPair objects with history populated.
-        """
-        qa_res_with_history: List[QaPair] = []
-        current_history: List[List[str]] = []
-        last_timestamp: Timestamp = None  # type: ignore
-
-        for item in qa_res:
-            if isinstance(item, CutMessage):
-                if current_history:
-                    instruction = current_history[-1][0]
-                    output = current_history[-1][1]
-                    history = current_history[:-1]
-                    qa_pair_with_history = QaPair(
-                        id=-1,
-                        system=self.system_prompt,
-                        instruction=instruction,
-                        output=output,
-                        history=history,
-                        time=last_timestamp,
-                        score=0,
-                    )
-                    qa_res_with_history.append(qa_pair_with_history)
-                current_history = []
-                last_timestamp = None  # type: ignore
-            elif isinstance(item, QaPair):
-                current_history.append([item.instruction, item.output])
-                last_timestamp = item.time
-
-        if current_history:
-            instruction = current_history[-1][0]
-            output = current_history[-1][1]
-            history = current_history[:-1]
-            # Ensure last_timestamp is not None before assignment
-            final_timestamp_end = last_timestamp
-            assert final_timestamp_end is not None, "Timestamp cannot be None for the final QaPair"
-            qa_pair_with_history = QaPair(
-                id=-1,
-                system=self.system_prompt,
-                instruction=instruction,
-                output=output,
-                history=history,
-                time=final_timestamp_end,
-                score=0,
-            )
-            qa_res_with_history.append(qa_pair_with_history)
-
-        return qa_res_with_history
 
     def group_consecutive_messages(self, messages: List[ChatMessage]) -> List[ChatMessage]:
         """
@@ -333,6 +343,7 @@ class DataProcessor:
             """
             base_msg = messages[0]
             combined_content = messages[0].msg
+            combined_src_list = [messages[0].src] if messages[0].type_name in ["图片", "image"] else []
 
             for i in messages[1:]:
                 content = i.msg
@@ -342,8 +353,14 @@ class DataProcessor:
                 if combined_content and combined_content[-1] not in ["。", "！", "？", "…", "，", "."]:
                     combined_content += "，"
 
+                if i.type_name == "图片":
+                    # combined_content += "<image>"
+                    combined_src_list.append(i.src)
+
                 combined_content += content
+
             if len(combined_content) > self.c["combine_msg_max_length"]:
+                # TODO: 可能会截断<image>
                 logger.warning(
                     f"组合后消息长度超过{self.c['combine_msg_max_length']}将截断：\n {combined_content[:50]}"
                 )
@@ -357,7 +374,7 @@ class DataProcessor:
                 talker=base_msg.talker,
                 room_name=base_msg.room_name,
                 msg=combined_content,
-                src=base_msg.src,
+                src=combined_src_list,  # type: ignore
                 CreateTime=messages[-1].CreateTime,  # 使用最后一条消息的时间
             )
 
@@ -387,7 +404,9 @@ class DataProcessor:
         current_group = []
 
         for _, current_msg in enumerate(messages):
-            if current_msg.type_name in self.cut_type_list:
+            if current_msg.type_name in self.cut_type_list or (
+                current_msg.type_name in ["图片", "image"] and current_msg.is_sender == 1
+            ):  # 自己发图要cut
                 if current_group:
                     # 当前组有消息，合并当前组，并添加一条cut
                     _combine_current_group(current_group)
@@ -437,10 +456,16 @@ class DataProcessor:
 
     def load_csv(self, file_path) -> List[ChatMessage]:
         """
-        做整体第一次预处理，过滤不符合条件的行
+        做整体第一次预处理，过滤不符合条件的行，检查图片是否存不存在类型改为cut
         """
-        df = pd.read_csv(file_path, encoding="utf-8", dtype={"msg": str})
+        df = pd.read_csv(
+            file_path,
+            encoding="utf-8",
+            dtype={"msg": str, "src": str},
+            escapechar=None,
+        )
 
+        df["src"] = df["src"].fillna("")
         df = df[~df["type_name"].isin(values=skip_type_list)]
 
         # 如果type_name为文本 并且msg 包含 手机号、身份证号、邮箱、网址则删除这行
@@ -461,6 +486,15 @@ class DataProcessor:
                     if blocked_word in msg_str:
                         df = df.drop(index=i)
                         break
+            elif df.loc[i, "type_name"] == "图片":
+                if self.c["platform"] == "wechat":
+                    result = check_image_file_exists(str(df.loc[i, "src"]))
+                    if isinstance(result, str):
+                        df.loc[i, "src"] = result
+                        df.loc[i, "msg"] = "<image>"
+                    else:
+                        df.loc[i, "type_name"] = "Cut"
+
             else:
                 df.loc[i, "msg"] = ""
 
@@ -474,23 +508,22 @@ class DataProcessor:
     def process_text(self, chat_message: ChatMessage):
         pass
 
-    def save_result(self, qa_res: List[QaPair]):
+    def save_result(self, qa_res: List[QaPairV2]):
         """
-        Saves the list of QaPair objects to a JSON file after converting them to dictionaries.
+        Saves the list of QaPairV2 objects to a JSON file after converting them to dictionaries.
 
         Args:
-            qa_res: A list of QaPair objects.
+            qa_res: A list of QaPairV2 objects.
         """
         processed_qa_res = []
         for idx, item in enumerate(qa_res):
             item_dict = {
                 "id": idx,
-                "system": item.system,
-                "instruction": item.instruction,
-                "output": item.output,
-                "history": item.history,
                 "time": item.time.isoformat() if item.time else None,
                 "score": item.score,
+                "messages": [{"role": msg.role, "content": msg.content} for msg in item.messages],
+                "images": item.images,
+                "system": item.system,
             }
             processed_qa_res.append(item_dict)
 
