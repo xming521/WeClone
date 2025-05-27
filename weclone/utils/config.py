@@ -34,12 +34,16 @@ def load_config(arg_type: str):
             if dataset_info["columns"].get("history") is None:
                 logger.warning(f"{config['dataset']}数据集不包history字段，尝试使用wechat-sft-with-history数据集")
                 config["dataset"] = "wechat-sft-with-history"
+        if "image" in s_config["make_dataset_args"]["include_type"]:
+            config["dataset"] = "wechat-mllm-sft"
 
     elif arg_type == "make_dataset":
         config = {**s_config["make_dataset_args"], **s_config["common_args"]}
         config["dataset"] = s_config["train_sft_args"]["dataset"]
         config["dataset_dir"] = s_config["train_sft_args"]["dataset_dir"]
         config["cutoff_len"] = s_config["train_sft_args"]["cutoff_len"]
+        if "image" in config["include_type"]:
+            config["dataset"] = "wechat-mllm-sft"
     else:
         raise ValueError("暂不支持的参数类型")
 

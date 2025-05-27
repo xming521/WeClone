@@ -1,9 +1,9 @@
 {
     "version": "0.2.22",
     "common_args": {
-        "model_name_or_path": "./Qwen2.5-7B-Instruct",
+        "model_name_or_path": "./models/Qwen2.5-VL-7B-Instruct",
         "adapter_name_or_path": "./model_output", //同时做为train_sft_args的output_dir
-        "template": "qwen",
+        "template": "qwen2_vl",
         "default_system": "请你扮演一名人类，不要说自己是人工智能",
         "finetuning_type": "lora",
         "trust_remote_code": true
@@ -15,7 +15,8 @@
         //数据处理配置
         "platform": "wechat",
         "include_type": [
-            "text"
+            "text",
+            "image"
         ],
         "blocked_words": [ // 禁用词
             "例如 姓名",
@@ -26,10 +27,11 @@
         "qa_match_strategy": "time_window", // 组成qa策略
         "single_combine_time_window": 2, // 单人组成单句时间窗口（分钟）,
         "qa_match_time_window": 5, // 组成qa时间窗口（分钟）,
-        "combine_msg_max_length": 256, // 组合后消息最大长度 配合cutoff_len 使用
+        "combine_msg_max_length": 2048, // 组合后消息最大长度 
+        "messages_max_length": 2048, // messages最长字符数量 配合cutoff_len 使用
         "prompt_with_history": false, // 是否在prompt中包含历史对话
         "clean_dataset": {
-            "enable_clean": true,
+            "enable_clean": false,
             "clean_strategy": "llm",
             "llm": {
                 "accept_score": 2, //可以接受的llm打分阈值,1分最差，5分最好,低于此分数的数据不会用于训练
@@ -44,18 +46,21 @@
     "train_sft_args": {
         //微调配置
         "stage": "sft",
-        "dataset": "wechat-sft",
+        "dataset": "wechat-mllm-sft",
         "dataset_dir": "./dataset/res_csv/sft",
+        "image_min_pixels": 200704, //256 * 28 * 28,
+        "image_max_pixels": 1003520, //1280 * 28 * 28,
+        "freeze_multi_modal_projector": false, //MLLM 训练时是否冻结多模态投影器。
         "use_fast_tokenizer": true,
-        "lora_target": "q_proj,v_proj",
+        "lora_target": "q_proj,v_proj,visual.merger.mlp.0,visual.merger.mlp.2",
         "lora_rank": 4,
-        "lora_dropout": 0.3,
+        "lora_dropout": 0.2,
         "weight_decay": 0.1,
         "overwrite_cache": true,
         "per_device_train_batch_size": 8,
         "gradient_accumulation_steps": 4,
         "lr_scheduler_type": "cosine",
-        "cutoff_len": 256,
+        "cutoff_len": 2048,
         "logging_steps": 10,
         "save_steps": 100,
         "learning_rate": 1e-4,
@@ -64,6 +69,8 @@
         "plot_loss": true,
         "fp16": true,
         "flash_attn": "fa2",
+        "preprocessing_num_workers": 16,
+        "dataloader_num_workers": 4
         // "deepspeed": "ds_config.json" //多卡训练
     },
     "infer_args": {
