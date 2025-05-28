@@ -204,7 +204,6 @@ class DataProcessor:
         # 用于构建历史对话的变量
         conversation_messages: List[Message] = []
         conversation_images: List[str] = []
-        last_images: List[str] = []
 
         def _calculate_messages_length(
             messages: List[Message], new_user_content: str, new_assistant_content: str
@@ -240,34 +239,36 @@ class DataProcessor:
                 last_message = None
                 conversation_messages = []
                 conversation_images = []
-                last_images = []
                 continue
 
             if current_state == WAITING_INSTRUCTION:
-                if msg.is_sender == 0:  # 收到对方消息
-                    current_instruction = msg.msg
+                if msg.is_sender == 0:  # 收到对方消息 (potential instruction)
+                    if last_message and not self.qa_match_strategy.is_same_conversation([last_message], msg):
+                        # 如果不是同一段对话，且存在上一条消息，则保存之前的对话
+                        if conversation_messages:
+                            qa_pair = QaPairV2(
+                                id=qa_id_counter,
+                                time=last_message.CreateTime,  # 使用上一条消息的时间
+                                score=0,
+                                messages=conversation_messages.copy(),
+                                images=conversation_images.copy(),
+                                system=self.system_prompt,
+                            )
+                            qa_res.append(qa_pair)
+                            qa_id_counter += 1
+                            conversation_messages = []
+                            conversation_images = []
+
+                    # 无论是否刚刚重新开启了一段对话，这个 'msg' 现在都成为当前的指令。
+                    current_instruction = msg
                     last_message = msg
                     current_state = WAITING_RESPONSE
 
-                    last_images = []
-                    if hasattr(msg, "src") and msg.src:
-                        if isinstance(msg.src, list):
-                            last_images.extend(msg.src)
-                        else:
-                            last_images.append(msg.src)
-
             elif current_state == WAITING_RESPONSE:
                 if msg.is_sender == 0:  # 收到对方消息
-                    current_instruction = msg.msg
+                    current_instruction = msg
                     last_message = msg
                     # 状态保持不变
-
-                    last_images = []
-                    if hasattr(msg, "src") and msg.src:
-                        if isinstance(msg.src, list):
-                            last_images.extend(msg.src)
-                        else:
-                            last_images.append(msg.src)
                 else:  # 自己的回复 使用策略判断是否属于同一对话
                     if last_message and self.qa_match_strategy.is_same_conversation([last_message], msg):
                         assert current_instruction is not None, (
@@ -275,12 +276,20 @@ class DataProcessor:
                         )
 
                         # 检查添加新消息后是否超过长度限制
-                        # TODO 没效果
-                        total_length = _calculate_messages_length(conversation_messages, current_instruction, msg.msg)
+                        total_length = _calculate_messages_length(
+                            conversation_messages, current_instruction.msg, msg.msg
+                        )
                         if total_length <= self.config.get("messages_max_length", 4096):
-                            conversation_messages.append(Message(role="user", content=current_instruction))
+                            conversation_messages.append(Message(role="user", content=current_instruction.msg))
                             conversation_messages.append(Message(role="assistant", content=msg.msg))
-                            conversation_images.extend(last_images)
+                            if hasattr(current_instruction, "src") and current_instruction.src:
+                                if isinstance(current_instruction.src, list):
+                                    valid_images = [img_src for img_src in current_instruction.src if img_src]
+                                    if valid_images:
+                                        conversation_images.extend(valid_images)
+                                elif current_instruction.src:
+                                    conversation_images.append(current_instruction.src)
+                            last_message = msg
                         else:
                             qa_res.append(
                                 CutMessage(
@@ -289,7 +298,6 @@ class DataProcessor:
                                     CreateTime=msg.CreateTime,
                                 )
                             )
-
                     else:
                         qa_res.append(
                             CutMessage(
@@ -301,8 +309,6 @@ class DataProcessor:
                     # 无论是否匹配，都重置状态
                     current_state = WAITING_INSTRUCTION
                     current_instruction = None
-                    last_message = None
-                    last_images = []
 
         # 处理最后的对话
         if conversation_messages and last_message:
