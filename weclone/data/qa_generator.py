@@ -76,7 +76,7 @@ class DataProcessor:
                 logger.warning("开启 prompt_with_history 不支持 clean_dataset 功能")
                 exit()
 
-            if not is_vllm_available():
+            if not is_vllm_available() and not self.config.get("online_llm_clear"):
                 logger.warning("vLLM 不可用，暂不清洗数据集。")
                 clean_dataset_config["enable_clean"] = False
 
