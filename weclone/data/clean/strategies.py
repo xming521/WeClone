@@ -100,7 +100,7 @@ class LLMCleaningStrategy(CleaningStrategy):
         accept_score = config.get("clean_dataset", {}).get("llm", {}).get("accept_score", 1)
 
         if not config.get("clean_dataset", {}).get("enable_clean") or "image" in config.get("include_type", ""):
-            logger.info("未启用清洗功能")
+            logger.info("不启用数据清洗功能")
             self._update_dataset_info_file(dataset_info_path, new_file_name="sft-my.json")
             return sft_json_path
 

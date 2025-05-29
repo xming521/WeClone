@@ -25,7 +25,7 @@ class DataProcessor:
         self.system_prompt = self.config["default_system"]
 
         # msg_type
-        logger.info("image 类型消息，将自动开启 prompt_with_history 功能,使用sharegpt格式")
+        logger.info("image 类型消息,使用sharegpt格式")
         self.QaPair = QaPairV2
         self.config["prompt_with_history"] = True
 
@@ -205,9 +205,7 @@ class DataProcessor:
         conversation_messages: List[Message] = []
         conversation_images: List[str] = []
 
-        def _calculate_messages_length(
-            messages: List[Message], new_user_content: str, new_assistant_content: str
-        ) -> int:
+        def _calculate_qa_length(messages: List[Message], new_user_content: str, new_assistant_content: str) -> int:
             """计算messages加上新消息后的总字符长度"""
             total_length = 0
             for msg in messages:
@@ -215,24 +213,54 @@ class DataProcessor:
             total_length += len(new_user_content) + len(new_assistant_content)
             return total_length
 
-        for msg in messages:
-            # if isinstance(msg, ChatMessage) and isinstance(msg.src, list) and len(msg.src) > 0:
-            #     pass
+        def _save_current_qa_pair(
+            qa_id: int,
+            time_stamp: Timestamp,
+            current_conversation_messages: List[Message],
+            current_conversation_images: List[str],
+        ) -> int:
+            """Helper function to save the current QA pair."""
+            nonlocal qa_res  # Allow modification of qa_res from the outer scope
 
+            total_length = _calculate_qa_length(current_conversation_messages, "", "")
+
+            if total_length <= self.config.get("messages_max_length", 4096):
+                if len(current_conversation_images) > self.config.get("max_image_num", 2):
+                    logger.warning(
+                        f"QA pair (potential id {qa_id}) with timestamp {time_stamp} "
+                        f"has too many images ({len(current_conversation_images)} > {self.config.get('max_image_num', 2)}) "
+                        "and will be skipped."
+                    )
+                    return qa_id
+
+                qa_pair = self.QaPair(
+                    id=qa_id,
+                    time=time_stamp,
+                    score=0,
+                    messages=current_conversation_messages.copy(),
+                    images=current_conversation_images.copy(),
+                    system=self.system_prompt,
+                )
+                qa_res.append(qa_pair)
+                return qa_id + 1
+            else:
+                logger.warning(
+                    f"QA pair (potential id {qa_id}) with timestamp {time_stamp} "
+                    f"exceeds max length ({total_length} > {self.config.get('messages_max_length', 4096)}) "
+                    "and will be skipped."
+                )
+                return qa_id
+
+        for msg in messages:
             if isinstance(msg, CutMessage):
                 # 遇到 CutMessage，保存当前对话并重置状态
                 if conversation_messages:
-                    qa_pair = QaPairV2(
-                        id=qa_id_counter,
-                        time=last_message.CreateTime if last_message else msg.CreateTime,
-                        score=0,
-                        messages=conversation_messages.copy(),
-                        images=conversation_images.copy(),
-                        system=self.system_prompt,
+                    qa_id_counter = _save_current_qa_pair(
+                        qa_id_counter,
+                        last_message.CreateTime if last_message else msg.CreateTime,
+                        conversation_messages,
+                        conversation_images,
                     )
-                    qa_res.append(qa_pair)
-                    qa_id_counter += 1
-
                 # 重置状态
                 current_state = WAITING_INSTRUCTION
                 current_instruction = None
@@ -246,16 +274,12 @@ class DataProcessor:
                     if last_message and not self.qa_match_strategy.is_same_conversation([last_message], msg):
                         # 如果不是同一段对话，且存在上一条消息，则保存之前的对话
                         if conversation_messages:
-                            qa_pair = QaPairV2(
-                                id=qa_id_counter,
-                                time=last_message.CreateTime,  # 使用上一条消息的时间
-                                score=0,
-                                messages=conversation_messages.copy(),
-                                images=conversation_images.copy(),
-                                system=self.system_prompt,
+                            qa_id_counter = _save_current_qa_pair(
+                                qa_id_counter,
+                                last_message.CreateTime,  # 使用上一条消息的时间
+                                conversation_messages,
+                                conversation_images,
                             )
-                            qa_res.append(qa_pair)
-                            qa_id_counter += 1
                             conversation_messages = []
                             conversation_images = []
 
@@ -266,6 +290,17 @@ class DataProcessor:
 
             elif current_state == WAITING_RESPONSE:
                 if msg.is_sender == 0:  # 收到对方消息
+                    if last_message and not self.qa_match_strategy.is_same_conversation([last_message], msg):
+                        # 如果不是同一段对话，且存在上一条消息，则保存之前的对话
+                        if conversation_messages:
+                            qa_id_counter = _save_current_qa_pair(
+                                qa_id_counter,
+                                last_message.CreateTime,  # 使用上一条消息的时间
+                                conversation_messages,
+                                conversation_images,
+                            )
+                            conversation_messages = []
+                            conversation_images = []
                     current_instruction = msg
                     last_message = msg
                     # 状态保持不变
@@ -275,52 +310,29 @@ class DataProcessor:
                             "current_instruction should not be None when creating a QA pair"
                         )
 
-                        # 检查添加新消息后是否超过长度限制
-                        total_length = _calculate_messages_length(
-                            conversation_messages, current_instruction.msg, msg.msg
-                        )
-                        if total_length <= self.config.get("messages_max_length", 4096):
-                            conversation_messages.append(Message(role="user", content=current_instruction.msg))
-                            conversation_messages.append(Message(role="assistant", content=msg.msg))
-                            if hasattr(current_instruction, "src") and current_instruction.src:
-                                if isinstance(current_instruction.src, list):
-                                    valid_images = [img_src for img_src in current_instruction.src if img_src]
-                                    if valid_images:
-                                        conversation_images.extend(valid_images)
-                                elif current_instruction.src:
-                                    conversation_images.append(current_instruction.src)
-                            last_message = msg
-                        else:
-                            qa_res.append(
-                                CutMessage(
-                                    is_sender=msg.is_sender,
-                                    cut_type="messages_too_long",
-                                    CreateTime=msg.CreateTime,
-                                )
-                            )
-                    else:
-                        qa_res.append(
-                            CutMessage(
-                                is_sender=msg.is_sender,
-                                cut_type=msg.type_name,
-                                CreateTime=msg.CreateTime,
-                            )
-                        )
+                        conversation_messages.append(Message(role="user", content=current_instruction.msg))
+                        conversation_messages.append(Message(role="assistant", content=msg.msg))
+                        if hasattr(current_instruction, "src") and current_instruction.src:
+                            if isinstance(current_instruction.src, list):
+                                valid_images = [img_src for img_src in current_instruction.src if img_src]
+                                if valid_images:
+                                    conversation_images.extend(valid_images)
+                            elif current_instruction.src:
+                                conversation_images.append(current_instruction.src)
+                        last_message = msg
+
                     # 无论是否匹配，都重置状态
                     current_state = WAITING_INSTRUCTION
                     current_instruction = None
 
         # 处理最后的对话
         if conversation_messages and last_message:
-            qa_pair = QaPairV2(
-                id=qa_id_counter,
-                time=last_message.CreateTime,
-                score=0,
-                messages=conversation_messages.copy(),
-                images=conversation_images.copy(),
-                system=self.system_prompt,
+            qa_id_counter = _save_current_qa_pair(
+                qa_id_counter,
+                last_message.CreateTime,
+                conversation_messages,
+                conversation_images,
             )
-            qa_res.append(qa_pair)
 
         return qa_res
 
