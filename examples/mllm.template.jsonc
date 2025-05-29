@@ -18,6 +18,7 @@
             "text",
             "image"
         ],
+        "max_image_num": 3, // 单条数据最大图片数量
         "blocked_words": [ // 禁用词
             "例如 姓名",
             "例如 密码",
