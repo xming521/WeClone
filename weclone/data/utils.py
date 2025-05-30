@@ -16,9 +16,9 @@ def check_image_file_exists(file_path: str) -> str | bool:
         filename_with_ext = os.path.basename(normalized_path)
         filename_without_ext = Path(filename_with_ext).stem
 
-        # 使用 glob 查找任何以该文件名开头的文件
+        # 使用 glob 查找精确匹配该文件名的文件（不论扩展名）
         images_dir = Path("dataset") / "images"
-        matching_files = list(images_dir.glob(f"{filename_without_ext}*"))
+        matching_files = list(images_dir.glob(f"{filename_without_ext}.*"))
 
         if len(matching_files) > 0:
             return str(matching_files[0])
