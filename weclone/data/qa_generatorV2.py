@@ -132,7 +132,7 @@ class DataProcessor:
                 f'--dataset="{self.c["dataset"]}"',
                 f'--dataset_dir="{self.c["dataset_dir"]}"',
                 f'--template="{self.c["template"]}"',
-                f"--interval={self.c['cutoff_len']}",
+                "--interval=512",
             ]
 
             child_env = os.environ.copy()
