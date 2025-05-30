@@ -12,9 +12,6 @@ jobs:
       issues: write
       contents: read
     steps:
-      - name: checkout
-        uses: actions/checkout@v3
-        
       - name: get_last_run_time
         id: last_run
         run: |
@@ -24,6 +21,7 @@ jobs:
       - name: RegEx Issue Labeler
         uses: github/issue-labeler@v3.4
         with:
+          include-title: 1
           repo-token: "${{ secrets.GITHUB_TOKEN }}"
           configuration-path: .github/issue-labeler.yml
           enable-versioned-regex: 0
