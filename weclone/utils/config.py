@@ -44,6 +44,7 @@ def load_config(arg_type: str):
         config["cutoff_len"] = s_config["train_sft_args"]["cutoff_len"]
         if "image" in config["include_type"]:
             config["dataset"] = "wechat-mllm-sft"
+
     else:
         raise ValueError("暂不支持的参数类型")
 

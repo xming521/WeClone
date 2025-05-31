@@ -6,6 +6,8 @@
         "template": "qwen2_vl",
         "default_system": "请你扮演一名人类，不要说自己是人工智能",
         "finetuning_type": "lora",
+        "media_dir": "dataset/media",
+        "image_max_pixels": 921600, //720P
         "trust_remote_code": true
     },
     "cli_args": {
@@ -50,8 +52,6 @@
         "stage": "sft",
         "dataset": "wechat-mllm-sft",
         "dataset_dir": "./dataset/res_csv/sft",
-        "image_min_pixels": 200704, //256 * 28 * 28,
-        "image_max_pixels": 1003520, //1280 * 28 * 28,
         "freeze_multi_modal_projector": false, //MLLM 训练时是否冻结多模态投影器。
         "use_fast_tokenizer": true,
         "lora_target": "q_proj,v_proj,visual.merger.mlp.0,visual.merger.mlp.2",

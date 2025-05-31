@@ -30,6 +30,7 @@ def length_cdf(
     media_dir: str = "./dataset/media",
     template: str = "qwen",
     interval: int = 256,
+    image_max_pixels: int = 768 * 768,
 ):
     r"""Calculate the distribution of the input lengths in the dataset.
 
@@ -49,6 +50,7 @@ def length_cdf(
             "preprocessing_num_workers": 16,
             "output_dir": "dummy_dir",
             "media_dir": media_dir,
+            "image_max_pixels": int(image_max_pixels),
             "overwrite_cache": True,
             "do_train": True,
         }
