@@ -19,6 +19,7 @@
             "image"
         ],
         "max_image_num": 2, // 单条数据最大图片数量
+        "media_dir": "dataset/media",
         "blocked_words": [ // 禁用词
             "例如 姓名",
             "例如 密码",
