@@ -14,7 +14,7 @@ dependencies = [
   "setuptools>=78.1.0",
   "loguru>=0.7.3",
   "torch>=2.6.0",
-  "transformers==4.49.0",
+  "transformers==4.51.3",
   "tomli; python_version < '3.11'",
   "langchain",
 ]

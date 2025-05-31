@@ -99,7 +99,7 @@ class DataProcessor:
             return
 
         csv_files = self.get_csv_files()
-        logger.info(f"共发现 {len(csv_files)} 个 CSV 文件，开始处理")
+        logger.info(f"共发现 {len(csv_files)} 个 CSV 文件,开始处理,请耐心等待...")
         message_list: List[ChatMessage] = []
         for csv_file in csv_files:
             logger.debug(f"开始处理 CSV 文件: {csv_file}")
@@ -132,6 +132,7 @@ class DataProcessor:
                 f'--dataset="{self.c["dataset"]}"',
                 f'--dataset_dir="{self.c["dataset_dir"]}"',
                 f'--template="{self.c["template"]}"',
+                f'--media_dir="{self.c["media_dir"]}"',
                 "--interval=512",
             ]
 

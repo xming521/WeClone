@@ -17,11 +17,14 @@ def check_image_file_exists(file_path: str) -> str | bool:
         filename_without_ext = Path(filename_with_ext).stem
 
         # 使用 glob 查找精确匹配该文件名的文件（不论扩展名）
-        images_dir = Path("dataset") / "images"
+        images_dir = Path("dataset") / "media" / "images"
         matching_files = list(images_dir.glob(f"{filename_without_ext}.*"))
 
         if len(matching_files) > 0:
-            return str(matching_files[0])
+            # 获取相对于dataset/media的路径，只保留images/文件名
+            full_path = matching_files[0]
+            relative_path = full_path.relative_to(Path("dataset") / "media")
+            return str(relative_path)
         else:
             return False
 
