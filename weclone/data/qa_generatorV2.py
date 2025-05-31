@@ -133,6 +133,7 @@ class DataProcessor:
                 f'--dataset_dir="{self.c["dataset_dir"]}"',
                 f'--template="{self.c["template"]}"',
                 f'--media_dir="{self.c["media_dir"]}"',
+                f'--image_max_pixels="{self.c["image_max_pixels"]}"',
                 "--interval=512",
             ]
 
