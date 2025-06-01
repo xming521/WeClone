@@ -8,6 +8,7 @@
         "finetuning_type": "lora",
         "media_dir": "dataset/media",
         "image_max_pixels": 921600, //720P
+        "enable_thinking": false,
         "trust_remote_code": true
     },
     "cli_args": {
