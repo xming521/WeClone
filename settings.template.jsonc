@@ -29,7 +29,7 @@
         "combine_msg_max_length": 256, // 组合后消息最大长度 配合cutoff_len 使用
         "prompt_with_history": false, // 是否在prompt中包含历史对话
         "clean_dataset": {
-            "enable_clean": true,
+            "enable_clean": false,
             "clean_strategy": "llm",
             "llm": {
                 "accept_score": 2, //可以接受的llm打分阈值,1分最差，5分最好,低于此分数的数据不会用于训练
