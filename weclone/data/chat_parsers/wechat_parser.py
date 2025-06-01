@@ -1,4 +1,5 @@
 import os
+import argparse
 from pathlib import Path
 import shutil
 import pandas as pd
@@ -9,12 +10,14 @@ from weclone.data.qa_generatorV2 import DataProcessor
 from weclone.utils.log import logger
 
 data_dir = "./dataset/wechat/dat"
-wechat_data_dir = "dataset/wechat"  # 填微信个人文件夹，如C:\Users\u\Documents\WeChat Files\wxid_d6wwio22
 
 
-def copy_wechat_image_dat():
+def copy_wechat_image_dat(wechat_data_dir):
     """
     根据csv里的图片路径，复制dat到指定目录
+
+    Args:
+        wechat_data_dir (str): 微信个人文件夹路径
     """
     os.makedirs(data_dir, exist_ok=True)
 
@@ -60,5 +63,22 @@ def copy_wechat_image_dat():
     logger.info(f"复制完成，共复制 {image_count} 张图片，其中 {error_count} 张图片不存在。")
 
 
+def main():
+    parser = argparse.ArgumentParser(description="微信聊天记录图片处理工具")
+    parser.add_argument(
+        "--wechat-data-dir",
+        type=str,
+        required=True,
+        help="微信个人文件夹路径，例如: C:\\Users\\user\\Documents\\WeChat Files\\wxid_d6wwio22",
+    )
+
+    args = parser.parse_args()
+
+    wechat_data_dir = os.path.normpath(args.wechat_data_dir)
+
+    logger.info(f"使用微信数据目录: {wechat_data_dir}")
+    copy_wechat_image_dat(wechat_data_dir)
+
+
 if __name__ == "__main__":
-    copy_wechat_image_dat()
+    main()
