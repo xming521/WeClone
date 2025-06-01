@@ -69,7 +69,7 @@ def main():
         "--wechat-data-dir",
         type=str,
         required=True,
-        help="微信个人文件夹路径，例如: C:\\Users\\user\\Documents\\WeChat Files\\wxid_d6wwio22",
+        help=r"微信个人文件夹路径，例如: C:\Users\user\Documents\WeChat Files\wxid_d645wirus6mo22",
     )
 
     args = parser.parse_args()
