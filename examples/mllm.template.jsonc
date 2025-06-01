@@ -22,7 +22,6 @@
             "image"
         ],
         "max_image_num": 2, // 单条数据最大图片数量
-        "media_dir": "dataset/media",
         "blocked_words": [ // 禁用词
             "例如 姓名",
             "例如 密码",
@@ -34,6 +33,7 @@
         "qa_match_time_window": 5, // 组成qa时间窗口（分钟）,
         "combine_msg_max_length": 2048, // 组合后消息最大长度 
         "messages_max_length": 2048, // messages最长字符数量 配合cutoff_len 使用
+        //多模态数据以下配置无效 历史对话自动包含
         "prompt_with_history": false, // 是否在prompt中包含历史对话
         "clean_dataset": {
             "enable_clean": false,
