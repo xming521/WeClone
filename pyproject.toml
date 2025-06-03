@@ -13,9 +13,6 @@ dependencies = [
   "pydantic==2.10.6",
   "setuptools>=78.1.0",
   "loguru>=0.7.3",
-  "torch>=2.6.0",
-  "transformers==4.52.1",
-  "accelerate==1.7.0",
   "tomli; python_version < '3.11'",
   "langchain",
 ]
@@ -33,6 +30,15 @@ config_changelog = """
 
 [dependency-groups]
 # xcodec = ["xcodec2==0.1.3"] 
+
+main = [
+  "llamafactory @ git+https://github.com/hiyouga/LLaMA-Factory.git",
+  "openai==1.76.0",
+  "vllm==0.8.2; platform_system == 'Linux'",
+  "torch>=2.6.0",
+  "transformers==4.52.1",
+  "accelerate==1.7.0",
+]
 sparktts = [
   "einops>=0.8.1",
   "einx>=0.3.0",
@@ -45,11 +51,7 @@ sparktts = [
   "torchaudio>=2.6.0",
   "tqdm>=4.66.5",
 ]
-main = [
-  "llamafactory @ git+https://github.com/hiyouga/LLaMA-Factory.git",
-  "openai==1.76.0",
-  "vllm==0.8.2; platform_system == 'Linux'",
-]
+
 dev = ["pytest", "pytest-order", "pyright", "ruff"]
 
 [project.scripts]
