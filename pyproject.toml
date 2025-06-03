@@ -16,6 +16,7 @@ dependencies = [
   "loguru>=0.7.3",
   "tomli; python_version < '3.11'",
   "langchain",
+  "openai==1.76.0",
 ]
 
 [tool.weclone]
@@ -34,7 +35,6 @@ config_changelog = """
 
 main = [
   "llamafactory @ git+https://github.com/hiyouga/LLaMA-Factory.git",
-  "openai==1.76.0",
   "vllm==0.8.2; platform_system == 'Linux'",
   "torch>=2.6.0",
   "transformers==4.52.1",
