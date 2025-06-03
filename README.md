@@ -102,7 +102,7 @@ git clone https://www.modelscope.cn/Qwen/Qwen2.5-7B-Instruct.git
 请使用[PyWxDump](https://github.com/xaoyaoo/PyWxDump)提取微信聊天记录（不支持4.0版本微信）。可以先将手机的聊天记录迁移（备份）到电脑，数据量更多一些。下载软件并解密数据库后，点击聊天备份，导出类型为CSV，可以导出多个联系人（不建议使用群聊记录），然后将导出的位于`wxdump_tmp/export` 的 `csv` 文件夹放在`./dataset`目录即可，也就是不同人聊天记录的文件夹一起放在 `./dataset/csv`。   
 
 ### 图片数据准备
-uv环境下执行以下命令，将微信图片数据保存到`./dataset/wechat/dat`目录下。
+在微信所在环境执行，仅需要安装基础依赖即可（`uv pip install -e .`），然后执行以下命令，将微信图片数据保存到`./dataset/wechat/dat`目录下。
 ```bash
 python weclone/data/chat_parsers/wechat_parser.py --wechat-data-dir "微信个人文件夹路径 例如 C:\Users\user\Documents\WeChat Files\wxid_d68wiru2zseo22"
 ```

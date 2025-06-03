@@ -7,13 +7,19 @@ import re
 import pandas as pd
 import json
 from pandas import Timestamp
-from llamafactory.extras.packages import is_vllm_available
 
 from weclone.data.clean.strategies import LLMCleaningStrategy
 from weclone.data.clean.strategies_online import OlineLLMCleaningStrategy
 from weclone.utils.config import load_config
 from weclone.utils.log import logger
-from weclone.data.models import ChatMessage, CutMessage, skip_type_list, cut_type_list, QaPairV2, Message
+from weclone.data.models import (
+    ChatMessage,
+    CutMessage,
+    skip_type_list,
+    cut_type_list,
+    QaPairV2,
+    Message,
+)
 from weclone.data.strategies import TimeWindowStrategy, LLMStrategy
 from weclone.data.utils import check_image_file_exists
 
@@ -32,8 +38,12 @@ class DataProcessor:
         self.include_type = self.config.get("include_type", [])
         if self.config["platform"] == "wechat":
             self.cut_type_list = cut_type_list.get_items(lang="zh_CN")
-            self.include_type = cut_type_list.translate_batch(texts=[t for t in self.include_type if t != "text"])
-            self.cut_type_list = [t for t in self.cut_type_list if t not in self.include_type]
+            self.include_type = cut_type_list.translate_batch(
+                texts=[t for t in self.include_type if t != "text"]
+            )
+            self.cut_type_list = [
+                t for t in self.cut_type_list if t not in self.include_type
+            ]
         else:
             self.cut_type_list = cut_type_list.get_items(lang="en")
 
@@ -81,21 +91,32 @@ class DataProcessor:
                 logger.error("开启 clean_dataset 不支持 image 类型消息")
                 exit()
 
+            from llamafactory.extras.packages import is_vllm_available
+
             if not is_vllm_available():
                 logger.warning("vLLM 不可用，暂不清洗数据集。")
                 clean_dataset_config["enable_clean"] = False
 
         if self.config.get("clean_dataset", {}).get("enable_clean", False):
-            if self.config.get("clean_dataset", {}).get("clean_strategy", "llm") == "llm":
+            if (
+                self.config.get("clean_dataset", {}).get("clean_strategy", "llm")
+                == "llm"
+            ):
                 if self.config.get("online_llm_clear"):
-                    self.clean_strategy = OlineLLMCleaningStrategy(make_dataset_config=self.config)
+                    self.clean_strategy = OlineLLMCleaningStrategy(
+                        make_dataset_config=self.config
+                    )
                 else:
-                    self.clean_strategy = LLMCleaningStrategy(make_dataset_config=self.config)
+                    self.clean_strategy = LLMCleaningStrategy(
+                        make_dataset_config=self.config
+                    )
         self.c = self.config
 
     def main(self):
         if not os.path.exists(self.csv_folder) or not os.listdir(self.csv_folder):
-            logger.error(f"错误：目录 '{self.csv_folder}' 不存在或为空，请检查路径并确保其中包含 CSV 聊天数据文件。")
+            logger.error(
+                f"错误：目录 '{self.csv_folder}' 不存在或为空，请检查路径并确保其中包含 CSV 聊天数据文件。"
+            )
             return
 
         csv_files = self.get_csv_files()
@@ -116,7 +137,9 @@ class DataProcessor:
         self.save_result(qa_res)
         self._execute_length_cdf_script()
 
-        logger.success(f"聊天记录处理成功，共{len(qa_res)}条，保存到 ./dataset/res_csv/sft/sft-my.json")
+        logger.success(
+            f"聊天记录处理成功，共{len(qa_res)}条，保存到 ./dataset/res_csv/sft/sft-my.json"
+        )
 
     def _execute_length_cdf_script(self):
         """执行 length_cdf.py 脚本来计算cutoff_len。"""
@@ -151,10 +174,14 @@ class DataProcessor:
             )
             return_code = process.wait()
             if return_code != 0:
-                logger.error(f"命令 '{' '.join(command_parts)}' 执行失败，返回码 {return_code}")
+                logger.error(
+                    f"命令 '{' '.join(command_parts)}' 执行失败，返回码 {return_code}"
+                )
         except FileNotFoundError:
             # command_parts[0] 是 python_executable, command_parts[1] 是 script_path
-            logger.error(f"命令执行失败: 找不到可执行文件 '{command_parts[0]}' 或脚本 '{command_parts[1]}'")
+            logger.error(
+                f"命令执行失败: 找不到可执行文件 '{command_parts[0]}' 或脚本 '{command_parts[1]}'"
+            )
         except KeyError as e:
             logger.error(f"执行 length_cdf.py 脚本失败：配置项缺失 {str(e)}")
         except Exception as e:
@@ -183,7 +210,9 @@ class DataProcessor:
         csv_files.sort(key=extract_start)
         return csv_files
 
-    def match_qa(self, messages: List[ChatMessage]) -> List[Union[QaPairV2, CutMessage]]:
+    def match_qa(
+        self, messages: List[ChatMessage]
+    ) -> List[Union[QaPairV2, CutMessage]]:
         """
         匹配问答对，直接处理历史对话
 
@@ -207,7 +236,9 @@ class DataProcessor:
         conversation_messages: List[Message] = []
         conversation_images: List[str] = []
 
-        def _calculate_qa_length(messages: List[Message], new_user_content: str, new_assistant_content: str) -> int:
+        def _calculate_qa_length(
+            messages: List[Message], new_user_content: str, new_assistant_content: str
+        ) -> int:
             """计算messages加上新消息后的总字符长度"""
             total_length = 0
             for msg in messages:
@@ -227,7 +258,9 @@ class DataProcessor:
             total_length = _calculate_qa_length(current_conversation_messages, "", "")
 
             if total_length <= self.config.get("messages_max_length", 4096):
-                if len(current_conversation_images) > self.config.get("max_image_num", 2):
+                if len(current_conversation_images) > self.config.get(
+                    "max_image_num", 2
+                ):
                     logger.warning(
                         f"QA pair (potential id {qa_id}) with timestamp {time_stamp} "
                         f"has too many images ({len(current_conversation_images)} > {self.config.get('max_image_num', 2)}) "
@@ -273,7 +306,12 @@ class DataProcessor:
 
             if current_state == WAITING_INSTRUCTION:
                 if msg.is_sender == 0:  # 收到对方消息 (potential instruction)
-                    if last_message and not self.qa_match_strategy.is_same_conversation([last_message], msg):
+                    if (
+                        last_message
+                        and not self.qa_match_strategy.is_same_conversation(
+                            [last_message], msg
+                        )
+                    ):
                         # 如果不是同一段对话，且存在上一条消息，则保存之前的对话
                         if conversation_messages:
                             qa_id_counter = _save_current_qa_pair(
@@ -292,7 +330,12 @@ class DataProcessor:
 
             elif current_state == WAITING_RESPONSE:
                 if msg.is_sender == 0:  # 收到对方消息
-                    if last_message and not self.qa_match_strategy.is_same_conversation([last_message], msg):
+                    if (
+                        last_message
+                        and not self.qa_match_strategy.is_same_conversation(
+                            [last_message], msg
+                        )
+                    ):
                         # 如果不是同一段对话，且存在上一条消息，则保存之前的对话
                         if conversation_messages:
                             qa_id_counter = _save_current_qa_pair(
@@ -307,16 +350,29 @@ class DataProcessor:
                     last_message = msg
                     # 状态保持不变
                 else:  # 自己的回复 使用策略判断是否属于同一对话
-                    if last_message and self.qa_match_strategy.is_same_conversation([last_message], msg):
-                        assert current_instruction is not None, (
-                            "current_instruction should not be None when creating a QA pair"
-                        )
+                    if last_message and self.qa_match_strategy.is_same_conversation(
+                        [last_message], msg
+                    ):
+                        assert (
+                            current_instruction is not None
+                        ), "current_instruction should not be None when creating a QA pair"
 
-                        conversation_messages.append(Message(role="user", content=current_instruction.msg))
-                        conversation_messages.append(Message(role="assistant", content=msg.msg))
-                        if hasattr(current_instruction, "src") and current_instruction.src:
+                        conversation_messages.append(
+                            Message(role="user", content=current_instruction.msg)
+                        )
+                        conversation_messages.append(
+                            Message(role="assistant", content=msg.msg)
+                        )
+                        if (
+                            hasattr(current_instruction, "src")
+                            and current_instruction.src
+                        ):
                             if isinstance(current_instruction.src, list):
-                                valid_images = [img_src for img_src in current_instruction.src if img_src]
+                                valid_images = [
+                                    img_src
+                                    for img_src in current_instruction.src
+                                    if img_src
+                                ]
                                 if valid_images:
                                     conversation_images.extend(valid_images)
                             elif current_instruction.src:
@@ -338,7 +394,9 @@ class DataProcessor:
 
         return qa_res
 
-    def group_consecutive_messages(self, messages: List[ChatMessage]) -> List[ChatMessage]:
+    def group_consecutive_messages(
+        self, messages: List[ChatMessage]
+    ) -> List[ChatMessage]:
         """
         将同一个人连续发送的多条消息组合成一条消息，遇到cut_type添加cut
 
@@ -363,14 +421,23 @@ class DataProcessor:
             """
             base_msg = messages[0]
             combined_content = messages[0].msg
-            combined_src_list = [messages[0].src] if messages[0].type_name in ["图片", "image"] else []
+            combined_src_list = (
+                [messages[0].src] if messages[0].type_name in ["图片", "image"] else []
+            )
 
             for i in messages[1:]:
                 content = i.msg
                 if not content:
                     continue
 
-                if combined_content and combined_content[-1] not in ["。", "！", "？", "…", "，", "."]:
+                if combined_content and combined_content[-1] not in [
+                    "。",
+                    "！",
+                    "？",
+                    "…",
+                    "，",
+                    ".",
+                ]:
                     combined_content += "，"
 
                 if i.type_name == "图片":
@@ -425,7 +492,8 @@ class DataProcessor:
 
         for _, current_msg in enumerate(messages):
             if current_msg.type_name in self.cut_type_list or (
-                current_msg.type_name in ["图片", "image"] and current_msg.is_sender == 1
+                current_msg.type_name in ["图片", "image"]
+                and current_msg.is_sender == 1
             ):  # 自己发图要cut
                 if current_group:
                     # 当前组有消息，合并当前组，并添加一条cut
@@ -453,7 +521,9 @@ class DataProcessor:
             if (
                 current_msg.is_sender == last_msg.is_sender
                 and current_msg.talker == last_msg.talker
-                and self.single_combine_strategy.is_same_conversation([last_msg], current_msg)
+                and self.single_combine_strategy.is_same_conversation(
+                    [last_msg], current_msg
+                )
             ):
                 current_group.append(current_msg)
             else:
@@ -541,7 +611,9 @@ class DataProcessor:
                 "id": idx,
                 "time": item.time.isoformat() if item.time else None,
                 "score": item.score,
-                "messages": [{"role": msg.role, "content": msg.content} for msg in item.messages],
+                "messages": [
+                    {"role": msg.role, "content": msg.content} for msg in item.messages
+                ],
                 "images": item.images,
                 "system": item.system,
             }
