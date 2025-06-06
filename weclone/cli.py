@@ -91,9 +91,7 @@ def train_sft():
     train_sft_main()
 
 
-@cli.command(
-    "webchat-demo", help="启动 Web UI 与微调后的模型进行交互测试。"
-)  # 命令名修改为 web-demo
+@cli.command("webchat-demo", help="启动 Web UI 与微调后的模型进行交互测试。")  # 命令名修改为 web-demo
 @apply_common_decorators()
 def web_demo():
     """启动 Web UI 与微调后的模型进行交互测试。"""
@@ -190,13 +188,9 @@ def _check_versions():
                 config_guide_version = weclone_tool_data.get("config_version")
                 config_changelog = weclone_tool_data.get("config_changelog", "N/A")
         except Exception as e:
-            logger.warning(
-                f"警告：无法读取或解析 {PYPROJECT_PATH}: {e}。无法检查配置文件是否为最新。"
-            )
+            logger.warning(f"警告：无法读取或解析 {PYPROJECT_PATH}: {e}。无法检查配置文件是否为最新。")
     else:
-        logger.warning(
-            f"警告：未找到文件 {PYPROJECT_PATH}。无法检查配置文件是否为最新。"
-        )
+        logger.warning(f"警告：未找到文件 {PYPROJECT_PATH}。无法检查配置文件是否为最新。")
 
     if not settings_version:
         logger.error(f"错误：在 {SETTINGS_PATH} 中未找到 'version' 字段。")
@@ -208,9 +202,7 @@ def _check_versions():
             logger.warning(
                 f"警告：您的 settings.jsonc 文件版本 ({settings_version}) 与项目建议的配置版本 ({config_guide_version}) 不一致。"
             )
-            logger.warning(
-                "这可能导致意外行为或错误。请从 settings.template.json 复制或更新您的 settings.jsonc 文件。"
-            )
+            logger.warning("这可能导致意外行为或错误。请从 settings.template.json 复制或更新您的 settings.jsonc 文件。")
             # TODO 根据版本号打印更新日志
             logger.warning(f"配置文件更新日志：\n{config_changelog}")
     elif PYPROJECT_PATH.exists():  # 如果文件存在但未读到版本
