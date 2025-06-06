@@ -26,7 +26,7 @@
 </p>
 
 > [!IMPORTANT]
-> <h3> WhatsApp and Telegram chat logs integration for digital avatar creation is coming ! </h3>
+> ### WhatsApp and Telegram chat logs integration for digital avatar creation is coming !
 
 ## ✨核心功能
 - 💫 涵盖打造数字分身的全链路方案，包括聊天数据导出、预处理、模型训练、部署
@@ -35,6 +35,9 @@
 - 🛡️ 隐私信息过滤，本地化微调部署，数据安全可控
 
 ## 📋特性与说明
+
+> [!IMPORTANT]
+> ### WeClone现在支持图片模态数据微调了！并且包含了更全的上下文,记得拉取最新代码并更新依赖。
 
 > [!IMPORTANT]
 > - WeClone仍在快速迭代期，当前效果不代表最终效果。  
@@ -74,6 +77,8 @@ uv pip install --group main -e .
 ```bash
 cp settings.template.jsonc settings.jsonc
 ```
+- 微调**多模态模型**时，请使用[examples/mllm.template.jsonc](https://github.com/xming521/WeClone/blob/master/examples/mllm.template.jsonc)作为配置文件。
+
 > [!NOTE]
 > 训练以及推理相关配置统一在文件`settings.jsonc`
 
@@ -96,18 +101,27 @@ git clone https://www.modelscope.cn/Qwen/Qwen2.5-7B-Instruct.git
 
 请使用[PyWxDump](https://github.com/xaoyaoo/PyWxDump)提取微信聊天记录（不支持4.0版本微信）。可以先将手机的聊天记录迁移（备份）到电脑，数据量更多一些。下载软件并解密数据库后，点击聊天备份，导出类型为CSV，可以导出多个联系人（不建议使用群聊记录），然后将导出的位于`wxdump_tmp/export` 的 `csv` 文件夹放在`./dataset`目录即可，也就是不同人聊天记录的文件夹一起放在 `./dataset/csv`。   
 
+### 图片数据准备
+在能进入微信个人文件夹的环境执行，如果没有环境创建环境并安装基础依赖即可（`uv pip install -e .`），然后执行以下命令，将微信图片数据保存到`./dataset/wechat/dat`目录下。
+```bash
+python weclone/data/chat_parsers/wechat_parser.py --wechat-data-dir "微信个人文件夹路径 例如 C:\Users\user\Documents\WeChat Files\wxid_d68wiru2zseo22"
+```
+之后使用[微信图片解密工具](https://github.com/Evil0ctal/WeChat-image-decryption)解密图片数据,解密后的图片数据保存到`dataset/media/images`目录下。
+
 ## 数据预处理
 
 - 项目默认去除了数据中的手机号、身份证号、邮箱、网址。还在`settings.jsonc`中提供了一个禁用词词库`blocked_words`，可以自行添加需要过滤的词句（会默认去掉包括禁用词的整句）。
 > [!IMPORTANT]
 > 🚨 请一定注意保护个人隐私，不要泄露个人信息！
 
+
 - 执行以下命令对数据进行处理，可以根据自己的聊天风格修改settings.jsonc的`make_dataset_args`。
 ```bash
 weclone-cli make-dataset
 ```
 - 目前仅支持时间窗口策略，根据`single_combine_time_window`将单人连续消息通过逗号连接合并为一句，根据`qa_match_time_window`匹配问答对。
-- 可以启用`clean_dataset`中的`enable_clean`选项，对数据进行清洗，以达到更好效果。* 当前系统支持使用 `llm judge` 对聊天记录进行打分，提供 **vllm 离线推理** 和 **API 在线推理** 两种方式。可通过将 `settings.jsonc` 文件中的 `"online_llm_clear": false` 修改为 `true` 来启用 API 在线推理模式，并配置相应的 `base_url`、`llm_api_key`、`model_name` 等参数。所有兼容 OpenAI 接口的模型均可接入。
+- 多模态数据可以通过`image_max_pixels`和`max_image_num`参数控制图片数量和大小，减少显存占用。
+- 可以启用`clean_dataset`中的`enable_clean`选项，对数据进行清洗，以达到更好效果（多模态数据暂不支持）。* 当前系统支持使用 `llm judge` 对聊天记录进行打分，提供 **vllm 离线推理** 和 **API 在线推理** 两种方式。可通过将 `settings.jsonc` 文件中的 `"online_llm_clear": false` 修改为 `true` 来启用 API 在线推理模式，并配置相应的 `base_url`、`llm_api_key`、`model_name` 等参数。所有兼容 OpenAI 接口的模型均可接入。
 - 在获得 `llm 打分分数分布情况` 后，可通过设置 `accept_score` 参数筛选可接受的分数区间，同时可适当降低 `train_sft_args` 中的 `lora_dropout` 参数，以提升模型的拟合效果。
 
 ## 配置参数并微调模型

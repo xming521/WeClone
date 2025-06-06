@@ -67,7 +67,16 @@ def cli():
 @apply_common_decorators()
 def qa_generator():
     """处理聊天记录CSV文件，生成问答对数据集。"""
-    from weclone.data.qa_generator import DataProcessor
+    config = load_config(arg_type="make_dataset")
+
+    if "image" in config.get("include_type", []):
+        from weclone.data.qa_generatorV2 import DataProcessor
+
+        logger.info("检测到配置包含image类型，使用qa_generatorV2")
+    else:
+        from weclone.data.qa_generator import DataProcessor
+
+        logger.info("使用标准qa_generator")
 
     processor = DataProcessor()
     processor.main()
