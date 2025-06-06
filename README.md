@@ -26,7 +26,7 @@
 </p>
 
 > [!IMPORTANT]
-> <h3> WhatsApp and Telegram chat logs integration for digital avatar creation is coming ! </h3>
+> ### WhatsApp and Telegram chat logs integration for digital avatar creation is coming !
 
 ## ✨核心功能
 - 💫 涵盖打造数字分身的全链路方案，包括聊天数据导出、预处理、模型训练、部署
@@ -37,7 +37,7 @@
 ## 📋特性与说明
 
 > [!IMPORTANT]
-> <h3>WeClone现在支持图片模态数据微调了！包含更全的上下文,实现更好的微调效果,记得拉取最新代码并更新依赖。</h3>
+> ### WeClone现在支持图片模态数据微调了！并且包含了更全的上下文,记得拉取最新代码并更新依赖。
 
 > [!IMPORTANT]
 > - WeClone仍在快速迭代期，当前效果不代表最终效果。  
