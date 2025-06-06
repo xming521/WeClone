@@ -34,12 +34,12 @@ class CleaningStrategy(ABC):
 class LLMCleaningStrategy(CleaningStrategy):
     """使用大模型进行数据清洗的策略"""
 
-
     def judge(self, data: List[QaPair]) -> None:
         """
         调用llm打分，并将分数直接赋值给传入的QaPair。
         """
         from weclone.core.inference.offline_infer import vllm_infer
+
         logger.info("开始使用llm对数据打分")
         inputs = []
         prompt_template = PromptTemplate.from_template(CLEAN_PROMPT)
@@ -99,17 +99,17 @@ class LLMCleaningStrategy(CleaningStrategy):
         output_json_path = os.path.join(dataset_dir, "sft-my-l.json")
         accept_score = config.get("clean_dataset", {}).get("llm", {}).get("accept_score", 1)
 
-        if not config.get("clean_dataset", {}).get("enable_clean"):
-            logger.info("未启用清洗功能")
+        if not config.get("clean_dataset", {}).get("enable_clean") or "image" in config.get("include_type", ""):
+            logger.info("不启用数据清洗功能")
             self._update_dataset_info_file(dataset_info_path, new_file_name="sft-my.json")
             return sft_json_path
 
         try:
-            with open(sft_json_path, 'r', encoding='utf-8') as f:
+            with open(sft_json_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
             filtered_data = [item for item in data if item.get("score", 0) >= accept_score]
 
-            with open(output_json_path, 'w', encoding='utf-8') as f:
+            with open(output_json_path, "w", encoding="utf-8") as f:
                 json.dump(filtered_data, f, ensure_ascii=False, indent=4)
 
             logger.success(f"已筛出低于{accept_score}分的数据，共保留 {len(filtered_data)} 条数据")

@@ -27,8 +27,10 @@ def length_cdf(
     model_name_or_path: str = "./Qwen2.5-7B-Instruct",
     dataset: str = "wechat-sft",
     dataset_dir: str = "./dataset/res_csv/sft",
+    media_dir: str = "./dataset/media",
     template: str = "qwen",
     interval: int = 256,
+    image_max_pixels: int = 768 * 768,
 ):
     r"""Calculate the distribution of the input lengths in the dataset.
 
@@ -47,6 +49,8 @@ def length_cdf(
             "cutoff_len": 1_000_000,
             "preprocessing_num_workers": 16,
             "output_dir": "dummy_dir",
+            "media_dir": media_dir,
+            "image_max_pixels": int(image_max_pixels),
             "overwrite_cache": True,
             "do_train": True,
         }
@@ -63,10 +67,11 @@ def length_cdf(
     length_tuples.sort()
     count_accu, prob_accu = 0, 0
     logger.info(" cutoff_len设置建议：")
+    logger.warning("多模态任务请务必配置cutoff_len为数据最大长度")
     for length, count in length_tuples:
         count_accu += count
         prob_accu += count / total_num * 100
-        logger.success(f"{count_accu:d} ({prob_accu:.2f}%) samples have length < {length + interval}.")
+        logger.info(f"{count_accu:d} ({prob_accu:.2f}%) samples have length < {length + interval}.")
 
 
 if __name__ == "__main__":
