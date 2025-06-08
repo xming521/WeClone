@@ -1,0 +1,22 @@
+name: Telegram Release Notification
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Telegram Message
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          message: |
+            🚀 新版本发布！
+            🏷️ 版本: ${{ github.event.release.tag_name }}
+            🔗 链接: ${{ github.event.release.html_url }}
+            发布说明:
+            ${{ github.event.release.body }}
+          format: markdown
