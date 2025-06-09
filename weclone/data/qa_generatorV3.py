@@ -12,7 +12,6 @@ import concurrent.futures
 from weclone.utils.log import logger
 from weclone.data.models import QaPairV2, Message, ChatMessage
 
-# 导入 v2 的 DataProcessor 作为基类
 from weclone.data.qa_generatorV2 import DataProcessor as BaseDataProcessor
 
 
@@ -111,10 +110,8 @@ class DataProcessor(BaseDataProcessor):
     继承自v2的DataProcessor，并增加了图片识别处理功能。
     """
     def __init__(self):
-        # 首先，调用父类的构造函数来初始化所有通用的配置和属性
         super().__init__()
         
-        # 接下来，只添加v3版本新增的初始化逻辑
         # 基于配置初始化图片识别处理器
         vision_config = self.config.get("vision_api", {})
         if vision_config.get("enable", False) and vision_config.get("api_key"):
@@ -131,16 +128,13 @@ class DataProcessor(BaseDataProcessor):
     def _process_images_in_parallel(self, qa_list: List[QaPairV2]) -> List[QaPairV2]:
         """并行处理所有对话中的图片，并将描述替换回对话文本。"""
         all_image_paths = []
-        # 从配置中获取 media_dir，并设置一个合理的默认值
         media_dir = self.c.get("media_dir", "dataset/media")
 
         # 遍历所有对话，收集并构造完整的图片路径
         for qa_pair in qa_list:
             if qa_pair.images:
-                # 确保 images 字段是列表以便统一处理
                 image_list = qa_pair.images if isinstance(qa_pair.images, list) else [qa_pair.images]
                 for relative_path in image_list:
-                    # 使用 os.path.join 构造完整路径，这是处理路径的标准做法
                     full_path = os.path.join(media_dir, relative_path)
                     all_image_paths.append(full_path)
 
@@ -201,20 +195,16 @@ class DataProcessor(BaseDataProcessor):
         qa_res = self.match_qa(message_list)
         qa_res = [item for item in qa_res if isinstance(item, QaPairV2)]
         
-        # --- v3 新增逻辑 ---
         # 如果启用图片识别，则执行并行处理
         if self.image_processor:
             logger.info("开始执行图片识别流程...")
             qa_res = self._process_images_in_parallel(qa_res)
             logger.info("图片识别流程完成。")
-        # --- 新增逻辑结束 ---
 
         if self.c.get("clean_dataset", {}).get("enable_clean", False):
             self.clean_strategy.judge(qa_res)  # type: ignore
         
-        # 调用重写的 save_result 方法
         self.save_result(qa_res)
-        # 调用继承的 _execute_length_cdf_script 方法
         self._execute_length_cdf_script()
 
         logger.success(
@@ -238,7 +228,6 @@ class DataProcessor(BaseDataProcessor):
             }
             processed_qa_res.append(item_dict)
 
-        # v3 使用新的文件名
         output_path = "./dataset/res_csv/sft/sft-my-img-rec.json" 
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
         with open(output_path, "w", encoding="utf-8") as f:
