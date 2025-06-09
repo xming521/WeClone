@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+
 from weclone.utils.log import logger
 
 
@@ -34,5 +35,5 @@ def check_image_file_exists(file_path: str) -> str | bool:
 
 
 if __name__ == "__main__":
-    path = "Storage\Image\2021-08\6ce3f785b4230246639c3dd0d4a8848c.dat"
+    path = "Storage\\Image\2021-08\6ce3f785b4230246639c3dd0d4a8848c.dat"
     print(check_image_file_exists(path))

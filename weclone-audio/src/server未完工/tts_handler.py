@@ -1,9 +1,10 @@
-import edge_tts
 import asyncio
-import tempfile
-import subprocess
 import os
+import subprocess
+import tempfile
 from pathlib import Path
+
+import edge_tts
 
 # Language default (environment variable)
 DEFAULT_LANGUAGE = os.getenv('DEFAULT_LANGUAGE', 'en-US')

@@ -15,12 +15,12 @@
 from collections import defaultdict
 
 import fire
-from tqdm import tqdm
-from weclone.utils.log import logger
-
 from llamafactory.data import get_dataset, get_template_and_fix_tokenizer
 from llamafactory.hparams import get_train_args
 from llamafactory.model import load_tokenizer
+from tqdm import tqdm
+
+from weclone.utils.log import logger
 
 
 def length_cdf(

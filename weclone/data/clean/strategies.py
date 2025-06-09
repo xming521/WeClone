@@ -1,12 +1,14 @@
 import json
-import pandas as pd
+import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List
+
+import pandas as pd
 from langchain_core.prompts import PromptTemplate
-from weclone.data.models import QaPair, CutMessage, QaPairScore
+
+from weclone.data.models import QaPair, QaPairScore
 from weclone.prompts.clean_data import CLEAN_PROMPT
-import os
 from weclone.utils.log import logger
 
 

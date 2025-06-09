@@ -5,5 +5,3 @@ def dict_to_argv(d):
         if v is not None:
             argv.append(str(v))
     return argv
-
-
