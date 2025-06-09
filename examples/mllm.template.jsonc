@@ -7,7 +7,7 @@
         "default_system": "请你扮演一名人类，不要说自己是人工智能",
         "finetuning_type": "lora",
         "media_dir": "dataset/media",
-        "image_max_pixels": 921600, //720P
+        "image_max_pixels": 409920, //720P
         "enable_thinking": false,
         "trust_remote_code": true
     },
@@ -57,11 +57,11 @@
         "use_fast_tokenizer": true,
         "lora_target": "q_proj,v_proj,visual.merger.mlp.0,visual.merger.mlp.2",
         "lora_rank": 4,
-        "lora_dropout": 0.2,
+        "lora_dropout": 0.25,
         "weight_decay": 0.1,
         "overwrite_cache": true,
-        "per_device_train_batch_size": 8,
-        "gradient_accumulation_steps": 4,
+        "per_device_train_batch_size": 4,
+        "gradient_accumulation_steps": 8,
         "lr_scheduler_type": "cosine",
         "cutoff_len": 4096,
         "logging_steps": 10,
