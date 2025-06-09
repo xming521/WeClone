@@ -53,7 +53,7 @@ sparktts = [
   "tqdm>=4.66.5",
 ]
 
-dev = ["pytest", "pytest-order", "pyright", "ruff"]
+dev = ["pytest", "pytest-order", "pyright", "ruff", "pre-commit"]
 
 [project.scripts]
 weclone-cli = "weclone.cli:cli"

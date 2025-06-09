@@ -1,16 +1,19 @@
-import re
 import json
-import pandas as pd
-from tqdm import tqdm
+import os
+import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, List
+
+import pandas as pd
 from langchain_core.prompts import PromptTemplate
-from weclone.data.models import QaPair, QaPairScore
-from weclone.prompts.clean_data import CLEAN_PROMPT,ONLINE_LLM_CLEAN_PROMPT
+from tqdm import tqdm
+
 from weclone.core.inference.online_infer import OnlineLLM
+from weclone.data.models import QaPair, QaPairScore
+from weclone.prompts.clean_data import ONLINE_LLM_CLEAN_PROMPT
 from weclone.utils.log import logger
-import os
+
 
 @dataclass
 class CleaningStrategy(ABC):
@@ -22,6 +25,7 @@ class CleaningStrategy(ABC):
     def clean(self, data: Any) -> Any:
         pass
 
+
 @dataclass
 class OlineLLMCleaningStrategy(CleaningStrategy):
     """使用大模型进行数据清洗的策略"""
@@ -32,27 +36,22 @@ class OlineLLMCleaningStrategy(CleaningStrategy):
         logger.info(f"使用模型 {self.make_dataset_config.get('model_name', '')}")
 
         client = OnlineLLM(
-            api_key = self.make_dataset_config.get("llm_api_key"),
-            base_url = self.make_dataset_config.get("base_url"),
-            model_name = self.make_dataset_config.get("model_name"),
-            default_system = self.make_dataset_config.get("default_system")
+            api_key=self.make_dataset_config.get("llm_api_key"),  # type: ignore
+            base_url=self.make_dataset_config.get("base_url"),
+            model_name=self.make_dataset_config.get("model_name"),
+            default_system=self.make_dataset_config.get("default_system"),
         )
         prompt_template = PromptTemplate.from_template(ONLINE_LLM_CLEAN_PROMPT)
 
         parsed_scores = []
-        clean_batch_size = int(self.make_dataset_config.get("clean_batch_size", 10)) 
+        clean_batch_size = int(self.make_dataset_config.get("clean_batch_size", 10))
         for i in tqdm(range(0, len(data), clean_batch_size), desc="在线模型评分进度"):
             batch = data[i : i + clean_batch_size]
             # 构造当前批次的 qa_list
-            qa_list = [
-                {"id": qa.id, "Q": qa.instruction, "A": qa.output}
-                for qa in batch
-            ]
+            qa_list = [{"id": qa.id, "Q": qa.instruction, "A": qa.output} for qa in batch]
             qa_list_json = json.dumps(qa_list, ensure_ascii=False)
             # 填充模板
-            prompt_text = prompt_template.invoke({
-                "qa_list": qa_list_json
-            }).text
+            prompt_text = prompt_template.invoke({"qa_list": qa_list_json}).text
             try:
                 response = client.chat(prompt_text)
                 result_text = response.choices[0].message.content
@@ -68,7 +67,7 @@ class OlineLLMCleaningStrategy(CleaningStrategy):
                 except json.JSONDecodeError as e:
                     logger.error(f"JSON 解析失败，跳过本批次: {e}\n内容：{result_text}")
                     continue
-                
+
                 for item in score_list:
                     parsed_scores.append(QaPairScore(**item))
             except Exception as e:
@@ -89,14 +88,16 @@ class OlineLLMCleaningStrategy(CleaningStrategy):
         score_counts = score_series.value_counts().sort_index()
         score_percentages = score_series.value_counts(normalize=True).sort_index() * 100
         pd.set_option("display.unicode.east_asian_width", True)
-        distribution_df = pd.DataFrame({
-            "数量": score_counts,
-            "占比(%)": score_percentages.round(2),
-        })
+        distribution_df = pd.DataFrame(
+            {
+                "数量": score_counts,
+                "占比(%)": score_percentages.round(2),
+            }
+        )
         distribution_df.index.name = "分数"
         printable_df_str = distribution_df.reset_index().to_string(index=False)
         logger.success(f"在线模型打分分数分布情况:\n{printable_df_str}")
-    
+
     def clean(self) -> str:
         """
         清洗 SFT 数据并返回清洗后的文件路径。
@@ -116,11 +117,11 @@ class OlineLLMCleaningStrategy(CleaningStrategy):
             return sft_json_path
 
         try:
-            with open(sft_json_path, 'r', encoding='utf-8') as f:
+            with open(sft_json_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
             filtered_data = [item for item in data if item.get("score", 0) >= accept_score]
 
-            with open(output_json_path, 'w', encoding='utf-8') as f:
+            with open(output_json_path, "w", encoding="utf-8") as f:
                 json.dump(filtered_data, f, ensure_ascii=False, indent=4)
 
             logger.success(f"已筛出低于{accept_score}分的数据，共保留 {len(filtered_data)} 条数据")
