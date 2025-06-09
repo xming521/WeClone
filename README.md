@@ -7,8 +7,8 @@
 
 [![GitHub stars](https://img.shields.io/github/stars/xming521/WeClone?style=for-the-badge&logo=github&label=Stars&logoColor=white&color=ffda65)](https://github.com/xming521/WeClone/stargazers)
 [![GitHub release](https://img.shields.io/github/v/release/xming521/WeClone?style=for-the-badge&logo=github&label=Release&logoColor=white&color=06d094)](https://github.com/xming521/WeClone/releases)
-<a href="https://qm.qq.com/cgi-bin/qm/qr?k=QXMsXJ_eqeabS0cck0PGjEMyKjcq7J5d&jump_from=webapi&authKey=KHdy31VbSxj34VQVwXtEOYVi1K7SND45vJcNnm1Z5iCCR6IbGiyWEs9UbPqFI8Jc" target="_blank" style="text-decoration: none;">
-  <img src="https://img.shields.io/badge/QQ群-650118277-12B7F5?style=for-the-badge&logo=qq&logoColor=white" alt="WeClone①" title="WeClone①">
+<a href="https://qm.qq.com/cgi-bin/qm/qr?k=wNdgbOVT6oFOJ2wlMLsolUXErW9ESLpk&jump_from=webapi&authKey=z/reOp6YLyvR4Tl2k2nYMsLoMC3w9/99ucgKMX0oRGlxDV/WbYnvq2QxODoIkfxn" target="_blank" style="text-decoration: none;">
+  <img src="https://img.shields.io/badge/QQ群-708067078-12B7F5?style=for-the-badge&logo=qq&logoColor=white" alt="WeClone①" title="WeClone①">
 </a>
 [![Twitter](https://img.shields.io/badge/Twitter-@weclone567-000000?style=for-the-badge&logo=x&logoColor=white)](https://x.com/weclone567)
 [![Telegram](https://img.shields.io/badge/Telegram-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/+JEdak4m0XEQ3NGNl)
@@ -26,7 +26,7 @@
 </p>
 
 > [!IMPORTANT]
-> <h3> WhatsApp and Telegram chat logs integration for digital avatar creation is coming ! </h3>
+> ### WhatsApp and Telegram chat logs integration for digital avatar creation is coming !
 
 ## ✨核心功能
 - 💫 涵盖打造数字分身的全链路方案，包括聊天数据导出、预处理、模型训练、部署
@@ -37,7 +37,7 @@
 ## 📋特性与说明
 
 > [!IMPORTANT]
-> <h3>WeClone现在支持图片模态数据微调了！包含更全的上下文,实现更好的微调效果,记得拉取最新代码并更新依赖。</h3>
+> ### WeClone现在支持图片模态数据微调了！并且包含了更全的上下文,记得拉取最新代码并更新依赖。
 
 > [!IMPORTANT]
 > - WeClone仍在快速迭代期，当前效果不代表最终效果。  
@@ -102,7 +102,7 @@ git clone https://www.modelscope.cn/Qwen/Qwen2.5-7B-Instruct.git
 请使用[PyWxDump](https://github.com/xaoyaoo/PyWxDump)提取微信聊天记录（不支持4.0版本微信）。可以先将手机的聊天记录迁移（备份）到电脑，数据量更多一些。下载软件并解密数据库后，点击聊天备份，导出类型为CSV，可以导出多个联系人（不建议使用群聊记录），然后将导出的位于`wxdump_tmp/export` 的 `csv` 文件夹放在`./dataset`目录即可，也就是不同人聊天记录的文件夹一起放在 `./dataset/csv`。   
 
 ### 图片数据准备
-在微信所在环境执行，仅需要安装基础依赖即可（`uv pip install -e .`），然后执行以下命令，将微信图片数据保存到`./dataset/wechat/dat`目录下。
+在能进入微信个人文件夹的环境执行，如果没有环境创建环境并安装基础依赖即可（`uv pip install -e .`），然后执行以下命令，将微信图片数据保存到`./dataset/wechat/dat`目录下。
 ```bash
 python weclone/data/chat_parsers/wechat_parser.py --wechat-data-dir "微信个人文件夹路径 例如 C:\Users\user\Documents\WeChat Files\wxid_d68wiru2zseo22"
 ```
