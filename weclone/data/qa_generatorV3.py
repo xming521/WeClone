@@ -234,7 +234,6 @@ class DataProcessor(BaseDataProcessor):
                 "messages": [
                     {"role": msg.role, "content": msg.content} for msg in item.messages
                 ],
-                # 在v3中，图片信息已被文本描述替代，故不再保存images字段
                 "system": item.system,
             }
             processed_qa_res.append(item_dict)
