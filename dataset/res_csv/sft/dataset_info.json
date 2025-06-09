@@ -8,7 +8,7 @@
         }
     },
     "wechat-sft-with-history": {
-        "file_name": "sft-my.json",
+        "file_name": "sft-my-with-history.json",
         "columns": {
             "prompt": "instruction",
             "response": "output",
@@ -17,12 +17,26 @@
         }
     },
     "wechat-mllm-sft": {
-        "file_name": "./sft-my.json",
+        "file_name": "sft-my-mllm.json",
         "formatting": "sharegpt",
         "columns": {
             "messages": "messages",
             "system": "system",
             "images": "images"
+        },
+        "tags": {
+            "role_tag": "role",
+            "content_tag": "content",
+            "user_tag": "user",
+            "assistant_tag": "assistant"
+        }
+    },
+    "wechat-img-rec-sft": {
+        "file_name": "sft-my-img-rec.json",
+        "formatting": "sharegpt",
+        "columns": {
+            "messages": "messages",
+            "system": "system"
         },
         "tags": {
             "role_tag": "role",
