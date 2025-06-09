@@ -15,7 +15,7 @@ class ChatMessage:
     talker: str
     room_name: str
     msg: str
-    src: list[str]
+    src: str
     CreateTime: Timestamp
 
 
