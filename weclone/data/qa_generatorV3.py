@@ -1,6 +1,7 @@
 import os
 import sys
 import subprocess
+import time
 from typing import List, Union
 import re
 import json
@@ -40,7 +41,7 @@ class ImageToTextProcessor:
         return suffix
 
     def _call_vision_api(self, image_path: str) -> str:
-        """调用Vision API"""
+        """调用Vision API（增加了重试机制）"""
         base64_image = self._encode_image_to_base64(image_path)
         if not base64_image:
             return "[图片处理失败：无法编码]"
@@ -72,28 +73,48 @@ class ImageToTextProcessor:
             "temperature": 0.1
         }
 
-        try:
-            response = requests.post(
-                f"{self.api_url}/chat/completions",
-                headers=headers,
-                json=payload,
-                timeout=60
-            )
-            response.raise_for_status()
-            result = response.json()
+        # --- 新增：重试逻辑 ---
+        max_retries = 3  # 最大重试次数
+        base_delay = 2  # 基础等待时间（秒）
 
-            if 'choices' in result and len(result['choices']) > 0:
-                content = result['choices'][0]['message']['content']
-                return content.strip()
-            else:
-                logger.warning(f"API响应格式异常: {result}")
-                return "[图片描述获取失败：API格式错误]"
-        except requests.exceptions.RequestException as e:
-            logger.error(f"API请求失败 {image_path}: {e}")
-            return "[图片描述获取失败：请求异常]"
-        except Exception as e:
-            logger.error(f"处理API响应时出错 {image_path}: {e}")
-            return "[图片描述获取失败：未知错误]"
+        for attempt in range(max_retries):
+            try:
+                response = requests.post(
+                    f"{self.api_url}/chat/completions",
+                    headers=headers,
+                    json=payload,
+                    timeout=60
+                )
+                if response.status_code in [429, 500, 502, 503, 504]:
+                    response.raise_for_status()
+                response.raise_for_status()
+
+                result = response.json()
+
+                if 'choices' in result and len(result['choices']) > 0:
+                    content = result['choices'][0]['message']['content']
+                    return content.strip()
+                else:
+                    logger.warning(f"API响应格式异常: {result}")
+                    return "[图片描述获取失败：API格式错误]"
+
+            except requests.exceptions.RequestException as e:
+                logger.warning(f"API请求失败 (尝试 {attempt + 1}/{max_retries}): {e}")
+                if attempt < max_retries - 1:
+                    # 指数退避等待
+                    wait_time = base_delay * (2 ** attempt)
+                    logger.info(f"将在 {wait_time} 秒后重试...")
+                    time.sleep(wait_time)
+                else:
+                    logger.error(f"API请求在 {max_retries} 次尝试后最终失败: {image_path}")
+                    return "[图片描述获取失败：请求异常]"
+            except Exception as e:
+                logger.error(f"处理API响应时出现未知错误 {image_path}: {e}")
+                # 对于未知错误，可以选择不重试，直接返回
+                return "[图片描述获取失败：未知错误]"
+
+        # 如果循环结束仍未成功（理论上不会执行到这里，因为上面已有返回）
+        return "[图片描述获取失败：所有重试均失败]"
 
     def describe_image(self, image_path: str) -> str:
         """公开方法，用于描述单张图片内容"""
