@@ -165,3 +165,4 @@ dataset/blocked_words.json
 dataset/wechat/*
 dataset/media/*
 models/*
+dataset/res_csv/sft/final_sft_dataset.json
