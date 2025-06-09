@@ -1,6 +1,7 @@
 import os
-import commentjson
 import sys
+
+import commentjson
 
 from .log import logger
 from .tools import dict_to_argv

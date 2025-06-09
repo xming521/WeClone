@@ -44,6 +44,9 @@
 > - 微调LLM效果很大程度取决于模型大小、聊天数据的数量和质量，理论上模型越大，数据越多，效果越好。   
 > - Windows环境未进行严格测试，可以使用WSL作为运行环境。详细教程可点击[Windows部署指南](https://blog.051088.xyz/2025/05/14/WeClone-%E7%94%A8%E5%BE%AE%E4%BF%A1%E8%81%8A%E5%A4%A9%E8%AE%B0%E5%BD%95%E6%89%93%E9%80%A0%E8%87%AA%E5%B7%B1%E7%9A%84AI%E6%95%B0%E5%AD%97%E5%88%86%E8%BA%AB/)查看。
 
+### 更新日志
+[25/06/05]支持图片模态数据微调
+
 ### 硬件要求
 
 项目默认使用Qwen2.5-7B-Instruct模型，LoRA方法对sft阶段微调，大约需要16GB显存。也可以使用[LLaMA Factory](https://github.com/hiyouga/LLaMA-Factory/blob/main/README_zh.md#%E6%A8%A1%E5%9E%8B)支持的其他模型和方法。
@@ -223,8 +226,13 @@ weclone-cli test-model
 欢迎任何 Issues/Pull Requests！
 
 你可以通过查看Issues或帮助审核 PR（拉取请求）来贡献。对于新功能的添加，请先通过 Issue 讨论。   
-运行`uv pip install --group dev -e .`安装开发依赖。   
-项目使用`pytest`测试(测试脚本待完善)，`pyright`检查类型，`ruff`检查代码格式。
+开发环境：
+```bash
+uv pip install --group dev -e .
+pre-commit install
+```
+
+项目使用`pytest`测试，`pyright`检查类型，`ruff`检查代码格式。
 
 
 ## ⚠️ 免责声明

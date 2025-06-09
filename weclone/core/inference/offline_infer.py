@@ -1,20 +1,13 @@
-import json
 from typing import List, Optional, Union
 
-
-from llamafactory.data import get_dataset, get_template_and_fix_tokenizer
-from llamafactory.extras.constants import IGNORE_INDEX
+from llamafactory.data import get_template_and_fix_tokenizer
 from llamafactory.extras.misc import get_device_count
-from llamafactory.extras.packages import is_vllm_available
 from llamafactory.hparams import get_infer_args
 from llamafactory.model import load_tokenizer
 from pydantic import BaseModel
-from vllm.sampling_params import GuidedDecodingParams
-
-
 from vllm import LLM, SamplingParams
 from vllm.lora.request import LoRARequest
-
+from vllm.sampling_params import GuidedDecodingParams
 
 # 这里不需要写太好，transforms库后续更新自带vllm
 

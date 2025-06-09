@@ -165,3 +165,5 @@ dataset/blocked_words.json
 dataset/wechat/*
 dataset/media/*
 models/*
+.secrets*
+.env*

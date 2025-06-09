@@ -1,9 +1,10 @@
 import os
-import uvicorn
-from llamafactory.chat import ChatModel
-from llamafactory.api.app import create_app
-from weclone.utils.config import load_config
 
+import uvicorn
+from llamafactory.api.app import create_app
+from llamafactory.chat import ChatModel
+
+from weclone.utils.config import load_config
 
 
 def main():

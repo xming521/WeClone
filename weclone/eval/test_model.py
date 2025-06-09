@@ -1,10 +1,10 @@
 import json
+from typing import List, cast  # 导入 cast
+
 import openai
 from openai import OpenAI  # 导入 OpenAI 类
-
+from openai.types.chat import ChatCompletionMessageParam  # 导入消息参数类型
 from tqdm import tqdm
-from typing import List, Dict, cast # 导入 cast
-from openai.types.chat import ChatCompletionMessageParam # 导入消息参数类型
 
 from weclone.utils.config import load_config
 
@@ -19,10 +19,7 @@ config = {
 config = type("Config", (object,), config)()
 
 # 初始化 OpenAI 客户端
-client = OpenAI(
-    api_key="""sk-test""",
-    base_url="http://127.0.0.1:8005/v1"
-)
+client = OpenAI(api_key="""sk-test""", base_url="http://127.0.0.1:8005/v1")
 
 
 def handler_text(content: str, history: list, config):
@@ -37,14 +34,14 @@ def handler_text(content: str, history: list, config):
         typed_messages = cast(List[ChatCompletionMessageParam], messages)
         response = client.chat.completions.create(
             model=config.model,
-            messages=typed_messages, # 传递转换后的列表
-            max_tokens=50
+            messages=typed_messages,  # 传递转换后的列表
+            max_tokens=50,
         )
     except openai.APIError as e:
         history.pop()
         return "AI接口出错,请重试\n" + str(e)
 
-    resp = str(response.choices[0].message.content) # type: ignore
+    resp = str(response.choices[0].message.content)  # type: ignore
     resp = resp.replace("\n ", "")
     history.append({"role": "assistant", "content": resp})
     return resp

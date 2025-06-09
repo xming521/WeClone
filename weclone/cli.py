@@ -1,12 +1,13 @@
-import click
-import commentjson
-from pathlib import Path
+import functools
 import os
 import sys
-import functools
+from pathlib import Path
 
-from weclone.utils.log import logger, capture_output
+import click
+import commentjson
+
 from weclone.utils.config import load_config
+from weclone.utils.log import capture_output, logger
 
 cli_config: dict | None = None
 

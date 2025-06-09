@@ -1,8 +1,9 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import Union, Optional
+
 from pandas import Timestamp
 from pydantic import BaseModel
+
 from weclone.utils.i18n import MultiLangList
 
 

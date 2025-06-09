@@ -1,7 +1,7 @@
 import os
+
 import soundfile as sf
 import torch
-
 from SparkTTS import SparkTTS
 
 model = SparkTTS("weclone-audio/pretrained_models/Spark-TTS-0.5B", "cuda")

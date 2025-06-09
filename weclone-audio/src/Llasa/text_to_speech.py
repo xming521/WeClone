@@ -1,9 +1,10 @@
 import os
-from transformers import AutoTokenizer, AutoModelForCausalLM
-import torch
+
 import soundfile as sf
-from xcodec2.modeling_xcodec2 import XCodec2Model
+import torch
 import torchaudio
+from transformers import AutoModelForCausalLM, AutoTokenizer
+from xcodec2.modeling_xcodec2 import XCodec2Model
 
 
 class TextToSpeech:
@@ -36,9 +37,7 @@ class TextToSpeech:
         else:
             waveform_mono = waveform
 
-        self.prompt_wav = torchaudio.transforms.Resample(
-            orig_freq=sample_rate, new_freq=16000
-        )(waveform_mono)
+        self.prompt_wav = torchaudio.transforms.Resample(orig_freq=sample_rate, new_freq=16000)(waveform_mono)
 
         # Encode the prompt wav
         vq_code_prompt = self.xcodec_model.encode_code(input_waveform=self.prompt_wav)
@@ -73,9 +72,7 @@ class TextToSpeech:
 
         input_text = self.sample_audio_text + " " + target_text
 
-        formatted_text = (
-            f"<|TEXT_UNDERSTANDING_START|>{input_text}<|TEXT_UNDERSTANDING_END|>"
-        )
+        formatted_text = f"<|TEXT_UNDERSTANDING_START|>{input_text}<|TEXT_UNDERSTANDING_END|>"
 
         chat = [
             {
@@ -84,8 +81,7 @@ class TextToSpeech:
             },
             {
                 "role": "assistant",
-                "content": "<|SPEECH_GENERATION_START|>"
-                + "".join(self.speech_ids_prefix),
+                "content": "<|SPEECH_GENERATION_START|>" + "".join(self.speech_ids_prefix),
             },
         ]
 
@@ -102,17 +98,15 @@ class TextToSpeech:
             top_p=1,
             temperature=0.8,
         )
-        generated_ids = outputs[0][input_ids.shape[1] - len(self.speech_ids_prefix): -1]
+        generated_ids = outputs[0][input_ids.shape[1] - len(self.speech_ids_prefix) : -1]
 
-        speech_tokens = self.tokenizer.batch_decode(
-            generated_ids, skip_special_tokens=True
-        )
+        speech_tokens = self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
 
         speech_tokens = self.extract_speech_ids(speech_tokens)
         speech_tokens = torch.tensor(speech_tokens).cuda().unsqueeze(0).unsqueeze(0)
 
         gen_wav = self.xcodec_model.decode_code(speech_tokens)
-        gen_wav = gen_wav[:, :, self.prompt_wav.shape[1]:]
+        gen_wav = gen_wav[:, :, self.prompt_wav.shape[1] :]
 
         return (16000, gen_wav[0, 0, :].cpu().numpy())
 
