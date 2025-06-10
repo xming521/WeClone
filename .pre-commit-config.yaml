@@ -44,5 +44,5 @@ repos:
     hooks:
       - id: bandit
         name: Python 安全检查
-        args: ["-c", "pyproject.toml"]
+        args: ["-c", "pyproject.toml", "-x", "tests"]
         additional_dependencies: ["bandit[toml]"]

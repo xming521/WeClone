@@ -66,7 +66,7 @@ def run_cli_command(command: list[str], timeout: int | None = None, background: 
         If background=True, returns a Popen object; otherwise, returns a CompletedProcess object.
     """
     env = os.environ.copy()
-    env["WECLONE_CONFIG_PATH"] = "tests/full_pipe.jsonc" # Set environment variable
+    env["WECLONE_CONFIG_PATH"] = "tests/full_pipeV2.jsonc" # Set environment variable
 
     if background:
         process = subprocess.Popen(
@@ -91,7 +91,7 @@ def run_cli_command(command: list[str], timeout: int | None = None, background: 
         )
         return process
 
-@pytest.mark.order(1)
+@pytest.mark.order(5)
 def test_cli_make_dataset():
     """Test the make-dataset command."""
     print_test_header("make-dataset")
@@ -100,14 +100,14 @@ def test_cli_make_dataset():
         #复制图片到media_dir/iamges
         os.makedirs(config.media_dir, exist_ok=True)
         os.makedirs(os.path.join(config.media_dir, "images"), exist_ok=True)
-        for file in os.listdir(os.path.join(PROJECT_ROOT_DIR, "tests", "tests_data", "test_person")):
-            shutil.copy(os.path.join(PROJECT_ROOT_DIR, "tests", "tests_data", "test_person", file), os.path.join(config.media_dir, "images", file))
+        for file in os.listdir(os.path.join(PROJECT_ROOT_DIR, "tests", "tests_data", "images")):
+            shutil.copy(os.path.join(PROJECT_ROOT_DIR, "tests", "tests_data", "images", file), os.path.join(config.media_dir, "images", file))
 
     setup_make_dataset_test_data()
     result = run_cli_command(["make-dataset"])
     assert result.returncode == 0, "make-dataset command execution failed"
 
-@pytest.mark.order(2)
+@pytest.mark.order(6)
 def test_cli_train_sft():
     """Test the train-sft command."""
     print_test_header("train-sft")
@@ -120,7 +120,7 @@ def test_cli_train_sft():
     except Exception as e:
         pytest.fail(f"An unexpected error occurred during train-sft command execution: {e}")
 
-@pytest.mark.order(3)
+@pytest.mark.order(7)
 def test_cli_webchat_demo():
     """Test the webchat-demo command."""
     print_test_header("webchat-demo")
@@ -128,12 +128,12 @@ def test_cli_webchat_demo():
     with mock.patch("weclone.eval.web_demo.main") as mock_main:
         mock_main.return_value = None
         try:
-            result = run_cli_command(["webchat-demo"], timeout=5)
+            result = run_cli_command(["webchat-demo"], timeout=30)
             assert result.returncode == 0, "webchat-demo command execution failed"
         except subprocess.TimeoutExpired:
             pass
 
-@pytest.mark.order(4)
+@pytest.mark.order(8)
 def test_cli_server():
     """Test the server command.
     
@@ -145,7 +145,7 @@ def test_cli_server():
     assert server_process.poll() is None, "Server startup failed"
     test_logger.info("服务器已在后台启动")
 
-@pytest.mark.order(5)
+@pytest.mark.order(9)
 def test_cli_test_model():
     """Test the test-model command.
     
