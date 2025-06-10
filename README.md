@@ -73,8 +73,6 @@ uv venv .venv --python=3.10
 source .venv/bin/activate # windows下执行 .venv\Scripts\activate
 uv pip install --group main -e . 
 ```
-> [!TIP]
-> 如果要使用最新的模型进行微调，需要手动安装最新版LLaMA Factory：`uv pip install --upgrade git+https://github.com/hiyouga/LLaMA-Factory.git`,同时其他依赖版本也可能需要修改，例如vllm pytorch transforms
 
 3.将配置文件模板复制一份并重命名为`settings.jsonc`，后续配置修改在此文件进行：
 ```bash
@@ -93,12 +91,11 @@ python -c "import torch; print('CUDA是否可用:', torch.cuda.is_available());"
 5.（可选）安装FlashAttention，加速训练和推理：`uv pip install flash-attn --no-build-isolation`
 
 ## 模型下载
+国内推荐使用[ModelScope](https://www.modelscope.cn/docs/models/download)下载模型。不建议使用：
 ```bash
 git lfs install
 git clone https://www.modelscope.cn/Qwen/Qwen2.5-7B-Instruct.git
 ```
-下载有问题使用其他方式下载：[模型的下载](https://www.modelscope.cn/docs/models/download)
-
 
 ## 数据准备
 
@@ -214,7 +211,7 @@ weclone-cli test-model
 ## 📌 路线图
 - [ ] 更丰富的上下文：包括上下文对话、聊天对象信息、时间等 + 思考
 - [ ] Memory 支持
-- [ ] 支持多模态
+- [ ] 支持多模态:已支持图片
 - [ ] 数据增强
 - [ ] 支持GUI
 

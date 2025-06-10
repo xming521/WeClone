@@ -10,7 +10,7 @@ from langchain_core.prompts import PromptTemplate
 from tqdm import tqdm
 
 from weclone.core.inference.online_infer import OnlineLLM
-from weclone.data.models import QaPair, QaPairScore
+from weclone.data.models import QaPair, QaPairScore, QaPairV2
 from weclone.prompts.clean_data import ONLINE_LLM_CLEAN_PROMPT
 from weclone.utils.log import logger
 
@@ -30,13 +30,13 @@ class CleaningStrategy(ABC):
 class OlineLLMCleaningStrategy(CleaningStrategy):
     """使用大模型进行数据清洗的策略"""
 
-    def judge(self, data: List[QaPair]) -> None:
+    def judge(self, data: List[QaPair] | List[QaPairV2]) -> None:
         logger.info("开始使用在线模型对数据打分")
 
         logger.info(f"使用模型 {self.make_dataset_config.get('model_name', '')}")
 
         client = OnlineLLM(
-            api_key=self.make_dataset_config.get("llm_api_key"),  # type: ignore
+            api_key=self.make_dataset_config.get("llm_api_key"),
             base_url=self.make_dataset_config.get("base_url"),
             model_name=self.make_dataset_config.get("model_name"),
             default_system=self.make_dataset_config.get("default_system"),
@@ -72,7 +72,9 @@ class OlineLLMCleaningStrategy(CleaningStrategy):
                     parsed_scores.append(QaPairScore(**item))
             except Exception as e:
                 ids_in_batch = [qa["id"] for qa in qa_list]
-                logger.error(f"调用在线模型或解析结果失败，当前 batch QA ID 列表: {ids_in_batch}，错误信息: {str(e)}")
+                logger.error(
+                    f"调用在线模型或解析结果失败，当前 batch QA ID 列表: {ids_in_batch}，错误信息: {str(e)}"
+                )
 
         score_map = {score.id: score.score for score in parsed_scores}
         for qa in data:

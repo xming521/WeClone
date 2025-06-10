@@ -78,8 +78,8 @@
     },
     "infer_args": {
         "repetition_penalty": 1.2,
-        "temperature": 0.5,
-        "max_length": 50,
-        "top_p": 0.65
+        "temperature": 0.65,
+        "max_length": 512,
+        "top_p": 0.75
     }
 }
