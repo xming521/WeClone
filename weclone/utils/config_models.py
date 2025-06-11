@@ -93,6 +93,16 @@ class CleanDatasetConfig(BaseModel):
     llm: LLMCleanConfig = LLMCleanConfig(accept_score=2)
 
 
+class VisionApiConfig(BaseModel):
+    """Vision API specific configuration"""
+
+    enable: bool = Field(False, description="是否启用Vision API进行图像识别")
+    api_key: Optional[str] = None
+    api_url: Optional[str] = None
+    model_name: Optional[str] = None
+    max_workers: Optional[int] = None
+
+
 class MakeDatasetArgs(BaseModel):
     platform: PlatformType = Field(..., description="Data source platform")
     include_type: List[DataModality] = Field([DataModality.TEXT], description="包含的数据类型")
@@ -113,6 +123,7 @@ class MakeDatasetArgs(BaseModel):
     llm_api_key: Optional[str] = Field(None, description="在线LLM的api_key")
     model_name: Optional[str] = Field(None, description="在线LLM的模型名称, 建议使用参数较大的模型")
     clean_batch_size: int = Field(10, description="数据清洗批次大小")
+    vision_api: VisionApiConfig = Field(default_factory=VisionApiConfig)
 
 
 class TrainSftArgs(BaseModel):

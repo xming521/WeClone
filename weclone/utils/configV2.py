@@ -61,6 +61,7 @@ def create_config_by_arg_type(arg_type: str, wc_config: WcConfig) -> BaseModel:
     elif arg_type == "train_sft":
         config_dict = {**common_config, **wc_config.train_sft_args.model_dump()}
         config_dict["include_type"] = wc_config.make_dataset_args.include_type
+        config_dict["vision_api"] = wc_config.make_dataset_args.vision_api
         return WCTrainSftConfig(**config_dict)
 
     elif arg_type == "make_dataset":

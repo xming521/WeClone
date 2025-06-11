@@ -169,4 +169,4 @@ models/*
 .secrets*
 .env*
 
-dataset/res_csv/sft/final_sft_dataset.json
+cache/final_sft_dataset.json

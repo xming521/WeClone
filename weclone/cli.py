@@ -71,12 +71,12 @@ def qa_generator():
     config = load_config(arg_type="make_dataset")
 
     if "image" in config.get("include_type", []):
+        from weclone.data.qa_generatorV2 import DataProcessor
+
         if config["vision_api"].get("enable", False):
-            from weclone.data.qa_generatorV3 import DataProcessor
-            logger.info("检测到配置包含image且vision_api为true，使用qa_generatorV3")
+            logger.info("检测到配置包含image且vision_api为true，使用多模态LLM构造数据集")
         else:
-            from weclone.data.qa_generatorV2 import DataProcessor
-            logger.info("检测到配置包含image类型，使用qa_generatorV2")
+            logger.info("检测到配置包含image类型，将构造多模态LLM微调数据集")
     else:
         from weclone.data.qa_generator import DataProcessor
 

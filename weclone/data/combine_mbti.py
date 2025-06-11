@@ -1,7 +1,7 @@
 import json
 import random
-from typing import List, Dict
 from datetime import datetime
+from typing import Dict, List
 
 
 class SFTDatasetBuilder:
@@ -26,7 +26,7 @@ class SFTDatasetBuilder:
             "ENFJ": "你热情、有同理心、善于激励他人、能敏锐地察觉他人的情绪，并总是乐于给予支持和鼓励。",
             "INFP": "你是一个理想主义者，真诚、富有同情心，非常重视个人价值和内心世界。",
             "INTJ": "你思想独立、有远见、善于规划和分析，总是追求知识和能力的卓越。",
-            "ESFP": "你活泼热情、善于社交、享受当下，富有表现力，是大家眼中的开心果。"
+            "ESFP": "你活泼热情、善于社交、享受当下，富有表现力，是大家眼中的开心果。",
         }
         print(f"角色设定：名字={self.target_name}, MBTI={self.mbti_type}")
 
@@ -89,9 +89,9 @@ class SFTDatasetBuilder:
                 "score": 0,
                 "messages": [
                     {"role": "user", "content": item["instruction"]},
-                    {"role": "assistant", "content": item["output"]}
+                    {"role": "assistant", "content": item["output"]},
                 ],
-                "system": unified_prompt
+                "system": unified_prompt,
             }
             all_data.append(converted_item)
 
@@ -116,7 +116,7 @@ class SFTDatasetBuilder:
             output_path (str): 输出文件路径。
         """
         try:
-            with open(output_path, 'w', encoding='utf-8') as f:
+            with open(output_path, "w", encoding="utf-8") as f:
                 # 使用indent=2以减小文件体积，同时保持基本可读性
                 json.dump(dataset, f, ensure_ascii=False, indent=2)
             print(f"\n数据集已成功保存到：{output_path}")
@@ -130,9 +130,9 @@ def main():
     """
     # --- 配置区 ---
     # 在这里修改你的输入输出文件路径和角色信息
-    WECHAT_INPUT_PATH = r'D:\Desktop\Just_for_fun\a\WeClone\dataset/res_csv/sft/sft-my-img-rec.json'
-    MBTI_INPUT_PATH = r'D:\Desktop\Just_for_fun\a\WeClone\dataset/mbti/zh_ENFJ_self_awareness.json'
-    FINAL_OUTPUT_PATH = r"D:\Desktop\Just_for_fun\a\WeClone\dataset/res_csv/sft/final_sft_dataset.json"
+    WECHAT_INPUT_PATH = r"D:\Desktop\Just_for_fun\a\WeClone\dataset/res_csv/sft/sft-my-img-rec.json"
+    MBTI_INPUT_PATH = r"D:\Desktop\Just_for_fun\a\WeClone\dataset/mbti/zh_ENFJ_self_awareness.json"
+    FINAL_OUTPUT_PATH = r"D:\Desktop\Just_for_fun\a\WeClone\dataset/res_csv/sft/sft-my-mbti.json"
     TARGET_NAME = "Mark"
     MBTI_TYPE = "ENFJ"
     # --- 配置区结束 ---
@@ -142,11 +142,11 @@ def main():
     # 加载原始数据
     try:
         print(f"正在从 {WECHAT_INPUT_PATH} 加载微信数据...")
-        with open(WECHAT_INPUT_PATH, 'r', encoding='utf-8') as f:
+        with open(WECHAT_INPUT_PATH, "r", encoding="utf-8") as f:
             wechat_data = json.load(f)
 
         print(f"正在从 {MBTI_INPUT_PATH} 加载MBTI数据...")
-        with open(MBTI_INPUT_PATH, 'r', encoding='utf-8') as f:
+        with open(MBTI_INPUT_PATH, "r", encoding="utf-8") as f:
             mbti_data = json.load(f)
     except FileNotFoundError as e:
         print(f"\n错误：找不到输入文件 {e.filename}。请检查路径是否正确。")
