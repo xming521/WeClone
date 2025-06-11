@@ -176,7 +176,7 @@ class WCTrainSftConfig(CommonArgs, TrainSftArgs):
     # 用于传递include_type信息
     include_type: List[DataModality] = Field(...)
     # 训练输出目录，从adapter_name_or_path转换而来
-    output_dir: str = Field(...)
+    output_dir: Optional[str] = Field(None)
 
     @model_validator(mode="after")
     def set_mllm_dataset_if_needed(self):
@@ -184,6 +184,7 @@ class WCTrainSftConfig(CommonArgs, TrainSftArgs):
         include_type = getattr(self, "include_type", [])
         if DataModality.IMAGE in include_type:
             self.dataset = "wechat-mllm-sft"
+        delattr(self, "include_type")
 
         # 处理adapter_name_or_path转换为output_dir，然后删除原字段
         if hasattr(self, "adapter_name_or_path"):

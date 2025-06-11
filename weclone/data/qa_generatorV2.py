@@ -88,7 +88,7 @@ class DataProcessor:
             if clean_dataset_config.clean_strategy == "llm":
                 if self.config.online_llm_clear:
                     self.clean_strategy = OlineLLMCleaningStrategy(
-                        make_dataset_config=self.config.model_dump()
+                        make_dataset_config=self.config.model_dump(mode="json")
                     )
                 else:
                     from llamafactory.extras.packages import is_vllm_available
@@ -99,7 +99,7 @@ class DataProcessor:
                         self.enable_clean = False
                     else:
                         self.clean_strategy = LLMCleaningStrategy(
-                            make_dataset_config=self.config.model_dump()
+                            make_dataset_config=self.config.model_dump(mode="json")
                         )
 
         self.c = self.config

@@ -13,8 +13,9 @@
     },
     "make_dataset_args": {
         //数据处理配置
+        "platform": "wechat",
         "include_type": [
-            "文本"
+            "text"
         ],
         "blocked_words": [ // 禁用词
             "例如 姓名",

@@ -48,7 +48,7 @@ def load_base_config() -> WcConfig:
 
 
 def create_config_by_arg_type(arg_type: str, wc_config: WcConfig) -> BaseModel:
-    """根据参数类型创建对应的配置对象"""
+    """根据参数类型创建对应的配置对象,添加可能用到的参数,添加的参数会在model_validator中删除"""
     if arg_type == "cli_args":
         return wc_config.cli_args
 
@@ -60,7 +60,7 @@ def create_config_by_arg_type(arg_type: str, wc_config: WcConfig) -> BaseModel:
 
     elif arg_type == "train_sft":
         config_dict = {**common_config, **wc_config.train_sft_args.model_dump()}
-        config_dict["_include_type"] = wc_config.make_dataset_args.include_type
+        config_dict["include_type"] = wc_config.make_dataset_args.include_type
         return WCTrainSftConfig(**config_dict)
 
     elif arg_type == "make_dataset":
@@ -81,7 +81,7 @@ def create_config_by_arg_type(arg_type: str, wc_config: WcConfig) -> BaseModel:
 
 def process_config_dict_and_argv(arg_type: str, config_pydantic: BaseModel) -> None:
     """处理配置字典并更新sys.argv"""
-    config_dict = config_pydantic.model_dump()
+    config_dict = config_pydantic.model_dump(mode="json")
 
     sys.argv += dict_to_argv(config_dict)
 

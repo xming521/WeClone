@@ -111,6 +111,8 @@ def test_cli_make_dataset():
 def test_cli_train_sft():
     """Test the train-sft command."""
     print_test_header("train-sft")
+    if os.path.exists("model_output"):
+        shutil.rmtree("model_output")
     try:
         result = run_cli_command(["train-sft"]) 
         assert result.returncode == 0, "train-sft command failed or did not fail fast as expected"
