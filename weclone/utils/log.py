@@ -1,6 +1,7 @@
-from loguru import logger
 import sys
 from functools import wraps
+
+from loguru import logger
 
 logger.remove()
 

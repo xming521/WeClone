@@ -1,0 +1,48 @@
+# .pre-commit-config.yaml
+default_install_hook_types: [pre-commit, prepare-commit-msg]
+ci:
+  autofix_commit_msg: ":balloon: auto fixes by pre-commit hooks"
+  autofix_prs: true
+  autoupdate_branch: master
+  autoupdate_schedule: monthly
+  autoupdate_commit_msg: ":balloon: pre-commit autoupdate hooks"
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-ast # Python 语法检查
+      - id: check-added-large-files # 防止大文件
+        args: ["--maxkb=25000"]
+      - id: check-merge-conflict # 检查合并冲突
+      - id: check-yaml # YAML 语法检查
+      - id: check-toml # TOML 语法检查
+      - id: debug-statements # 防止调试语句
+      - id: end-of-file-fixer # 文件结尾修复
+      # - id: trailing-whitespace # 移除行尾空白
+      #   args: [--markdown-linebreak-ext=md]
+      - id: no-commit-to-branch # 保护主分支
+        args: ["--branch", "main", "--branch", "master"]
+      - id: mixed-line-ending # 检查混合行结束符
+        args: ["--fix=lf"]
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.11.13
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: https://github.com/pycqa/isort
+    rev: 6.0.1
+    hooks:
+      - id: isort
+        args: ["--profile", "black", "--line-length", "120"]
+
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.8.3
+    hooks:
+      - id: bandit
+        name: Python 安全检查
+        args: ["-c", "pyproject.toml"]
+        additional_dependencies: ["bandit[toml]"]

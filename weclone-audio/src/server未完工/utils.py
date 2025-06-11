@@ -1,9 +1,10 @@
 # utils.py
 
-from flask import request, jsonify
-from functools import wraps
 import os
+from functools import wraps
+
 from dotenv import load_dotenv
+from flask import jsonify, request
 
 load_dotenv()
 

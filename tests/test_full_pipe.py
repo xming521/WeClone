@@ -1,12 +1,14 @@
-import pytest
-from unittest import mock
-import sys
+import functools
 import os
 import shutil
-import functools
 import subprocess
+import sys
 import time
-from typing import Union, Optional, cast
+from typing import Optional, Union, cast
+from unittest import mock
+
+import pytest
+
 from weclone.utils.log import logger
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))

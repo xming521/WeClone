@@ -1,13 +1,13 @@
 # server.py
 
-from flask import Flask, request, send_file, jsonify
-from gevent.pywsgi import WSGIServer
-from dotenv import load_dotenv
 import os
 
+from dotenv import load_dotenv
+from flask import Flask, jsonify, request, send_file
+from gevent.pywsgi import WSGIServer
 from handle_text import prepare_tts_input_with_context
 from tts_handler import generate_speech, get_models, get_voices
-from utils import getenv_bool, require_api_key, AUDIO_FORMAT_MIME_TYPES
+from utils import AUDIO_FORMAT_MIME_TYPES, getenv_bool, require_api_key
 
 app = Flask(__name__)
 load_dotenv()
