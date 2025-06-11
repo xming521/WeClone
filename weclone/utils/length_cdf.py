@@ -57,7 +57,9 @@ def length_cdf(
     )
     tokenizer_module = load_tokenizer(model_args)
     template = get_template_and_fix_tokenizer(tokenizer_module["tokenizer"], data_args)  # type: ignore
-    trainset = get_dataset(template, model_args, data_args, training_args, "sft", **tokenizer_module)["train_dataset"]  # type: ignore
+    trainset = get_dataset(template, model_args, data_args, training_args, "sft", **tokenizer_module)[
+        "train_dataset"
+    ]  # type: ignore
     total_num = len(trainset)  # type: ignore
     length_dict = defaultdict(int)
     for sample in tqdm(trainset["input_ids"], desc="Collecting lengths"):  # type: ignore

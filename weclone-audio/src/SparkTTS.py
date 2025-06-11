@@ -184,7 +184,8 @@ class SparkTTS:
 
         # Trim the output tokens to remove the input tokens
         generated_ids = [
-            output_ids[len(input_ids) :] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)
+            output_ids[len(input_ids) :]
+            for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)
         ]
 
         # Decode the generated tokens into text
@@ -192,7 +193,9 @@ class SparkTTS:
 
         # Extract semantic token IDs from the generated text
         pred_semantic_ids = (
-            torch.tensor([int(token) for token in re.findall(r"bicodec_semantic_(\d+)", predicts)]).long().unsqueeze(0)
+            torch.tensor([int(token) for token in re.findall(r"bicodec_semantic_(\d+)", predicts)])
+            .long()
+            .unsqueeze(0)
         )
 
         if gender is not None:

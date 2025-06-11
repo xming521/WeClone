@@ -33,7 +33,9 @@ def load_config(arg_type: str):
             dataset_info_path = os.path.join(config["dataset_dir"], "dataset_info.json")
             dataset_info = commentjson.load(open(dataset_info_path, "r", encoding="utf-8"))[config["dataset"]]
             if dataset_info["columns"].get("history") is None:
-                logger.warning(f"{config['dataset']}数据集不包history字段，尝试使用wechat-sft-with-history数据集")
+                logger.warning(
+                    f"{config['dataset']}数据集不包history字段，尝试使用wechat-sft-with-history数据集"
+                )
                 config["dataset"] = "wechat-sft-with-history"
         if "image" in s_config["make_dataset_args"]["include_type"]:
             config["dataset"] = "wechat-mllm-sft"

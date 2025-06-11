@@ -203,7 +203,9 @@ def _check_versions():
             logger.warning(
                 f"警告：您的 settings.jsonc 文件版本 ({settings_version}) 与项目建议的配置版本 ({config_guide_version}) 不一致。"
             )
-            logger.warning("这可能导致意外行为或错误。请从 settings.template.json 复制或更新您的 settings.jsonc 文件。")
+            logger.warning(
+                "这可能导致意外行为或错误。请从 settings.template.json 复制或更新您的 settings.jsonc 文件。"
+            )
             # TODO 根据版本号打印更新日志
             logger.warning(f"配置文件更新日志：\n{config_changelog}")
     elif PYPROJECT_PATH.exists():  # 如果文件存在但未读到版本

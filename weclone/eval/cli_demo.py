@@ -13,7 +13,9 @@ def main():
 
     chat_model = ChatModel()
     messages = []
-    print("Welcome to the CLI application, use `clear` to remove the history, use `exit` to exit the application.")
+    print(
+        "Welcome to the CLI application, use `clear` to remove the history, use `exit` to exit the application."
+    )
 
     while True:
         try:
