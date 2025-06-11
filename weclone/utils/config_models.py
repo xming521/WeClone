@@ -180,14 +180,12 @@ class WCTrainSftConfig(CommonArgs, TrainSftArgs):
 
     @model_validator(mode="after")
     def process_config(self):
-        """当包含图像模态时，自动设置为多模态数据集，同时处理adapter_name_or_path转换"""
         # 保存需要的值
-        include_type_value = getattr(self, "include_type", [])
         adapter_name_value = getattr(self, "adapter_name_or_path", None)
 
         # 进行业务逻辑处理
-        if DataModality.IMAGE in include_type_value:
-            self.dataset = "wechat-mllm-sft"
+        if self.dataset == "wechat-sft":
+            self.dataset = "chat-sft"
         if adapter_name_value:
             self.output_dir = adapter_name_value
 
@@ -211,7 +209,6 @@ class WCMakeDatasetConfig(CommonArgs, MakeDatasetArgs):
 
     @model_validator(mode="after")
     def process_config(self):
-        """当包含图像模态时，自动设置为多模态数据集"""
-        if DataModality.IMAGE in self.include_type:
-            self.dataset = "wechat-mllm-sft"
+        if self.dataset == "wechat-sft":
+            self.dataset = "chat-sft"
         return self
