@@ -74,8 +74,8 @@ class ImageToTextProcessor:
         }
 
         # --- 新增：重试逻辑 ---
-        max_retries = 3  # 最大重试次数
-        base_delay = 2  # 基础等待时间（秒）
+        max_retries = 5  # 最大重试次数
+        base_delay = 5  # 基础等待时间（秒）
 
         for attempt in range(max_retries):
             try:
