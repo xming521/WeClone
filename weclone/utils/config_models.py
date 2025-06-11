@@ -173,23 +173,29 @@ class WCTrainSftConfig(CommonArgs, TrainSftArgs):
 
     model_config = {"extra": "ignore"}
 
-    # 用于传递include_type信息
+    # 用于传递include_type信息，处理后会被删除
     include_type: List[DataModality] = Field(...)
     # 训练输出目录，从adapter_name_or_path转换而来
     output_dir: Optional[str] = Field(None)
 
     @model_validator(mode="after")
-    def set_mllm_dataset_if_needed(self):
+    def process_config(self):
         """当包含图像模态时，自动设置为多模态数据集，同时处理adapter_name_or_path转换"""
-        include_type = getattr(self, "include_type", [])
-        if DataModality.IMAGE in include_type:
-            self.dataset = "wechat-mllm-sft"
-        delattr(self, "include_type")
+        # 保存需要的值
+        include_type_value = getattr(self, "include_type", [])
+        adapter_name_value = getattr(self, "adapter_name_or_path", None)
 
-        # 处理adapter_name_or_path转换为output_dir，然后删除原字段
-        if hasattr(self, "adapter_name_or_path"):
-            self.output_dir = self.adapter_name_or_path
+        # 进行业务逻辑处理
+        if DataModality.IMAGE in include_type_value:
+            self.dataset = "wechat-mllm-sft"
+        if adapter_name_value:
+            self.output_dir = adapter_name_value
+
+        try:
+            delattr(self, "include_type")
             delattr(self, "adapter_name_or_path")
+        except AttributeError:
+            pass
 
         return self
 
@@ -204,7 +210,7 @@ class WCMakeDatasetConfig(CommonArgs, MakeDatasetArgs):
     cutoff_len: int = Field(4096, description="截断长度")
 
     @model_validator(mode="after")
-    def set_mllm_dataset_if_needed(self):
+    def process_config(self):
         """当包含图像模态时，自动设置为多模态数据集"""
         if DataModality.IMAGE in self.include_type:
             self.dataset = "wechat-mllm-sft"
