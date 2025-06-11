@@ -33,7 +33,6 @@ class DataProcessor:
         self.enable_clean = self.config.clean_dataset.enable_clean
 
         # msg_type
-        logger.info("image 类型消息,使用sharegpt格式")
         self.QaPair = QaPairV2
 
         self.include_type = self.config.include_type
