@@ -90,7 +90,9 @@ class DataProcessor:
 
     def main(self):
         if not os.path.exists(self.csv_folder) or not os.listdir(self.csv_folder):
-            logger.error(f"错误：目录 '{self.csv_folder}' 不存在或为空，请检查路径并确保其中包含 CSV 聊天数据文件。")
+            logger.error(
+                f"错误：目录 '{self.csv_folder}' 不存在或为空，请检查路径并确保其中包含 CSV 聊天数据文件。"
+            )
             return
 
         csv_files = self.get_csv_files()

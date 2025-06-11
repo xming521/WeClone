@@ -14,7 +14,9 @@ def main():
         default=os.path.join(os.path.dirname(__file__), "sample.wav"),
         help="Path to save the audio file (default: sample.wav in script directory)",
     )
-    parser.add_argument("--rate", type=int, default=24000, help="Sample rate for audio conversion (default: 24000)")
+    parser.add_argument(
+        "--rate", type=int, default=24000, help="Sample rate for audio conversion (default: 24000)"
+    )
 
     args = parser.parse_args()
 
