@@ -7,7 +7,7 @@ from typing import Any, Dict, List
 import pandas as pd
 from langchain_core.prompts import PromptTemplate
 
-from weclone.data.models import QaPair, QaPairScore, QaPairV2
+from weclone.data.models import QaPairScore, QaPairV2
 from weclone.prompts.clean_data import CLEAN_PROMPT
 from weclone.utils.log import logger
 
@@ -36,7 +36,7 @@ class CleaningStrategy(ABC):
 class LLMCleaningStrategy(CleaningStrategy):
     """使用大模型进行数据清洗的策略"""
 
-    def judge(self, data: List[QaPair] | List[QaPairV2]) -> None:
+    def judge(self, data: List[QaPairV2]) -> None:
         """
         调用llm打分，并将分数直接赋值给传入的QaPair。
         """
@@ -46,7 +46,14 @@ class LLMCleaningStrategy(CleaningStrategy):
         inputs = []
         prompt_template = PromptTemplate.from_template(CLEAN_PROMPT)
         for qa in data:
-            inputs.append(prompt_template.invoke({"id": qa.id, "Q": qa.instruction, "A": qa.output}).text)  # type: ignore
+            messages_str = ""
+            for msg in qa.messages:
+                if msg.role == "user":
+                    messages_str += f"Q: {msg.content}\n"
+                elif msg.role == "assistant":
+                    messages_str += f"A: {msg.content}\n"
+            prompt_value = prompt_template.invoke({"id": qa.id, "messages": messages_str.strip()})
+            inputs.append(prompt_value.to_string())
         outputs = vllm_infer(
             inputs,
             self.make_dataset_config["model_name_or_path"],
