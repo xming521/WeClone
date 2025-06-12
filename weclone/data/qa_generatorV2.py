@@ -1,3 +1,4 @@
+import concurrent.futures
 import json
 import os
 import re
@@ -8,8 +9,9 @@ from typing import List, Union, cast
 import pandas as pd
 from pandas import Timestamp
 
-from weclone.data.clean.strategies import LLMCleaningStrategy
-from weclone.data.clean.strategies_online import OlineLLMCleaningStrategy
+from weclone.data.clean.strategies import LLMCleaningStrategy, OlineLLMCleaningStrategy
+
+# from weclone.data.clean.strategies_online import OlineLLMCleaningStrategy
 from weclone.data.models import (
     ChatMessage,
     CutMessage,
@@ -19,7 +21,7 @@ from weclone.data.models import (
     skip_type_list,
 )
 from weclone.data.strategies import LLMStrategy, TimeWindowStrategy
-from weclone.data.utils import check_image_file_exists
+from weclone.data.utils import ImageToTextProcessor, check_image_file_exists
 from weclone.utils.config_models import DataModality, PlatformType, WCMakeDatasetConfig
 from weclone.utils.configV2 import load_config
 from weclone.utils.log import logger
@@ -86,9 +88,7 @@ class DataProcessor:
 
             if clean_dataset_config.clean_strategy == "llm":
                 if self.config.online_llm_clear:
-                    self.clean_strategy = OlineLLMCleaningStrategy(
-                        make_dataset_config=self.config.model_dump(mode="json")
-                    )
+                    self.clean_strategy = OlineLLMCleaningStrategy(make_dataset_config=self.config)
                 else:
                     from llamafactory.extras.packages import is_vllm_available
 
@@ -97,11 +97,70 @@ class DataProcessor:
                         # 注意：这里我们不能直接修改config对象的属性，因为它是不可变的
                         self.enable_clean = False
                     else:
-                        self.clean_strategy = LLMCleaningStrategy(
-                            make_dataset_config=self.config.model_dump(mode="json")
-                        )
+                        self.clean_strategy = LLMCleaningStrategy(make_dataset_config=self.config)
+
+        # 基于配置初始化图片识别处理器
+        vision_config = self.config.vision_api
+        if vision_config.enable and vision_config.api_key:
+            self.image_processor = ImageToTextProcessor(
+                api_url=vision_config.api_url,
+                api_key=vision_config.api_key,
+                model_name=vision_config.model_name,
+            )
+            logger.info(f"已启用图片识别功能, 模型: {self.image_processor.model_name}")
+        else:
+            self.image_processor = None
 
         self.c = self.config
+
+    def _process_images_in_parallel(self, qa_list: List[QaPairV2]) -> List[QaPairV2]:
+        """并行处理所有对话中的图片，并将描述替换回对话文本。"""
+        all_image_paths = []
+        media_dir = self.c.media_dir
+
+        # 遍历所有对话，收集并构造完整的图片路径
+        for qa_pair in qa_list:
+            if qa_pair.images:
+                image_list = qa_pair.images if isinstance(qa_pair.images, list) else [qa_pair.images]
+                for relative_path in image_list:
+                    full_path = os.path.join(media_dir, relative_path)
+                    all_image_paths.append(full_path)
+
+        if not all_image_paths:
+            logger.info("未在对话中找到任何图片，跳过识别。")
+            return qa_list
+
+        logger.info(f"共找到 {len(all_image_paths)} 张有效图片需要识别。")
+        max_workers = self.c.vision_api.max_workers
+
+        # 使用线程池并行调用API，executor.map 会保持结果顺序与输入一致
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # 现在传递给 image_processor 的是完整的路径
+            image_descriptions = list(executor.map(self.image_processor.describe_image, all_image_paths))
+
+        desc_iterator = iter(image_descriptions)
+        for qa_pair in qa_list:
+            if not qa_pair.images:
+                continue
+
+            for message in qa_pair.messages:
+                # 替换消息内容中的 <image> 占位符
+                num_images_in_message = message.content.count("<image>")
+                for _ in range(num_images_in_message):
+                    try:
+                        description = next(desc_iterator)
+                        # 使用 count=1 确保每次只替换一个占位符，并添加换行符以增强可读性
+                        message.content = message.content.replace(
+                            "<image>", f"\n[图片描述: {description}]\n", 1
+                        )
+                    except StopIteration:
+                        logger.error("图片数量与描述数量不匹配，可能存在逻辑错误。")
+                        message.content = message.content.replace("<image>", "\n[图片描述缺失]\n", 1)
+
+            # 清空图片列表，因为它们已被转换为文本
+            qa_pair.images.clear()
+
+        return qa_list
 
     def main(self):
         if not os.path.exists(self.csv_folder) or not os.listdir(self.csv_folder):
@@ -121,6 +180,12 @@ class DataProcessor:
             logger.debug(f"处理完成: {csv_file}，共加载 {len(chat_messages)} 条消息")
         qa_res = self.match_qa(message_list)
         qa_res = [item for item in qa_res if isinstance(item, QaPairV2)]
+
+        # 如果启用图片识别，则执行并行处理
+        if self.image_processor:
+            logger.info("开始执行图片识别流程...")
+            qa_res = self._process_images_in_parallel(qa_res)
+            logger.info("图片识别流程完成。")
 
         if self.enable_clean:
             self.clean_strategy.judge(qa_res)  # type: ignore
