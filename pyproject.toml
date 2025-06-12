@@ -34,10 +34,11 @@ config_changelog = """
 [dependency-groups]
 main = [
   "llamafactory @ git+https://github.com/hiyouga/LLaMA-Factory.git",
-  "vllm==0.8.2; platform_system == 'Linux'",
+  "vllm==0.8.5.post1; platform_system == 'Linux'",
   "torch>=2.6.0",
   "transformers==4.52.1",
   "accelerate==1.7.0",
+  "triton==3.2.0",
 ]
 sparktts = [
   "einops>=0.8.1",
@@ -61,6 +62,9 @@ weclone-cli = "weclone.cli:cli"
 conflicts = [
   # [{ group = "wx" }, { group = "xcodec" }],
 ]
+
+[tool.uv.pip]
+torch-backend = "auto"
 
 [tool.uv.sources]
 torch = [
