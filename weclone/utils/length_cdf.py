@@ -25,7 +25,7 @@ from weclone.utils.log import logger
 
 def length_cdf(
     model_name_or_path: str = "./Qwen2.5-7B-Instruct",
-    dataset: str = "wechat-sft",
+    dataset: str = "chat-sft",
     dataset_dir: str = "./dataset/res_csv/sft",
     media_dir: str = "./dataset/media",
     template: str = "qwen",

@@ -1,5 +1,5 @@
 {
-    "version": "0.2.22",
+    "version": "0.2.23",
     "common_args": {
         "model_name_or_path": "./Qwen2.5-7B-Instruct",
         "adapter_name_or_path": "./model_output", //同时做为train_sft_args的output_dir
@@ -44,7 +44,7 @@
     "train_sft_args": {
         //微调配置
         "stage": "sft",
-        "dataset": "wechat-sft",
+        "dataset": "chat-sft",
         "dataset_dir": "./dataset/res_csv/sft",
         "use_fast_tokenizer": true,
         "lora_target": "q_proj,v_proj",

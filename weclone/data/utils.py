@@ -106,10 +106,12 @@ class ImageToTextProcessor:
                 response = requests.post(
                     f"{self.api_url}/chat/completions", headers=headers, json=payload, timeout=60
                 )
-                if response.status_code in [429, 500, 502, 503, 504]:
+                if response.status_code == 200:
+                    pass
+                elif response.status_code in [429, 500, 502, 503, 504]:
                     response.raise_for_status()
                 else:
-                    logger.error(f"API请求失败，状态码: {response.status_code}")
+                    logger.error(f"API请求失败，状态码: {response.status_code}，原因: {response.reason}")
                     return "[图片描述获取失败]"
 
                 result = response.json()

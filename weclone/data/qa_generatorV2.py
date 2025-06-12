@@ -9,8 +9,9 @@ from typing import List, Union, cast
 import pandas as pd
 from pandas import Timestamp
 
-from weclone.data.clean.strategies import LLMCleaningStrategy
-from weclone.data.clean.strategies_online import OlineLLMCleaningStrategy
+from weclone.data.clean.strategies import LLMCleaningStrategy, OlineLLMCleaningStrategy
+
+# from weclone.data.clean.strategies_online import OlineLLMCleaningStrategy
 from weclone.data.models import (
     ChatMessage,
     CutMessage,
@@ -88,9 +89,7 @@ class DataProcessor:
 
             if clean_dataset_config.clean_strategy == "llm":
                 if self.config.online_llm_clear:
-                    self.clean_strategy = OlineLLMCleaningStrategy(
-                        make_dataset_config=self.config.model_dump(mode="json")
-                    )
+                    self.clean_strategy = OlineLLMCleaningStrategy(make_dataset_config=self.config)
                 else:
                     from llamafactory.extras.packages import is_vllm_available
 
@@ -99,9 +98,7 @@ class DataProcessor:
                         # 注意：这里我们不能直接修改config对象的属性，因为它是不可变的
                         self.enable_clean = False
                     else:
-                        self.clean_strategy = LLMCleaningStrategy(
-                            make_dataset_config=self.config.model_dump(mode="json")
-                        )
+                        self.clean_strategy = LLMCleaningStrategy(make_dataset_config=self.config)
 
         # 基于配置初始化图片识别处理器
         vision_config = self.config.vision_api
@@ -197,7 +194,7 @@ class DataProcessor:
         self.save_result(qa_res)
         self._execute_length_cdf_script()
 
-        logger.success(f"聊天记录处理成功，共{len(qa_res)}条，保存到 ./dataset/res_csv/sft/sft-my-mllm.json")
+        logger.success(f"聊天记录处理成功，共{len(qa_res)}条，保存到 ./dataset/res_csv/sft/sft-my.json")
 
     def _execute_length_cdf_script(self):
         """执行 length_cdf.py 脚本来计算cutoff_len。"""
@@ -639,7 +636,7 @@ class DataProcessor:
             }
             processed_qa_res.append(item_dict)
 
-        output_path = "./dataset/res_csv/sft/sft-my-mllm.json"
+        output_path = "./dataset/res_csv/sft/sft-my.json"
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
         with open(output_path, "w", encoding="utf-8") as f:
             json.dump(processed_qa_res, f, ensure_ascii=False, indent=4)
