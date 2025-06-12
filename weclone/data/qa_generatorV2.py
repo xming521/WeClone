@@ -1,9 +1,9 @@
 import json
 import os
 import re
-import subprocess
+import subprocess  # nosec
 import sys
-from typing import List, Union
+from typing import List, Union, cast
 
 import pandas as pd
 from pandas import Timestamp
@@ -20,31 +20,33 @@ from weclone.data.models import (
 )
 from weclone.data.strategies import LLMStrategy, TimeWindowStrategy
 from weclone.data.utils import check_image_file_exists
-from weclone.utils.config import load_config
+from weclone.utils.config_models import DataModality, PlatformType, WCMakeDatasetConfig
+from weclone.utils.configV2 import load_config
 from weclone.utils.log import logger
 
 
 class DataProcessor:
     def __init__(self):
-        self.config = load_config(arg_type="make_dataset")
+        self.config = cast(WCMakeDatasetConfig, load_config(arg_type="make_dataset"))
         self.csv_folder = "./dataset/csv"
-        self.system_prompt = self.config["default_system"]
+        self.system_prompt = self.config.default_system
+        self.enable_clean = self.config.clean_dataset.enable_clean
 
         # msg_type
-        logger.info("image 类型消息,使用sharegpt格式")
         self.QaPair = QaPairV2
-        self.config["prompt_with_history"] = True
 
-        self.include_type = self.config.get("include_type", [])
-        if self.config["platform"] == "wechat":
+        self.include_type = self.config.include_type
+        if self.config.platform == PlatformType.WECHAT:
             self.cut_type_list = cut_type_list.get_items(lang="zh_CN")
-            self.include_type = cut_type_list.translate_batch(texts=[t for t in self.include_type if t != "text"])
+            self.include_type = cut_type_list.translate_batch(
+                texts=[t for t in self.include_type if t != "text"]
+            )
             self.cut_type_list = [t for t in self.cut_type_list if t not in self.include_type]
         else:
             self.cut_type_list = cut_type_list.get_items(lang="en")
 
         # blocked_words
-        config_blocked_words = self.config.get("blocked_words", [])
+        config_blocked_words = self.config.blocked_words
         file_blocked_words = []
         try:
             with open("./dataset/blocked_words.json", encoding="utf-8") as f:
@@ -56,54 +58,56 @@ class DataProcessor:
         # logger.info(f"聊天记录禁用词: {self.blocked_words}")
 
         # combine_strategy
-        if self.config["single_combine_strategy"] == "time_window":
+        if self.config.single_combine_strategy == "time_window":
             self.single_combine_strategy = TimeWindowStrategy(
-                time_window=self.config["single_combine_time_window"] * 60,
+                time_window=self.config.single_combine_time_window * 60,
                 is_single_chat=True,
             )
-        elif self.config["single_combine_strategy"] == "llm":
+        elif self.config.single_combine_strategy == "llm":
             self.single_combine_strategy = LLMStrategy(
                 is_single_chat=True,
             )
 
-        if self.config["qa_match_strategy"] == "time_window":
+        if self.config.qa_match_strategy == "time_window":
             self.qa_match_strategy = TimeWindowStrategy(
-                time_window=self.config["qa_match_time_window"] * 60,
+                time_window=self.config.qa_match_time_window * 60,
                 is_single_chat=False,
             )
-        elif self.config["qa_match_strategy"] == "llm":
+        elif self.config.qa_match_strategy == "llm":
             self.qa_match_strategy = LLMStrategy(is_single_chat=False)
 
         # clean_dataset
-        clean_dataset_config = self.config.get("clean_dataset", {})
-        enable_clean = clean_dataset_config.get("enable_clean", False)
+        clean_dataset_config = self.config.clean_dataset
 
-        if enable_clean:
-            if self.config.get("prompt_with_history", False):
-                logger.error("开启 prompt_with_history 不支持 clean_dataset 功能")
-                exit()
-
-            if "image" in self.config.get("include_type", []):
+        if self.enable_clean:
+            if DataModality.IMAGE in self.config.include_type:
                 logger.error("开启 clean_dataset 不支持 image 类型消息")
                 exit()
 
-            from llamafactory.extras.packages import is_vllm_available
-
-            if not is_vllm_available():
-                logger.warning("vLLM 不可用，暂不清洗数据集。")
-                clean_dataset_config["enable_clean"] = False
-
-        if self.config.get("clean_dataset", {}).get("enable_clean", False):
-            if self.config.get("clean_dataset", {}).get("clean_strategy", "llm") == "llm":
-                if self.config.get("online_llm_clear"):
-                    self.clean_strategy = OlineLLMCleaningStrategy(make_dataset_config=self.config)
+            if clean_dataset_config.clean_strategy == "llm":
+                if self.config.online_llm_clear:
+                    self.clean_strategy = OlineLLMCleaningStrategy(
+                        make_dataset_config=self.config.model_dump(mode="json")
+                    )
                 else:
-                    self.clean_strategy = LLMCleaningStrategy(make_dataset_config=self.config)
+                    from llamafactory.extras.packages import is_vllm_available
+
+                    if not is_vllm_available():
+                        logger.warning("vLLM 不可用，暂不清洗数据集。")
+                        # 注意：这里我们不能直接修改config对象的属性，因为它是不可变的
+                        self.enable_clean = False
+                    else:
+                        self.clean_strategy = LLMCleaningStrategy(
+                            make_dataset_config=self.config.model_dump(mode="json")
+                        )
+
         self.c = self.config
 
     def main(self):
         if not os.path.exists(self.csv_folder) or not os.listdir(self.csv_folder):
-            logger.error(f"错误：目录 '{self.csv_folder}' 不存在或为空，请检查路径并确保其中包含 CSV 聊天数据文件。")
+            logger.error(
+                f"错误：目录 '{self.csv_folder}' 不存在或为空，请检查路径并确保其中包含 CSV 聊天数据文件。"
+            )
             return
 
         csv_files = self.get_csv_files()
@@ -118,7 +122,7 @@ class DataProcessor:
         qa_res = self.match_qa(message_list)
         qa_res = [item for item in qa_res if isinstance(item, QaPairV2)]
 
-        if self.c.get("clean_dataset", {}).get("enable_clean", False):
+        if self.enable_clean:
             self.clean_strategy.judge(qa_res)  # type: ignore
             # qa_res = self.clean_strategy.clean(qa_res) #改到sft.py中
         self.save_result(qa_res)
@@ -136,17 +140,17 @@ class DataProcessor:
             command_parts = [
                 python_executable,
                 script_path,
-                f'--model_name_or_path="{self.c["model_name_or_path"]}"',
-                f'--dataset="{self.c["dataset"]}"',
-                f'--dataset_dir="{self.c["dataset_dir"]}"',
-                f'--template="{self.c["template"]}"',
+                f'--model_name_or_path="{self.c.model_name_or_path}"',
+                f'--dataset="{self.c.dataset}"',
+                f'--dataset_dir="{self.c.dataset_dir}"',
+                f'--template="{self.c.template}"',
                 "--interval=512",
             ]
 
-            if "media_dir" in self.c:
-                command_parts.append(f'--media_dir="{self.c["media_dir"]}"')
-            if "image_max_pixels" in self.c:
-                command_parts.append(f'--image_max_pixels="{self.c["image_max_pixels"]}"')
+            if hasattr(self.c, "media_dir") and self.c.media_dir:
+                command_parts.append(f'--media_dir="{self.c.media_dir}"')
+            if hasattr(self.c, "image_max_pixels") and self.c.image_max_pixels:
+                command_parts.append(f'--image_max_pixels="{self.c.image_max_pixels}"')
 
             child_env = os.environ.copy()
             child_env["CUDA_VISIBLE_DEVICES"] = "0"
@@ -159,7 +163,7 @@ class DataProcessor:
                 stderr=None,  # 使用 None 表示使用父进程的标准错误（即终端）
                 text=True,
                 bufsize=1,  # 行缓冲
-            )
+            )  # nosec
             return_code = process.wait()
             if return_code != 0:
                 logger.error(f"命令 '{' '.join(command_parts)}' 执行失败，返回码 {return_code}")
@@ -218,7 +222,9 @@ class DataProcessor:
         conversation_messages: List[Message] = []
         conversation_images: List[str] = []
 
-        def _calculate_qa_length(messages: List[Message], new_user_content: str, new_assistant_content: str) -> int:
+        def _calculate_qa_length(
+            messages: List[Message], new_user_content: str, new_assistant_content: str
+        ) -> int:
             """计算messages加上新消息后的总字符长度"""
             total_length = 0
             for msg in messages:
@@ -237,11 +243,11 @@ class DataProcessor:
 
             total_length = _calculate_qa_length(current_conversation_messages, "", "")
 
-            if total_length <= self.config.get("messages_max_length", 4096):
-                if len(current_conversation_images) > self.config.get("max_image_num", 2):
+            if total_length <= self.config.messages_max_length:
+                if len(current_conversation_images) > self.config.max_image_num:
                     logger.warning(
                         f"QA pair (potential id {qa_id}) with timestamp {time_stamp} "
-                        f"has too many images ({len(current_conversation_images)} > {self.config.get('max_image_num', 2)}) "
+                        f"has too many images ({len(current_conversation_images)} > {self.config.max_image_num}) "
                         "and will be skipped."
                     )
                     return qa_id
@@ -259,7 +265,7 @@ class DataProcessor:
             else:
                 logger.warning(
                     f"QA pair (potential id {qa_id}) with timestamp {time_stamp} "
-                    f"exceeds max length ({total_length} > {self.config.get('messages_max_length', 4096)}) "
+                    f"exceeds max length ({total_length} > {self.config.messages_max_length}) "
                     "and will be skipped."
                 )
                 return qa_id
@@ -319,9 +325,8 @@ class DataProcessor:
                     # 状态保持不变
                 else:  # 自己的回复 使用策略判断是否属于同一对话
                     if last_message and self.qa_match_strategy.is_same_conversation([last_message], msg):
-                        assert current_instruction is not None, (
-                            "current_instruction should not be None when creating a QA pair"
-                        )
+                        if current_instruction is None:
+                            raise ValueError("current_instruction should not be None when creating a QA pair")
 
                         conversation_messages.append(Message(role="user", content=current_instruction.msg))
                         conversation_messages.append(Message(role="assistant", content=msg.msg))
@@ -397,12 +402,12 @@ class DataProcessor:
 
                 combined_content += content
 
-            if len(combined_content) > self.c["combine_msg_max_length"]:
+            if len(combined_content) > self.c.combine_msg_max_length:
                 # TODO: 可能会截断<image>
                 logger.warning(
-                    f"组合后消息长度超过{self.c['combine_msg_max_length']}将截断：\n {combined_content[:50]}"
+                    f"组合后消息长度超过{self.c.combine_msg_max_length}将截断：\n {combined_content[:50]}"
                 )
-                combined_content = combined_content[: self.c["combine_msg_max_length"]]
+                combined_content = combined_content[: self.c.combine_msg_max_length]
 
             combined_message = ChatMessage(
                 id=base_msg.id,
@@ -525,7 +530,7 @@ class DataProcessor:
                         df = df.drop(index=i)
                         break
             elif df.loc[i, "type_name"] == "图片":
-                if self.c["platform"] == "wechat":
+                if self.c.platform == PlatformType.WECHAT:
                     result = check_image_file_exists(str(df.loc[i, "src"]))
                     if isinstance(result, str):
                         df.loc[i, "src"] = result

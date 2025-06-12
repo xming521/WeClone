@@ -7,7 +7,7 @@ from typing import Any, Dict, List
 import pandas as pd
 from langchain_core.prompts import PromptTemplate
 
-from weclone.data.models import QaPair, QaPairScore
+from weclone.data.models import QaPairScore, QaPairV2
 from weclone.prompts.clean_data import CLEAN_PROMPT
 from weclone.utils.log import logger
 
@@ -36,7 +36,7 @@ class CleaningStrategy(ABC):
 class LLMCleaningStrategy(CleaningStrategy):
     """使用大模型进行数据清洗的策略"""
 
-    def judge(self, data: List[QaPair]) -> None:
+    def judge(self, data: List[QaPairV2]) -> None:
         """
         调用llm打分，并将分数直接赋值给传入的QaPair。
         """
@@ -46,7 +46,14 @@ class LLMCleaningStrategy(CleaningStrategy):
         inputs = []
         prompt_template = PromptTemplate.from_template(CLEAN_PROMPT)
         for qa in data:
-            inputs.append(prompt_template.invoke({"id": qa.id, "Q": qa.instruction, "A": qa.output}).text)  # type: ignore
+            messages_str = ""
+            for msg in qa.messages:
+                if msg.role == "user":
+                    messages_str += f"Q: {msg.content}\n"
+                elif msg.role == "assistant":
+                    messages_str += f"A: {msg.content}\n"
+            prompt_value = prompt_template.invoke({"id": qa.id, "messages": messages_str.strip()})
+            inputs.append(prompt_value.to_string())
         outputs = vllm_infer(
             inputs,
             self.make_dataset_config["model_name_or_path"],
@@ -71,7 +78,9 @@ class LLMCleaningStrategy(CleaningStrategy):
             if qa.id in score_map:
                 qa.score = score_map[qa.id]
             else:
-                logger.warning(f"Warning: Score not found for QaPair with id {qa.id}. Assigning default score.")
+                logger.warning(
+                    f"Warning: Score not found for QaPair with id {qa.id}. Assigning default score."
+                )
 
         scores = [qa.score for qa in data if qa.score is not None]
         score_series = pd.Series(scores)
@@ -101,7 +110,9 @@ class LLMCleaningStrategy(CleaningStrategy):
         output_json_path = os.path.join(dataset_dir, "sft-my-l.json")
         accept_score = config.get("clean_dataset", {}).get("llm", {}).get("accept_score", 1)
 
-        if not config.get("clean_dataset", {}).get("enable_clean") or "image" in config.get("include_type", ""):
+        if not config.get("clean_dataset", {}).get("enable_clean") or "image" in config.get(
+            "include_type", ""
+        ):
             logger.info("不启用数据清洗功能")
             self._update_dataset_info_file(dataset_info_path, new_file_name="sft-my.json")
             return sft_json_path

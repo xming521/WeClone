@@ -24,7 +24,9 @@ def copy_wechat_image_dat(wechat_data_dir):
 
     data_processor = DataProcessor()
     if not os.path.exists(data_processor.csv_folder) or not os.listdir(data_processor.csv_folder):
-        print(f"错误：目录 '{data_processor.csv_folder}' 不存在或为空，请检查路径并确保其中包含 CSV 聊天数据文件。")
+        print(
+            f"错误：目录 '{data_processor.csv_folder}' 不存在或为空，请检查路径并确保其中包含 CSV 聊天数据文件。"
+        )
         return
 
     csv_files = data_processor.get_csv_files()

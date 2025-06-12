@@ -2,14 +2,16 @@ import functools
 import os
 import sys
 from pathlib import Path
+from typing import cast
 
 import click
 import commentjson
 
-from weclone.utils.config import load_config
+from weclone.utils.config_models import CliArgs
+from weclone.utils.configV2 import load_config
 from weclone.utils.log import capture_output, logger
 
-cli_config: dict | None = None
+cli_config: CliArgs | None = None
 
 try:
     import tomllib  # type: ignore Python 3.11+
@@ -43,7 +45,7 @@ def apply_common_decorators(capture_output_enabled=False):
     def decorator(original_cmd_func):
         @functools.wraps(original_cmd_func)
         def new_runtime_wrapper(*args, **kwargs):
-            if cli_config and cli_config.get("full_log", False):
+            if cli_config and cli_config.full_log:
                 return capture_output(original_cmd_func)(*args, **kwargs)
             else:
                 return original_cmd_func(*args, **kwargs)
@@ -61,23 +63,14 @@ def cli():
     _check_project_root()
     _check_versions()
     global cli_config
-    cli_config = load_config(arg_type="cli_args")
+    cli_config = cast(CliArgs, load_config(arg_type="cli_args"))
 
 
 @cli.command("make-dataset", help="处理聊天记录CSV文件，生成问答对数据集。")
 @apply_common_decorators()
 def qa_generator():
     """处理聊天记录CSV文件，生成问答对数据集。"""
-    config = load_config(arg_type="make_dataset")
-
-    if "image" in config.get("include_type", []):
-        from weclone.data.qa_generatorV2 import DataProcessor
-
-        logger.info("检测到配置包含image类型，使用qa_generatorV2")
-    else:
-        from weclone.data.qa_generator import DataProcessor
-
-        logger.info("使用标准qa_generator")
+    from weclone.data.qa_generatorV2 import DataProcessor
 
     processor = DataProcessor()
     processor.main()
@@ -203,7 +196,9 @@ def _check_versions():
             logger.warning(
                 f"警告：您的 settings.jsonc 文件版本 ({settings_version}) 与项目建议的配置版本 ({config_guide_version}) 不一致。"
             )
-            logger.warning("这可能导致意外行为或错误。请从 settings.template.json 复制或更新您的 settings.jsonc 文件。")
+            logger.warning(
+                "这可能导致意外行为或错误。请从 settings.template.json 复制或更新您的 settings.jsonc 文件。"
+            )
             # TODO 根据版本号打印更新日志
             logger.warning(f"配置文件更新日志：\n{config_changelog}")
     elif PYPROJECT_PATH.exists():  # 如果文件存在但未读到版本

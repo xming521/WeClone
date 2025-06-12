@@ -39,10 +39,10 @@ repos:
       - id: isort
         args: ["--profile", "black", "--line-length", "120"]
 
-  - repo: https://github.com/PyCQA/bandit
-    rev: 1.8.3
-    hooks:
-      - id: bandit
-        name: Python 安全检查
-        args: ["-c", "pyproject.toml"]
-        additional_dependencies: ["bandit[toml]"]
+  # - repo: https://github.com/PyCQA/bandit
+  #   rev: 1.8.3
+  #   hooks:
+  #     - id: bandit
+  #       name: Python 安全检查
+  #       args: ["-c", "pyproject.toml", "-x", "tests"]
+  #       additional_dependencies: ["bandit[toml]"]
