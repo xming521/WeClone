@@ -164,8 +164,12 @@ class InferArgs(BaseModel):
     max_length: int = Field(..., description="最大生成长度")
 
 
+class VllmArgs(BaseModel):
+    gpu_memory_utilization: float = Field(default=0.9, description="vllm GPU内存利用率")
+
+
 class TestModelArgs(BaseModel):
-    test_data_path: str = Field("dataset/test_data.json", description="测试数据路径")
+    test_data_path: str = Field(default="dataset/test_data.json", description="测试数据路径")
 
 
 class WcConfig(BaseModel):
@@ -175,7 +179,8 @@ class WcConfig(BaseModel):
     make_dataset_args: MakeDatasetArgs = Field(..., description="数据处理参数")
     train_sft_args: TrainSftArgs = Field(..., description="SFT微调参数")
     infer_args: InferArgs = Field(..., description="推理参数")
-    test_model_args: TestModelArgs = TestModelArgs(test_data_path="dataset/test_data.json")
+    vllm_args: VllmArgs = Field(VllmArgs())
+    test_model_args: TestModelArgs = Field(TestModelArgs())
 
 
 class WCInferConfig(CommonArgs, InferArgs):

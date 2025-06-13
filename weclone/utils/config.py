@@ -58,6 +58,9 @@ def create_config_by_arg_type(arg_type: str, wc_config: WcConfig) -> BaseModel:
         config_dict = {**common_config, **wc_config.infer_args.model_dump()}
         return WCInferConfig(**config_dict)
 
+    elif arg_type == "vllm":
+        return wc_config.vllm_args
+
     elif arg_type == "test_model":
         return wc_config.test_model_args
 

@@ -69,5 +69,8 @@
         "temperature": 0.5,
         "max_length": 50,
         "top_p": 0.65
+    },
+    "vllm_args": {
+        "gpu_memory_utilization": 0.90
     }
 }
