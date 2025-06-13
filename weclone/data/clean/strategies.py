@@ -10,7 +10,7 @@ from langchain_core.prompts import PromptTemplate
 from tqdm import tqdm
 
 from weclone.core.inference.online_infer import OnlineLLM
-from weclone.data.models import QaPairScore, QaPairV2
+from weclone.data.models import QaPair, QaPairScore
 from weclone.prompts.clean_data import CLEAN_PROMPT, ONLINE_LLM_CLEAN_PROMPT
 from weclone.utils.config_models import WCMakeDatasetConfig
 from weclone.utils.log import logger
@@ -23,7 +23,7 @@ class CleaningStrategy(ABC):
     make_dataset_config: WCMakeDatasetConfig
 
     @abstractmethod
-    def judge(self, data: List[QaPairV2]) -> None:
+    def judge(self, data: List[QaPair]) -> None:
         """
         打分方法是抽象的，强制每个子类根据自己的方式去实现。
         """
@@ -93,7 +93,7 @@ class LLMCleaningStrategy(CleaningStrategy):
 
     make_dataset_config: WCMakeDatasetConfig
 
-    def judge(self, data: List[QaPairV2]) -> None:
+    def judge(self, data: List[QaPair]) -> None:
         """
         调用llm打分，并将分数直接赋值给传入的QaPair。
         """
@@ -159,7 +159,7 @@ class LLMCleaningStrategy(CleaningStrategy):
 class OlineLLMCleaningStrategy(CleaningStrategy):
     """使用大模型进行数据清洗的策略"""
 
-    def judge(self, data: List[QaPairV2]) -> None:
+    def judge(self, data: List[QaPair]) -> None:
         config = self.make_dataset_config
         logger.info("开始使用在线模型对数据打分")
         logger.info(f"使用模型 {config.model_name}")

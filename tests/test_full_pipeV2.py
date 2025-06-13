@@ -43,15 +43,21 @@ def setup_make_dataset_test_data():
     TESTS_DIR = os.path.dirname(__file__)
     TEST_DATA_PERSON_DIR = os.path.join(TESTS_DIR, "tests_data", "test_person")
 
-    os.makedirs(DATASET_CSV_DIR, exist_ok=True) 
+    # 先删除目录，再重新创建
+    if os.path.exists(DATASET_CSV_DIR):
+        shutil.rmtree(DATASET_CSV_DIR)
+    os.makedirs(DATASET_CSV_DIR)
+    
+    # 创建test_person子目录
+    test_person_csv_dir = os.path.join(DATASET_CSV_DIR, "test_person")
+    os.makedirs(test_person_csv_dir)
 
-    if os.path.exists(DATASET_CSV_DIR) and os.listdir(DATASET_CSV_DIR):
-        if all(f.startswith('.') or f.lower() == 'readme.md' for f in os.listdir(DATASET_CSV_DIR)):
-            for item_name in os.listdir(TEST_DATA_PERSON_DIR):
-                source_item_path = os.path.join(TEST_DATA_PERSON_DIR, item_name)
-                if os.path.isfile(source_item_path) and item_name.lower().endswith('.csv'):
-                    destination_item_path = os.path.join(DATASET_CSV_DIR, item_name)
-                    shutil.copy2(source_item_path, destination_item_path)
+    # 复制测试数据到test_person目录
+    for item_name in os.listdir(TEST_DATA_PERSON_DIR):
+        source_item_path = os.path.join(TEST_DATA_PERSON_DIR, item_name)
+        if os.path.isfile(source_item_path) and item_name.lower().endswith('.csv'):
+            destination_item_path = os.path.join(test_person_csv_dir, item_name)
+            shutil.copy2(source_item_path, destination_item_path)
         
 
 def run_cli_command(command: list[str], timeout: int | None = None, background: bool = False) -> Union[subprocess.CompletedProcess, subprocess.Popen]:
@@ -166,3 +172,6 @@ def test_cli_test_model():
             if server_process.poll() is None:
                 server_process.kill()  # Force kill if the process hasn't terminated
             test_logger.info("服务器已关闭")
+
+if __name__ == "__main__":
+    setup_make_dataset_test_data()

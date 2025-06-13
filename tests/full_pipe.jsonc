@@ -36,6 +36,9 @@
             }
         }
     },
+    "test_model_args": {
+        "test_data_path": "tests/tests_data/test_model_data.json"
+    },
     "train_sft_args": {
         //微调配置
         "stage": "sft",

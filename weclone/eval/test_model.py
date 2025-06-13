@@ -7,17 +7,18 @@ from openai.types.chat import ChatCompletionMessageParam  # 导入消息参数�
 from tqdm import tqdm
 
 from weclone.utils.config import load_config
-from weclone.utils.config_models import WCInferConfig
+from weclone.utils.config_models import TestModelArgs, WCInferConfig
 
-config = cast(WCInferConfig, load_config("web_demo"))
+infer_config = cast(WCInferConfig, load_config("web_demo"))
+test_config = cast(TestModelArgs, load_config("test_model"))
 
-config = {
-    "default_prompt": config.default_system,
+completion_config = {
+    "default_prompt": infer_config.default_system,
     "model": "gpt-3.5-turbo",
     "history_len": 15,
 }
 
-config = type("Config", (object,), config)()
+completion_config = type("Config", (object,), completion_config)()
 
 # 初始化 OpenAI 客户端
 client = OpenAI(api_key="""sk-test""", base_url="http://127.0.0.1:8005/v1")
@@ -49,12 +50,12 @@ def handler_text(content: str, history: list, config):
 
 
 def main():
-    test_list = json.loads(open("dataset/test_data.json", "r", encoding="utf-8").read())["questions"]
+    test_list = json.loads(open(test_config.test_data_path, "r", encoding="utf-8").read())["questions"]
     res = []
     for questions in tqdm(test_list, desc=" Testing..."):
         history = []
         for q in questions:
-            handler_text(q, history=history, config=config)
+            handler_text(q, history=history, config=completion_config)
         res.append(history)
 
     res_file = open("test_result-my.txt", "w")
