@@ -46,7 +46,14 @@
         "base_url": "https://xxx/v1",
         "llm_api_key": "xxxxx",
         "model_name": "xxx", //建议使用参数较大的模型，例如DeepSeek-V3
-        "clean_batch_size": 10
+        "clean_batch_size": 10,
+        "vision_api": {
+            "enable": false, // 设置为 true 来开启此功能
+            "api_key": "xxx",
+            "api_url": "https://xxx/v1", // 例如阿里云，或替换为其他兼容OpenAI的API地址
+            "model_name": "xxx", // 要使用的多模态模型名称,例如qwen-vl-max
+            "max_workers": 5 // 并行调用API的线程数，最多不要超过8
+        }
     },
     "train_sft_args": {
         //微调配置

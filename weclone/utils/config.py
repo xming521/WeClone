@@ -38,7 +38,10 @@ def load_config(arg_type: str):
                 )
                 config["dataset"] = "wechat-sft-with-history"
         if "image" in s_config["make_dataset_args"]["include_type"]:
-            config["dataset"] = "wechat-mllm-sft"
+            if config["vision_api"].get("enable", False):
+                config["dataset"] = "wechat-img-rec-sft"  # 图像识别类模型使用的数据集
+            else:
+                config["dataset"] = "wechat-mllm-sft"  # 多模态模型使用的数据集
 
     elif arg_type == "make_dataset":
         config = {**s_config["make_dataset_args"], **s_config["common_args"]}
@@ -46,7 +49,10 @@ def load_config(arg_type: str):
         config["dataset_dir"] = s_config["train_sft_args"]["dataset_dir"]
         config["cutoff_len"] = s_config["train_sft_args"]["cutoff_len"]
         if "image" in config["include_type"]:
-            config["dataset"] = "wechat-mllm-sft"
+            if config["vision_api"].get("enable", False):
+                config["dataset"] = "wechat-img-rec-sft"  # 图像识别类模型使用的数据集
+            else:
+                config["dataset"] = "wechat-mllm-sft"  # 多模态模型使用的数据集
 
     else:
         raise ValueError("暂不支持的参数类型")
