@@ -117,8 +117,9 @@ class LLMCleaningStrategy(CleaningStrategy):
             template=self.make_dataset_config.template,
             temperature=0,
             guided_decoding_class=QaPairScore,
-            repetition_penalty=1.2,
+            repetition_penalty=1.5,
             bad_words=[r"\n"],
+            max_new_tokens=self.make_dataset_config.messages_max_length + 1024,  # add prompt length
         )
 
         parsed_scores: List[QaPairScore] = []

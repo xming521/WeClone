@@ -26,6 +26,7 @@ def vllm_infer(
     max_samples: Optional[int] = None,
     vllm_config: str = "{}",
     save_name: str = "generated_predictions.jsonl",
+    enable_thinking: bool = False,
     temperature: float = 0.95,
     top_p: float = 0.7,
     top_k: int = 50,
@@ -61,6 +62,7 @@ def vllm_infer(
             "top_k": top_k,
             "max_new_tokens": max_new_tokens,
             "repetition_penalty": repetition_penalty,
+            "enable_thinking": enable_thinking,
         }
     )
 
