@@ -1,7 +1,7 @@
 [project]
 name = "WeClone"
-version = "0.2.23"
-description = "从聊天记录创造数字分身的一站式解决方案"
+version = "0.2.24"
+description = "One-stop solution for creating your digital avatar from chat history"
 authors = [{ name = "xming521" }]
 readme = "README.md"
 requires-python = ">=3.10,<3.11"
