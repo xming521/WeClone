@@ -9,8 +9,8 @@ from unittest import mock
 
 import pytest
 
+from weclone.utils.config import load_config
 from weclone.utils.config_models import DataModality, WCMakeDatasetConfig
-from weclone.utils.configV2 import load_config
 from weclone.utils.log import logger
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))

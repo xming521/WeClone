@@ -113,8 +113,8 @@ class LLMCleaningStrategy(CleaningStrategy):
             inputs.append(prompt_value.to_string())
         outputs = vllm_infer(
             inputs,
-            self.make_dataset_config["model_name_or_path"],
-            template=self.make_dataset_config["template"],
+            self.make_dataset_config.model_name_or_path,
+            template=self.make_dataset_config.template,
             temperature=0,
             guided_decoding_class=QaPairScore,
             repetition_penalty=1.2,

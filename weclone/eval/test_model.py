@@ -7,11 +7,12 @@ from openai.types.chat import ChatCompletionMessageParam  # 导入消息参数�
 from tqdm import tqdm
 
 from weclone.utils.config import load_config
+from weclone.utils.config_models import WCInferConfig
 
-config = load_config("web_demo")
+config = cast(WCInferConfig, load_config("web_demo"))
 
 config = {
-    "default_prompt": config["default_system"],
+    "default_prompt": config.default_system,
     "model": "gpt-3.5-turbo",
     "history_len": 15,
 }

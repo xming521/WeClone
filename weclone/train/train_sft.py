@@ -7,8 +7,8 @@ from llamafactory.extras.misc import get_current_device
 from llamafactory.train.tuner import run_exp
 
 from weclone.data.clean.strategies import LLMCleaningStrategy
+from weclone.utils.config import load_config
 from weclone.utils.config_models import WCMakeDatasetConfig, WCTrainSftConfig
-from weclone.utils.configV2 import load_config
 from weclone.utils.log import logger
 
 

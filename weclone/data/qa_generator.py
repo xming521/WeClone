@@ -22,8 +22,8 @@ from weclone.data.models import (
 )
 from weclone.data.strategies import LLMStrategy, TimeWindowStrategy
 from weclone.data.utils import ImageToTextProcessor, check_image_file_exists
+from weclone.utils.config import load_config
 from weclone.utils.config_models import DataModality, PlatformType, WCMakeDatasetConfig
-from weclone.utils.configV2 import load_config
 from weclone.utils.log import logger
 
 
