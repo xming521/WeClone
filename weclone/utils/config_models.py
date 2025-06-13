@@ -184,8 +184,6 @@ class WCTrainSftConfig(CommonArgs, TrainSftArgs):
 
     model_config = {"extra": "ignore"}
 
-    # 用于传递include_type信息，处理后会被删除
-    include_type: List[DataModality] = Field(...)
     # 训练输出目录，从adapter_name_or_path转换而来
     output_dir: Optional[str] = Field(None)
 
@@ -201,7 +199,6 @@ class WCTrainSftConfig(CommonArgs, TrainSftArgs):
             self.output_dir = adapter_name_value
 
         try:
-            delattr(self, "include_type")
             delattr(self, "adapter_name_or_path")
         except AttributeError:
             pass

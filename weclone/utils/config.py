@@ -1,67 +1,103 @@
 import os
 import sys
+from typing import Any, Dict, cast
 
 import commentjson
+from omegaconf import OmegaConf
+from pydantic import BaseModel
 
+from .config_models import (
+    WcConfig,
+    WCInferConfig,
+    WCMakeDatasetConfig,
+    WCTrainSftConfig,
+)
 from .log import logger
 from .tools import dict_to_argv
 
 
-def load_config(arg_type: str):
+def load_base_config() -> WcConfig:
+    """加载基础配置文件并创建WcConfig对象"""
     config_path = os.environ.get("WECLONE_CONFIG_PATH", "./settings.jsonc")
-    logger.info(f"Loading configuration from: {config_path}")  # Add logging to see which file is loaded
+    logger.info(f"Loading configuration from: {config_path}")
+
     try:
         with open(config_path, "r", encoding="utf-8") as f:
-            s_config: dict = commentjson.load(f)
+            s_config_dict: Dict[str, Any] = commentjson.load(f)
     except FileNotFoundError:
         logger.error(f"Configuration file not found: {config_path}")
-        sys.exit(1)  # Exit if config file is not found
+        sys.exit(1)
     except Exception as e:
         logger.error(f"Error loading configuration file {config_path}: {e}")
         sys.exit(1)
 
+    # 使用 OmegaConf 解析配置，然后转换为 Pydantic 模型验证
+    try:
+        omega_config = OmegaConf.create(s_config_dict)
+        config_dict_for_validation = OmegaConf.to_container(omega_config, resolve=True)
+        if not isinstance(config_dict_for_validation, dict):
+            raise TypeError(
+                f"Configuration should be a dictionary, but got {type(config_dict_for_validation)}"
+            )
+        wc_config = WcConfig(**cast(Dict[str, Any], config_dict_for_validation))
+    except Exception as e:
+        logger.error(f"Error parsing configuration with OmegaConf and WcConfig: {e}")
+        sys.exit(1)
+
+    return wc_config
+
+
+def create_config_by_arg_type(arg_type: str, wc_config: WcConfig) -> BaseModel:
+    """根据参数类型创建对应的配置对象,添加可能用到的参数,添加的参数会在model_validator中删除"""
     if arg_type == "cli_args":
-        config = s_config["cli_args"]
-    elif arg_type == "web_demo" or arg_type == "api_service":
-        # infer_args和common_args求并集
-        config = {**s_config["infer_args"], **s_config["common_args"]}
-    elif arg_type == "train_pt":
-        config = {**s_config["train_pt_args"], **s_config["common_args"]}
+        return wc_config.cli_args
+
+    common_config = wc_config.common_args.model_dump()
+
+    if arg_type == "web_demo" or arg_type == "api_service":
+        config_dict = {**common_config, **wc_config.infer_args.model_dump()}
+        return WCInferConfig(**config_dict)
+
     elif arg_type == "train_sft":
-        config = {**s_config["train_sft_args"], **s_config["common_args"]}
-        if s_config["make_dataset_args"]["prompt_with_history"]:
-            dataset_info_path = os.path.join(config["dataset_dir"], "dataset_info.json")
-            dataset_info = commentjson.load(open(dataset_info_path, "r", encoding="utf-8"))[config["dataset"]]
-            if dataset_info["columns"].get("history") is None:
-                logger.warning(
-                    f"{config['dataset']}数据集不包history字段，尝试使用wechat-sft-with-history数据集"
-                )
-                config["dataset"] = "wechat-sft-with-history"
-        if "image" in s_config["make_dataset_args"]["include_type"]:
-            if config["vision_api"].get("enable", False):
-                config["dataset"] = "wechat-img-rec-sft"  # 图像识别类模型使用的数据集
-            else:
-                config["dataset"] = "wechat-mllm-sft"  # 多模态模型使用的数据集
+        config_dict = {**common_config, **wc_config.train_sft_args.model_dump()}
+        return WCTrainSftConfig(**config_dict)
 
     elif arg_type == "make_dataset":
-        config = {**s_config["make_dataset_args"], **s_config["common_args"]}
-        config["dataset"] = s_config["train_sft_args"]["dataset"]
-        config["dataset_dir"] = s_config["train_sft_args"]["dataset_dir"]
-        config["cutoff_len"] = s_config["train_sft_args"]["cutoff_len"]
-        if "image" in config["include_type"]:
-            if config["vision_api"].get("enable", False):
-                config["dataset"] = "wechat-img-rec-sft"  # 图像识别类模型使用的数据集
-            else:
-                config["dataset"] = "wechat-mllm-sft"  # 多模态模型使用的数据集
+        make_dataset_config = wc_config.make_dataset_args.model_dump()
+        # ToDo 下面三个参数放到common里？
+        train_sft_args = wc_config.train_sft_args
+        extra_values = {
+            "dataset": train_sft_args.dataset,
+            "dataset_dir": train_sft_args.dataset_dir,
+            "cutoff_len": train_sft_args.cutoff_len,
+        }
+        config_dict = {**common_config, **make_dataset_config, **extra_values}
+        return WCMakeDatasetConfig(**config_dict)
 
     else:
         raise ValueError("暂不支持的参数类型")
 
-    if "train" in arg_type:
-        config["output_dir"] = config["adapter_name_or_path"]
-        config.pop("adapter_name_or_path")
-        config["do_train"] = True
 
-    sys.argv += dict_to_argv(config)
+def process_config_dict_and_argv(arg_type: str, config_pydantic: BaseModel) -> None:
+    """处理配置字典并更新sys.argv"""
+    config_dict = config_pydantic.model_dump(mode="json")
 
-    return config
+    sys.argv += dict_to_argv(config_dict)
+
+
+def load_config(arg_type: str) -> BaseModel:
+    """加载配置的主函数"""
+    # 加载基础配置
+    wc_config = load_base_config()
+
+    # 根据类型创建配置对象
+    config_pydantic = create_config_by_arg_type(arg_type, wc_config)
+
+    # 处理配置字典和命令行参数
+    process_config_dict_and_argv(arg_type, config_pydantic)
+
+    return config_pydantic
+
+
+if __name__ == "__main__":
+    load_config("train_sft")

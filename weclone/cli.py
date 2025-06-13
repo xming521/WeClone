@@ -7,8 +7,8 @@ from typing import cast
 import click
 import commentjson
 
+from weclone.utils.config import load_config
 from weclone.utils.config_models import CliArgs
-from weclone.utils.configV2 import load_config
 from weclone.utils.log import capture_output, logger
 
 cli_config: CliArgs | None = None
@@ -70,7 +70,7 @@ def cli():
 @apply_common_decorators()
 def qa_generator():
     """处理聊天记录CSV文件，生成问答对数据集。"""
-    from weclone.data.qa_generatorV2 import DataProcessor
+    from weclone.data.qa_generator import DataProcessor
 
     processor = DataProcessor()
     processor.main()
