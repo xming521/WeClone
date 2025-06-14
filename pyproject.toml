@@ -34,7 +34,7 @@ config_changelog = """
 [dependency-groups]
 main = [
   "llamafactory @ git+https://github.com/hiyouga/LLaMA-Factory.git",
-  "vllm==0.8.5.post1; platform_system == 'Linux'",
+  "vllm==0.9.1; platform_system == 'Linux'",
   "torch>=2.6.0",
   "transformers==4.52.1",
   "accelerate==1.7.0",

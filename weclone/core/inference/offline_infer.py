@@ -1,4 +1,4 @@
-from typing import List, Optional, Union, cast
+from typing import List, Optional, cast
 
 from llamafactory.data import get_template_and_fix_tokenizer
 from llamafactory.extras.misc import get_device_count
@@ -16,7 +16,7 @@ from weclone.utils.config_models import VllmArgs
 
 
 def vllm_infer(
-    inputs: Union[str, List[str]],
+    inputs: List[str],
     model_name_or_path: str,
     adapter_name_or_path: Optional[str] = None,
     dataset: str = "alpaca_en_demo",
@@ -116,5 +116,10 @@ def vllm_infer(
     if isinstance(model_args.vllm_config, dict):
         engine_args.update(model_args.vllm_config)
 
-    results = LLM(**engine_args).generate(inputs, sampling_params, lora_request=lora_request)
+    messages_list = [[{"role": "user", "content": text}] for text in inputs]
+    extra_body = {"guided_json": json_schema, "enable_thinking": False}
+
+    results = LLM(**engine_args).chat(
+        messages_list, sampling_params, lora_request=lora_request, chat_template_kwargs=extra_body
+    )  # type: ignore
     return results
