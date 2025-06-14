@@ -26,6 +26,7 @@ def vllm_infer(
     max_samples: Optional[int] = None,
     vllm_config: str = "{}",
     save_name: str = "generated_predictions.jsonl",
+    default_system: Optional[str] = None,
     enable_thinking: bool = False,
     temperature: float = 0.95,
     top_p: float = 0.7,
