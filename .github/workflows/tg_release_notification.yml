@@ -8,15 +8,90 @@ jobs:
   notify:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          
+      - name: Install telegramify-markdown
+        run: |
+          npm init -y
+          npm install telegramify-markdown
+          
+      - name: Convert release body to Telegram format
+        id: convert-markdown
+        run: |
+          # 先将release body保存到文件
+          cat > release_body.txt << 'RELEASE_BODY_EOF'
+          ${{ github.event.release.body }}
+          RELEASE_BODY_EOF
+          
+          # 然后创建转换脚本
+          cat > convert-release.js << 'EOF'
+          const telegramifyMarkdown = require('telegramify-markdown');
+          const fs = require('fs');
+
+          // 从文件读取release body内容（避免shell解析问题）
+          let releaseBody = '';
+          try {
+            releaseBody = fs.readFileSync('release_body.txt', 'utf8');
+          } catch (error) {
+            console.error('读取release body失败:', error);
+            releaseBody = process.env.RELEASE_BODY || '';
+          }
+          
+          console.log('=== 原始release body ===');
+          console.log(releaseBody);
+
+          // 转换为Telegram格式
+          const telegramBody = telegramifyMarkdown(releaseBody);
+          
+          // 构建完整的消息
+          const tagName = process.env.TAG_NAME || '';
+          const releaseUrl = process.env.RELEASE_URL || '';
+          
+          const fullMessage = `🚀 *WeClone New Version Released*
+          🏷️ *Version*: \`${tagName}\`
+          🔗 *Link*: [Github Release](${releaseUrl})
+          📋 *Release Notes*:
+          ${telegramBody}`;
+          
+          // 输出到GitHub Actions
+          console.log('转换后的消息:');
+          console.log(fullMessage);
+          
+          // 将消息保存到环境变量
+          fs.writeFileSync('telegram_message.txt', fullMessage);
+          EOF
+          
+          # 设置环境变量
+          export RELEASE_BODY="${{ github.event.release.body }}"
+          export TAG_NAME="${{ github.event.release.tag_name }}"
+          export RELEASE_URL="${{ github.event.release.html_url }}"
+          export REPO_NAME="${{ github.repository }}"
+          
+          # 运行转换脚本
+          node convert-release.js
+          
+          # 读取转换后的消息并设置为输出
+          echo "TELEGRAM_MESSAGE<<EOF" >> $GITHUB_OUTPUT
+          cat telegram_message.txt >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          
+      # - name: Display converted message
+      #   run: |
+      #     echo "=== 转换后的Telegram消息 ==="
+      #     echo "${{ steps.convert-markdown.outputs.TELEGRAM_MESSAGE }}"
+          
       - name: Send Telegram Message
         uses: appleboy/telegram-action@master
         with:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          message: |
-            🚀 新版本发布！
-            🏷️ 版本: ${{ github.event.release.tag_name }}
-            🔗 链接: ${{ github.event.release.html_url }}
-            发布说明:
-            ${{ github.event.release.body }}
+          message: ${{ steps.convert-markdown.outputs.TELEGRAM_MESSAGE }}
           format: markdown
+          disable_web_page_preview: false
+        
