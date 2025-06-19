@@ -165,7 +165,9 @@ weclone-cli test-model
 ```
 
 ## 🖼️ 微调效果
-使用Qwen2.5-14B-Instruct模型，大概3万条处理后的有效数据，loss降到了3.5左右的效果。
+> [!TIP] 
+> **QQ群内有部署好的Qwen2.5VL 32B Bot，可以体验效果。**  
+使用Qwen2.5-14B-Instruct模型，大概3万条处理后的有效数据，loss降到了3.5左右的效果：
 <details>
 <summary>截图</summary>
 <div style="display: flex; flex-wrap: wrap; gap: 10px;">
@@ -219,7 +221,10 @@ weclone-cli test-model
 - [ ] 支持COT思考
 
 ## 问题解决
-- 微调问题：[LLaMA-Factory| FAQs | 常见问题](https://github.com/hiyouga/LLaMA-Factory/issues/4614) 或者更方便的 [![更方便的Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/hiyouga/LLaMA-Factory)
+#### [官方文档FAQ](https://www.weclone.love/FAQ.html)    
+同时建议使用[DeepWiki](https://deepwiki.com/xming521/WeClone)解决问题。
+
+
 
 ## ❤️ 贡献代码
 
@@ -234,6 +239,15 @@ pre-commit install
 
 项目使用`pytest`测试，`pyright`检查类型，`ruff`检查代码格式。
 
+## 🙏 致谢
+
+感谢以下代码贡献者和社区里其他成员的贡献
+
+<a href="https://github.com/xming521/WeClone/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=xming521/WeClone" />
+</a>
+
+同时本项目受益于[PyWxDump](https://github.com/xaoyaoo/PyWxDump)、[LLaMA-Factory](https://github.com/hiyouga/LLaMA-Factory)、[AstrBot](https://github.com/AstrBotDevs/AstrBot)、[LangBot](https://github.com/RockChinQ/LangBot)等优秀开源项目。
 
 ## ⚠️ 免责声明
 > [!CAUTION]
