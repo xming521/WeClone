@@ -1,0 +1,50 @@
+{
+    "action": "published",
+    "release": {
+        "id": 123456789,
+        "tag_name": "v0.2.24",
+        "target_commitish": "main",
+        "name": "v0.2.24",
+        "body": "## 🥰 What's Changed\n  - Update torch version to 2.7.0 and vllm version to 0.9.1, switch offline inference to chat-style invocation\n  - Add `test_model_args` and `vllm_args` configuration items to allow custom test dataset files\n  - Add config file path option in CLI, support setting WECLONE_CONFIG_PATH environment variable\n  - Update max_new_tokens and enable_thinking parameters in data cleaning strategy to optimize inference\n  - Partial feature adaptation for qwen3\n  \n  ## 🐛 Bug fix\n  fix #158 fix #83 fix #77 fix #69 \n  \n  **Full Changelog**: https://github.com/xming521/WeClone/compare/v0.2.23...v0.2.24\n  \n  ## 🥰 更新内容\n  - 更新torch版本至2.7.0，vllm版本到0.9.1，离线推理改为chat方式调用\n  - 添加`test_model_args` and `vllm_args`配置项，允许自定义测试集文件\n  - CLI中添加配置文件路径选项，支持设置WECLONE_CONFIG_PATH环境变量\n  - 更新数据清理策略中的max_new_tokens和enable_thinking参数以优化推理过程\n  - 部分功能适配qwen3",
+        "draft": false,
+        "prerelease": false,
+        "created_at": "2024-01-15T10:30:00Z",
+        "published_at": "2024-01-15T10:30:00Z",
+        "author": {
+            "login": "xming521",
+            "id": 12345,
+            "avatar_url": "https://avatars.githubusercontent.com/u/12345?v=4",
+            "html_url": "https://github.com/xming521"
+        },
+        "html_url": "https://github.com/xming521/WeClone/releases/tag/v0.2.24",
+        "assets_url": "https://api.github.com/repos/xming521/WeClone/releases/123456789/assets",
+        "upload_url": "https://uploads.github.com/repos/xming521/WeClone/releases/123456789/assets{?name,label}",
+        "tarball_url": "https://api.github.com/repos/xming521/WeClone/tarball/v0.2.24",
+        "zipball_url": "https://api.github.com/repos/xming521/WeClone/zipball/v0.2.24",
+        "assets": []
+    },
+    "repository": {
+        "id": 987654321,
+        "name": "WeClone",
+        "full_name": "xming521/WeClone",
+        "owner": {
+            "login": "xming521",
+            "id": 12345
+        },
+        "private": false,
+        "html_url": "https://github.com/xming521/WeClone",
+        "description": "WeClone - AI Clone Repository",
+        "fork": false,
+        "created_at": "2023-01-01T00:00:00Z",
+        "updated_at": "2024-01-15T10:30:00Z",
+        "pushed_at": "2024-01-15T10:25:00Z",
+        "clone_url": "https://github.com/xming521/WeClone.git",
+        "default_branch": "main"
+    },
+    "sender": {
+        "login": "xming521",
+        "id": 12345,
+        "avatar_url": "https://avatars.githubusercontent.com/u/12345?v=4",
+        "html_url": "https://github.com/xming521"
+    }
+}
