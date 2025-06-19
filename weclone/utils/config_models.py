@@ -58,8 +58,8 @@ class FinetuningType(StrEnum):
     """Finetuning type"""
 
     LORA = "lora"
-    FULL = "full"
-    FREEZE = "freeze"
+    # FULL = "full"
+    # FREEZE = "freeze"
 
 
 class CommonArgs(BaseModel):
@@ -96,7 +96,7 @@ class CleanDatasetConfig(BaseModel):
 class VisionApiConfig(BaseModel):
     """Vision API specific configuration"""
 
-    enable: bool = Field(False, description="是否启用Vision API进行图像识别")
+    enable: bool = Field(default=False, description="是否启用Vision API进行图像识别")
     api_key: Optional[str] = None
     api_url: Optional[str] = None
     model_name: Optional[str] = None
@@ -123,7 +123,7 @@ class MakeDatasetArgs(BaseModel):
     llm_api_key: Optional[str] = Field(None, description="在线LLM的api_key")
     model_name: Optional[str] = Field(None, description="在线LLM的模型名称, 建议使用参数较大的模型")
     clean_batch_size: int = Field(10, description="数据清洗批次大小")
-    vision_api: VisionApiConfig = Field(default_factory=VisionApiConfig)
+    vision_api: VisionApiConfig = Field(VisionApiConfig())
 
 
 class TrainSftArgs(BaseModel):
@@ -164,6 +164,14 @@ class InferArgs(BaseModel):
     max_length: int = Field(..., description="最大生成长度")
 
 
+class VllmArgs(BaseModel):
+    gpu_memory_utilization: float = Field(default=0.9, description="vllm GPU内存利用率")
+
+
+class TestModelArgs(BaseModel):
+    test_data_path: str = Field(default="dataset/test_data.json", description="测试数据路径")
+
+
 class WcConfig(BaseModel):
     version: str = Field(..., description="配置文件版本")
     common_args: CommonArgs = Field(..., description="通用参数")
@@ -171,6 +179,8 @@ class WcConfig(BaseModel):
     make_dataset_args: MakeDatasetArgs = Field(..., description="数据处理参数")
     train_sft_args: TrainSftArgs = Field(..., description="SFT微调参数")
     infer_args: InferArgs = Field(..., description="推理参数")
+    vllm_args: VllmArgs = Field(VllmArgs())
+    test_model_args: TestModelArgs = Field(TestModelArgs())
 
 
 class WCInferConfig(CommonArgs, InferArgs):

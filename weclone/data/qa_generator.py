@@ -16,7 +16,7 @@ from weclone.data.models import (
     ChatMessage,
     CutMessage,
     Message,
-    QaPairV2,
+    QaPair,
     cut_type_list,
     skip_type_list,
 )
@@ -35,7 +35,7 @@ class DataProcessor:
         self.enable_clean = self.config.clean_dataset.enable_clean
 
         # msg_type
-        self.QaPair = QaPairV2
+        self.QaPair = QaPair
 
         self.include_type = self.config.include_type
         if self.config.platform == PlatformType.WECHAT:
@@ -103,9 +103,9 @@ class DataProcessor:
         vision_config = self.config.vision_api
         if vision_config.enable and vision_config.api_key:
             self.image_processor = ImageToTextProcessor(
-                api_url=vision_config.api_url,
-                api_key=vision_config.api_key,
-                model_name=vision_config.model_name,
+                api_url=vision_config.api_url,  # type: ignore
+                api_key=vision_config.api_key,  # type: ignore
+                model_name=vision_config.model_name,  # type: ignore
             )
             logger.info(f"已启用图片识别功能, 模型: {self.image_processor.model_name}")
         else:
@@ -113,7 +113,7 @@ class DataProcessor:
 
         self.c = self.config
 
-    def _process_images_in_parallel(self, qa_list: List[QaPairV2]) -> List[QaPairV2]:
+    def _process_images_in_parallel(self, qa_list: List[QaPair]) -> List[QaPair]:
         """并行处理所有对话中的图片，并将描述替换回对话文本。"""
         all_image_paths = []
         media_dir = self.c.media_dir
@@ -136,7 +136,7 @@ class DataProcessor:
         # 使用线程池并行调用API，executor.map 会保持结果顺序与输入一致
         with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
             # 现在传递给 image_processor 的是完整的路径
-            image_descriptions = list(executor.map(self.image_processor.describe_image, all_image_paths))
+            image_descriptions = list(executor.map(self.image_processor.describe_image, all_image_paths))  # type: ignore
 
         desc_iterator = iter(image_descriptions)
         for qa_pair in qa_list:
@@ -167,7 +167,7 @@ class DataProcessor:
             logger.error(
                 f"错误：目录 '{self.csv_folder}' 不存在或为空，请检查路径并确保其中包含 CSV 聊天数据文件。"
             )
-            return
+            sys.exit(1)
 
         csv_files = self.get_csv_files()
         logger.info(f"共发现 {len(csv_files)} 个 CSV 文件,开始处理,请耐心等待...")
@@ -179,7 +179,7 @@ class DataProcessor:
             # self.process_by_msgtype(chat_message)
             logger.debug(f"处理完成: {csv_file}，共加载 {len(chat_messages)} 条消息")
         qa_res = self.match_qa(message_list)
-        qa_res = [item for item in qa_res if isinstance(item, QaPairV2)]
+        qa_res = [item for item in qa_res if isinstance(item, QaPair)]
 
         # 如果启用图片识别，则执行并行处理
         if self.image_processor:
@@ -263,7 +263,7 @@ class DataProcessor:
         csv_files.sort(key=extract_start)
         return csv_files
 
-    def match_qa(self, messages: List[ChatMessage]) -> List[Union[QaPairV2, CutMessage]]:
+    def match_qa(self, messages: List[ChatMessage]) -> List[Union[QaPair, CutMessage]]:
         """
         匹配问答对，直接处理历史对话
 
@@ -271,14 +271,14 @@ class DataProcessor:
             messages: 消息列表
 
         Returns:
-            List[Union[QaPairV2, CutMessage]]: 包含指令和输出的问答对列表
+            List[Union[QaPair, CutMessage]]: 包含指令和输出的问答对列表
         """
         # 状态定义
         WAITING_INSTRUCTION = "waiting_instruction"  # 等待指令
         WAITING_RESPONSE = "waiting_response"  # 等待回复
 
         current_state = WAITING_INSTRUCTION
-        qa_res: List[Union[QaPairV2, CutMessage]] = []
+        qa_res: List[Union[QaPair, CutMessage]] = []
         last_message = None
         current_instruction = None
         qa_id_counter = 0
@@ -616,12 +616,12 @@ class DataProcessor:
     def process_text(self, chat_message: ChatMessage):
         pass
 
-    def save_result(self, qa_res: List[QaPairV2]):
+    def save_result(self, qa_res: List[QaPair]):
         """
-        Saves the list of QaPairV2 objects to a JSON file after converting them to dictionaries.
+        Saves the list of QaPair objects to a JSON file after converting them to dictionaries.
 
         Args:
-            qa_res: A list of QaPairV2 objects.
+            qa_res: A list of QaPair objects.
         """
         processed_qa_res = []
         for idx, item in enumerate(qa_res):

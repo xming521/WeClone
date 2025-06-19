@@ -1,5 +1,5 @@
 {
-    "version": "0.2.23",
+    "version": "0.2.24",
     "common_args": {
         "model_name_or_path": "./Qwen2.5-7B-Instruct",
         "adapter_name_or_path": "./model_output", //同时做为train_sft_args的output_dir
@@ -78,5 +78,11 @@
         "temperature": 0.5,
         "max_length": 50,
         "top_p": 0.65
+    },
+    "vllm_args": {
+        "gpu_memory_utilization": 0.9
+    },
+    "test_model_args": {
+        "test_data_path": "dataset/test_data.json"
     }
 }

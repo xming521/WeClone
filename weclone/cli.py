@@ -58,8 +58,13 @@ def apply_common_decorators(capture_output_enabled=False):
 
 
 @click.group()
-def cli():
+@click.option("--config-path", default=None, help="指定配置文件路径，会设置WECLONE_CONFIG_PATH环境变量")
+def cli(config_path):
     """WeClone: 从聊天记录创造数字分身的一站式解决方案"""
+    if config_path:
+        os.environ["WECLONE_CONFIG_PATH"] = config_path
+        logger.info(f"配置文件路径已设置为: {config_path}")
+
     _check_project_root()
     _check_versions()
     global cli_config

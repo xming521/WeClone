@@ -33,26 +33,13 @@ class QaPairFormat(Enum):
 
 
 @dataclass
-class QaPair:
-    """原始QaPair类，保持向后兼容"""
-
-    id: int
-    system: str
-    instruction: str
-    output: str
-    history: list[list[str]]
-    time: Timestamp
-    score: int
-
-
-@dataclass
 class Message:
     role: str
     content: str
 
 
 @dataclass
-class QaPairV2:
+class QaPair:
     """支持sharegpt格式的QA对类"""
 
     id: int
