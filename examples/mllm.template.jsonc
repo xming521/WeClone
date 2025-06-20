@@ -1,5 +1,5 @@
 {
-    "version": "0.2.23",
+    "version": "0.2.24",
     "common_args": {
         "model_name_or_path": "./models/Qwen2.5-VL-7B-Instruct",
         "adapter_name_or_path": "./model_output", //同时做为train_sft_args的output_dir
@@ -33,8 +33,6 @@
         "qa_match_time_window": 5, // 组成qa时间窗口（分钟）,
         "combine_msg_max_length": 2048, // 组合后消息最大长度 
         "messages_max_length": 2048, // messages最长字符数量 配合cutoff_len 使用
-        //多模态数据以下配置无效 历史对话自动包含
-        "prompt_with_history": false, // 是否在prompt中包含历史对话
         "clean_dataset": {
             "enable_clean": false,
             "clean_strategy": "llm",
@@ -88,5 +86,11 @@
         "temperature": 0.65,
         "max_length": 512,
         "top_p": 0.75
+    },
+    "vllm_args": {
+        "gpu_memory_utilization": 0.9
+    },
+    "test_model_args": {
+        "test_data_path": "dataset/test_data.json"
     }
 }
