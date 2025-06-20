@@ -35,6 +35,8 @@
 - 🛡️ 隐私信息过滤，本地化微调部署，数据安全可控
 
 ## 📋特性与说明
+> [!IMPORTANT]
+> ### WeClone 目前未与任何平台合作，未发行任何数字货币。唯一官方网站：[weclone.love](https://www.weclone.love)，谨防仿冒。
 
 > [!IMPORTANT]
 > ### WeClone现在支持图片模态数据微调了！并且包含了更全的上下文,记得拉取最新代码并更新依赖。
@@ -42,7 +44,7 @@
 > [!IMPORTANT]
 > - WeClone仍在快速迭代期，当前效果不代表最终效果。  
 > - 微调LLM效果很大程度取决于模型大小、聊天数据的数量和质量，理论上模型越大，数据越多，效果越好。
-> - 7B模型很容易训练成为二傻子，14B模型勉强可以交流，32B及以上的模型效果会更好。   
+> - 7B模型很容易训练成为大笨蛋，14B模型勉强可以交流，32B及以上的模型效果会更好。   
 > - Windows环境未进行严格测试，可以使用WSL作为运行环境。详细教程可点击[Windows部署指南](https://blog.051088.xyz/2025/05/14/WeClone-%E7%94%A8%E5%BE%AE%E4%BF%A1%E8%81%8A%E5%A4%A9%E8%AE%B0%E5%BD%95%E6%89%93%E9%80%A0%E8%87%AA%E5%B7%B1%E7%9A%84AI%E6%95%B0%E5%AD%97%E5%88%86%E8%BA%AB/)查看。
 
 ### 更新日志
@@ -165,7 +167,10 @@ weclone-cli test-model
 ```
 
 ## 🖼️ 微调效果
-使用Qwen2.5-14B-Instruct模型，大概3万条处理后的有效数据，loss降到了3.5左右的效果。
+> [!TIP] 
+> **QQ群内有部署好的Qwen2.5VL 32B Bot，可以体验效果。**  
+
+使用Qwen2.5-14B-Instruct模型，大概3万条处理后的有效数据，loss降到了3.5左右的效果：
 <details>
 <summary>截图</summary>
 <div style="display: flex; flex-wrap: wrap; gap: 10px;">
@@ -219,7 +224,10 @@ weclone-cli test-model
 - [ ] 支持COT思考
 
 ## 问题解决
-- 微调问题：[LLaMA-Factory| FAQs | 常见问题](https://github.com/hiyouga/LLaMA-Factory/issues/4614) 或者更方便的 [![更方便的Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/hiyouga/LLaMA-Factory)
+#### [官方文档FAQ](https://www.weclone.love/FAQ.html)    
+同时建议使用[DeepWiki](https://deepwiki.com/xming521/WeClone)解决问题。
+
+
 
 ## ❤️ 贡献代码
 
@@ -234,6 +242,15 @@ pre-commit install
 
 项目使用`pytest`测试，`pyright`检查类型，`ruff`检查代码格式。
 
+## 🙏 致谢
+
+感谢以下代码贡献者和社区里其他成员的贡献
+
+<a href="https://github.com/xming521/WeClone/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=xming521/WeClone" />
+</a>
+
+同时本项目受益于[PyWxDump](https://github.com/xaoyaoo/PyWxDump)、[LLaMA-Factory](https://github.com/hiyouga/LLaMA-Factory)、[AstrBot](https://github.com/AstrBotDevs/AstrBot)、[LangBot](https://github.com/RockChinQ/LangBot)等优秀开源项目。
 
 ## ⚠️ 免责声明
 > [!CAUTION]
