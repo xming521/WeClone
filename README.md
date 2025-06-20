@@ -5,8 +5,8 @@
 
 [![GitHub stars](https://img.shields.io/github/stars/xming521/WeClone?style=for-the-badge&logo=github&label=Stars&logoColor=white&color=ffda65)](https://github.com/xming521/WeClone/stargazers)
 [![GitHub release](https://img.shields.io/github/v/release/xming521/WeClone?style=for-the-badge&logo=github&label=Release&logoColor=white&color=06d094)](https://github.com/xming521/WeClone/releases)
-[![Twitter](https://img.shields.io/badge/Twitter-@weclone567-000000?style=for-the-badge&logo=x&logoColor=white)](https://x.com/weclone567)
 [![Telegram](https://img.shields.io/badge/Telegram-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/+JEdak4m0XEQ3NGNl)
+[![Twitter](https://img.shields.io/badge/Twitter-@weclone567-000000?style=for-the-badge&logo=x&logoColor=white)](https://x.com/weclone567)
 <a href="https://qm.qq.com/cgi-bin/qm/qr?k=wNdgbOVT6oFOJ2wlMLsolUXErW9ESLpk&jump_from=webapi&authKey=z/reOp6YLyvR4Tl2k2nYMsLoMC3w9/99ucgKMX0oRGlxDV/WbYnvq2QxODoIkfxn" target="_blank" style="text-decoration: none;">
   <img src="https://img.shields.io/badge/QQ群-708067078-12B7F5?style=for-the-badge&logo=qq&logoColor=white" alt="WeClone①" title="WeClone①">
 </a>
@@ -21,7 +21,7 @@
   <a href="https://github.com/xming521/WeClone/blob/master/README_zh.md" target="_blank">简体中文</a>｜
   English</a>｜
   <a href="https://www.weclone.love/" target="_blank"> Project Homepage </a> ｜
-  <a href="https://www.weclone.love/what-is-weclone.html" target="_blank"> Documentation </a> ｜
+  <a href="https://www.weclone.love/what-is-weclone.html" target="_blank"> Documentation </a> 
 </p>
 
 > [!IMPORTANT]
@@ -48,7 +48,7 @@
 
 ### Hardware Requirements
 
-The project uses Qwen2.5-7B-Instruct model by default with LoRA method for SFT stage fine-tuning, requiring approximately 16GB VRAM. You can also use other models and methods supported by [LLaMA Factory](https://github.com/hiyouga/LLaMA-Factory/blob/main/README_zh.md#%E6%A8%A1%E5%9E%8B).
+The project uses Qwen2.5-7B-Instruct model by default with LoRA method for SFT stage fine-tuning, requiring approximately 16GB VRAM. You can also use other models and methods supported by [LLaMA Factory](https://github.com/hiyouga/LLaMA-Factory/tree/main#supported-models).
 
 需要显存的估算值：
 | 方法                             | 精度 |   7B  |  14B  |  30B  |   70B  |   `x`B  |
@@ -62,7 +62,7 @@ The project uses Qwen2.5-7B-Instruct model by default with LoRA method for SFT s
 
 
 ## 环境搭建
-1.cuda安装(已安装可跳过，**要求版本12.6及以上**)：[LLaMA Factory](https://llamafactory.readthedocs.io/zh-cn/latest/getting_started/installation.html#cuda) 
+1.cuda安装(已安装可跳过，**要求版本12.6及以上**)
 
 2.建议使用 [uv](https://docs.astral.sh/uv/)安装依赖，这是一个非常快速的 Python 环境管理器。安装uv后，您可以使用以下命令创建一个新的Python环境并安装依赖项，注意这不包含音频克隆功能的依赖：
 ```bash
@@ -177,9 +177,9 @@ weclone-cli test-model
 
 [LangBot](https://github.com/RockChinQ/LangBot) 是一个开源的接入全球多种即时通信平台的 LLM 机器人平台，支持Discord、Telegram、Slack等平台，适合各种场景使用。
 
-1. [部署 LangBot](https://github.com/RockChinQ/LangBot#-%E5%BC%80%E5%A7%8B%E4%BD%BF%E7%94%A8)
+1. [部署 LangBot](https://github.com/RockChinQ/LangBot/blob/master/README_EN.md#-getting-started)
 2. 在 LangBot 中添加一个机器人
-4. 在模型页添加新模型，名称`gpt-3.5-turbo`，供应商选择 OpenAI，填写 请求 URL 为 WeClone 的地址，详细连接方式可以参考[文档](https://docs.langbot.app/zh/workshop/network-details.html)，API Key 任意填写。
+4. 在模型页添加新模型，名称`gpt-3.5-turbo`，供应商选择 OpenAI，填写 请求 URL 为 WeClone 的地址，详细连接方式可以参考[文档](https://docs.langbot.app/en/workshop/network-details.html)，API Key 任意填写。
 
 <img width="400px" alt="image" src="https://github.com/user-attachments/assets/fc167dea-7c93-4d94-9c5f-db709d0320ba" />
 
