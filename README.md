@@ -1,18 +1,16 @@
 ![download](https://github.com/user-attachments/assets/5842e84e-004f-4afd-9373-af64e9575b78)
 <h3 align="center">🚀 One-stop solution for creating your digital avatar from chat history 💡</h3>  
-<h3 align="center">🚀从聊天记录创造数字分身的一站式解决方案💡</h3>  
-
-
 
 <div align="center">
 
 [![GitHub stars](https://img.shields.io/github/stars/xming521/WeClone?style=for-the-badge&logo=github&label=Stars&logoColor=white&color=ffda65)](https://github.com/xming521/WeClone/stargazers)
 [![GitHub release](https://img.shields.io/github/v/release/xming521/WeClone?style=for-the-badge&logo=github&label=Release&logoColor=white&color=06d094)](https://github.com/xming521/WeClone/releases)
+[![Twitter](https://img.shields.io/badge/Twitter-@weclone567-000000?style=for-the-badge&logo=x&logoColor=white)](https://x.com/weclone567)
+[![Telegram](https://img.shields.io/badge/Telegram-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/+JEdak4m0XEQ3NGNl)
 <a href="https://qm.qq.com/cgi-bin/qm/qr?k=wNdgbOVT6oFOJ2wlMLsolUXErW9ESLpk&jump_from=webapi&authKey=z/reOp6YLyvR4Tl2k2nYMsLoMC3w9/99ucgKMX0oRGlxDV/WbYnvq2QxODoIkfxn" target="_blank" style="text-decoration: none;">
   <img src="https://img.shields.io/badge/QQ群-708067078-12B7F5?style=for-the-badge&logo=qq&logoColor=white" alt="WeClone①" title="WeClone①">
 </a>
-[![Twitter](https://img.shields.io/badge/Twitter-@weclone567-000000?style=for-the-badge&logo=x&logoColor=white)](https://x.com/weclone567)
-[![Telegram](https://img.shields.io/badge/Telegram-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/+JEdak4m0XEQ3NGNl)
+
 
 <a href="https://hellogithub.com/repository/12ab209b56cb4cfd885c8cfd4cfdd53e" target="_blank"><img src="https://abroad.hellogithub.com/v1/widgets/recommend.svg?rid=12ab209b56cb4cfd885c8cfd4cfdd53e&claim_uid=RThlPDoGrFvdMY5" alt="Featured｜HelloGitHub" style="width: 150px; height: 28px;" /></a>
 <a href="https://trendshift.io/repositories/13759" target="_blank"><img src="https://trendshift.io/api/badge/repositories/13759" alt="xming521%2FWeClone | Trendshift" style="width: 220px; height: 50px;" /></a>
@@ -20,37 +18,37 @@
 </div>
 
 <p align="center">
-  <a href="https://www.weclone.love/" target="_blank"> 项目主页 </a> ｜
-  <a href="https://www.weclone.love/what-is-weclone.html" target="_blank"> 项目文档 </a> ｜
-  <a href="https://blog.051088.xyz/2025/05/14/WeClone-%E7%94%A8%E5%BE%AE%E4%BF%A1%E8%81%8A%E5%A4%A9%E8%AE%B0%E5%BD%95%E6%89%93%E9%80%A0%E8%87%AA%E5%B7%B1%E7%9A%84AI%E6%95%B0%E5%AD%97%E5%88%86%E8%BA%AB/" target="_blank">Windows部署指南</a> ｜
-  <a href="https://blog.051088.xyz/posts/weclone-linux-tutorial/" target="_blank"> Linux部署指南【保姆级】</a>
+  <a href="https://github.com/xming521/WeClone/blob/master/README_zh.md" target="_blank">简体中文</a>｜
+  English</a>｜
+  <a href="https://www.weclone.love/" target="_blank"> Project Homepage </a> ｜
+  <a href="https://www.weclone.love/what-is-weclone.html" target="_blank"> Documentation </a> ｜
 </p>
 
 > [!IMPORTANT]
 > ### WhatsApp and Telegram chat logs integration for digital avatar creation is coming !
 
-## ✨核心功能
-- 💫 涵盖打造数字分身的全链路方案，包括聊天数据导出、预处理、模型训练、部署
-- 💬 使用微信聊天记录微调LLM，支持图片模态数据，让大模型有"那味儿"
-- 🔗 绑定到微信、QQ、Telegram、企微、飞书机器人，实现自己的数字分身
-- 🛡️ 隐私信息过滤，本地化微调部署，数据安全可控
+## ✨Core Features
+- 💫 Complete end-to-end solution for creating digital avatars, including chat data export, preprocessing, model training, and deployment
+- 💬 Fine-tune LLM using chat history with support for image modal data, infusing it with that authentic "flavor"
+- 🔗 Integrate with Telegram, WeChat, WhatsApp (coming soon) to create your own digital avatar
+- 🛡️ Privacy information filtering with localized fine-tuning and deployment for secure and controllable data
 
-## 📋特性与说明
+## 📋Features & Notes
 > [!IMPORTANT]
-> ### WeClone 目前未与任何平台合作，未发行任何数字货币。唯一官方网站：[weclone.love](https://www.weclone.love)，谨防仿冒。
+> ### WeClone is currently not partnered with any platform and has not issued any cryptocurrency. The only official website is: [weclone.love](https://www.weclone.love). Beware of imitations.
 
 > [!IMPORTANT]
-> - WeClone仍在快速迭代期，当前效果不代表最终效果。  
-> - 微调LLM效果很大程度取决于模型大小、聊天数据的数量和质量，理论上模型越大，数据越多，效果越好。
-> - 7B模型很容易训练成为大笨蛋，14B模型勉强可以交流，32B及以上的模型效果会更好。   
-> - Windows环境未进行严格测试，可以使用WSL作为运行环境。详细教程可点击[Windows部署指南](https://blog.051088.xyz/2025/05/14/WeClone-%E7%94%A8%E5%BE%AE%E4%BF%A1%E8%81%8A%E5%A4%A9%E8%AE%B0%E5%BD%95%E6%89%93%E9%80%A0%E8%87%AA%E5%B7%B1%E7%9A%84AI%E6%95%B0%E5%AD%97%E5%88%86%E8%BA%AB/)查看。
+> - WeClone is still in rapid iteration phase, current performance does not represent final results.  
+> - LLM fine-tuning effectiveness largely depends on model size, quantity and quality of chat data. Theoretically, larger models with more data yield better results.
+> - 7B models are prone to becoming "dumb", 14B models can barely communicate, while 32B+ models perform much better.   
+> - Windows environment has not been rigorously tested. You can use WSL as the runtime environment.
 
-### 近期更新
-[25/06/05]支持图片模态数据微调
+### Recent Updates
+[25/06/05] Support for image modal data fine-tuning
 
-### 硬件要求
+### Hardware Requirements
 
-项目默认使用Qwen2.5-7B-Instruct模型，LoRA方法对sft阶段微调，大约需要16GB显存。也可以使用[LLaMA Factory](https://github.com/hiyouga/LLaMA-Factory/blob/main/README_zh.md#%E6%A8%A1%E5%9E%8B)支持的其他模型和方法。
+The project uses Qwen2.5-7B-Instruct model by default with LoRA method for SFT stage fine-tuning, requiring approximately 16GB VRAM. You can also use other models and methods supported by [LLaMA Factory](https://github.com/hiyouga/LLaMA-Factory/blob/main/README_zh.md#%E6%A8%A1%E5%9E%8B).
 
 需要显存的估算值：
 | 方法                             | 精度 |   7B  |  14B  |  30B  |   70B  |   `x`B  |
@@ -68,18 +66,19 @@
 
 2.建议使用 [uv](https://docs.astral.sh/uv/)安装依赖，这是一个非常快速的 Python 环境管理器。安装uv后，您可以使用以下命令创建一个新的Python环境并安装依赖项，注意这不包含音频克隆功能的依赖：
 ```bash
-git clone https://github.com/xming521/WeClone.git
-cd WeClone
+git clone https://github.com/xming521/WeClone.git && cd WeClone
 uv venv .venv --python=3.10
 source .venv/bin/activate # windows下执行 .venv\Scripts\activate
 uv pip install --group main -e . 
 ```
 
 3.将配置文件模板复制一份并重命名为`settings.jsonc`，后续配置修改在此文件进行：
+todo 需要tg的模板！！！
+
 ```bash
 cp settings.template.jsonc settings.jsonc
 ```
-- 微调**多模态模型**时，请使用[examples/mllm.template.jsonc](https://github.com/xming521/WeClone/blob/master/examples/mllm.template.jsonc)作为配置文件。
+- 微调**多模态模型**时，请参考[examples/mllm.template.jsonc](https://github.com/xming521/WeClone/blob/master/examples/mllm.template.jsonc)作为配置文件。
 
 > [!NOTE]
 > 训练以及推理相关配置统一在文件`settings.jsonc`
@@ -92,22 +91,15 @@ python -c "import torch; print('CUDA是否可用:', torch.cuda.is_available());"
 5.（可选）安装FlashAttention，加速训练和推理：`uv pip install flash-attn --no-build-isolation` 版本问题可以使用[prebuild-wheels](flash-attention-prebuild-wheels)的预编译包安装。
 
 ## 模型下载
-国内推荐使用[ModelScope](https://www.modelscope.cn/docs/models/download)下载模型。不建议使用：
+推荐使用[Hugging Face](https://huggingface.co/docs/hub/models-downloading)下载模型，或者使用以下命令：
 ```bash
 git lfs install
-git clone https://www.modelscope.cn/Qwen/Qwen2.5-7B-Instruct.git
+git clone https://huggingface.co/Qwen/Qwen2.5-7B 
 ```
 
 ## 数据准备
 
-请使用[PyWxDump](https://github.com/xaoyaoo/PyWxDump)提取微信聊天记录（不支持4.0版本微信）。可以先将手机的聊天记录迁移（备份）到电脑，数据量更多一些。下载软件并解密数据库后，点击聊天备份，导出类型为CSV，可以导出多个联系人（不建议使用群聊记录），然后将导出的位于`wxdump_tmp/export` 的 `csv` 文件夹放在`./dataset`目录即可，也就是不同人聊天记录的文件夹一起放在 `./dataset/csv`。   
-
-### 图片数据准备
-在能进入微信个人文件夹的环境执行，如果没有环境创建环境并安装基础依赖即可（`uv pip install -e .`），然后执行以下命令，将微信图片数据保存到`./dataset/wechat/dat`目录下。
-```bash
-python weclone/data/chat_parsers/wechat_parser.py --wechat-data-dir "微信个人文件夹路径 例如 C:\Users\user\Documents\WeChat Files\wxid_d68wiru2zseo22"
-```
-之后使用[微信图片解密工具](https://github.com/Evil0ctal/WeChat-image-decryption)解密图片数据,解密后的图片数据保存到`dataset/media/images`目录下。
+请使用[Telegram Desktop](https://desktop.telegram.org/)导出聊天记录，然后将导出的`ChatExport_*` 放在`./dataset/telegram`目录即可，也就是不同人聊天记录的文件夹一起放在 `./dataset/telegram`。   
 
 ## 数据预处理
 
@@ -181,10 +173,23 @@ weclone-cli test-model
 
 
 ## 🤖 部署到聊天机器人
+### LangBot
+
+[LangBot](https://github.com/RockChinQ/LangBot) 是一个开源的接入全球多种即时通信平台的 LLM 机器人平台，支持Discord、Telegram、Slack等平台，适合各种场景使用。
+
+1. [部署 LangBot](https://github.com/RockChinQ/LangBot#-%E5%BC%80%E5%A7%8B%E4%BD%BF%E7%94%A8)
+2. 在 LangBot 中添加一个机器人
+4. 在模型页添加新模型，名称`gpt-3.5-turbo`，供应商选择 OpenAI，填写 请求 URL 为 WeClone 的地址，详细连接方式可以参考[文档](https://docs.langbot.app/zh/workshop/network-details.html)，API Key 任意填写。
+
+<img width="400px" alt="image" src="https://github.com/user-attachments/assets/fc167dea-7c93-4d94-9c5f-db709d0320ba" />
+
+6. 在流水线配置中选择刚才添加的模型，或修改提示词配置
+
+<img width="400px" alt="image" src="https://github.com/user-attachments/assets/dbb0fd0a-f760-42db-acd0-bb99c859b52e" />
 
 ### AstrBot
 
-[AstrBot](https://github.com/AstrBotDevs/AstrBot) 是易上手的多平台 LLM 聊天机器人及开发框架 ✨ 平台支持 QQ、QQ频道、Telegram、微信、企微、飞书。      
+[AstrBot](https://github.com/AstrBotDevs/AstrBot) 是易上手的多平台 LLM 聊天机器人及开发框架 ✨ 平台支持 QQ、Telegram、微信、企微、飞书。      
 
 使用步骤：
 1. 部署 AstrBot
@@ -199,19 +204,6 @@ weclone-cli test-model
 7. 调整采样参数，例如temperature、top_p、top_k等
 [配置自定义的模型参数](https://astrbot.app/config/model-config.html#%E9%85%8D%E7%BD%AE%E8%87%AA%E5%AE%9A%E4%B9%89%E7%9A%84%E6%A8%A1%E5%9E%8B%E5%8F%82%E6%95%B0)
 
-### LangBot
-
-[LangBot](https://github.com/RockChinQ/LangBot) 是一个开源的接入全球多种即时通信平台的 LLM 机器人平台，适合各种场景使用。
-
-1. [部署 LangBot](https://github.com/RockChinQ/LangBot#-%E5%BC%80%E5%A7%8B%E4%BD%BF%E7%94%A8)
-2. 在 LangBot 中添加一个机器人
-4. 在模型页添加新模型，名称`gpt-3.5-turbo`，供应商选择 OpenAI，填写 请求 URL 为 WeClone 的地址，详细连接方式可以参考[文档](https://docs.langbot.app/zh/workshop/network-details.html)，API Key 任意填写。
-
-<img width="400px" alt="image" src="https://github.com/user-attachments/assets/fc167dea-7c93-4d94-9c5f-db709d0320ba" />
-
-6. 在流水线配置中选择刚才添加的模型，或修改提示词配置
-
-<img width="400px" alt="image" src="https://github.com/user-attachments/assets/dbb0fd0a-f760-42db-acd0-bb99c859b52e" />
 
 ## 📌 路线图
 - [ ] 更丰富的上下文：包括上下文对话、聊天对象信息、时间等 

@@ -1,0 +1,4 @@
+# 这个目录用于存放解密后的微信图片数据
+# 当你使用微信图片解密工具后，请将解密后的图片放在此目录下 
+
+# Images processed from other data sources will also be placed in this directory.

@@ -16,7 +16,7 @@
     },
     "make_dataset_args": {
         //数据处理配置
-        "platform": "wechat",
+        "platform": "wechat", //wechat,telegram
         "include_type": [
             "text",
             "image"

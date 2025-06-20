@@ -164,7 +164,18 @@ settings.jsonc
 settings.json
 dataset/blocked_words.json
 dataset/wechat/*
-dataset/media/*
 models/*
 .secrets*
 .env*
+
+# Image files
+dataset/**/*.jpg
+dataset/**/*.jpeg
+dataset/**/*.png
+dataset/**/*.gif
+dataset/**/*.bmp
+dataset/**/*.webp
+dataset/**/*.svg
+dataset/**/*.ico
+
+!*.gitkeep
