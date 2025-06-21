@@ -23,6 +23,45 @@ from tqdm import tqdm
 from weclone.utils.log import logger
 
 
+def calculate_token_length(
+    text: str,
+    model_name_or_path: str = "./models/Qwen3-32B-AWQ",
+    template: str = "qwen3",
+) -> int:
+    """计算指定文本的token长度
+    
+    Args:
+        text: 要计算token长度的文本
+        model_name_or_path: 模型路径
+        template: 模板名称
+        
+    Returns:
+        文本的token长度
+    """
+    logger.info(f"正在计算文本token长度: {text[:50]}...")
+    
+    model_args, data_args, _, _, _ = get_train_args(
+        {
+            "stage": "sft",
+            "model_name_or_path": model_name_or_path,
+            "template": template,
+            "dataset": "chat-sft",
+            "output_dir": "dummy_dir",
+            "do_train": True,
+        }
+    )
+    
+    tokenizer_module = load_tokenizer(model_args)
+    tokenizer = tokenizer_module["tokenizer"]
+    
+    # 直接使用tokenizer编码文本
+    tokens = tokenizer.encode(text, add_special_tokens=False)
+    token_length = len(tokens)
+    
+    logger.info(f"文本token长度: {token_length}")
+    return token_length
+
+
 def length_cdf(
     model_name_or_path: str = "./Qwen2.5-7B-Instruct",
     dataset: str = "chat-sft",

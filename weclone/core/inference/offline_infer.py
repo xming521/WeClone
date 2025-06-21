@@ -73,10 +73,7 @@ def vllm_infer(
     template_obj.mm_plugin.expand_mm_tokens = False  # for vllm generate
 
     if guided_decoding_class:
-        json_schema = guided_decoding_class.model_json_schema()
-        guided_decoding_params = GuidedDecodingParams(json=json_schema)
-    else:
-        guided_decoding_params = None
+        json_schema = guided_decoding_class.model_json_schema() 
 
     sampling_params = SamplingParams(
         repetition_penalty=generating_args.repetition_penalty or 1.0,  # repetition_penalty must > 0
@@ -87,7 +84,6 @@ def vllm_infer(
         max_tokens=generating_args.max_new_tokens,
         skip_special_tokens=skip_special_tokens,
         seed=seed,
-        guided_decoding=guided_decoding_params,
         bad_words=bad_words,
     )
     if model_args.adapter_name_or_path is not None:
@@ -122,4 +118,5 @@ def vllm_infer(
     results = LLM(**engine_args).chat(
         messages_list, sampling_params, lora_request=lora_request, chat_template_kwargs=extra_body
     )  # type: ignore
+    
     return results
