@@ -7,7 +7,6 @@ from llamafactory.model import load_tokenizer
 from pydantic import BaseModel
 from vllm import LLM, SamplingParams
 from vllm.lora.request import LoRARequest
-from vllm.sampling_params import GuidedDecodingParams
 
 from weclone.utils.config import load_config
 from weclone.utils.config_models import VllmArgs
@@ -73,7 +72,7 @@ def vllm_infer(
     template_obj.mm_plugin.expand_mm_tokens = False  # for vllm generate
 
     if guided_decoding_class:
-        json_schema = guided_decoding_class.model_json_schema() 
+        json_schema = guided_decoding_class.model_json_schema()
 
     sampling_params = SamplingParams(
         repetition_penalty=generating_args.repetition_penalty or 1.0,  # repetition_penalty must > 0
@@ -118,5 +117,5 @@ def vllm_infer(
     results = LLM(**engine_args).chat(
         messages_list, sampling_params, lora_request=lora_request, chat_template_kwargs=extra_body
     )  # type: ignore
-    
+
     return results
