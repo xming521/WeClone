@@ -6,6 +6,7 @@
         "template": "qwen",
         "default_system": "请你扮演一名人类，不要说自己是人工智能",
         "finetuning_type": "lora",
+        "enable_thinking": false,
         "trust_remote_code": true
     },
     "cli_args": {
@@ -13,7 +14,7 @@
     },
     "make_dataset_args": {
         //数据处理配置
-        "platform": "wechat",
+        "platform": "wechat", //wechat,telegram
         "include_type": [
             "text"
         ],
@@ -27,7 +28,7 @@
         "single_combine_time_window": 2, // 单人组成单句时间窗口（分钟）,
         "qa_match_time_window": 5, // 组成qa时间窗口（分钟）,
         "combine_msg_max_length": 256, // 组合后消息最大长度 配合cutoff_len 使用
-        "prompt_with_history": false, // 是否在prompt中包含历史对话
+        "messages_max_length": 1024, // messages最长字符数量 配合cutoff_len 使用
         "clean_dataset": {
             "enable_clean": false,
             "clean_strategy": "llm",

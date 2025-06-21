@@ -73,6 +73,8 @@ uv pip install --group main -e .
 ```
 
 3.将配置文件模板复制一份并重命名为`settings.jsonc`，后续配置修改在此文件进行：
+
+
 todo 需要tg的模板！！！
 
 ```bash
@@ -88,7 +90,7 @@ cp settings.template.jsonc settings.jsonc
 python -c "import torch; print('CUDA是否可用:', torch.cuda.is_available());"
 ```
 
-5.（可选）安装FlashAttention，加速训练和推理：`uv pip install flash-attn --no-build-isolation` 版本问题可以使用[prebuild-wheels](flash-attention-prebuild-wheels)的预编译包安装。
+5.（可选）安装FlashAttention，加速训练和推理：`uv pip install flash-attn --no-build-isolation` 。
 
 ## 模型下载
 推荐使用[Hugging Face](https://huggingface.co/docs/hub/models-downloading)下载模型，或者使用以下命令：
