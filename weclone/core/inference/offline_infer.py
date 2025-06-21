@@ -1,3 +1,4 @@
+import re
 from typing import List, Optional, cast
 
 from llamafactory.data import get_template_and_fix_tokenizer
@@ -7,11 +8,25 @@ from llamafactory.model import load_tokenizer
 from pydantic import BaseModel
 from vllm import LLM, SamplingParams
 from vllm.lora.request import LoRARequest
+from vllm.outputs import RequestOutput
 
 from weclone.utils.config import load_config
 from weclone.utils.config_models import VllmArgs
+from weclone.utils.log import logger
 
-# 这里不需要写太好，transforms库后续更新自带vllm
+# from vllm.entrypoints.openai.tool_parsers import xLAMToolParser
+
+
+def extract_json_from_text(text: str) -> str:
+    """从文本中提取JSON内容，支持markdown格式的JSON块"""
+    # 匹配 ```json{...}``` 格式，换行符可选
+    json_pattern = r"```json\s*(.*?)\s*```"
+    match = re.search(json_pattern, text, re.DOTALL)
+    if match:
+        return match.group(1).strip()
+
+    # 如果没有markdown格式，返回原始文本
+    return text.strip()
 
 
 def vllm_infer(
@@ -40,7 +55,7 @@ def vllm_infer(
     pipeline_parallel_size: int = 1,
     image_max_pixels: int = 768 * 768,
     image_min_pixels: int = 32 * 32,
-):
+) -> List[RequestOutput] | List[BaseModel]:
     r"""Perform batch generation using vLLM engine, which supports tensor parallelism."""
     if pipeline_parallel_size > get_device_count():
         raise ValueError("Pipeline parallel size should be smaller than the number of gpus.")
@@ -117,5 +132,20 @@ def vllm_infer(
     results = LLM(**engine_args).chat(
         messages_list, sampling_params, lora_request=lora_request, chat_template_kwargs=extra_body
     )  # type: ignore
+
+    if guided_decoding_class:
+        # ToDo better json decode  https://github.com/vllm-project/vllm/commit/1d0ae26c8544fd5a62e171e30c2dcc2973a23bc8#diff-3b27790a2ce97bc50cdd5476f7b0057da682ed0d1ec8426a7b76c5e21454e57d
+        parsed_results = []
+        for result in results:
+            try:
+                json_text = extract_json_from_text(result.outputs[0].text)
+                parsed_result = guided_decoding_class.model_validate_json(json_text)
+                parsed_results.append(parsed_result)
+            except Exception as e:
+                logger.warning(
+                    f"Failed to parse JSON from result: {result.outputs[0].text[:100]}..., error: {e}"
+                )
+                # parsed_results.append(None)
+        results = parsed_results
 
     return results

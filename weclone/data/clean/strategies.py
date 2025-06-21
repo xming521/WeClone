@@ -3,7 +3,7 @@ import os
 import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import List
+from typing import List, cast
 
 import pandas as pd
 from langchain_core.prompts import PromptTemplate
@@ -112,27 +112,21 @@ class LLMCleaningStrategy(CleaningStrategy):
             prompt_value = prompt_template.invoke({"id": qa.id, "messages": messages_str.strip()})
             inputs.append(prompt_value.to_string())
 
-        outputs = vllm_infer(
-            inputs,
-            self.make_dataset_config.model_name_or_path,
-            template=self.make_dataset_config.template,
-            temperature=0,
-            guided_decoding_class=QaPairScore,
-            repetition_penalty=1.5,
-            bad_words=[r"\n"],
-            enable_thinking=False,
-            cutoff_len=self.make_dataset_config.messages_max_length + 1024,  # add prompt length
-            max_new_tokens=100,
+        parsed_scores = cast(
+            List[QaPairScore],
+            vllm_infer(
+                inputs,
+                self.make_dataset_config.model_name_or_path,
+                template=self.make_dataset_config.template,
+                temperature=0,
+                guided_decoding_class=QaPairScore,
+                repetition_penalty=1.5,
+                bad_words=[r"\n"],
+                enable_thinking=False,
+                cutoff_len=self.make_dataset_config.messages_max_length + 1024,  # add prompt length
+                max_new_tokens=100,
+            ),
         )
-
-        parsed_scores: List[QaPairScore] = []
-        for result in outputs:
-            try:
-                score_data = json.loads(result.outputs[0].text)
-                qa_score = QaPairScore(**score_data)
-                parsed_scores.append(qa_score)
-            except json.JSONDecodeError:
-                logger.error(f"Error decoding JSON: {result.outputs[0].text}")
 
         score_map = {score.id: score.score for score in parsed_scores}
         for qa in data:
