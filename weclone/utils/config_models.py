@@ -127,7 +127,7 @@ class MakeDatasetArgs(BaseModel):
 
 
 class TrainSftArgs(BaseModel):
-    model_config = {"extra": "ignore"}
+    model_config = {"extra": "allow"}
 
     stage: str = Field("sft", description="训练阶段")
     dataset: str = Field(..., description="数据集名称")
@@ -165,6 +165,8 @@ class InferArgs(BaseModel):
 
 
 class VllmArgs(BaseModel):
+    model_config = {"extra": "allow"}
+
     gpu_memory_utilization: float = Field(default=0.9, description="vllm GPU内存利用率")
 
 

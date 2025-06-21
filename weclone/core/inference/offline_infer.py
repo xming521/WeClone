@@ -110,18 +110,16 @@ def vllm_infer(
         "trust_remote_code": True,
         "dtype": model_args.infer_dtype,
         "max_model_len": cutoff_len + max_new_tokens,
-        # "tensor_parallel_size":  1,
-        # "pipeline_parallel_size": pipeline_parallel_size,
-        # "data_parallel_size": get_device_count(), // vllm0.8.5版本支持DP
         "disable_log_stats": True,
         "enable_lora": model_args.adapter_name_or_path is not None,
-        "enable_prefix_caching": True,  # 是否启用前缀缓存
-        "gpu_memory_utilization": wc_vllm_args.gpu_memory_utilization,
-        # "quantization": "bitsandbytes", # 是否启用vllm的 bitsandbytes 的量化加载
-        # "load_format": "bitsandbytes",
+        "enable_prefix_caching": True,
     }
+
     if template_obj.mm_plugin.__class__.__name__ != "BasePlugin":
         engine_args["limit_mm_per_prompt"] = {"image": 4, "video": 2, "audio": 2}
+
+    wc_vllm_dict = {k: v for k, v in wc_vllm_args.model_dump().items() if v is not None}
+    engine_args.update(wc_vllm_dict)
 
     if isinstance(model_args.vllm_config, dict):
         engine_args.update(model_args.vllm_config)

@@ -81,7 +81,10 @@
         "top_p": 0.65
     },
     "vllm_args": {
-        "gpu_memory_utilization": 0.9
+        "gpu_memory_utilization": 0.9,
+        // "data_parallel_size": 2,
+        // "quantization": "bitsandbytes", // 是否启用vllm的 bitsandbytes 的量化加载
+        // "load_format": "bitsandbytes"
     },
     "test_model_args": {
         "test_data_path": "dataset/test_data.json"
