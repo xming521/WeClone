@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 from pandas import Timestamp
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from weclone.utils.i18n import MultiLangList
 
@@ -53,8 +53,7 @@ class QaPair:
 
 
 class QaPairScore(BaseModel):
-    id: int
-    score: int
+    score: int = Field(ge=1, le=5)
 
 
 cut_type_data = {

@@ -112,30 +112,31 @@ class LLMCleaningStrategy(CleaningStrategy):
             prompt_value = prompt_template.invoke({"id": qa.id, "messages": messages_str.strip()})
             inputs.append(prompt_value.to_string())
 
-        parsed_scores = cast(
-            List[QaPairScore],
-            vllm_infer(
-                inputs,
-                self.make_dataset_config.model_name_or_path,
-                template=self.make_dataset_config.template,
-                temperature=0,
-                guided_decoding_class=QaPairScore,
-                repetition_penalty=1.5,
-                bad_words=[r"\n"],
-                enable_thinking=False,
-                cutoff_len=self.make_dataset_config.messages_max_length + 1024,  # add prompt length
-                max_new_tokens=100,
-            ),
+        parsed_scores, failed_indexs = vllm_infer(
+            inputs,
+            self.make_dataset_config.model_name_or_path,
+            template=self.make_dataset_config.template,
+            temperature=0,
+            guided_decoding_class=QaPairScore,
+            repetition_penalty=1.5,
+            enable_thinking=False,
+            cutoff_len=self.make_dataset_config.messages_max_length + 1024,  # add prompt length
+            max_new_tokens=200,
         )
 
-        score_map = {score.id: score.score for score in parsed_scores}
-        for qa in data:
-            if qa.id in score_map:
-                qa.score = score_map[qa.id]
+        parsed_scores = cast(List[QaPairScore], parsed_scores)
+
+        parsed_score_idx = 0
+        for data_idx, qa in enumerate(data):
+            if data_idx in failed_indexs:
+                logger.warning(f"索引 {data_idx} (ID: {qa.id}) 解析失败，已跳过")
+                qa.score = 0
+            elif parsed_score_idx < len(parsed_scores):
+                qa.score = parsed_scores[parsed_score_idx].score
+                parsed_score_idx += 1
             else:
-                logger.warning(
-                    f"Warning: Score not found for QaPair with id {qa.id}. Assigning default score."
-                )
+                logger.warning(f"索引 {data_idx} (ID: {qa.id}) 没有对应的parsed_score，设为默认分数0")
+                qa.score = 0
 
         scores = [qa.score for qa in data if qa.score is not None]
         score_series = pd.Series(scores)

@@ -9,12 +9,15 @@ from pydantic import BaseModel
 from vllm import LLM, SamplingParams
 from vllm.lora.request import LoRARequest
 from vllm.outputs import RequestOutput
+from vllm.sampling_params import GuidedDecodingParams
 
 from weclone.utils.config import load_config
 from weclone.utils.config_models import VllmArgs
 from weclone.utils.log import logger
 
 # from vllm.entrypoints.openai.tool_parsers import xLAMToolParser
+
+# NOTE: the V1 LLM engine writing style was used.
 
 
 def extract_json_from_text(text: str) -> str:
@@ -55,8 +58,12 @@ def vllm_infer(
     pipeline_parallel_size: int = 1,
     image_max_pixels: int = 768 * 768,
     image_min_pixels: int = 32 * 32,
-) -> List[RequestOutput] | List[BaseModel]:
-    r"""Perform batch generation using vLLM engine, which supports tensor parallelism."""
+) -> tuple[List[RequestOutput] | List[BaseModel], List[int]]:
+    r"""Perform batch generation using vLLM engine, which supports tensor parallelism.
+
+    Returns:
+        tuple: (results, failed_indices) where failed_indices contains indices of failed JSON parsing
+    """
     if pipeline_parallel_size > get_device_count():
         raise ValueError("Pipeline parallel size should be smaller than the number of gpus.")
 
@@ -88,6 +95,7 @@ def vllm_infer(
 
     if guided_decoding_class:
         json_schema = guided_decoding_class.model_json_schema()
+        guided_decoding_params = GuidedDecodingParams(json=json_schema, disable_any_whitespace=True)
 
     sampling_params = SamplingParams(
         repetition_penalty=generating_args.repetition_penalty or 1.0,  # repetition_penalty must > 0
@@ -99,6 +107,7 @@ def vllm_infer(
         skip_special_tokens=skip_special_tokens,
         seed=seed,
         bad_words=bad_words,
+        guided_decoding=guided_decoding_params if guided_decoding_class else None,
     )
     if model_args.adapter_name_or_path is not None:
         lora_request = LoRARequest("default", 1, model_args.adapter_name_or_path[0])
@@ -112,7 +121,9 @@ def vllm_infer(
         "max_model_len": cutoff_len + max_new_tokens,
         "disable_log_stats": True,
         "enable_lora": model_args.adapter_name_or_path is not None,
-        "enable_prefix_caching": True,
+        # "enable_prefix_caching": True,
+        "guided_decoding_backend": "guidance",
+        "guided_decoding_disable_any_whitespace": True,
     }
 
     if template_obj.mm_plugin.__class__.__name__ != "BasePlugin":
@@ -125,25 +136,31 @@ def vllm_infer(
         engine_args.update(model_args.vllm_config)
 
     messages_list = [[{"role": "user", "content": text}] for text in inputs]
-    extra_body = {"guided_json": json_schema, "enable_thinking": False}
 
-    results = LLM(**engine_args).chat(
-        messages_list, sampling_params, lora_request=lora_request, chat_template_kwargs=extra_body
+    llm = LLM(**engine_args)
+
+    results = llm.chat(
+        messages_list,
+        sampling_params,
+        lora_request=lora_request,
+        chat_template_kwargs={"enable_thinking": False},
     )  # type: ignore
 
+    failed_indexs = []
     if guided_decoding_class:
-        # ToDo better json decode  https://github.com/vllm-project/vllm/commit/1d0ae26c8544fd5a62e171e30c2dcc2973a23bc8#diff-3b27790a2ce97bc50cdd5476f7b0057da682ed0d1ec8426a7b76c5e21454e57d
+        # TODO better json decode  https://github.com/vllm-project/vllm/commit/1d0ae26c8544fd5a62e171e30c2dcc2973a23bc8#diff-3b27790a2ce97bc50cdd5476f7b0057da682ed0d1ec8426a7b76c5e21454e57d
         parsed_results = []
-        for result in results:
+        for idx, result in enumerate(results):
             try:
                 json_text = extract_json_from_text(result.outputs[0].text)
                 parsed_result = guided_decoding_class.model_validate_json(json_text)
                 parsed_results.append(parsed_result)
             except Exception as e:
                 logger.warning(
-                    f"Failed to parse JSON from result: {result.outputs[0].text[:100]}..., error: {e}"
+                    f"Failed to parse JSON from result at index {idx}: {result.outputs[0].text[:100]}..., error: {e}"
                 )
+                failed_indexs.append(idx)
                 # parsed_results.append(None)
         results = parsed_results
 
-    return results
+    return results, failed_indexs
