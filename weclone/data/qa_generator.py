@@ -571,9 +571,9 @@ class DataProcessor:
             encoding="utf-8",
             dtype={"msg": str, "src": str},
             escapechar=None,
+            keep_default_na=False,
         )
 
-        df["src"] = df["src"].fillna("")
         df = df[~df["type_name"].isin(values=skip_type_list)]
 
         # 如果type_name为文本 并且msg 包含 手机号、身份证号、邮箱、网址则删除这行
