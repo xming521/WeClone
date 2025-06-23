@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum
+from typing import Optional
 
 from pandas import Timestamp
 from pydantic import BaseModel, Field
@@ -9,15 +10,15 @@ from weclone.utils.i18n import MultiLangList
 
 @dataclass
 class ChatMessage:
-    id: int
+    id: int  # 顺序id
     MsgSvrID: int
     type_name: str
     is_sender: int  # 0: 对方 1: 自己
     talker: str
-    room_name: str
     msg: str
     src: str
     CreateTime: Timestamp
+    room_name: Optional[str] = None
 
 
 @dataclass
@@ -94,37 +95,57 @@ cut_type_data = {
 
 cut_type_list = MultiLangList(cut_type_data, default_lang="en")
 
-skip_type_list = [
-    "添加好友",
-    "推荐公众号",
-    "动画表情",
-    "位置",
-    "文件",
-    "位置共享",
-    "接龙",
-    "引用回复",
-    "视频号直播或直播回放",
-    "用户上传的GIF表情",
-    "文件(猜)",
-    "群公告",
-    "视频号直播或直播回放等",
-    "游戏相关",
-    "转账",
-    "赠送红包封面",
-    "语音通话",
-    "企业微信打招呼(猜)",
-    "企业微信添加好友(猜)",
-    "系统通知",
-    "消息撤回1",
-    "拍一拍",
-    "消息撤回5",
-    "消息撤回6",
-    "消息撤回33",
-    "消息撤回36",
-    "消息撤回57",
-    "邀请加群",
-    "未知-11000,0",
-]
+
+skip_type_data = {
+    "zh_CN": [
+        "添加好友",
+        "推荐公众号",
+        "动画表情",
+        "位置",
+        "文件",
+        "位置共享",
+        "接龙",
+        "引用回复",
+        "视频号直播或直播回放",
+        "用户上传的GIF表情",
+        "文件(猜)",
+        "群公告",
+        "视频号直播或直播回放等",
+        "游戏相关",
+        "转账",
+        "赠送红包封面",
+        "语音通话",
+        "企业微信打招呼(猜)",
+        "企业微信添加好友(猜)",
+        "系统通知",
+        "消息撤回1",
+        "拍一拍",
+        "消息撤回5",
+        "消息撤回6",
+        "消息撤回33",
+        "消息撤回36",
+        "消息撤回57",
+        "邀请加群",
+        "未知-11000,0",
+    ],
+    "en": [
+        "Add Friend",
+        "Recommend Official Account",
+        "Animated Emoji",
+        "Location",
+        "File",
+        "Location Sharing",
+        "Reply with Quote",
+        "Group Announcement",
+        "Transfer",
+        "Voice Call",
+        "System Notification",
+        "Message Recall",
+        "Invite to Group",
+    ],
+}
+
+skip_type_list = MultiLangList(skip_type_data, default_lang="en")
 
 # 没处理的类型
 unprocessed_type_list = []

@@ -101,7 +101,8 @@ git clone https://huggingface.co/Qwen/Qwen2.5-7B
 
 ## 数据准备
 
-请使用[Telegram Desktop](https://desktop.telegram.org/)导出聊天记录，然后将导出的`ChatExport_*` 放在`./dataset/telegram`目录即可，也就是不同人聊天记录的文件夹一起放在 `./dataset/telegram`。   
+请使用[Telegram Desktop](https://desktop.telegram.org/)导出聊天记录，导出格式选择JSON，可以导出多个联系人（不建议使用群聊记录，然后将导出的`ChatExport_*` 放在`./dataset/telegram`目录即可，也就是不同人聊天记录的文件夹一起放在 `./dataset/telegram`。   
+
 
 ## 数据预处理
 

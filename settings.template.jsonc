@@ -15,6 +15,9 @@
     "make_dataset_args": {
         //数据处理配置
         "platform": "wechat", //wechat,telegram
+        "telegram_args": {
+            "my_id": "1234567890"
+        },
         "include_type": [
             "text"
         ],

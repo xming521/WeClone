@@ -9,6 +9,7 @@ from typing import List, Union, cast
 import pandas as pd
 from pandas import Timestamp
 
+from weclone.data.chat_parsers.telegram_parser import process_telegram_dataset
 from weclone.data.clean.strategies import LLMCleaningStrategy, OlineLLMCleaningStrategy
 
 # from weclone.data.clean.strategies_online import OlineLLMCleaningStrategy
@@ -40,6 +41,7 @@ class DataProcessor:
         self.include_type = self.config.include_type
         if self.config.platform == PlatformType.WECHAT:
             self.cut_type_list = cut_type_list.get_items(lang="zh_CN")
+            self.skip_type_list = skip_type_list.get_items(lang="zh_CN")
             self.include_type = cut_type_list.translate_batch(
                 texts=[t for t in self.include_type if t != "text"]
             )
@@ -99,7 +101,6 @@ class DataProcessor:
                     else:
                         self.clean_strategy = LLMCleaningStrategy(make_dataset_config=self.config)
 
-        # 基于配置初始化图片识别处理器
         vision_config = self.config.vision_api
         if vision_config.enable and vision_config.api_key:
             self.image_processor = ImageToTextProcessor(
@@ -163,6 +164,8 @@ class DataProcessor:
         return qa_list
 
     def main(self):
+        self.pre_parse_chat_dataset()
+
         if not os.path.exists(self.csv_folder) or not os.listdir(self.csv_folder):
             logger.error(
                 f"错误：目录 '{self.csv_folder}' 不存在或为空，请检查路径并确保其中包含 CSV 聊天数据文件。"
@@ -194,6 +197,10 @@ class DataProcessor:
         self._execute_length_cdf_script()
 
         logger.success(f"聊天记录处理成功，共{len(qa_res)}条，保存到 ./dataset/res_csv/sft/sft-my.json")
+
+    def pre_parse_chat_dataset(self):
+        if self.c.platform == PlatformType.TELEGRAM:
+            process_telegram_dataset(self.config)
 
     def _execute_length_cdf_script(self):
         """执行 length_cdf.py 脚本来计算cutoff_len。"""
@@ -557,7 +564,7 @@ class DataProcessor:
         return grouped_messages
 
     def process_by_msgtype(self, chat_message: ChatMessage):
-        if chat_message.type_name == "文本":
+        if chat_message.type_name.lower() in ["文本", "text"]:
             self.process_text(chat_message)
         # elif chat_message.type_name == "图片":
         #     self.process_image(chat_message)
@@ -571,20 +578,20 @@ class DataProcessor:
             encoding="utf-8",
             dtype={"msg": str, "src": str},
             escapechar=None,
+            keep_default_na=False,
         )
 
-        df["src"] = df["src"].fillna("")
-        df = df[~df["type_name"].isin(values=skip_type_list)]
+        df = df[~df["type_name"].isin(values=self.skip_type_list)]
 
         # 如果type_name为文本 并且msg 包含 手机号、身份证号、邮箱、网址则删除这行
         for i in df.index:
-            if df.loc[i, "type_name"] == "文本":
+            if df.loc[i, "type_name"].lower() in ["文本", "text"]:  # type: ignore
                 msg_str = str(df.loc[i, "msg"])
                 if (
                     re.search(r"1\d{10}", msg_str)
                     or re.search(r"\d{18}", msg_str)
                     or re.search(r"\w+@\w+", msg_str)
-                    or "http" in msg_str
+                    # or "http" in msg_str
                     or r"\\xa0" in msg_str
                     or r"\\u" in msg_str
                 ):
@@ -594,7 +601,7 @@ class DataProcessor:
                     if blocked_word in msg_str:
                         df = df.drop(index=i)
                         break
-            elif df.loc[i, "type_name"] == "图片":
+            elif df.loc[i, "type_name"].lower() in ["图片", "image"]:  # type: ignore
                 if self.c.platform == PlatformType.WECHAT:
                     result = check_image_file_exists(str(df.loc[i, "src"]))
                     if isinstance(result, str):
@@ -611,7 +618,7 @@ class DataProcessor:
         # 遍历行 相同is_sender的行合并msg（）遇到不同is_sender就重新开始
         df["CreateTime"] = pd.to_datetime(df["CreateTime"])
 
-        return [ChatMessage(*row) for row in df.values]
+        return [ChatMessage(**row) for row in df.to_dict("records")]  # type: ignore
 
     def process_text(self, chat_message: ChatMessage):
         pass

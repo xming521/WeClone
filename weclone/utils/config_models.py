@@ -30,7 +30,7 @@ class PlatformType(StrEnum):
 
     WECHAT = "wechat"
     # QQ = "qq"
-    # TELEGRAM = "telegram"
+    TELEGRAM = "telegram"
 
 
 class DataModality(StrEnum):
@@ -103,8 +103,13 @@ class VisionApiConfig(BaseModel):
     max_workers: Optional[int] = None
 
 
+class TelegramArgs(BaseModel):
+    my_id: str = Field(default=..., description="自己的telegram id")
+
+
 class MakeDatasetArgs(BaseModel):
     platform: PlatformType = Field(..., description="Data source platform")
+    telegram_args: Optional[TelegramArgs] = None
     include_type: List[DataModality] = Field([DataModality.TEXT], description="包含的数据类型")
     max_image_num: int = Field(2, description="单条数据最大图片数量")
     blocked_words: List[str] = Field([], description="禁用词列表")
