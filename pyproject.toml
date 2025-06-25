@@ -1,6 +1,6 @@
 [project]
 name = "WeClone"
-version = "0.2.24"
+version = "0.2.25"
 description = "One-stop solution for creating your digital avatar from chat history"
 authors = [{ name = "xming521" }]
 readme = "README.md"
@@ -22,13 +22,14 @@ dependencies = [
 
 [tool.weclone]
 # 配置文件的版本号，当配置文件结构或重要默认值发生变化时，应增加此版本号
-config_version = "0.2.24"
+config_version = "0.2.25"
 
 # 配置文件更新日志
 config_changelog = """
 [0.2.21] - 2025-05-01 - 增加在线llm清洗数据配置，兼容openai风格接口。
 [0.2.22] - 2025-06-05 - 支持图片模态聊天记录微调。
 [0.2.24] - 2025-06-19 - add test_model_args and vllm_args。
+[0.2.25] - 2025-06-24 - add telegram args。
 """
 
 [dependency-groups]
@@ -125,4 +126,4 @@ lint.select = [
 target-version = "py310"
 
 [tool.pytest.ini_options]
-addopts = "-x"
+addopts = "-x -v -s --tb=short"

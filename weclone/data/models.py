@@ -5,6 +5,7 @@ from typing import Optional
 from pandas import Timestamp
 from pydantic import BaseModel, Field
 
+from weclone.utils.config_models import DataModality
 from weclone.utils.i18n import MultiLangList
 
 
@@ -19,6 +20,8 @@ class ChatMessage:
     src: str
     CreateTime: Timestamp
     room_name: Optional[str] = None
+    is_forward: bool = False
+    modality: Optional[DataModality] = None
 
 
 @dataclass
@@ -76,20 +79,21 @@ cut_type_data = {
         "未知",
     ],
     "en": [
+        "cut",
         "Cut",
-        "Image",
-        "Video",
-        "Merged Forward Chat Records",
-        "Voice",
-        "(Share) Music",
-        "(Share) Card Link",
-        "(Share) Note",
-        "(Share) Mini Program",
-        "(Share) Favorites",
-        "(Share) Novel (Guess)",
-        "(Share) Video Account Card",
-        "(Share) Video Account Video",
-        "Pasted Text",  # Unparseable share link
+        "image",
+        "video",
+        "merged forward chat records",
+        "voice",
+        "(share) music",
+        "(share) card link",
+        "(share) note",
+        "(share) mini program",
+        "(share) favorites",
+        "(share) novel (guess)",
+        "(share) video account card",
+        "(share) video account video",
+        "pasted text",  # Unparseable share link
     ],
 }
 
@@ -129,19 +133,19 @@ skip_type_data = {
         "未知-11000,0",
     ],
     "en": [
-        "Add Friend",
-        "Recommend Official Account",
-        "Animated Emoji",
-        "Location",
-        "File",
-        "Location Sharing",
-        "Reply with Quote",
-        "Group Announcement",
-        "Transfer",
-        "Voice Call",
-        "System Notification",
-        "Message Recall",
-        "Invite to Group",
+        "add friend",
+        "recommend official account",
+        "animated emoji",
+        "location",
+        "file",
+        "location sharing",
+        "reply with quote",
+        "group announcement",
+        "transfer",
+        "voice call",
+        "system notification",
+        "message recall",
+        "invite to group",
     ],
 }
 

@@ -43,11 +43,15 @@ class DataProcessor:
             self.cut_type_list = cut_type_list.get_items(lang="zh_CN")
             self.skip_type_list = skip_type_list.get_items(lang="zh_CN")
             self.include_type = cut_type_list.translate_batch(
-                texts=[t for t in self.include_type if t != "text"]
+                texts=[t for t in self.include_type if t.lower() != "text"]
             )
             self.cut_type_list = [t for t in self.cut_type_list if t not in self.include_type]
-        else:
+        elif self.config.platform == PlatformType.TELEGRAM:
             self.cut_type_list = cut_type_list.get_items(lang="en")
+            self.skip_type_list = skip_type_list.get_items(lang="en")
+            self.skip_type_list.remove("animated emoji")
+            self.include_type = [t for t in self.include_type if t.lower() != "text"]
+            self.cut_type_list = [t for t in self.cut_type_list if t not in self.include_type]
 
         # blocked_words
         config_blocked_words = self.config.blocked_words
@@ -451,7 +455,7 @@ class DataProcessor:
             """
             base_msg = messages[0]
             combined_content = messages[0].msg
-            combined_src_list = [messages[0].src] if messages[0].type_name in ["图片", "image"] else []
+            combined_src_list = [messages[0].src] if messages[0].modality == DataModality.IMAGE else []
 
             for i in messages[1:]:
                 content = i.msg
@@ -468,18 +472,19 @@ class DataProcessor:
                 ]:
                     combined_content += "，"
 
-                if i.type_name == "图片":
-                    # combined_content += "<image>"
+                if i.modality == DataModality.IMAGE:
                     combined_src_list.append(i.src)
 
                 combined_content += content
 
             if len(combined_content) > self.c.combine_msg_max_length:
-                # TODO: 可能会截断<image>
                 logger.warning(
                     f"组合后消息长度超过{self.c.combine_msg_max_length}将截断：\n {combined_content[:50]}"
                 )
                 combined_content = combined_content[: self.c.combine_msg_max_length]
+                remaining_image_count = combined_content.count("<image>")
+                if len(combined_src_list) > remaining_image_count:
+                    combined_src_list = combined_src_list[:remaining_image_count]
 
             combined_message = ChatMessage(
                 id=base_msg.id,
@@ -491,6 +496,8 @@ class DataProcessor:
                 msg=combined_content,
                 src=combined_src_list,  # type: ignore
                 CreateTime=messages[-1].CreateTime,  # 使用最后一条消息的时间
+                modality=base_msg.modality,
+                is_forward=base_msg.is_forward,
             )
 
             return combined_message
@@ -520,7 +527,7 @@ class DataProcessor:
 
         for _, current_msg in enumerate(messages):
             if current_msg.type_name in self.cut_type_list or (
-                current_msg.type_name in ["图片", "image"] and current_msg.is_sender == 1
+                current_msg.modality == DataModality.IMAGE and current_msg.is_sender == 1
             ):  # 自己发图要cut
                 if current_group:
                     # 当前组有消息，合并当前组，并添加一条cut
@@ -566,12 +573,12 @@ class DataProcessor:
     def process_by_msgtype(self, chat_message: ChatMessage):
         if chat_message.type_name.lower() in ["文本", "text"]:
             self.process_text(chat_message)
-        # elif chat_message.type_name == "图片":
+        # elif chat_message.modality == DataModality.IMAGE:
         #     self.process_image(chat_message)
 
     def load_csv(self, file_path) -> List[ChatMessage]:
         """
-        做整体第一次预处理，过滤不符合条件的行，检查图片是否存不存在类型改为cut
+        做整体第一次预处理，过滤不符合条件的行，检查图片是否存不存在类型改为cut，添加DataModality字段
         """
         df = pd.read_csv(
             file_path,
@@ -582,6 +589,9 @@ class DataProcessor:
         )
 
         df = df[~df["type_name"].isin(values=self.skip_type_list)]
+
+        if "is_forward" in df.columns:
+            df = df[~((df["is_sender"] == 1) & (df["is_forward"]))]
 
         # 如果type_name为文本 并且msg 包含 手机号、身份证号、邮箱、网址则删除这行
         for i in df.index:
@@ -602,14 +612,18 @@ class DataProcessor:
                         df = df.drop(index=i)
                         break
             elif df.loc[i, "type_name"].lower() in ["图片", "image"]:  # type: ignore
-                if self.c.platform == PlatformType.WECHAT:
+                if self.c.platform in [PlatformType.WECHAT, PlatformType.TELEGRAM]:
                     result = check_image_file_exists(str(df.loc[i, "src"]))
-                    if isinstance(result, str):
+                    if isinstance(result, str) and df.loc[i, "is_sender"] == 0:
                         df.loc[i, "src"] = result
                         df.loc[i, "msg"] = "<image>"
+                        df.loc[i, "modality"] = DataModality.IMAGE
                     else:
                         df.loc[i, "type_name"] = "Cut"
-
+            elif df.loc[i, "type_name"] in ["animated emoji"]:
+                if self.c.platform in [PlatformType.WECHAT, PlatformType.TELEGRAM]:
+                    df.loc[i, "src"] = ""
+                    continue
             else:
                 df.loc[i, "msg"] = ""
 

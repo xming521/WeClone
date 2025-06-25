@@ -178,5 +178,5 @@ dataset/**/*.webp
 dataset/**/*.svg
 dataset/**/*.ico
 
-dataset/telegram/*
+dataset/*telegram*/*
 !*.gitkeep

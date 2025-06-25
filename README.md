@@ -48,78 +48,74 @@
 
 ### Hardware Requirements
 
-The project uses Qwen2.5-7B-Instruct model by default with LoRA method for SFT stage fine-tuning, requiring approximately 16GB VRAM. You can also use other models and methods supported by [LLaMA Factory](https://github.com/hiyouga/LLaMA-Factory/tree/main#supported-models).
+The project uses Qwen2.5-VL-7B-Instruct model by default with LoRA method for SFT stage fine-tuning. You can also use other models and methods supported by [LLaMA Factory](https://github.com/hiyouga/LLaMA-Factory/tree/main#supported-models).
 
-需要显存的估算值：
-| 方法                             | 精度 |   7B  |  14B  |  30B  |   70B  |   `x`B  |
-| ------------------------------- | ---- | ----- | ----- | ----- | ------ | ------- |
-| Full (`bf16` or `fp16`)         |  32  | 120GB | 240GB | 600GB | 1200GB | `18x`GB |
-| Full (`pure_bf16`)              |  16  |  60GB | 120GB | 300GB |  600GB |  `8x`GB |
-| Freeze/LoRA/GaLore/APOLLO/BAdam |  16  |  16GB |  32GB |  64GB |  160GB |  `2x`GB |
-| QLoRA                           |   8  |  10GB |  20GB |  40GB |   80GB |   `x`GB |
-| QLoRA                           |   4  |   6GB |  12GB |  24GB |   48GB | `x/2`GB |
-| QLoRA                           |   2  |   4GB |   8GB |  16GB |   24GB | `x/4`GB |
+Estimated VRAM requirements (text-only large model memory usage as follows, vision models increase based on image quantity and size): 
+| Method                          | Precision |   7B  |  14B  |  30B  |   70B  |   `x`B  |
+| ------------------------------- | --------- | ----- | ----- | ----- | ------ | ------- |
+| Full (`bf16` or `fp16`)         |    32     | 120GB | 240GB | 600GB | 1200GB | `18x`GB |
+| Full (`pure_bf16`)              |    16     |  60GB | 120GB | 300GB |  600GB |  `8x`GB |
+| Freeze/LoRA/GaLore/APOLLO/BAdam |    16     |  16GB |  32GB |  64GB |  160GB |  `2x`GB |
+| QLoRA                           |     8     |  10GB |  20GB |  40GB |   80GB |   `x`GB |
+| QLoRA                           |     4     |   6GB |  12GB |  24GB |   48GB | `x/2`GB |
+| QLoRA                           |     2     |   4GB |   8GB |  16GB |   24GB | `x/4`GB |
 
 
-## 环境搭建
-1.cuda安装(已安装可跳过，**要求版本12.6及以上**)
+## Environment Setup
+1. CUDA installation (skip if already installed, **requires version 12.6 or above**)
 
-2.建议使用 [uv](https://docs.astral.sh/uv/)安装依赖，这是一个非常快速的 Python 环境管理器。安装uv后，您可以使用以下命令创建一个新的Python环境并安装依赖项，注意这不包含音频克隆功能的依赖：
+2. It is recommended to use [uv](https://docs.astral.sh/uv/) to install dependencies, which is a very fast Python environment manager. After installing uv, you can use the following commands to create a new Python environment and install dependencies. 
 ```bash
 git clone https://github.com/xming521/WeClone.git && cd WeClone
 uv venv .venv --python=3.10
-source .venv/bin/activate # windows下执行 .venv\Scripts\activate
+source .venv/bin/activate # windows .venv\Scripts\activate
 uv pip install --group main -e . 
 ```
 
-3.将配置文件模板复制一份并重命名为`settings.jsonc`，后续配置修改在此文件进行：
-
-
-todo 需要tg的模板！！！
+3. Copy the configuration file template and rename it to `settings.jsonc`, and make subsequent configuration changes in this file:
 
 ```bash
-cp settings.template.jsonc settings.jsonc
+cp examples/tg.template.jsonc settings.jsonc
 ```
-- 微调**多模态模型**时，请参考[examples/mllm.template.jsonc](https://github.com/xming521/WeClone/blob/master/examples/mllm.template.jsonc)作为配置文件。
 
 > [!NOTE]
-> 训练以及推理相关配置统一在文件`settings.jsonc`
+> Training and inference related configurations are unified in the file `settings.jsonc`
 
-4.使用以下命令测试CUDA环境是否正确配置并可被PyTorch识别，Mac不需要：
+4. Use the following command to test whether the CUDA environment is correctly configured and can be recognized by PyTorch (not needed for Mac):
 ```bash
-python -c "import torch; print('CUDA是否可用:', torch.cuda.is_available());"
+  python -c "import torch; print('CUDA Available:', torch.cuda.is_available());"
 ```
 
-5.（可选）安装FlashAttention，加速训练和推理：`uv pip install flash-attn --no-build-isolation` 。
+5. (Optional) Install FlashAttention to accelerate training and inference: `uv pip install flash-attn --no-build-isolation`.
 
-## 模型下载
-推荐使用[Hugging Face](https://huggingface.co/docs/hub/models-downloading)下载模型，或者使用以下命令：
+## Model Download
+It is recommended to use [Hugging Face](https://huggingface.co/docs/hub/models-downloading) to download models, or use the following command:
 ```bash
 git lfs install
-git clone https://huggingface.co/Qwen/Qwen2.5-7B 
+git clone https://huggingface.co/Qwen/Qwen2.5-VL-7B-Instruct models/Qwen2.5-VL-7B-Instruct
 ```
 
-## 数据准备
+## Data Preparation
 
-请使用[Telegram Desktop](https://desktop.telegram.org/)导出聊天记录，导出格式选择JSON，可以导出多个联系人（不建议使用群聊记录，然后将导出的`ChatExport_*` 放在`./dataset/telegram`目录即可，也就是不同人聊天记录的文件夹一起放在 `./dataset/telegram`。   
+Please use [Telegram Desktop](https://desktop.telegram.org/) to export chat records. Select Photos for message types and JSON for format. You can export multiple contacts (group chat records are not recommended), then place the exported `ChatExport_*` in the `./dataset/telegram` directory, meaning put different people's chat record folders together in `./dataset/telegram`.   
 
 
-## 数据预处理
+## Data Preprocessing
 
-- 项目默认去除了数据中的手机号、身份证号、邮箱、网址。还在`settings.jsonc`中提供了一个禁用词词库`blocked_words`，可以自行添加需要过滤的词句（会默认去掉包括禁用词的整句）。
+- The project by default removes phone numbers, ID numbers, and emails from the data. A blocked words dictionary `blocked_words` is also provided in `settings.jsonc`, where you can add words or phrases that need to be filtered (the entire sentence containing the blocked words will be removed).
+
 > [!IMPORTANT]
-> 🚨 请一定注意保护个人隐私，不要泄露个人信息！
+> 🚨 Please be sure to protect personal privacy and do not leak personal information!
 
-
-- 执行以下命令对数据进行处理，可以根据自己的聊天风格修改settings.jsonc的`make_dataset_args`。
+- Execute the following command to process the data. You can modify the `make_dataset_args` in settings.jsonc according to your own chat style.
 ```bash
 weclone-cli make-dataset
 ```
-- 目前仅支持时间窗口策略，根据`single_combine_time_window`将单人连续消息通过逗号连接合并为一句，根据`qa_match_time_window`匹配问答对。
-- 若需**训练多模态大模型**:通过`include_type`中添加`images`启用，并通过`image_max_pixels`和`max_image_num`参数控制图片数量和大小，减少显存占用。
-- 若需**利用多模态大模型补全数据**:在`include_type`中添加`images`并配置 `vision_api` 参数，系统将使用外部多模态模型自动提取图像内容补全数据，最终生成的数据集**仍用于训练纯文本语言模型（LLM）**。
-- 可以启用`clean_dataset`中的`enable_clean`选项，对数据进行清洗，以达到更好效果（多模态数据暂不支持）。* 当前系统支持使用 `llm judge` 对聊天记录进行打分，提供 **vllm 离线推理** 和 **API 在线推理** 两种方式。可通过将 `settings.jsonc` 文件中的 `"online_llm_clear": false` 修改为 `true` 来启用 API 在线推理模式，并配置相应的 `base_url`、`llm_api_key`、`model_name` 等参数。所有兼容 OpenAI 接口的模型均可接入。
-- 在获得 `llm 打分分数分布情况` 后，可通过设置 `accept_score` 参数筛选可接受的分数区间，同时可适当降低 `train_sft_args` 中的 `lora_dropout` 参数，以提升模型的拟合效果。
+- Currently supports time window strategy. Messages from a single person are combined into one sentence by commas based on `single_combine_time_window`, and Q&A pairs are matched based on `qa_match_time_window`.
+- For **training multimodal large models**: Enable by adding `images` to `include_type`, and control image quantity and size through `image_max_pixels` and `max_image_num` parameters to reduce VRAM usage.
+- For **Image to Text**: Add `images` to `include_type` and configure `vision_api` parameters. The system will use external multimodal models to convert images to text, and the final generated dataset **is still used for training text-only LLM**.
+- You can enable the `enable_clean` option in `clean_dataset` to clean the data for better results (multimodal data is not currently supported). The current system supports using `llm judge` to score chat records, providing **vllm offline inference** and **API online inference** methods. You can enable API online inference mode by changing `"online_llm_clear": false` to `true` , and configure the corresponding `base_url`, `llm_api_key`, `model_name` and other parameters. All models compatible with OpenAI interface can be accessed.
+- After obtaining the `llm scoring score distribution`, you can filter acceptable data by setting the `accept_score` parameter, and appropriately reduce the `lora_dropout` parameter in `train_sft_args` to improve the model's fitting effect.
 
 ## 配置参数并微调模型
 
