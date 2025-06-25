@@ -179,7 +179,7 @@ class TelegramChatParser:
                     is_sender=is_sender,
                     talker=sender_name,
                     msg=text_content.replace("\n", " ").strip(),
-                    src=f"from_msg_id:{msg_id}",
+                    src="",
                     CreateTime=create_time,
                     is_forward=is_forward,
                 )

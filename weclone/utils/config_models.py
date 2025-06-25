@@ -25,6 +25,12 @@ class StrEnum(str, Enum):
         return None
 
 
+class BaseConfigModel(BaseModel):
+    """Base configuration model with default extra='allow'"""
+
+    model_config = {"extra": "allow"}
+
+
 class PlatformType(StrEnum):
     """Data source platform"""
 
@@ -62,9 +68,7 @@ class FinetuningType(StrEnum):
     # FREEZE = "freeze"
 
 
-class CommonArgs(BaseModel):
-    model_config = {"extra": "ignore"}
-
+class CommonArgs(BaseConfigModel):
     model_name_or_path: str = Field(...)
     adapter_name_or_path: str = Field("./model_output", description="Also as output_dir of train_sft_args")
     template: str = Field(..., description="model template")
@@ -77,23 +81,24 @@ class CommonArgs(BaseModel):
 
 
 class CliArgs(BaseModel):
+    model_config = {"extra": "forbid"}
     full_log: bool = Field(False)
 
 
-class LLMCleanConfig(BaseModel):
+class LLMCleanConfig(BaseConfigModel):
     accept_score: int = Field(
         2,
         description="Acceptable LLM scoring threshold: 1 (worst) to 5 (best). Data scoring below this threshold will not be used for training.",
     )
 
 
-class CleanDatasetConfig(BaseModel):
+class CleanDatasetConfig(BaseConfigModel):
     enable_clean: bool = False
     clean_strategy: CleanStrategy = CleanStrategy.LLM
     llm: LLMCleanConfig = LLMCleanConfig(accept_score=2)
 
 
-class VisionApiConfig(BaseModel):
+class VisionApiConfig(BaseConfigModel):
     """Vision API specific configuration"""
 
     enable: bool = Field(default=False, description="是否启用Vision API进行图像识别")
@@ -104,10 +109,13 @@ class VisionApiConfig(BaseModel):
 
 
 class TelegramArgs(BaseModel):
+    model_config = {"extra": "forbid"}
     my_id: str = Field(default=..., description="自己的telegram id")
 
 
-class MakeDatasetArgs(BaseModel):
+class MakeDatasetArgs(BaseConfigModel):
+    model_config = {"extra": "forbid"}
+
     platform: PlatformType = Field(..., description="Data source platform")
     telegram_args: Optional[TelegramArgs] = None
     include_type: List[DataModality] = Field([DataModality.TEXT], description="包含的数据类型")
@@ -131,9 +139,7 @@ class MakeDatasetArgs(BaseModel):
     vision_api: VisionApiConfig = Field(VisionApiConfig())
 
 
-class TrainSftArgs(BaseModel):
-    model_config = {"extra": "allow"}
-
+class TrainSftArgs(BaseConfigModel):
     stage: str = Field("sft", description="训练阶段")
     dataset: str = Field(..., description="数据集名称")
     dataset_dir: str = Field("./dataset/res_csv/sft", description="数据集目录")
@@ -162,24 +168,24 @@ class TrainSftArgs(BaseModel):
     do_train: bool = Field(True)
 
 
-class InferArgs(BaseModel):
+class InferArgs(BaseConfigModel):
     repetition_penalty: float = Field(1.2, description="重复惩罚")
     temperature: float = Field(..., description="温度")
     top_p: float = Field(..., description="Top-p采样")
     max_length: int = Field(..., description="最大生成长度")
 
 
-class VllmArgs(BaseModel):
-    model_config = {"extra": "allow"}
-
+class VllmArgs(BaseConfigModel):
     gpu_memory_utilization: float = Field(default=0.9, description="vllm GPU内存利用率")
 
 
-class TestModelArgs(BaseModel):
+class TestModelArgs(BaseConfigModel):
     test_data_path: str = Field(default="dataset/test_data.json", description="测试数据路径")
 
 
 class WcConfig(BaseModel):
+    model_config = {"extra": "forbid"}
+
     version: str = Field(..., description="配置文件版本")
     common_args: CommonArgs = Field(..., description="通用参数")
     cli_args: CliArgs = Field(..., description="命令行参数")
@@ -193,13 +199,11 @@ class WcConfig(BaseModel):
 class WCInferConfig(CommonArgs, InferArgs):
     """用于Web Demo的最终配置模型"""
 
-    model_config = {"extra": "ignore"}
+    pass
 
 
 class WCTrainSftConfig(CommonArgs, TrainSftArgs):
     """用于SFT训练的最终配置模型"""
-
-    model_config = {"extra": "ignore"}
 
     # 训练输出目录，从adapter_name_or_path转换而来
     output_dir: Optional[str] = Field(None)
@@ -226,7 +230,7 @@ class WCTrainSftConfig(CommonArgs, TrainSftArgs):
 class WCMakeDatasetConfig(CommonArgs, MakeDatasetArgs):
     """用于创建数据集的最终配置模型"""
 
-    model_config = {"extra": "ignore"}
+    model_config = {"extra": "allow"}  # 显式设置为allow
 
     dataset: str = Field(..., description="数据集名称")
     dataset_dir: str = Field("./dataset/res_csv/sft", description="数据集目录")

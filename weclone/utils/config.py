@@ -70,7 +70,7 @@ def create_config_by_arg_type(arg_type: str, wc_config: WcConfig) -> BaseModel:
 
     elif arg_type == "make_dataset":
         make_dataset_config = wc_config.make_dataset_args.model_dump()
-        # ToDo 下面三个参数放到common里？
+        # TODO 下面三个参数放到common里？
         train_sft_args = wc_config.train_sft_args
         extra_values = {
             "dataset": train_sft_args.dataset,
