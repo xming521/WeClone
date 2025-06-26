@@ -2,7 +2,7 @@ import os
 import sys
 from typing import Any, Dict, cast
 
-import commentjson
+import pyjson5
 from omegaconf import OmegaConf
 from pydantic import BaseModel
 
@@ -23,7 +23,7 @@ def load_base_config() -> WcConfig:
 
     try:
         with open(config_path, "r", encoding="utf-8") as f:
-            s_config_dict: Dict[str, Any] = commentjson.load(f)
+            s_config_dict: Dict[str, Any] = pyjson5.load(f)
     except FileNotFoundError:
         logger.error(f"Configuration file not found: {config_path}")
         sys.exit(1)

@@ -12,16 +12,16 @@ from weclone.utils.i18n import MultiLangList
 @dataclass
 class ChatMessage:
     id: int  # 顺序id
-    MsgSvrID: int
-    type_name: str
+    MsgSvrID: str  # 消息平台原始id
+    type_name: str  # 消息类型 参考cut_type_data和skip_type_data
     is_sender: int  # 0: 对方 1: 自己
-    talker: str
-    msg: str
-    src: str
-    CreateTime: Timestamp
-    room_name: Optional[str] = None
-    is_forward: bool = False
-    modality: Optional[DataModality] = None
+    talker: str  # 消息发送者
+    msg: str  # 消息内容
+    src: str  # 媒体文件路径、额外信息字段
+    CreateTime: Timestamp  # 消息发送时间
+    room_name: Optional[str] = None  # 聊天室名称
+    is_forward: bool = False  # 是否是转发消息
+    modality: Optional[DataModality] = None  # 消息模态  set in qa_generator.py
 
 
 @dataclass

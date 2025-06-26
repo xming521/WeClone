@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import cast
 
 import click
-import commentjson
+import pyjson5
 
 from weclone.utils.config import load_config
 from weclone.utils.config_models import CliArgs
@@ -168,7 +168,7 @@ def _check_versions():
     if SETTINGS_PATH.exists():
         try:
             with open(SETTINGS_PATH, "r", encoding="utf-8") as f:
-                settings_data = commentjson.load(f)
+                settings_data = pyjson5.load(f)
                 settings_version = settings_data.get("version")
         except Exception as e:
             logger.error(f"错误：无法读取或解析 {SETTINGS_PATH}: {e}")

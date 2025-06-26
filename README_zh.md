@@ -21,7 +21,7 @@
 
 <p align="center">
   <a href="https://www.weclone.love/" target="_blank"> 项目主页 </a> ｜
-  <a href="https://www.weclone.love/what-is-weclone.html" target="_blank"> 项目文档 </a> ｜
+  <a href="https://docs.weclone.love/what-is-weclone.html" target="_blank"> 项目文档 </a> ｜
   <a href="https://blog.051088.xyz/2025/05/14/WeClone-%E7%94%A8%E5%BE%AE%E4%BF%A1%E8%81%8A%E5%A4%A9%E8%AE%B0%E5%BD%95%E6%89%93%E9%80%A0%E8%87%AA%E5%B7%B1%E7%9A%84AI%E6%95%B0%E5%AD%97%E5%88%86%E8%BA%AB/" target="_blank">Windows部署指南</a> ｜
   <a href="https://blog.051088.xyz/posts/weclone-linux-tutorial/" target="_blank"> Linux部署指南【保姆级】</a>
 </p>
@@ -38,6 +38,13 @@
 ## 📋特性与说明
 > [!IMPORTANT]
 > ### WeClone 目前未与任何平台合作，未发行任何数字货币。唯一官方网站：[weclone.love](https://www.weclone.love)，谨防仿冒。
+
+### 聊天平台适配
+
+| 平台 | 文字 | 图片 | 语音 | 视频 | 动画表情 | 链接(分享) | 引用 | 转发 | 位置 | 文件 |
+|------|------|------|------|------|----------|-----------|------|------|------|------|
+| 微信 | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Telegram | ✅ | ✅ | ❌ | ❌ | ⚠️转为Emjoy | ❌ | ❌ | ✅ | ✅ | ❌ |
 
 > [!IMPORTANT]
 > - WeClone仍在快速迭代期，当前效果不代表最终效果。  

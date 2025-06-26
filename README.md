@@ -21,7 +21,7 @@
   <a href="https://github.com/xming521/WeClone/blob/master/README_zh.md" target="_blank">简体中文</a>｜
   English</a>｜
   <a href="https://www.weclone.love/" target="_blank"> Project Homepage </a> ｜
-  <a href="https://www.weclone.love/what-is-weclone.html" target="_blank"> Documentation </a> 
+  <a href="https://docs.weclone.love/what-is-weclone.html" target="_blank"> Documentation </a> 
 </p>
 
 > [!IMPORTANT]
@@ -36,6 +36,15 @@
 ## 📋Features & Notes
 > [!IMPORTANT]
 > ### WeClone is currently not partnered with any platform and has not issued any cryptocurrency. The only official website is: [weclone.love](https://www.weclone.love). Beware of imitations.
+
+### Chat Platform Support
+
+| Platform | Text | Images | Voice | Video | Animated Emojis | Links (Sharing) | Quote | Forward | Location | Files |
+|----------|------|--------|-------|-------|-----------------|-----------------|-------|---------|----------|-------|
+| WeChat | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Telegram | ✅ | ✅ | ❌ | ❌ | ⚠️Convert to Emoji | ❌ | ❌ | ✅ | ✅ | ❌ |
+
+ 
 
 > [!IMPORTANT]
 > - WeClone is still in rapid iteration phase, current performance does not represent final results.  
