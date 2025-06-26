@@ -1,16 +1,63 @@
+import logging
 import sys
+import time
 from functools import wraps
 
 from loguru import logger
 
 logger.remove()
 
+# 添加WeClone专用的sink
 logger.add(
     sys.stderr,
     format="<green><b>[WeClone]</b></green> <level>{level.name[0]}</level> | <level>{time:HH:mm:ss}</level> | <level>{message}</level>",
     colorize=True,
     level="INFO",
 )
+
+
+# 桥接标准logging到loguru
+class InterceptHandler(logging.Handler):
+    def __init__(self, level=logging.INFO):
+        super().__init__(level)
+
+    def emit(self, record):
+        # 检查日志级别，只处理指定级别及以上的日志
+        if record.levelno < self.level:
+            return
+
+        timestamp = time.strftime("%H:%M:%S")
+        level_color = "\033[36m" if record.levelno >= logging.INFO else "\033[0m"
+        reset_color = "\033[0m"
+        message = f"[{record.name}] | {level_color}{record.levelname[0]}{reset_color} | {timestamp} | {record.getMessage()}"
+        print(message, file=sys.stderr)
+
+
+# 配置标准logging使用loguru
+# 你可以在这里修改 InterceptHandler 的级别：
+intercept_handler = InterceptHandler(level=logging.INFO)  # 只显示 INFO 及以上级别
+logging.basicConfig(handlers=[intercept_handler], level=0, force=True)
+
+
+# 便捷函数：动态设置 intercepted logging 的级别
+def set_intercepted_logging_level(level):
+    """
+    设置被intercepted的标准logging的日志级别
+
+    Args:
+        level: 日志级别，可以是：
+            - logging.DEBUG (10)
+            - logging.INFO (20)
+            - logging.WARNING (30)
+            - logging.ERROR (40)
+            - logging.CRITICAL (50)
+            或者字符串: 'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'
+    """
+    if isinstance(level, str):
+        level = getattr(logging, level.upper())
+    intercept_handler.setLevel(level)
+    logger.info(f"Intercepted logging level set to: {logging.getLevelName(level)}")
+
 
 logger.add(
     "logs/weclone.log",  # 日志文件路径

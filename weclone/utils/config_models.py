@@ -39,6 +39,13 @@ class PlatformType(StrEnum):
     TELEGRAM = "telegram"
 
 
+class LanguageType(StrEnum):
+    """Data language"""
+
+    ZH = "zh"
+    EN = "en"
+
+
 class DataModality(StrEnum):
     """Data modality"""
 
@@ -118,6 +125,7 @@ class MakeDatasetArgs(BaseConfigModel):
 
     platform: PlatformType = Field(..., description="Data source platform")
     telegram_args: Optional[TelegramArgs] = None
+    language: LanguageType = Field(LanguageType.ZH, description="聊天常用语言")
     include_type: List[DataModality] = Field([DataModality.TEXT], description="包含的数据类型")
     max_image_num: int = Field(2, description="单条数据最大图片数量")
     blocked_words: List[str] = Field([], description="禁用词列表")

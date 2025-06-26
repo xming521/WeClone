@@ -7,7 +7,7 @@
         "default_system": "请你扮演一名人类，不要说自己是人工智能",
         "finetuning_type": "lora",
         "enable_thinking": false,
-        "trust_remote_code": true
+        "trust_remote_code": true,
     },
     "cli_args": {
         "full_log": false
@@ -15,6 +15,7 @@
     "make_dataset_args": {
         //数据处理配置
         "platform": "wechat", //wechat,telegram
+        "language": "zh", // 数据语言: zh(中文) 或 en(英文)
         "telegram_args": {
             "my_id": "1234567890"
         },

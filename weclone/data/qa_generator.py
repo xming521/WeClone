@@ -9,6 +9,7 @@ from typing import List, Union, cast
 import pandas as pd
 from pandas import Timestamp
 
+from weclone.core.PII.pii_detector import PIIDetector
 from weclone.data.chat_parsers.telegram_parser import process_telegram_dataset
 from weclone.data.clean.strategies import LLMCleaningStrategy, OlineLLMCleaningStrategy
 
@@ -24,7 +25,7 @@ from weclone.data.models import (
 from weclone.data.strategies import LLMStrategy, TimeWindowStrategy
 from weclone.data.utils import ImageToTextProcessor, check_image_file_exists
 from weclone.utils.config import load_config
-from weclone.utils.config_models import DataModality, PlatformType, WCMakeDatasetConfig
+from weclone.utils.config_models import DataModality, LanguageType, PlatformType, WCMakeDatasetConfig
 from weclone.utils.log import logger
 
 
@@ -83,6 +84,10 @@ class DataProcessor:
             )
         elif self.config.qa_match_strategy == "llm":
             self.qa_match_strategy = LLMStrategy(is_single_chat=False)
+
+        # PII
+        if self.config.language == LanguageType.EN:
+            self.pii_detector = PIIDetector(language=self.config.language)
 
         # clean_dataset
         clean_dataset_config = self.config.clean_dataset

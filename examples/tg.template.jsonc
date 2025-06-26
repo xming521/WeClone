@@ -20,6 +20,7 @@
         "telegram_args": {
             "my_id": "user1234567890"
         },
+        "language": "en", // 聊天常用语言: zh(中文), en(英文)
         "include_type": [
             "text",
             "image"
