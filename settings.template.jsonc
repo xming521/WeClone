@@ -10,7 +10,8 @@
         "trust_remote_code": true,
     },
     "cli_args": {
-        "full_log": false
+        "full_log": false,
+        "log_level": "INFO"
     },
     "make_dataset_args": {
         //数据处理配置

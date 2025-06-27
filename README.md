@@ -111,7 +111,8 @@ Please use [Telegram Desktop](https://desktop.telegram.org/) to export chat reco
 
 ## Data Preprocessing
 
-- The project by default removes phone numbers, ID numbers, and emails from the data. A blocked words dictionary `blocked_words` is also provided in `settings.jsonc`, where you can add words or phrases that need to be filtered (the entire sentence containing the blocked words will be removed).
+- By default, the project uses Microsoft Presidio to remove `phone numbers, email addresses, credit card numbers, IP addresses, geographic location names, international bank account numbers, cryptocurrency wallet addresses, age information, and generic ID numbers` from the data, but it cannot guarantee 100% identification.
+- Therefore, a blocklist `blocked_words` is provided in `settings.jsonc`, allowing users to manually add words or phrases they want to filter (the entire sentence containing blocked words will be removed by default).
 
 > [!IMPORTANT]
 > 🚨 Please be sure to protect personal privacy and do not leak personal information!
@@ -123,7 +124,7 @@ weclone-cli make-dataset
 - Currently supports time window strategy. Messages from a single person are combined into one sentence by commas based on `single_combine_time_window`, and Q&A pairs are matched based on `qa_match_time_window`.
 - For **training multimodal large models**: Enable by adding `images` to `include_type`, and control image quantity and size through `image_max_pixels` and `max_image_num` parameters to reduce VRAM usage.
 - For **Image to Text**: Add `images` to `include_type` and configure `vision_api` parameters. The system will use external multimodal models to convert images to text, and the final generated dataset **is still used for training text-only LLM**.
-- You can enable the `enable_clean` option in `clean_dataset` to clean the data for better results (multimodal data is not currently supported). The current system supports using `llm judge` to score chat records, providing **vllm offline inference** and **API online inference** methods. You can enable API online inference mode by changing `"online_llm_clear": false` to `true` , and configure the corresponding `base_url`, `llm_api_key`, `model_name` and other parameters. All models compatible with OpenAI interface can be accessed.
+- You can enable the `enable_clean` option in `clean_dataset` to clean the data for better results (multimodal data is not currently supported). The current system supports using `llm judge` to score chat records, providing **vllm offline inference** and **API online inference** methods. By default, offline inference is enabled. To switch to API-based online inference mode, modify `"online_llm_clear": false` to `true` in the `settings.jsonc` file, and configure relevant parameters such as `base_url`, `llm_api_key`, and `model_name`. All models compatible with OpenAI interface can be accessed.
 - After obtaining the `llm scoring score distribution`, you can filter acceptable data by setting the `accept_score` parameter, and appropriately reduce the `lora_dropout` parameter in `train_sft_args` to improve the model's fitting effect.
 
 ## 配置参数并微调模型
@@ -254,17 +255,17 @@ pre-commit install
 > [!CAUTION]
 > **本项目仅供学习、研究和实验用途，用于生产环境存在较大风险，请谨慎评估。请勿用于非法用途，后果自负。**
 <details>
-<summary>1. 使用风险自担</summary>
+<summary>点击查看免责条款</summary>
 
 ### 1. 使用风险自担
 - 用户在使用本项目时，应充分理解并承担所有相关风险
-- 本项目作者不对因使用本项目而产生的任何直接或间接损失承担责任
+- **本项目作者不对因使用本项目而产生的任何直接或间接损失承担责任**
 - 包括但不限于：数据丢失、经济损失、法律纠纷、个人名誉损害、社会关系影响、心理创伤、职业发展受阻、商业信誉受损等
 
 ### 2. 生产环境风险警告
 - **用于商业用途或对外提供服务需自行承担全部风险**
 - 生产环境使用可能导致的所有后果（包括但不限于服务中断、数据安全问题、用户投诉、法律责任等）完全由用户承担
-- 建议在生产环境使用前进行充分的测试、验证和风险评估
+- **建议在生产环境使用前进行充分的测试、验证和风险评估**
 
 ### 3. 模型输出不可靠性
 - 微调后的模型可能产生不准确、有害或误导性的内容
@@ -277,7 +278,7 @@ pre-commit install
 - 本项目不对**数据泄露或隐私侵犯**承担责任
 
 ### 5. 法律合规
-- 用户应确保使用本项目符合当地法律法规
+- **用户应确保使用本项目符合当地法律法规**
 - 涉及人工智能、数据保护、知识产权等相关法律
 - **违法使用造成的后果由用户承担**
 
@@ -292,7 +293,7 @@ pre-commit install
 **使用本项目生成的数字分身时，强烈建议：**
 - 在每次对话开始时明确标识为"AI Bot"或"数字分身"
 - 在用户界面显著位置标注"此为AI生成内容"
-- 避免让用户误认为是真实人类在对话
+- 避免让用户误认为是真实人类在对话，从而造成风险
 
 ### 风险评估建议
 
@@ -308,12 +309,8 @@ pre-commit install
 
 **一旦您下载、克隆、修改、分发或以任何方式使用本项目的代码或模型，即表示您已完整阅读、理解并同意无条件接受本免责声明的全部条款。**
 
-
-
-
-
 </details>
-请用户慎重阅读并理解本免责声明的所有内容，确保在使用本项目时严格遵守相关规定。
+**请用户慎重阅读并理解本免责声明的所有内容，确保在使用本项目时严格遵守相关规定。**
 
 <br>  
 <br>  

@@ -1,4 +1,5 @@
 import logging
+import os
 import sys
 import time
 from functools import wraps
@@ -7,16 +8,16 @@ from loguru import logger
 
 logger.remove()
 
-# 添加WeClone专用的sink
+env_log_level = os.getenv("WC_LOG_LEVEL")
+# 初始化基本日志配置，稍后会被 configure_log_level_from_config 重新配置
 logger.add(
     sys.stderr,
     format="<green><b>[WeClone]</b></green> <level>{level.name[0]}</level> | <level>{time:HH:mm:ss}</level> | <level>{message}</level>",
     colorize=True,
-    level="INFO",
+    level=env_log_level.upper() if env_log_level else "INFO",
 )
 
 
-# 桥接标准logging到loguru
 class InterceptHandler(logging.Handler):
     def __init__(self, level=logging.INFO):
         super().__init__(level)
@@ -33,42 +34,9 @@ class InterceptHandler(logging.Handler):
         print(message, file=sys.stderr)
 
 
-# 配置标准logging使用loguru
-# 你可以在这里修改 InterceptHandler 的级别：
-intercept_handler = InterceptHandler(level=logging.INFO)  # 只显示 INFO 及以上级别
+# 桥接标准logging到loguru
+intercept_handler = InterceptHandler(level=logging.INFO)
 logging.basicConfig(handlers=[intercept_handler], level=0, force=True)
-
-
-# 便捷函数：动态设置 intercepted logging 的级别
-def set_intercepted_logging_level(level):
-    """
-    设置被intercepted的标准logging的日志级别
-
-    Args:
-        level: 日志级别，可以是：
-            - logging.DEBUG (10)
-            - logging.INFO (20)
-            - logging.WARNING (30)
-            - logging.ERROR (40)
-            - logging.CRITICAL (50)
-            或者字符串: 'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'
-    """
-    if isinstance(level, str):
-        level = getattr(logging, level.upper())
-    intercept_handler.setLevel(level)
-    logger.info(f"Intercepted logging level set to: {logging.getLevelName(level)}")
-
-
-logger.add(
-    "logs/weclone.log",  # 日志文件路径
-    rotation="1 day",  # 每天轮换一个新的日志文件
-    retention="7 days",  # 保留最近7天的日志文件
-    compression="zip",  # 压缩旧的日志文件
-    level="DEBUG",  # 文件日志级别
-    format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | {name}:{function}:{line} - {message}",  # 日志格式
-    encoding="utf-8",  # 文件编码
-    enqueue=True,  # 异步写入，避免阻塞
-)
 
 
 def capture_output(func):
@@ -137,3 +105,43 @@ def capture_output(func):
             logger.remove(sink_id)
 
     return wrapper
+
+
+def configure_log_level_from_config():
+    """
+    从配置文件中读取日志等级并设置完整的日志配置
+    需要在配置加载后调用
+    """
+    log_level = "INFO"  # 默认值
+
+    try:
+        from weclone.utils.config import load_config
+
+        cli_config = load_config(arg_type="cli_args")
+        log_level = getattr(cli_config, "log_level", "INFO")
+    except Exception as e:
+        logger.warning(f"无法从配置加载日志等级，使用默认INFO级别: {e}")
+
+    logger.remove()
+
+    logger.add(
+        sys.stderr,
+        format="<green><b>[WeClone]</b></green> <level>{level.name[0]}</level> | <level>{time:HH:mm:ss}</level> | <level>{message}</level>",
+        colorize=True,
+        level=log_level.upper(),
+    )
+
+    logger.add(
+        "logs/weclone.log",
+        rotation="1 day",
+        retention="7 days",
+        compression="zip",
+        level="DEBUG",  # 文件日志始终保持DEBUG级别，便于调试
+        format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | {name}:{function}:{line} - {message}",
+        encoding="utf-8",
+        enqueue=True,
+    )
+
+    intercept_handler.setLevel(log_level.upper())
+
+    logger.info(f"日志等级已设置为: {log_level.upper()}")

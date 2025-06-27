@@ -602,16 +602,21 @@ class DataProcessor:
         for i in df.index:
             if df.loc[i, "type_name"].lower() in ["文本", "text"]:  # type: ignore
                 msg_str = str(df.loc[i, "msg"])
-                if (
-                    re.search(r"1\d{10}", msg_str)
-                    or re.search(r"\d{18}", msg_str)
-                    or re.search(r"\w+@\w+", msg_str)
-                    # or "http" in msg_str
-                    or r"\\xa0" in msg_str
-                    or r"\\u" in msg_str
-                ):
-                    df = df.drop(index=i)
-                    continue
+                if self.c.language == LanguageType.ZH:
+                    if (
+                        re.search(r"1\d{10}", msg_str)
+                        or re.search(r"\d{18}", msg_str)
+                        or re.search(r"\w+@\w+", msg_str)
+                        # or "http" in msg_str
+                        or r"\\xa0" in msg_str
+                        or r"\\u" in msg_str
+                    ):
+                        df = df.drop(index=i)
+                        continue
+                else:
+                    if self.pii_detector.has_pii(msg_str):
+                        df = df.drop(index=i)
+                        continue
                 for blocked_word in self.blocked_words:
                     if blocked_word in msg_str:
                         df = df.drop(index=i)

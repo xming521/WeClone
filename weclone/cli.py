@@ -9,7 +9,7 @@ import pyjson5
 
 from weclone.utils.config import load_config
 from weclone.utils.config_models import CliArgs
-from weclone.utils.log import capture_output, logger
+from weclone.utils.log import capture_output, configure_log_level_from_config, logger
 
 cli_config: CliArgs | None = None
 
@@ -69,6 +69,9 @@ def cli(config_path):
     _check_versions()
     global cli_config
     cli_config = cast(CliArgs, load_config(arg_type="cli_args"))
+
+    # 根据配置设置日志等级
+    configure_log_level_from_config()
 
 
 @cli.command("make-dataset", help="处理聊天记录CSV文件，生成问答对数据集。")

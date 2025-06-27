@@ -2,7 +2,7 @@ import re
 from dataclasses import dataclass
 from typing import List, Optional
 
-from presidio_analyzer import AnalyzerEngine
+from presidio_analyzer import AnalyzerEngine, Pattern, PatternRecognizer
 from presidio_analyzer.nlp_engine import NlpEngineProvider
 from presidio_anonymizer import AnonymizerEngine
 
@@ -24,52 +24,65 @@ class PIIResult:
 class PIIDetector:
     """PII检测器，基于presidio库"""
 
-    def __init__(self, language: str = "en", threshold: float = 0.5, use_ai_model: bool = False):
+    def __init__(self, language: str = "en", threshold: float = 0.5):
         self.language = language
         self.threshold = threshold
-        self.use_ai_model = use_ai_model
 
         self._init_engines()
+        self.anonymizer = AnonymizerEngine()
+        self.not_filtered_entities = ["DATE_TIME", "PERSON", "URL", "NRP"]
         self.supported_entities = self.get_supported_entities()
-        logger.info(f"支持的实体类型: {self.supported_entities}")
+        self.filtered_entities = [
+            entity for entity in self.supported_entities if entity not in self.not_filtered_entities
+        ]
+        logger.info(f"隐私过滤的实体类型: {self.filtered_entities}")
 
     def _init_engines(self):
         """初始化presidio分析和匿名化引擎"""
-        if not self.use_ai_model:
-            # 不使用AI模型，仅使用presidio内置的基于规则的检测器
-            self.analyzer = AnalyzerEngine()
-            # self.anonymizer = AnonymizerEngine()
-            logger.info("Presidio引擎初始化成功，仅使用基于规则的检测器")
-            return
+        model_mapping = {
+            "zh": "zh_core_web_sm",
+            "en": "en_core_web_sm",
+            "es": "es_core_news_sm",
+            "fr": "fr_core_news_sm",
+            "de": "de_core_news_sm",
+        }
 
-        try:
-            # 根据语言配置相应的NLP模型
-            model_mapping = {
-                "zh": "zh_core_web_sm",
-                "en": "en_core_web_sm",
-                "es": "es_core_news_sm",
-                "fr": "fr_core_news_sm",
-                "de": "de_core_news_sm",
-            }
+        model_name = model_mapping.get(self.language, "en_core_web_sm")
 
-            model_name = model_mapping.get(self.language, "en_core_web_sm")
+        nlp_configuration = {
+            "nlp_engine_name": "spacy",
+            "models": [{"lang_code": self.language, "model_name": model_name}],
+        }
 
-            nlp_configuration = {
-                "nlp_engine_name": "spacy",
-                "models": [{"lang_code": self.language, "model_name": model_name}],
-            }
+        provider = NlpEngineProvider(nlp_configuration=nlp_configuration)
+        nlp_engine = provider.create_engine()
 
-            provider = NlpEngineProvider(nlp_configuration=nlp_configuration)
-            nlp_engine = provider.create_engine()
+        self.analyzer = AnalyzerEngine(nlp_engine=nlp_engine)
 
-            self.analyzer = AnalyzerEngine(nlp_engine=nlp_engine)
-            self.anonymizer = AnonymizerEngine()
+        self._add_custom_recognizers()
 
-            logger.info(f"Presidio引擎初始化成功，使用语言: {self.language}, 模型: {model_name}")
-        except Exception as e:
-            logger.warning(f"Presidio引擎初始化失败: {e}, 将使用默认配置")
-            self.analyzer = AnalyzerEngine()
-            self.anonymizer = AnonymizerEngine()
+        # self.anonymizer = AnonymizerEngine()
+
+        logger.info(f"Presidio引擎初始化成功，使用语言: {self.language}, 模型: {model_name}")
+
+    def _add_custom_recognizers(self):
+        """添加自定义识别器"""
+        # 创建数字ID识别器 - 匹配5位以上的纯数字或数字间夹着-符号的模式
+        numeric_id_patterns = [
+            Pattern(name="numeric_id", regex=r"\b(?:\d{5,}|\d+-\d+(?:-\d+)*)\b", score=0.8),
+        ]
+
+        numeric_id_recognizer = PatternRecognizer(
+            supported_entity="NUMERIC_ID",
+            patterns=numeric_id_patterns,
+            name="numeric_id_recognizer",
+            context=["id", "编号", "号码", "代码", "code", "number", "序号"],
+        )
+
+        # 注册自定义识别器到analyzer
+        self.analyzer.registry.add_recognizer(numeric_id_recognizer)
+
+        logger.info("已添加自定义数字ID识别器")
 
     def has_pii(self, text: str, entities: Optional[List[str]] = None) -> bool:
         """
@@ -82,10 +95,10 @@ class PIIDetector:
         Returns:
             是否包含PII信息
         """
-        pii_results = self.detect_pii(text, entities)
+        pii_results = self.detect_pii(text)
         return len(pii_results) > 0
 
-    def detect_pii(self, text: str, entities: Optional[List[str]] = None) -> List[PIIResult]:
+    def detect_pii(self, text: str) -> List[PIIResult]:
         """
         检测文本中的PII信息
 
@@ -101,7 +114,10 @@ class PIIDetector:
 
         # 执行PII分析
         results = self.analyzer.analyze(
-            text=text, language=self.language, entities=entities, score_threshold=self.threshold
+            text=text,
+            language=self.language,
+            entities=self.filtered_entities,
+            score_threshold=self.threshold,
         )
 
         # 转换为自定义结果格式
@@ -116,7 +132,9 @@ class PIIDetector:
             )
             pii_results.append(pii_result)
 
-        logger.info(f"检测到 {len(pii_results)} 个PII实体")
+        if pii_results:
+            logger.debug(f"检测到 {len(pii_results)} 个PII实体")
+
         return pii_results
 
     def anonymize_text(self, text: str, entities: Optional[List[str]] = None) -> str:
@@ -152,48 +170,6 @@ class PIIDetector:
     def get_supported_entities(self) -> List[str]:
         """获取支持的实体类型"""
         return self.analyzer.get_supported_entities(language=self.language)
-
-    def batch_detect_pii(
-        self, texts: List[str], entities: Optional[List[str]] = None
-    ) -> List[List[PIIResult]]:
-        """
-        批量检测PII信息
-
-        Args:
-            texts: 待检测的文本列表
-            entities: 指定检测的实体类型
-
-        Returns:
-            每个文本对应的PII检测结果列表
-        """
-        results = []
-        for text in texts:
-            pii_results = self.detect_pii(text, entities)
-            results.append(pii_results)
-
-        total_pii_count = sum(len(result) for result in results)
-        logger.info(f"批量检测完成，共处理 {len(texts)} 个文本，发现 {total_pii_count} 个PII实体")
-
-        return results
-
-    def batch_anonymize_texts(self, texts: List[str], entities: Optional[List[str]] = None) -> List[str]:
-        """
-        批量匿名化文本
-
-        Args:
-            texts: 待匿名化的文本列表
-            entities: 指定匿名化的实体类型
-
-        Returns:
-            匿名化后的文本列表
-        """
-        anonymized_texts = []
-        for text in texts:
-            anonymized_text = self.anonymize_text(text, entities)
-            anonymized_texts.append(anonymized_text)
-
-        logger.info(f"批量匿名化完成，共处理 {len(texts)} 个文本")
-        return anonymized_texts
 
 
 class ChinesePIIDetector(PIIDetector):
@@ -234,7 +210,7 @@ class ChinesePIIDetector(PIIDetector):
     def detect_pii(self, text: str, entities: Optional[List[str]] = None) -> List[PIIResult]:
         """重写检测方法，结合presidio和中文模式"""
         # 使用父类方法检测标准PII
-        presidio_results = super().detect_pii(text, entities)
+        presidio_results = super().detect_pii(text)
 
         # 检测中文特有PII
         chinese_results = self.detect_chinese_pii(text)
@@ -266,53 +242,3 @@ class ChinesePIIDetector(PIIDetector):
                 unique_results[-1] = result
 
         return unique_results
-
-
-# 便捷函数
-def detect_pii_in_text(text: str, language: str = "en", threshold: float = 0.5) -> List[PIIResult]:
-    """检测文本中的PII信息的便捷函数"""
-    if language == "zh":
-        detector = ChinesePIIDetector(threshold=threshold)
-    else:
-        detector = PIIDetector(language=language, threshold=threshold)
-
-    return detector.detect_pii(text)
-
-
-def anonymize_pii_in_text(text: str, language: str = "en", threshold: float = 0.5) -> str:
-    """匿名化文本中PII信息的便捷函数"""
-    if language == "zh":
-        detector = ChinesePIIDetector(threshold=threshold)
-    else:
-        detector = PIIDetector(language=language, threshold=threshold)
-
-    return detector.anonymize_text(text)
-
-
-def has_pii_in_text(text: str, language: str = "en", threshold: float = 0.5) -> bool:
-    """检测文本中是否包含PII信息的便捷函数"""
-    if language == "zh":
-        detector = ChinesePIIDetector(threshold=threshold)
-    else:
-        detector = PIIDetector(language=language, threshold=threshold)
-
-    return detector.has_pii(text)
-
-
-# 不使用AI模型的便捷函数（基于presidio内置规则）
-def detect_pii_no_ai(text: str, language: str = "en", threshold: float = 0.5) -> List[PIIResult]:
-    """使用presidio基于规则的检测器检测PII信息"""
-    detector = PIIDetector(language=language, threshold=threshold, use_ai_model=False)
-    return detector.detect_pii(text)
-
-
-def has_pii_no_ai(text: str, language: str = "en", threshold: float = 0.5) -> bool:
-    """使用presidio基于规则的检测器检测文本是否包含PII信息"""
-    detector = PIIDetector(language=language, threshold=threshold, use_ai_model=False)
-    return detector.has_pii(text)
-
-
-def anonymize_pii_no_ai(text: str, language: str = "en", threshold: float = 0.5) -> str:
-    """使用presidio基于规则的检测器匿名化PII信息"""
-    detector = PIIDetector(language=language, threshold=threshold, use_ai_model=False)
-    return detector.anonymize_text(text)

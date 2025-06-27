@@ -90,6 +90,7 @@ class CommonArgs(BaseConfigModel):
 class CliArgs(BaseModel):
     model_config = {"extra": "forbid"}
     full_log: bool = Field(False)
+    log_level: str = Field("INFO", description="日志等级: DEBUG, INFO, WARNING, ERROR, CRITICAL")
 
 
 class LLMCleanConfig(BaseConfigModel):
