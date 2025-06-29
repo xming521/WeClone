@@ -5,9 +5,10 @@
         "adapter_name_or_path": "./model_output", //同时做为train_sft_args的output_dir
         "template": "qwen",
         "default_system": "请你扮演一名人类，不要说自己是人工智能",
+        "media_dir": "dataset/media",
         "finetuning_type": "lora",
         "enable_thinking": false,
-        "trust_remote_code": true,
+        "trust_remote_code": true
     },
     "cli_args": {
         "full_log": false,

@@ -11,6 +11,7 @@
 <a href="https://qm.qq.com/cgi-bin/qm/qr?k=wNdgbOVT6oFOJ2wlMLsolUXErW9ESLpk&jump_from=webapi&authKey=z/reOp6YLyvR4Tl2k2nYMsLoMC3w9/99ucgKMX0oRGlxDV/WbYnvq2QxODoIkfxn" target="_blank" style="text-decoration: none;">
   <img src="https://img.shields.io/badge/QQ群-708067078-12B7F5?style=for-the-badge&logo=qq&logoColor=white" alt="WeClone①" title="WeClone①">
 </a>
+[![小红书](https://img.shields.io/badge/WeClone-FE2C55?style=for-the-badge&logo=xiaohongshu&logoColor=white)](https://www.xiaohongshu.com/user/profile/628109730000000021029de4)
 [![Twitter](https://img.shields.io/badge/Twitter-@weclone567-000000?style=for-the-badge&logo=x&logoColor=white)](https://x.com/weclone567)
 [![Telegram](https://img.shields.io/badge/Telegram-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/+JEdak4m0XEQ3NGNl)
 
@@ -95,7 +96,7 @@ cp settings.template.jsonc settings.jsonc
 python -c "import torch; print('CUDA是否可用:', torch.cuda.is_available());"
 ```
 
-5.（可选）安装FlashAttention，加速训练和推理：`uv pip install flash-attn --no-build-isolation` 版本问题可以使用[prebuild-wheels](flash-attention-prebuild-wheels)的预编译包安装。
+5.（可选）安装FlashAttention，加速训练和推理：`uv pip install flash-attn --no-build-isolation` 版本问题可以使用[prebuild-wheels](https://github.com/mjun0812/flash-attention-prebuild-wheels/releases)的预编译包安装。
 
 ## 模型下载
 国内推荐使用[ModelScope](https://www.modelscope.cn/docs/models/download)下载模型。不建议使用：
@@ -135,7 +136,7 @@ weclone-cli make-dataset
 
 ## 配置参数并微调模型
 
-- (可选)修改 `settings.jsonc` 的 `model_name_or_path` 和 `template` 选择本地下载好的其他模型。  
+- (可选)修改 `settings.jsonc` 的 `model_name_or_path` 、`template`、 `lora_target`选择本地下载好的其他模型。  
 - 修改`per_device_train_batch_size`以及`gradient_accumulation_steps`来调整显存占用。  
 - 可以根据自己数据集的数量和质量修改`train_sft_args`的`num_train_epochs`、`lora_rank`、`lora_dropout`等参数。
 
@@ -143,7 +144,6 @@ weclone-cli make-dataset
 ```bash
 weclone-cli train-sft
 ```
-多卡环境单卡训练，需要先执行 `export CUDA_VISIBLE_DEVICES=0`
 
 ### 多卡训练
 取消`settings.jsonc`中`deepspeed`行代码注释，使用以下命令多卡训练：
@@ -221,6 +221,7 @@ weclone-cli test-model
 <img width="400px" alt="image" src="https://github.com/user-attachments/assets/dbb0fd0a-f760-42db-acd0-bb99c859b52e" />
 
 ## 📌 路线图
+- [ ] 支持更多数据源
 - [ ] 更丰富的上下文：包括上下文对话、聊天对象信息、时间等 
 - [ ] Memory 支持
 - [ ] 支持多模态:已支持图片
@@ -231,7 +232,6 @@ weclone-cli test-model
 ## 问题解决
 #### [官方文档FAQ](https://www.weclone.love/FAQ.html)    
 同时建议使用[DeepWiki](https://deepwiki.com/xming521/WeClone)解决问题。
-
 
 
 ## ❤️ 贡献代码

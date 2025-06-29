@@ -7,6 +7,7 @@
 [![GitHub release](https://img.shields.io/github/v/release/xming521/WeClone?style=for-the-badge&logo=github&label=Release&logoColor=white&color=06d094)](https://github.com/xming521/WeClone/releases)
 [![Telegram](https://img.shields.io/badge/Telegram-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/+JEdak4m0XEQ3NGNl)
 [![Twitter](https://img.shields.io/badge/Twitter-@weclone567-000000?style=for-the-badge&logo=x&logoColor=white)](https://x.com/weclone567)
+[![小红书](https://img.shields.io/badge/WeClone-FE2C55?style=for-the-badge&logo=xiaohongshu&logoColor=white)](https://www.xiaohongshu.com/user/profile/628109730000000021029de4)
 <a href="https://qm.qq.com/cgi-bin/qm/qr?k=wNdgbOVT6oFOJ2wlMLsolUXErW9ESLpk&jump_from=webapi&authKey=z/reOp6YLyvR4Tl2k2nYMsLoMC3w9/99ucgKMX0oRGlxDV/WbYnvq2QxODoIkfxn" target="_blank" style="text-decoration: none;">
   <img src="https://img.shields.io/badge/QQ群-708067078-12B7F5?style=for-the-badge&logo=qq&logoColor=white" alt="WeClone①" title="WeClone①">
 </a>
@@ -127,23 +128,22 @@ weclone-cli make-dataset
 - You can enable the `enable_clean` option in `clean_dataset` to clean the data for better results (multimodal data is not currently supported). The current system supports using `llm judge` to score chat records, providing **vllm offline inference** and **API online inference** methods. By default, offline inference is enabled. To switch to API-based online inference mode, modify `"online_llm_clear": false` to `true` in the `settings.jsonc` file, and configure relevant parameters such as `base_url`, `llm_api_key`, and `model_name`. All models compatible with OpenAI interface can be accessed.
 - After obtaining the `llm scoring score distribution`, you can filter acceptable data by setting the `accept_score` parameter, and appropriately reduce the `lora_dropout` parameter in `train_sft_args` to improve the model's fitting effect.
 
-## 配置参数并微调模型
+## Configure Parameters and Fine-tune Model
 
-- (可选)修改 `settings.jsonc` 的 `model_name_or_path` 和 `template` 选择本地下载好的其他模型。  
-- 修改`per_device_train_batch_size`以及`gradient_accumulation_steps`来调整显存占用。  
-- 可以根据自己数据集的数量和质量修改`train_sft_args`的`num_train_epochs`、`lora_rank`、`lora_dropout`等参数。
+- (Optional) Modify `model_name_or_path`, `template`, `lora_target` in `settings.jsonc` to select other locally downloaded models.   
+- Modify `per_device_train_batch_size` and `gradient_accumulation_steps` to adjust VRAM usage.  
+- You can modify parameters like `num_train_epochs`, `lora_rank`, `lora_dropout` in `train_sft_args` based on your dataset's quantity and quality.
 
-### 单卡训练
+### Single GPU Training
 ```bash
 weclone-cli train-sft
 ```
-多卡环境单卡训练，需要先执行 `export CUDA_VISIBLE_DEVICES=0`
 
-### 多卡训练
-取消`settings.jsonc`中`deepspeed`行代码注释，使用以下命令多卡训练：
+### Multi-GPU Training
+Uncomment the `deepspeed` line in `settings.jsonc` and use the following command for multi-GPU training:
 ```bash
 uv pip install deepspeed
-deepspeed --num_gpus=使用显卡数量 weclone/train/train_sft.py
+deepspeed --num_gpus=number_of_gpus weclone/train/train_sft.py
 ```
 
 ### 使用浏览器demo简单推理
@@ -167,7 +167,7 @@ weclone-cli test-model
 
 ## 🖼️ 微调效果
 > [!TIP] 
-> **QQ群内有部署好的Qwen2.5VL 32B Bot，可以体验效果。**  
+> **QQ群内有部署好的Qwen2.5VL 32B Bot，可以体验效果。更多案例可以关注[小红书](https://www.xiaohongshu.com/user/profile/628109730000000021029de4)**  
 
 使用Qwen2.5-14B-Instruct模型，大概3万条处理后的有效数据，loss降到了3.5左右的效果：
 <details>
@@ -215,6 +215,7 @@ weclone-cli test-model
 
 
 ## 📌 路线图
+- [ ] 支持更多数据源
 - [ ] 更丰富的上下文：包括上下文对话、聊天对象信息、时间等 
 - [ ] Memory 支持
 - [ ] 支持多模态:已支持图片
