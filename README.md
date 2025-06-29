@@ -173,10 +173,16 @@ weclone-cli test-model
 <details>
 <summary>截图</summary>
 <div style="display: flex; flex-wrap: wrap; gap: 10px;">
-  <img src="https://github.com/user-attachments/assets/0775ec52-452b-485f-9785-c6eb7b277132" alt="alt text" style="width: 48%; min-width: 150px;">
-  <img src="https://github.com/user-attachments/assets/8c7628b5-da70-4c37-9e51-fdfb0eadd2df" alt="alt text" style="width: 48%; min-width: 150px;">
-  <img src="https://github.com/user-attachments/assets/523aa742-2aa3-40e9-bd67-b98b336e83a8" alt="alt text" style="width: 48%; min-width: 150px;">
-  <img src="https://github.com/user-attachments/assets/dabf0603-dcc4-4a47-b5c3-2bbc036820d9" alt="alt text" style="width: 48%; min-width: 150px;">
+![关于我的数字分身在群里快把我替代了这件事_5_WeClone_来自小红书网页版](https://github.com/user-attachments/assets/d129a81b-15e8-43bd-a8e8-1670c79428cf)
+![关于我的数字分身在群里快把我替代了这件事_5_WeClone_来自小红书网页版(1)](https://github.com/user-attachments/assets/5ae489b0-cb33-4868-8936-ff57c9d805da)
+![模型越大 微调稳定性越好_5_WeClone_来自小红书网页版](https://github.com/user-attachments/assets/62e58de8-1a73-44fc-a948-0d2e949e44a0)
+![关于我的数字分身在群里快把我替代了这件事_2_WeClone_来自小红书网页版](https://github.com/user-attachments/assets/6bf6d0cc-7ff1-4748-a096-3850d924f954)
+
+
+  <img src="https://github.com/user-attachments/assets/d129a81b-15e8-43bd-a8e8-1670c79428cf" alt="alt text" style="width: 48%; min-width: 150px;">
+  <img src="https://github.com/user-attachments/assets/5ae489b0-cb33-4868-8936-ff57c9d805da" alt="alt text" style="width: 48%; min-width: 150px;">
+  <img src="https://github.com/user-attachments/assets/62e58de8-1a73-44fc-a948-0d2e949e44a0" alt="alt text" style="width: 48%; min-width: 150px;">
+  <img src="https://github.com/user-attachments/assets/6bf6d0cc-7ff1-4748-a096-3850d924f954" alt="alt text" style="width: 48%; min-width: 150px;">
 </div>
 </details>
 
