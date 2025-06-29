@@ -111,7 +111,7 @@ Please use [Telegram Desktop](https://desktop.telegram.org/) to export chat reco
 
 
 ## Data Preprocessing
-
+设语言、平台、类型别忘了
 - By default, the project uses Microsoft Presidio to remove `phone numbers, email addresses, credit card numbers, IP addresses, geographic location names, international bank account numbers, cryptocurrency wallet addresses, age information, and generic ID numbers` from the data, but it cannot guarantee 100% identification.
 - Therefore, a blocklist `blocked_words` is provided in `settings.jsonc`, allowing users to manually add words or phrases they want to filter (the entire sentence containing blocked words will be removed by default).
 
@@ -127,6 +127,7 @@ weclone-cli make-dataset
 - For **Image to Text**: Add `images` to `include_type` and configure `vision_api` parameters. The system will use external multimodal models to convert images to text, and the final generated dataset **is still used for training text-only LLM**.
 - You can enable the `enable_clean` option in `clean_dataset` to clean the data for better results (multimodal data is not currently supported). The current system supports using `llm judge` to score chat records, providing **vllm offline inference** and **API online inference** methods. By default, offline inference is enabled. To switch to API-based online inference mode, modify `"online_llm_clear": false` to `true` in the `settings.jsonc` file, and configure relevant parameters such as `base_url`, `llm_api_key`, and `model_name`. All models compatible with OpenAI interface can be accessed.
 - After obtaining the `llm scoring score distribution`, you can filter acceptable data by setting the `accept_score` parameter, and appropriately reduce the `lora_dropout` parameter in `train_sft_args` to improve the model's fitting effect.
+更多参数请查看文档[配置参数](https://docs.weclone.love/config/config.html)
 
 ## Configure Parameters and Fine-tune Model
 
@@ -146,51 +147,58 @@ uv pip install deepspeed
 deepspeed --num_gpus=number_of_gpus weclone/train/train_sft.py
 ```
 
-### 使用浏览器demo简单推理
-可以在这一步测试出合适的temperature、top_p值，修改settings.jsonc的`infer_args`后，供后续推理时使用。
+### Simple Inference with Browser Demo
+Test suitable temperature and top_p values, then modify `infer_args` in settings.jsonc for subsequent inference use.
 ```bash
 weclone-cli webchat-demo
 ```
 
-### 使用接口进行推理
+### Inference Using API
 
 ```bash
 weclone-cli server
 ```
 
-### 使用常见聊天问题测试
-不包含询问个人信息的问题，仅有日常聊天。测试结果在test_result-my.txt。
+### Test with Common Chat Questions
+Does not include questions asking for personal information, only daily conversation. Test results are in test_result-my.txt.
 ```bash
 weclone-cli server
 weclone-cli test-model
 ```
 
-## 🖼️ 微调效果
+## 🖼️ Fine-tuning Results
 > [!TIP] 
-> **QQ群内有部署好的Qwen2.5VL 32B Bot，可以体验效果。更多案例可以关注[小红书](https://www.xiaohongshu.com/user/profile/628109730000000021029de4)**  
+> **英文例子怎么发 More cases can be found on [XiaoHongShu](https://www.xiaohongshu.com/user/profile/628109730000000021029de4)**  
 
-使用Qwen2.5-14B-Instruct模型，大概3万条处理后的有效数据，loss降到了3.5左右的效果：
+Using the Qwen2.5VL 32B model with approximately 10,000 processed effective data samples, the loss was reduced to around 3.6:
 <details>
 <summary>截图</summary>
 <div style="display: flex; flex-wrap: wrap; gap: 10px;">
-![关于我的数字分身在群里快把我替代了这件事_5_WeClone_来自小红书网页版](https://github.com/user-attachments/assets/d129a81b-15e8-43bd-a8e8-1670c79428cf)
-![关于我的数字分身在群里快把我替代了这件事_5_WeClone_来自小红书网页版(1)](https://github.com/user-attachments/assets/5ae489b0-cb33-4868-8936-ff57c9d805da)
-![模型越大 微调稳定性越好_5_WeClone_来自小红书网页版](https://github.com/user-attachments/assets/62e58de8-1a73-44fc-a948-0d2e949e44a0)
-![关于我的数字分身在群里快把我替代了这件事_2_WeClone_来自小红书网页版](https://github.com/user-attachments/assets/6bf6d0cc-7ff1-4748-a096-3850d924f954)
-
-
-  <img src="https://github.com/user-attachments/assets/d129a81b-15e8-43bd-a8e8-1670c79428cf" alt="alt text" style="width: 48%; min-width: 150px;">
-  <img src="https://github.com/user-attachments/assets/5ae489b0-cb33-4868-8936-ff57c9d805da" alt="alt text" style="width: 48%; min-width: 150px;">
-  <img src="https://github.com/user-attachments/assets/62e58de8-1a73-44fc-a948-0d2e949e44a0" alt="alt text" style="width: 48%; min-width: 150px;">
-  <img src="https://github.com/user-attachments/assets/6bf6d0cc-7ff1-4748-a096-3850d924f954" alt="alt text" style="width: 48%; min-width: 150px;">
+<img src="https://github.com/user-attachments/assets/b7d81f9b-ea56-4f7e-8ee5-7f4171bdc66d" alt="alt text" style="width: 52%; min-width: 150px;"> 
+<img src="https://github.com/user-attachments/assets/62e58de8-1a73-44fc-a948-0d2e949e44a0" alt="alt text" style="width: 52%; min-width: 150px;">
+<img src="https://github.com/user-attachments/assets/6bf6d0cc-7ff1-4748-a096-3850d924f954" alt="alt text" style="width: 52%; min-width: 150px;">
 </div>
 </details>
 
 
-## 🤖 部署到聊天机器人
+## 🤖 Deploy to Chat Bots
+### AstrBot
+[AstrBot](https://github.com/AstrBotDevs/AstrBot) is an easy-to-use multi-platform LLM chatbot and development framework ✨ Supports Discord, Telegram, Slack, QQ, WeChat, Enterprise WeChat, Feishu and other platforms.      
+
+Usage steps:
+1. Deploy AstrBot
+2. Deploy messaging platforms like Discord, Telegram, Slack in AstrBot
+3. Execute `weclone-cli server` to start the API service
+4. Add a new service provider in AstrBot, select OpenAI type, fill in the API Base URL according to AstrBot's deployment method (e.g., for docker deployment it might be http://172.17.0.1:8005/v1), fill in the model as gpt-3.5-turbo, and enter any API Key
+5. Tool calling is not supported after fine-tuning, please turn off the default tools first by sending the command: `/tool off all` on the messaging platform, otherwise the fine-tuned effect won't be visible.
+6. Set the system prompt in AstrBot according to the default_system used during fine-tuning.
+![5](https://github.com/user-attachments/assets/19de7072-076a-4cdf-8ae6-46b9b89f536a)
+> [!IMPORTANT]
+> Check the api_service logs to ensure that the large model service request parameters are consistent with those used during fine-tuning as much as possible, and turn off all tool plugin capabilities.
+
 ### LangBot
 
-[LangBot](https://github.com/RockChinQ/LangBot) 是一个开源的接入全球多种即时通信平台的 LLM 机器人平台，支持Discord、Telegram、Slack等平台，适合各种场景使用。
+[LangBot](https://github.com/RockChinQ/LangBot) 是一个开源的接入全球多种即时通信平台的 LLM 机器人平台，适合各种场景使用。
 
 1. [部署 LangBot](https://github.com/RockChinQ/LangBot/blob/master/README_EN.md#-getting-started)
 2. 在 LangBot 中添加一个机器人
@@ -202,22 +210,7 @@ weclone-cli test-model
 
 <img width="400px" alt="image" src="https://github.com/user-attachments/assets/dbb0fd0a-f760-42db-acd0-bb99c859b52e" />
 
-### AstrBot
 
-[AstrBot](https://github.com/AstrBotDevs/AstrBot) 是易上手的多平台 LLM 聊天机器人及开发框架 ✨ 平台支持 QQ、Telegram、微信、企微、飞书。      
-
-使用步骤：
-1. 部署 AstrBot
-2. 在 AstrBot 中部署消息平台
-3. 执行 `weclone-cli server` 启动api服务
-4. 在 AstrBot 中新增服务提供商，类型选择OpenAI，API Base URL 根据AstrBot部署方式填写（例如docker部署可能为http://172.17.0.1:8005/v1） ，模型填写gpt-3.5-turbo,API Key随意填写一个
-5. 微调后不支持工具调用，请先关掉默认的工具，消息平台发送指令： `/tool off all`，否则会没有微调后的效果。 
-6. 根据微调时使用的default_system，在 AstrBot 中设置系统提示词。
-![5](https://github.com/user-attachments/assets/19de7072-076a-4cdf-8ae6-46b9b89f536a)
-> [!IMPORTANT]
-> 检查api_service的日志，尽量保证大模型服务请求的参数和微调时一致，tool插件能力都关掉。
-7. 调整采样参数，例如temperature、top_p、top_k等
-[配置自定义的模型参数](https://astrbot.app/config/model-config.html#%E9%85%8D%E7%BD%AE%E8%87%AA%E5%AE%9A%E4%B9%89%E7%9A%84%E6%A8%A1%E5%9E%8B%E5%8F%82%E6%95%B0)
 
 
 ## 📌 路线图

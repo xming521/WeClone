@@ -91,6 +91,6 @@
         "gpu_memory_utilization": 0.9
     },
     "test_model_args": {
-        "test_data_path": "dataset/test_data.json"
+        "test_data_path": "dataset/eval/test_data-en.json"
     }
 }

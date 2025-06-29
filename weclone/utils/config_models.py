@@ -76,6 +76,8 @@ class FinetuningType(StrEnum):
 
 
 class CommonArgs(BaseConfigModel):
+    """NOTE that all parameters here will be parsed by `HfArgumentParser`. Non-HfArgumentParser parameters should be placed in make_dataset_args."""
+
     model_name_or_path: str = Field(...)
     adapter_name_or_path: str = Field("./model_output", description="Also as output_dir of train_sft_args")
     template: str = Field(..., description="model template")
@@ -189,7 +191,7 @@ class VllmArgs(BaseConfigModel):
 
 
 class TestModelArgs(BaseConfigModel):
-    test_data_path: str = Field(default="dataset/test_data.json", description="测试数据路径")
+    test_data_path: str = Field(default="dataset/eval/test_data-en.json", description="测试数据路径")
 
 
 class WcConfig(BaseModel):

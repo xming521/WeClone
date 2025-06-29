@@ -153,7 +153,7 @@ deepspeed --num_gpus=使用显卡数量 weclone/train/train_sft.py
 ```
 
 ### 使用浏览器demo简单推理
-可以在这一步测试出合适的temperature、top_p值，修改settings.jsonc的`infer_args`后，供后续推理时使用。
+测试出合适的temperature、top_p值，修改settings.jsonc的`infer_args`后，供后续推理时使用。
 ```bash
 weclone-cli webchat-demo
 ```
@@ -173,16 +173,16 @@ weclone-cli test-model
 
 ## 🖼️ 微调效果
 > [!TIP] 
-> **QQ群内有部署好的Qwen2.5VL 32B Bot，可以体验效果。**  
+> **QQ群内有部署好的Qwen2.5VL 32B Bot，可以体验效果。更多案例可以关注[小红书](https://www.
+xiaohongshu.com/user/profile/628109730000000021029de4)** 
 
-使用Qwen2.5-14B-Instruct模型，大概3万条处理后的有效数据，loss降到了3.5左右的效果：
+使用Qwen2.5VL 32B模型，大概1万条处理后的有效数据，loss降到了3.6左右的效果：
 <details>
 <summary>截图</summary>
 <div style="display: flex; flex-wrap: wrap; gap: 10px;">
-  <img src="https://github.com/user-attachments/assets/0775ec52-452b-485f-9785-c6eb7b277132" alt="alt text" style="width: 48%; min-width: 150px;">
-  <img src="https://github.com/user-attachments/assets/8c7628b5-da70-4c37-9e51-fdfb0eadd2df" alt="alt text" style="width: 48%; min-width: 150px;">
-  <img src="https://github.com/user-attachments/assets/523aa742-2aa3-40e9-bd67-b98b336e83a8" alt="alt text" style="width: 48%; min-width: 150px;">
-  <img src="https://github.com/user-attachments/assets/dabf0603-dcc4-4a47-b5c3-2bbc036820d9" alt="alt text" style="width: 48%; min-width: 150px;">
+<img src="https://github.com/user-attachments/assets/b7d81f9b-ea56-4f7e-8ee5-7f4171bdc66d" alt="alt text" style="width: 52%; min-width: 150px;"> 
+<img src="https://github.com/user-attachments/assets/62e58de8-1a73-44fc-a948-0d2e949e44a0" alt="alt text" style="width: 52%; min-width: 150px;">
+<img src="https://github.com/user-attachments/assets/6bf6d0cc-7ff1-4748-a096-3850d924f954" alt="alt text" style="width: 52%; min-width: 150px;">
 </div>
 </details>
 
@@ -203,8 +203,6 @@ weclone-cli test-model
 ![5](https://github.com/user-attachments/assets/19de7072-076a-4cdf-8ae6-46b9b89f536a)
 > [!IMPORTANT]
 > 检查api_service的日志，尽量保证大模型服务请求的参数和微调时一致，tool插件能力都关掉。
-7. 调整采样参数，例如temperature、top_p、top_k等
-[配置自定义的模型参数](https://astrbot.app/config/model-config.html#%E9%85%8D%E7%BD%AE%E8%87%AA%E5%AE%9A%E4%B9%89%E7%9A%84%E6%A8%A1%E5%9E%8B%E5%8F%82%E6%95%B0)
 
 ### LangBot
 

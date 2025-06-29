@@ -5,6 +5,7 @@
         "adapter_name_or_path": "./model_output", //同时做为train_sft_args的output_dir
         "template": "qwen2_vl",
         "default_system": "请你扮演一名人类，不要说自己是人工智能",
+        "language": "en", // 聊天常用语言: zh(中文), en(英文)
         "finetuning_type": "lora",
         "media_dir": "dataset/media",
         "image_max_pixels": 409920, //720P
@@ -20,7 +21,6 @@
         "telegram_args": {
             "my_id": "user1234567890"
         },
-        "language": "en", // 聊天常用语言: zh(中文), en(英文)
         "include_type": [
             "text",
             "image"
@@ -95,6 +95,6 @@
         "gpu_memory_utilization": 0.9
     },
     "test_model_args": {
-        "test_data_path": "dataset/test_data.json"
+        "test_data_path": "dataset/eval/test_data-en.json"
     }
 }
