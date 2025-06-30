@@ -6,6 +6,8 @@ import subprocess  # nosec
 import sys
 from typing import List, Union, cast
 
+os.environ.setdefault("VLLM_WORKER_MULTIPROC_METHOD", "spawn")
+
 import pandas as pd
 from pandas import Timestamp
 
