@@ -25,47 +25,30 @@ class CleaningStrategy(ABC):
     @abstractmethod
     def judge(self, data: List[QaPair]) -> None:
         """
-        打分方法是抽象的，强制每个子类根据自己的方式去实现。
+        打分方法，需要子类实现。
         """
         pass
 
     def clean(self) -> str:
         """
-        通用策略
         根据score筛选SFT数据，并返回最终应使用的dataset名称。
         """
         config = self.make_dataset_config
         original_dataset_name = config.dataset
         cleaned_dataset_name = "chat-sft-cleaned"
 
-        if not config.clean_dataset.enable_clean or "image" in config.include_type:
-            logger.info("数据清洗未启用或包含图像，将使用原始数据集。")
-            return original_dataset_name
-
         dataset_dir = config.dataset_dir
         dataset_info_path = os.path.join(dataset_dir, "dataset_info.json")
 
-        # 获取文件名称
-        try:
-            with open(dataset_info_path, "r", encoding="utf-8") as f:
-                info = json.load(f)
-            paths = {
-                name: os.path.join(dataset_dir, info.get(name, {}).get("file_name"))
-                for name in [original_dataset_name, cleaned_dataset_name]
-            }
-            original_data_path, cleaned_data_path = paths.values()
-            if not all(paths.values()):
-                raise ValueError(f"缺失 '{original_dataset_name}' 或 '{cleaned_dataset_name}' 文件配置。")
-        except Exception as e:
-            logger.error(f"加载 dataset_info.json 出错: {e}，将使用原始数据集。")
-            return original_dataset_name
+        with open(dataset_info_path, "r", encoding="utf-8") as f:
+            info = json.load(f)
+        paths = {
+            name: os.path.join(dataset_dir, info.get(name, {}).get("file_name"))
+            for name in [original_dataset_name, cleaned_dataset_name]
+        }
+        original_data_path, cleaned_data_path = paths.values()
 
-        # 执行清洗流程
-        logger.info(f"数据清洗已启用，将从 '{original_data_path}' 读取数据...")
         try:
-            if not os.path.exists(original_data_path):
-                logger.error(f"原始数据文件 '{original_data_path}' 不存在，清洗中止。")
-                return original_dataset_name
             with open(original_data_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
             accept_score = config.clean_dataset.llm.accept_score

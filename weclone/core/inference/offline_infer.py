@@ -21,14 +21,11 @@ from weclone.utils.log import logger
 
 
 def extract_json_from_text(text: str) -> str:
-    """从文本中提取JSON内容，支持markdown格式的JSON块"""
-    # 匹配 ```json{...}``` 格式，换行符可选
+    """Extract JSON content from text, supporting JSON blocks in markdown format."""
     json_pattern = r"```json\s*(.*?)\s*```"
     match = re.search(json_pattern, text, re.DOTALL)
     if match:
         return match.group(1).strip()
-
-    # 如果没有markdown格式，返回原始文本
     return text.strip()
 
 
@@ -98,10 +95,10 @@ def vllm_infer(
         guided_decoding_params = GuidedDecodingParams(json=json_schema, disable_any_whitespace=True)
 
     sampling_params = SamplingParams(
-        repetition_penalty=generating_args.repetition_penalty or 1.0,  # repetition_penalty must > 0
+        repetition_penalty=generating_args.repetition_penalty or 1.0,
         temperature=generating_args.temperature,
-        top_p=generating_args.top_p or 1.0,  # top_p must > 0
-        top_k=generating_args.top_k or -1,  # top_k must > 0
+        top_p=generating_args.top_p or 1.0,
+        top_k=generating_args.top_k or -1,
         stop_token_ids=template_obj.get_stop_token_ids(tokenizer),
         max_tokens=generating_args.max_new_tokens,
         skip_special_tokens=skip_special_tokens,
@@ -121,7 +118,7 @@ def vllm_infer(
         "max_model_len": cutoff_len + max_new_tokens,
         "disable_log_stats": True,
         "enable_lora": model_args.adapter_name_or_path is not None,
-        # "enable_prefix_caching": True,
+        "enable_prefix_caching": True,
         "guided_decoding_backend": "guidance",
         "guided_decoding_disable_any_whitespace": True,
     }

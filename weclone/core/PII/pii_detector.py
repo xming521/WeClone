@@ -12,8 +12,6 @@ from weclone.utils.log import logger
 
 @dataclass
 class PIIResult:
-    """PII检测结果"""
-
     entity_type: str
     start: int
     end: int
@@ -22,7 +20,7 @@ class PIIResult:
 
 
 class PIIDetector:
-    """PII检测器，基于presidio库"""
+    """PII detector based on presidio library"""
 
     def __init__(self, language: str = "en", threshold: float = 0.5):
         self.language = language
@@ -35,10 +33,9 @@ class PIIDetector:
         self.filtered_entities = [
             entity for entity in self.supported_entities if entity not in self.not_filtered_entities
         ]
-        logger.info(f"隐私过滤的实体类型: {self.filtered_entities}")
+        logger.info(f"Privacy filtered entity types: {self.filtered_entities}")
 
     def _init_engines(self):
-        """初始化presidio分析和匿名化引擎"""
         model_mapping = {
             "zh": "zh_core_web_sm",
             "en": "en_core_web_sm",
@@ -63,11 +60,12 @@ class PIIDetector:
 
         # self.anonymizer = AnonymizerEngine()
 
-        logger.info(f"Presidio引擎初始化成功，使用语言: {self.language}, 模型: {model_name}")
+        logger.info(
+            f"Presidio engine initialized successfully, using language: {self.language}, model: {model_name}"
+        )
 
     def _add_custom_recognizers(self):
-        """添加自定义识别器"""
-        # 创建数字ID识别器 - 匹配5位以上的纯数字或数字间夹着-符号的模式
+        # Create numeric ID recognizer - matches 5+ digit numbers or numbers with - separators
         numeric_id_patterns = [
             Pattern(name="numeric_id", regex=r"\b(?:\d{5,}|\d+-\d+(?:-\d+)*)\b", score=0.8),
         ]
@@ -76,43 +74,31 @@ class PIIDetector:
             supported_entity="NUMERIC_ID",
             patterns=numeric_id_patterns,
             name="numeric_id_recognizer",
-            context=["id", "编号", "号码", "代码", "code", "number", "序号"],
+            context=["id", "编号", "号码", "代码", "code", "number", "序号", "sequence", "identifier"],
         )
 
-        # 注册自定义识别器到analyzer
         self.analyzer.registry.add_recognizer(numeric_id_recognizer)
 
-        logger.info("已添加自定义数字ID识别器")
+        logger.info("Custom numeric ID recognizer added")
 
     def has_pii(self, text: str, entities: Optional[List[str]] = None) -> bool:
-        """
-        检测文本中是否包含PII信息
-
-        Args:
-            text: 待检测的文本
-            entities: 指定检测的实体类型，默认检测所有支持的类型
-
-        Returns:
-            是否包含PII信息
-        """
         pii_results = self.detect_pii(text)
         return len(pii_results) > 0
 
     def detect_pii(self, text: str) -> List[PIIResult]:
         """
-        检测文本中的PII信息
+        Detect PII information in text
 
         Args:
-            text: 待检测的文本
-            entities: 指定检测的实体类型，默认检测所有支持的类型
+            text: Text to be detected
+            entities: Specified entity types to detect, defaults to all supported types
 
         Returns:
-            检测到的PII信息列表
+            List of detected PII information
         """
         if not text or not isinstance(text, str):
             return []
 
-        # 执行PII分析
         results = self.analyzer.analyze(
             text=text,
             language=self.language,
@@ -120,7 +106,6 @@ class PIIDetector:
             score_threshold=self.threshold,
         )
 
-        # 转换为自定义结果格式
         pii_results = []
         for result in results:
             pii_result = PIIResult(
@@ -133,54 +118,50 @@ class PIIDetector:
             pii_results.append(pii_result)
 
         if pii_results:
-            logger.debug(f"检测到 {len(pii_results)} 个PII实体")
+            logger.debug(f"Detected {len(pii_results)} PII entities")
 
         return pii_results
 
     def anonymize_text(self, text: str, entities: Optional[List[str]] = None) -> str:
         """
-        匿名化文本中的PII信息
+        Anonymize PII information in text
 
         Args:
-            text: 待匿名化的文本
-            entities: 指定匿名化的实体类型，默认匿名化所有检测到的类型
+            text: Text to be anonymized
+            entities: Specified entity types to anonymize, defaults to all detected types
 
         Returns:
-            匿名化后的文本
+            Anonymized text
         """
         if not text or not isinstance(text, str):
             return text
 
         try:
-            # 先检测PII
             analyzer_results = self.analyzer.analyze(
                 text=text, language=self.language, entities=entities, score_threshold=self.threshold
             )
 
-            # 执行匿名化
             anonymized_result = self.anonymizer.anonymize(text=text, analyzer_results=analyzer_results)
 
-            logger.info(f"成功匿名化 {len(analyzer_results)} 个PII实体")
+            logger.info(f"Successfully anonymized {len(analyzer_results)} PII entities")
             return anonymized_result.text
 
         except Exception as e:
-            logger.error(f"文本匿名化失败: {e}")
+            logger.error(f"Text anonymization failed: {e}")
             return text
 
     def get_supported_entities(self) -> List[str]:
-        """获取支持的实体类型"""
         return self.analyzer.get_supported_entities(language=self.language)
 
 
 class ChinesePIIDetector(PIIDetector):
-    """中文PII检测器，扩展了对中文特有PII的识别"""
+    """Chinese PII detector, extended to recognize Chinese-specific PII"""
 
     def __init__(self, threshold: float = 0.5):
         super().__init__(language="zh", threshold=threshold)
         self._init_chinese_patterns()
 
     def _init_chinese_patterns(self):
-        """初始化中文特有的PII模式"""
         self.chinese_patterns = {
             "CHINESE_ID_CARD": re.compile(r"\b\d{15}|\d{18}|\d{17}[Xx]\b"),
             "CHINESE_PHONE": re.compile(r"\b1[3-9]\d{9}\b"),
@@ -190,7 +171,6 @@ class ChinesePIIDetector(PIIDetector):
         }
 
     def detect_chinese_pii(self, text: str) -> List[PIIResult]:
-        """检测中文特有的PII信息"""
         chinese_results = []
 
         for entity_type, pattern in self.chinese_patterns.items():
@@ -200,7 +180,7 @@ class ChinesePIIDetector(PIIDetector):
                     entity_type=entity_type,
                     start=match.start(),
                     end=match.end(),
-                    score=0.9,  # 正则匹配给予较高置信度
+                    score=0.9,
                     text=match.group(),
                 )
                 chinese_results.append(result)
@@ -208,14 +188,11 @@ class ChinesePIIDetector(PIIDetector):
         return chinese_results
 
     def detect_pii(self, text: str, entities: Optional[List[str]] = None) -> List[PIIResult]:
-        """重写检测方法，结合presidio和中文模式"""
-        # 使用父类方法检测标准PII
+        """Override detection method, combining presidio and Chinese patterns"""
         presidio_results = super().detect_pii(text)
 
-        # 检测中文特有PII
         chinese_results = self.detect_chinese_pii(text)
 
-        # 合并结果并去重
         all_results = presidio_results + chinese_results
         all_results = self._remove_duplicates(all_results)
 
@@ -223,21 +200,19 @@ class ChinesePIIDetector(PIIDetector):
         return all_results
 
     def _remove_duplicates(self, results: List[PIIResult]) -> List[PIIResult]:
-        """去除重叠的检测结果"""
+        """Remove overlapping detection results"""
         if not results:
             return results
 
-        # 按位置排序
         results.sort(key=lambda x: (x.start, x.end))
 
-        # 去重
         unique_results = [results[0]]
         for result in results[1:]:
             last_result = unique_results[-1]
-            # 如果当前结果与上一个结果不重叠，则保留
+            # Keep if current result doesn't overlap with previous result
             if result.start >= last_result.end:
                 unique_results.append(result)
-            # 如果重叠，保留置信度更高的
+            # If overlapping, keep the one with higher confidence
             elif result.score > last_result.score:
                 unique_results[-1] = result
 

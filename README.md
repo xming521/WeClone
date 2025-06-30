@@ -172,7 +172,7 @@ weclone-cli test-model
 
 Using the Qwen2.5VL 32B model with approximately 10,000 processed effective data samples, the loss was reduced to around 3.6:
 <details>
-<summary>截图</summary>
+<summary>Screenshots</summary>
 <div style="display: flex; flex-wrap: wrap; gap: 10px;">
 <img src="https://github.com/user-attachments/assets/b7d81f9b-ea56-4f7e-8ee5-7f4171bdc66d" alt="alt text" style="width: 52%; min-width: 150px;"> 
 <img src="https://github.com/user-attachments/assets/62e58de8-1a73-44fc-a948-0d2e949e44a0" alt="alt text" style="width: 52%; min-width: 150px;">
@@ -198,119 +198,119 @@ Usage steps:
 
 ### LangBot
 
-[LangBot](https://github.com/RockChinQ/LangBot) 是一个开源的接入全球多种即时通信平台的 LLM 机器人平台，适合各种场景使用。
+[LangBot](https://github.com/RockChinQ/LangBot) is an open-source LLM chatbot platform that connects to various global instant messaging platforms, suitable for various scenarios.
 
-1. [部署 LangBot](https://github.com/RockChinQ/LangBot/blob/master/README_EN.md#-getting-started)
-2. 在 LangBot 中添加一个机器人
-4. 在模型页添加新模型，名称`gpt-3.5-turbo`，供应商选择 OpenAI，填写 请求 URL 为 WeClone 的地址，详细连接方式可以参考[文档](https://docs.langbot.app/en/workshop/network-details.html)，API Key 任意填写。
+1. [Deploy LangBot](https://github.com/RockChinQ/LangBot/blob/master/README_EN.md#-getting-started)
+2. Add a robot in LangBot
+4. Add a new model in the model page, name it `gpt-3.5-turbo`, select OpenAI as the provider, fill in the request URL as WeClone's address. For detailed connection methods, refer to the [documentation](https://docs.langbot.app/en/workshop/network-details.html), and enter any API Key.
 
 <img width="400px" alt="image" src="https://github.com/user-attachments/assets/fc167dea-7c93-4d94-9c5f-db709d0320ba" />
 
-6. 在流水线配置中选择刚才添加的模型，或修改提示词配置
+6. Select the model you just added in the pipeline configuration, or modify the prompt configuration
 
 <img width="400px" alt="image" src="https://github.com/user-attachments/assets/dbb0fd0a-f760-42db-acd0-bb99c859b52e" />
 
 
 
 
-## 📌 路线图
-- [ ] 支持更多数据源
-- [ ] 更丰富的上下文：包括上下文对话、聊天对象信息、时间等 
-- [ ] Memory 支持
-- [ ] 支持多模态:已支持图片
-- [ ] 数据增强
-- [ ] 支持GUI
-- [ ] 支持COT思考
+## 📌 Roadmap
+- [ ] Support more data sources
+- [ ] Richer context: including contextual conversations, chat participant information, time, etc.
+- [ ] Memory support
+- [ ] Multimodal support: image support already implemented
+- [ ] Data augmentation
+- [ ] GUI support
+- [ ] COT (Chain of Thought) thinking support
 
-## 问题解决
-#### [官方文档FAQ](https://www.weclone.love/FAQ.html)    
-同时建议使用[DeepWiki](https://deepwiki.com/xming521/WeClone)解决问题。
+## Troubleshooting
+#### [Official Documentation FAQ](https://www.weclone.love/FAQ.html)    
+It is also recommended to use [DeepWiki](https://deepwiki.com/xming521/WeClone) for problem solving.
 
 
 
-## ❤️ 贡献代码
+## ❤️ Contributing
 
-欢迎任何 Issues/Pull Requests！
+Any Issues/Pull Requests are welcome!
 
-你可以通过查看Issues或帮助审核 PR（拉取请求）来贡献。对于新功能的添加，请先通过 Issue 讨论。   
-开发环境：
+You can contribute by checking Issues or helping review PRs (Pull Requests). For new feature additions, please discuss through Issues first.   
+Development environment:
 ```bash
 uv pip install --group dev -e .
 pre-commit install
 ```
 
-项目使用`pytest`测试，`pyright`检查类型，`ruff`检查代码格式。
+The project uses `pytest` for testing, `pyright` for type checking, and `ruff` for code formatting.
 
-## 🙏 致谢
+## 🙏 Acknowledgments
 
-感谢以下代码贡献者和社区里其他成员的贡献
+Thanks to the following code contributors and other community members for their contributions
 
 <a href="https://github.com/xming521/WeClone/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=xming521/WeClone" />
 </a>
 
-同时本项目受益于[PyWxDump](https://github.com/xaoyaoo/PyWxDump)、[LLaMA-Factory](https://github.com/hiyouga/LLaMA-Factory)、[AstrBot](https://github.com/AstrBotDevs/AstrBot)、[LangBot](https://github.com/RockChinQ/LangBot)等优秀开源项目。
+This project also benefits from excellent open source projects such as [PyWxDump](https://github.com/xaoyaoo/PyWxDump), [LLaMA-Factory](https://github.com/hiyouga/LLaMA-Factory), [AstrBot](https://github.com/AstrBotDevs/AstrBot), [LangBot](https://github.com/RockChinQ/LangBot), and others.
 
-## ⚠️ 免责声明
+## ⚠️ Disclaimer
 > [!CAUTION]
-> **本项目仅供学习、研究和实验用途，用于生产环境存在较大风险，请谨慎评估。请勿用于非法用途，后果自负。**
+> **This project is for learning, research and experimental purposes only. There are significant risks in using it for production environments, please assess carefully. Do not use for illegal purposes, consequences are at your own risk.**
 <details>
-<summary>点击查看免责条款</summary>
+<summary>Click to view disclaimer terms</summary>
 
-### 1. 使用风险自担
-- 用户在使用本项目时，应充分理解并承担所有相关风险
-- **本项目作者不对因使用本项目而产生的任何直接或间接损失承担责任**
-- 包括但不限于：数据丢失、经济损失、法律纠纷、个人名誉损害、社会关系影响、心理创伤、职业发展受阻、商业信誉受损等
+### 1. Use at Your Own Risk
+- Users should fully understand and bear all related risks when using this project
+- **The project authors are not responsible for any direct or indirect losses arising from the use of this project**
+- Including but not limited to: data loss, financial loss, legal disputes, personal reputation damage, social relationship impact, psychological trauma, career development obstacles, business reputation damage, etc.
 
-### 2. 生产环境风险警告
-- **用于商业用途或对外提供服务需自行承担全部风险**
-- 生产环境使用可能导致的所有后果（包括但不限于服务中断、数据安全问题、用户投诉、法律责任等）完全由用户承担
-- **建议在生产环境使用前进行充分的测试、验证和风险评估**
+### 2. Production Environment Risk Warning
+- **Use for commercial purposes or providing external services requires bearing all risks yourself**
+- All consequences that may result from production environment use (including but not limited to service interruption, data security issues, user complaints, legal liability, etc.) are entirely borne by the user
+- **It is recommended to conduct thorough testing, verification and risk assessment before using in production environments**
 
-### 3. 模型输出不可靠性
-- 微调后的模型可能产生不准确、有害或误导性的内容
-- 模型输出不代表真实人物的观点或意图
-- 用户应对模型输出进行人工审核和验证
+### 3. Model Output Unreliability
+- Fine-tuned models may produce inaccurate, harmful or misleading content
+- Model outputs do not represent the views or intentions of real persons
+- Users should conduct manual review and verification of model outputs
 
-### 4. 数据安全与隐私
-- 用户应确保上传的聊天记录等数据符合相关法律法规
-- 用户应获得**数据相关人员的适当授权**
-- 本项目不对**数据泄露或隐私侵犯**承担责任
+### 4. Data Security and Privacy
+- Users should ensure that uploaded chat records and other data comply with relevant laws and regulations
+- Users should obtain **appropriate authorization from data-related persons**
+- This project is not responsible for **data leakage or privacy infringement**
 
-### 5. 法律合规
-- **用户应确保使用本项目符合当地法律法规**
-- 涉及人工智能、数据保护、知识产权等相关法律
-- **违法使用造成的后果由用户承担**
+### 5. Legal Compliance
+- **Users should ensure that using this project complies with local laws and regulations**
+- Involving artificial intelligence, data protection, intellectual property and other related laws
+- **Users bear the consequences of illegal use**
 
-### 6. 技术支持限制
-- 本项目按"现状"提供，不提供任何明示或暗示的保证
-- 作者不承诺提供持续的技术支持或维护
-- 不保证项目的稳定性、可靠性或适用性
+### 6. Technical Support Limitations
+- This project is provided "as is" without any express or implied warranties
+- Authors do not promise to provide continuous technical support or maintenance
+- No guarantee of project stability, reliability or applicability
 
-## 使用建议
+## Usage Recommendations
 
-### 强制性Bot身份标识
-**使用本项目生成的数字分身时，强烈建议：**
-- 在每次对话开始时明确标识为"AI Bot"或"数字分身"
-- 在用户界面显著位置标注"此为AI生成内容"
-- 避免让用户误认为是真实人类在对话，从而造成风险
+### Mandatory Bot Identity Identification
+**When using digital avatars generated by this project, it is strongly recommended to:**
+- Clearly identify as "AI Bot" or "Digital Avatar" at the beginning of each conversation
+- Prominently mark "AI-generated content" in the user interface
+- Avoid letting users mistake it for real human conversation, which could cause risks
 
-### 风险评估建议
+### Risk Assessment Recommendations
 
-如确需在生产环境使用，建议：
-1. 进行全面的安全性测试
-2. 建立完善的内容审核机制
-3. 制定应急响应预案
-4. 购买相应的保险保障
-5. 咨询法律专业人士意见
+If you must use in production environments, it is recommended to:
+1. Conduct comprehensive security testing
+2. Establish complete content review mechanisms
+3. Develop emergency response plans
+4. Purchase appropriate insurance coverage
+5. Consult legal professionals for advice
 
 
-本免责声明可能随项目更新而修订，用户应定期查看最新版本。继续使用本项目即表示同意最新的免责声明条款。
+This disclaimer may be revised with project updates, users should regularly check the latest version. Continuing to use this project indicates agreement with the latest disclaimer terms.
 
-**一旦您下载、克隆、修改、分发或以任何方式使用本项目的代码或模型，即表示您已完整阅读、理解并同意无条件接受本免责声明的全部条款。**
+**Once you download, clone, modify, distribute or use the code or models of this project in any way, it indicates that you have fully read, understood and agreed to unconditionally accept all terms of this disclaimer.**
 
 </details>
-**请用户慎重阅读并理解本免责声明的所有内容，确保在使用本项目时严格遵守相关规定。**
+**Please carefully read and understand all contents of this disclaimer, ensuring strict compliance with relevant regulations when using this project.**
 
 <br>  
 <br>  
@@ -318,13 +318,10 @@ pre-commit install
 
 ## ⭐ Star History
 > [!TIP] 
-> 如果本项目对您有帮助，或者您关注本项目的未来发展，请给项目 Star，谢谢 
+> If this project is helpful to you, or if you are interested in the future development of this project, please give the project a Star, thank you 
 
 <div align="center">
 
 [![Star History Chart](https://api.star-history.com/svg?repos=xming521/WeClone&type=Date)](https://www.star-history.com/#xming521/WeClone&Date)
 
 </div>
-
-
-<div align="center"> 克隆我们，保留灵魂的芬芳 </div>

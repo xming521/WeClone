@@ -29,7 +29,7 @@ class OnlineLLM:
             temperature=temperature,
             max_tokens=max_tokens,
             top_p=top_p,
-            # enable_thinking=enable_thinking   适配Qwen3动态开启推理
+            # enable_thinking=enable_thinking   Adapt Qwen3 dynamic reasoning activation
         )
 
         return response

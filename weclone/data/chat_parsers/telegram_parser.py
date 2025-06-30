@@ -14,17 +14,9 @@ from weclone.utils.log import logger
 
 
 class TelegramChatParser:
-    """Telegram聊天记录解析器，将JSON格式转换为符合ChatMessage结构的数据"""
+    """Telegram chat parser that converts JSON format to data conforming to ChatMessage structure"""
 
     def __init__(self, my_user_id: Optional[str] = None):
-        """
-        Constructor.
-
-        Parameters
-        ----------
-        current_user_id : Optional[str]
-            当前用户的from_id，用于判断是否为发送者。如果不提供，会自动分析
-        """
         self.my_user_id = my_user_id
         self.message_counter = 0
 
@@ -32,19 +24,19 @@ class TelegramChatParser:
             "text": "text",
             "photo": "image",
             "video_file": "video",
-            "animation": "video",  # GIF动画也归类为视频
+            "animation": "video",
             "voice_message": "voice",
             "audio_file": "file",
             "sticker": "animated emoji",
             "file": "file",
             "location": "location",
-            "poll": "(share) card link",  # 投票
+            "poll": "(share) card link",
             "contact_information": "(share) card link",
         }
 
     def get_message_type_and_content(self, message: Dict) -> tuple[str, str, str, bool]:
         """
-        根据Telegram消息内容确定type_name、msg内容、src和是否为转发消息
+        Determine type_name, msg content, src and whether it's a forwarded message based on Telegram message content
 
         Returns
         -------
@@ -100,7 +92,6 @@ class TelegramChatParser:
         return type_name, msg_content.strip(), src_path, is_forward
 
     def extract_text_content(self, text_field) -> str:
-        """从text字段提取纯文字内容"""
         content = ""
         if isinstance(text_field, str):
             content = text_field
@@ -114,22 +105,11 @@ class TelegramChatParser:
         return content.replace('\\"', "")
 
     def determine_sender_type(self, from_id: str) -> int:
-        """确定发送者类型：0表示对方，1表示自己"""
         return 1 if from_id == self.my_user_id else 0
 
     def process_message(self, message: Dict) -> List[ChatMessage]:
         """
-        处理单个消息，可能返回多条消息（原始消息+提取的文本消息）
-
-        Parameters
-        ----------
-        message : Dict
-            Telegram消息对象
-
-        Returns
-        -------
-        List[ChatMessage]
-            解析后的ChatMessage对象列表
+        Process a single message, may return multiple messages (original message + extracted text message)
         """
         if message.get("type") != "message":
             return []
@@ -145,20 +125,19 @@ class TelegramChatParser:
             dt = datetime.fromisoformat(date.replace("T", " ").replace("Z", ""))
             create_time = Timestamp(dt)
         except Exception as e:
-            logger.warning(f"时间格式转换失败: {date}, 错误: {e}")
-            create_time = Timestamp.now()
+            logger.warning(f"Time format conversion failed: {date}, error: {e}")
 
         is_sender = self.determine_sender_type(from_id)
         self.message_counter += 1
 
         result_messages = []
-        # 对于有内容的消息或有媒体文件的消息，都要保存
+        # Save messages with content or media files
         if msg_content.strip() or src_path.strip():
             original_msg = ChatMessage(
-                id=self.message_counter,  # 使用全局计数作为顺序ID
-                MsgSvrID=msg_id,  # Telegram消息ID
+                id=self.message_counter,  # Use global counter as sequential ID
+                MsgSvrID=msg_id,  # Telegram message ID
                 type_name=type_name,
-                is_sender=is_sender,  # 0: 对方 1: 自己
+                is_sender=is_sender,  # 0: other party 1: myself
                 talker=sender_name,
                 msg=msg_content.replace("\n", " ").strip() if msg_content.strip() else f"{type_name}",
                 src=src_path,
@@ -167,7 +146,7 @@ class TelegramChatParser:
             )
             result_messages.append(original_msg)
 
-        # 如果是非纯文本消息但包含text字段，创建额外的文本消息
+        # If it's a non-pure text message but contains text field, create additional text message
         if type_name not in ["text"] and "text" in message:
             text_content = self.extract_text_content(message["text"])
             if text_content.strip():
@@ -189,19 +168,19 @@ class TelegramChatParser:
 
     def process_chat(self, jdata: Dict) -> List[ChatMessage]:
         """
-        处理聊天数据
+        Process chat data
 
         Parameters
         ----------
         jdata : Dict
-            Telegram聊天JSON对象
+            Telegram chat JSON object
 
         Returns
         -------
         List[ChatMessage]
-            ChatMessage对象列表
+            List of ChatMessage objects
         """
-        chat_name = jdata.get("name", "未知聊天")
+        chat_name = jdata.get("name", "Unknown Chat")
         messages = jdata.get("messages", [])
 
         chat_messages = []
@@ -212,39 +191,37 @@ class TelegramChatParser:
         for msg in chat_messages:
             msg.room_name = chat_name
 
-        logger.info(f"聊天 '{chat_name}' 解析完成，共{len(chat_messages)}条消息")
+        logger.info(f"Chat '{chat_name}' parsing completed, {len(chat_messages)} messages in total")
         return chat_messages
 
     def to_csv(self, chat_messages: List[ChatMessage], output_file: str):
         """
-        保存ChatMessage列表到CSV文件
+        Save ChatMessage list to CSV file
 
         Parameters
         ----------
         chat_messages : List[ChatMessage]
-            ChatMessage对象列表
+            List of ChatMessage objects
         output_file : str
-            输出CSV文件路径
+            Output CSV file path
         """
         if not chat_messages:
-            logger.warning("没有消息需要保存")
+            logger.warning("No messages to save")
             return
 
-        # 定义CSV列名
         fieldnames = [
-            "id",  # 顺序id
-            "MsgSvrID",  # 消息服务器ID
-            "type_name",  # 消息类型名称
-            "is_sender",  # 0: 对方 1: 自己
-            "talker",  # 发言人
-            "room_name",  # 聊天室名称
-            "msg",  # 消息内容
-            "src",  # 消息来源/媒体文件路径
-            "CreateTime",  # 创建时间
-            "is_forward",  # 是否为转发消息
+            "id",
+            "MsgSvrID",
+            "type_name",
+            "is_sender",
+            "talker",
+            "room_name",
+            "msg",
+            "src",
+            "CreateTime",
+            "is_forward",
         ]
 
-        # 确保输出目录存在
         os.makedirs(os.path.dirname(output_file), exist_ok=True)
 
         with open(output_file, "w", encoding="utf-8", newline="") as csvfile:
@@ -267,22 +244,13 @@ class TelegramChatParser:
                     }
                 )
 
-        logger.info(f"CSV文件已保存: {output_file}")
+        logger.info(f"CSV file saved: {output_file}")
 
     def copy_received_images(
         self, chat_messages: List[ChatMessage], base_path: str = "", target_dir: str = "dataset/media/images"
     ):
         """
-        复制所有is_sender为0的图片到指定目录
-
-        Parameters
-        ----------
-        chat_messages : List[ChatMessage]
-            ChatMessage对象列表
-        base_path : str
-            图片文件的基础路径前缀
-        target_dir : str
-            目标目录，默认为dataset/media/images
+        Copy all images with is_sender=0 to specified directory
         """
         os.makedirs(target_dir, exist_ok=True)
 
@@ -298,7 +266,7 @@ class TelegramChatParser:
 
                 normalized_src = full_src_path.replace("\\", "/")
                 if not os.path.exists(normalized_src):
-                    logger.warning(f"源文件不存在: {normalized_src}")
+                    logger.warning(f"Source file does not exist: {normalized_src}")
                     skipped_count += 1
                     continue
 
@@ -309,28 +277,28 @@ class TelegramChatParser:
                 shutil.copy2(normalized_src, target_path)
                 copied_count += 1
 
-        logger.info(f"图片复制完成: 成功 {copied_count}, 跳过 {skipped_count}")
+        logger.info(f"Image copying completed: successful {copied_count}, skipped {skipped_count}")
 
 
 def process_telegram_dataset(config: WCMakeDatasetConfig) -> None:
     """
-    处理Telegram数据集，遍历dataset/telegram下的所有文件夹
-    为每个telegram文件夹在dataset/csv下创建对应的文件夹
+    Process Telegram dataset, traverse all folders under dataset/telegram
+    Create corresponding folders for each telegram folder under dataset/csv
 
     Parameters
     ----------
     config : WCMakeDatasetConfig
-        数据集配置，包含telegram_args.my_id用于判断发送者
+        Dataset configuration, contains telegram_args.my_id for determining sender
     """
     telegram_dir = "dataset/telegram"
     csv_output_dir = "dataset/csv"
 
     if not os.path.exists(telegram_dir):
-        logger.error(f"Telegram数据目录不存在: {telegram_dir}")
+        logger.error(f"Telegram data directory does not exist: {telegram_dir}")
         return
 
     if not config.telegram_args or not config.telegram_args.my_id:
-        logger.error("Telegram配置缺失，无法处理Telegram数据集")
+        logger.error("Telegram configuration missing, cannot process Telegram dataset")
         sys.exit(1)
 
     if os.path.exists(csv_output_dir):
@@ -349,9 +317,6 @@ def process_telegram_dataset(config: WCMakeDatasetConfig) -> None:
             continue
 
         json_path = os.path.join(folder_path, "result.json")
-        if not os.path.exists(json_path):
-            logger.warning(f"文件夹 {folder_name} 中未找到result.json文件")
-            continue
 
         with open(json_path, "r", encoding="utf-8") as file:
             jdata = json.load(file)
@@ -375,4 +340,4 @@ def process_telegram_dataset(config: WCMakeDatasetConfig) -> None:
             parser.to_csv(messages, csv_file_path)
             parser.copy_received_images(messages, folder_path)
         else:
-            logger.warning(f"文件夹 '{folder_name}' 没有有效消息")
+            logger.warning(f"Folder '{folder_name}' has no valid messages")
