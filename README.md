@@ -240,6 +240,8 @@ pre-commit install
 ```
 
 The project uses `pytest` for testing, `pyright` for type checking, and `ruff` for code formatting.
+Before submitting your code, you should run `pytest tests` to ensure all tests pass.
+
 
 ## 🙏 Acknowledgments
 

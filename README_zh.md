@@ -243,7 +243,8 @@ uv pip install --group dev -e .
 pre-commit install
 ```
 
-项目使用`pytest`测试，`pyright`检查类型，`ruff`检查代码格式。
+项目使用`pytest`测试，`pyright`检查类型，`ruff`检查代码格式。  
+提交代码前你应该先运行`pytest tests`确保所有测试通过。
 
 ## 🙏 致谢
 
