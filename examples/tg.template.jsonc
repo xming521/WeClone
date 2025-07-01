@@ -5,7 +5,6 @@
         "adapter_name_or_path": "./model_output", // Also serves as the output_dir for train_sft_args
         "template": "qwen2_vl",
         "default_system": "Please act like a human and don't say you are an artificial intelligence",
-        "language": "en", // Common chat language: zh(中文), en(English)
         "finetuning_type": "lora",
         "media_dir": "dataset/media",
         "image_max_pixels": 409920, //720P
@@ -18,6 +17,7 @@
     "make_dataset_args": {
         // Data processing configuration
         "platform": "telegram", //wechat,telegram
+        "language": "en", // Common chat language: zh(中文), en(English)
         "telegram_args": {
             "my_id": "user1234567890"
         },
@@ -66,7 +66,7 @@
         "use_fast_tokenizer": true,
         "lora_target": "q_proj,v_proj,visual.merger.mlp.0,visual.merger.mlp.2",
         "lora_rank": 4,
-        "lora_dropout": 0.25,
+        "lora_dropout": 0.2,
         "weight_decay": 0.1,
         "overwrite_cache": true,
         "per_device_train_batch_size": 4,
@@ -87,9 +87,9 @@
     },
     "infer_args": {
         "repetition_penalty": 1.2,
-        "temperature": 0.65,
+        "temperature": 0.7,
         "max_length": 512,
-        "top_p": 0.75
+        "top_p": 0.8
     },
     "vllm_args": {
         "gpu_memory_utilization": 0.9

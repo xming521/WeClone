@@ -177,6 +177,8 @@ def show_community_info():
     content.append("   • 小红书: ", style="bold cyan")
     content.append("🔍 搜索WeClone\n\n", style="bright_blue")
     content.append("📚 Official resources\n", style="bold red")
+    content.append("   • Repository: ", style="bold cyan")
+    content.append("https://github.com/xming521/WeClone\n", style="bright_blue")
     content.append("   • Homepage: ", style="bold cyan")
     content.append("https://www.weclone.love/\n", style="bright_blue")
     content.append("   • Document: ", style="bold cyan")
