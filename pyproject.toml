@@ -22,13 +22,11 @@ dependencies = [
 ]
 
 [tool.weclone]
-# 配置文件的版本号，当配置文件结构或重要默认值发生变化时，应增加此版本号
+# Configuration file version number. This number should be incremented when the configuration file structure or important default values change.
 config_version = "0.3.0"
 
-# 配置文件更新日志
 config_changelog = """
-[0.2.21] - 2025-05-01 - 增加在线llm清洗数据配置，兼容openai风格接口。
-[0.2.22] - 2025-06-05 - 支持图片模态聊天记录微调。
+[0.2.22] - 2025-06-05 - Support image modality chat history fine-tuning
 [0.2.24] - 2025-06-19 - add test_model_args and vllm_args.
 [0.3.00] - 2025-06-30 - Support TG chat logs, add language parameter, add log level parameter.
 """
@@ -91,9 +89,9 @@ url = "https://download.pytorch.org/whl/cu126"
 explicit = true
 
 [tool.setuptools.packages.find]
-where = ["."]                      # 表示在项目根目录开始查找
-include = ["weclone*"]             # 只包含名为 weclone 的目录及其子包
-exclude = ["*tests*", "*archive*"] # 可以选择性排除其他模式，比如测试目录
+where = ["."]                      
+include = ["weclone*"]             
+exclude = ["*tests*", "*archive*"]
 
 
 [tool.pyright]

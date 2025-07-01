@@ -9,7 +9,7 @@ from loguru import logger
 logger.remove()
 
 env_log_level = os.getenv("WC_LOG_LEVEL")
-# 初始化基本日志配置，稍后会被 configure_log_level_from_config 重新配置
+# Initialize basic log configuration, will be reconfigured later by configure_log_level_from_config
 logger.add(
     sys.stderr,
     format="<green><b>[WeClone]</b></green> <level>{level.name[0]}</level> | <level>{time:HH:mm:ss}</level> | <level>{message}</level>",
@@ -23,7 +23,7 @@ class InterceptHandler(logging.Handler):
         super().__init__(level)
 
     def emit(self, record):
-        # 检查日志级别，只处理指定级别及以上的日志
+        # Check log level, only handle logs at specified level and above
         if record.levelno < self.level:
             return
 
@@ -34,7 +34,7 @@ class InterceptHandler(logging.Handler):
         print(message, file=sys.stderr)
 
 
-# 桥接标准logging到loguru
+# Bridge standard logging to loguru
 intercept_handler = InterceptHandler(level=logging.INFO)
 logging.basicConfig(handlers=[intercept_handler], level=0, force=True)
 
@@ -109,10 +109,10 @@ def capture_output(func):
 
 def configure_log_level_from_config():
     """
-    从配置文件中读取日志等级并设置完整的日志配置
-    需要在配置加载后调用
+    Read log level from config file and set complete log configuration
+    Should be called after config is loaded
     """
-    log_level = "INFO"  # 默认值
+    log_level = "INFO"  # default value
 
     try:
         from weclone.utils.config import load_config
@@ -120,7 +120,7 @@ def configure_log_level_from_config():
         cli_config = load_config(arg_type="cli_args")
         log_level = getattr(cli_config, "log_level", "INFO")
     except Exception as e:
-        logger.warning(f"无法从配置加载日志等级，使用默认INFO级别: {e}")
+        logger.warning(f"Unable to load log level from config, using default INFO level: {e}")
 
     logger.remove()
 
@@ -136,7 +136,7 @@ def configure_log_level_from_config():
         rotation="1 day",
         retention="7 days",
         compression="zip",
-        level="DEBUG",  # 文件日志始终保持DEBUG级别，便于调试
+        level="DEBUG",
         format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | {name}:{function}:{line} - {message}",
         encoding="utf-8",
         enqueue=True,
@@ -144,4 +144,4 @@ def configure_log_level_from_config():
 
     intercept_handler.setLevel(log_level.upper())
 
-    logger.info(f"日志等级已设置为: {log_level.upper()}")
+    logger.info(f"Log level has been set to: {log_level.upper()}")

@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from enum import Enum
 from typing import Optional
 
 from pandas import Timestamp
@@ -11,17 +10,17 @@ from weclone.utils.i18n import MultiLangList
 
 @dataclass
 class ChatMessage:
-    id: int  # 顺序id
-    MsgSvrID: str  # 消息平台原始id
-    type_name: str  # 消息类型 参考cut_type_data和skip_type_data
-    is_sender: int  # 0: 对方 1: 自己
-    talker: str  # 消息发送者
-    msg: str  # 消息内容
-    src: str  # 媒体文件路径、额外信息字段
-    CreateTime: Timestamp  # 消息发送时间
-    room_name: Optional[str] = None  # 聊天室名称
-    is_forward: bool = False  # 是否是转发消息
-    modality: Optional[DataModality] = None  # 消息模态  set in qa_generator.py
+    id: int  # sequential id
+    MsgSvrID: str  # original message id from platform
+    type_name: str  # message type, refer to cut_type_data and skip_type_data
+    is_sender: int  # 0: other party, 1: self
+    talker: str  # message sender
+    msg: str  # message content
+    src: str  # media file path, additional info field
+    CreateTime: Timestamp  # message send time
+    room_name: Optional[str] = None  # chat room name
+    is_forward: bool = False  # whether it's a forwarded message
+    modality: Optional[DataModality] = None  # message modality, set in qa_generator.py
 
 
 @dataclass
@@ -29,11 +28,6 @@ class CutMessage:
     is_sender: int
     cut_type: str
     CreateTime: Timestamp
-
-
-class QaPairFormat(Enum):
-    ALPACA = "alpaca"
-    SHAREGPT = "sharegpt"
 
 
 @dataclass
@@ -44,16 +38,12 @@ class Message:
 
 @dataclass
 class QaPair:
-    """支持sharegpt格式的QA对类"""
-
     id: int
     time: Timestamp
     score: int
     messages: list[Message]
     images: list[str]
     system: str
-    format_type: QaPairFormat = QaPairFormat.SHAREGPT
-    # data: Union[AlpacaQaPair, ShareGPTQaPair]
 
 
 class QaPairScore(BaseModel):
@@ -151,5 +141,4 @@ skip_type_data = {
 
 skip_type_list = MultiLangList(skip_type_data, default_lang="en")
 
-# 没处理的类型
 unprocessed_type_list = []

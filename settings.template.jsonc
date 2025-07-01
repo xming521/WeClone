@@ -50,7 +50,7 @@
         "vision_api": {
             "enable": false, // 设置为 true 来开启此功能
             "api_key": "xxx",
-            "api_url": "https://xxx/v1", // 例如阿里云，或替换为其他兼容OpenAI的API地址
+            "api_url": "https://xxx/v1", // 兼容OpenAI的API地址
             "model_name": "xxx", // 要使用的多模态模型名称,例如qwen-vl-max
             "max_workers": 5 // 并行调用API的线程数，最多不要超过8
         }
@@ -89,7 +89,7 @@
     "vllm_args": {
         "gpu_memory_utilization": 0.9,
         // "data_parallel_size": 2,
-        // "quantization": "bitsandbytes", // 是否启用vllm的 bitsandbytes 的量化加载
+        // "quantization": "bitsandbytes", 
         // "load_format": "bitsandbytes"
     },
     "test_model_args": {

@@ -122,7 +122,7 @@ Please use [Telegram Desktop](https://desktop.telegram.org/) to export chat reco
 ```bash
 weclone-cli make-dataset
 ```
-- Currently supports time window strategy. Messages from a single person are combined into one sentence by commas based on `single_combine_time_window`, and Q&A pairs are matched based on `qa_match_time_window`.
+- Currently supports time window strategy. Messages from a single person are combined into one sentence by symbols based on `single_combine_time_window`, and Q&A pairs are matched based on `qa_match_time_window`.
 - For **training multimodal large models**: Enable by adding `images` to `include_type`, and control image quantity and size through `image_max_pixels` and `max_image_num` parameters to reduce VRAM usage.
 - For **Image to Text**: Add `images` to `include_type` and configure `vision_api` parameters. The system will use external multimodal models to convert images to text, and the final generated dataset **is still used for training text-only LLM**.
 - You can enable the `enable_clean` option in `clean_dataset` to clean the data for better results (multimodal data is not currently supported). The current system supports using `llm judge` to score chat records, providing **vllm offline inference** and **API online inference** methods. By default, offline inference is enabled. To switch to API-based online inference mode, modify `"online_llm_clear": false` to `true` in the `settings.jsonc` file, and configure relevant parameters such as `base_url`, `llm_api_key`, and `model_name`. All models compatible with OpenAI interface can be accessed.

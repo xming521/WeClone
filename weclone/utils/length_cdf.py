@@ -28,17 +28,17 @@ def calculate_token_length(
     model_name_or_path: str = "./models/Qwen3-32B-AWQ",
     template: str = "qwen3",
 ) -> int:
-    """计算指定文本的token长度
+    """Calculate the token length of the specified text
 
     Args:
-        text: 要计算token长度的文本
-        model_name_or_path: 模型路径
-        template: 模板名称
+        text: Text to calculate token length for
+        model_name_or_path: Model path
+        template: Template name
 
     Returns:
-        文本的token长度
+        Token length of the text
     """
-    logger.info(f"正在计算文本token长度: {text[:50]}...")
+    logger.info(f"Calculating text token length: {text[:50]}...")
 
     model_args, data_args, _, _, _ = get_train_args(
         {
@@ -54,11 +54,11 @@ def calculate_token_length(
     tokenizer_module = load_tokenizer(model_args)
     tokenizer = tokenizer_module["tokenizer"]
 
-    # 直接使用tokenizer编码文本
+    # Directly use tokenizer to encode text
     tokens = tokenizer.encode(text, add_special_tokens=False)
     token_length = len(tokens)
 
-    logger.info(f"文本token长度: {token_length}")
+    logger.info(f"Text token length: {token_length}")
     return token_length
 
 
@@ -76,7 +76,7 @@ def length_cdf(
     Usage: export CUDA_VISIBLE_DEVICES=0
     python length_cdf.py --model_name_or_path path_to_model --dataset alpaca_en_demo --template default
     """
-    logger.info("开始计算cutoff_len......")
+    logger.info("Starting cutoff_len calculation......")
 
     model_args, data_args, training_args, _, _ = get_train_args(
         {
@@ -95,8 +95,8 @@ def length_cdf(
         }
     )
     tokenizer_module = load_tokenizer(model_args)
-    template = get_template_and_fix_tokenizer(tokenizer_module["tokenizer"], data_args)  # type: ignore
-    trainset = get_dataset(template, model_args, data_args, training_args, "sft", **tokenizer_module)[
+    template_obj = get_template_and_fix_tokenizer(tokenizer_module["tokenizer"], data_args)  # type: ignore
+    trainset = get_dataset(template_obj, model_args, data_args, training_args, "sft", **tokenizer_module)[
         "train_dataset"
     ]  # type: ignore
     total_num = len(trainset)  # type: ignore
@@ -107,8 +107,8 @@ def length_cdf(
     length_tuples = list(length_dict.items())
     length_tuples.sort()
     count_accu, prob_accu = 0, 0
-    logger.info(" cutoff_len设置建议：")
-    logger.warning("多模态任务请务必配置cutoff_len为数据最大长度")
+    logger.info(" cutoff_len configuration suggestions:")
+    logger.warning("For multimodal tasks, please ensure cutoff_len is set to the maximum data length")
     for length, count in length_tuples:
         count_accu += count
         prob_accu += count / total_num * 100

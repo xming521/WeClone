@@ -128,7 +128,7 @@ python weclone/data/chat_parsers/wechat_parser.py --wechat-data-dir "微信个�
 ```bash
 weclone-cli make-dataset
 ```
-- 目前支持时间窗口策略，根据`single_combine_time_window`将单人连续消息通过逗号连接合并为一句，根据`qa_match_time_window`匹配问答对。
+- 目前支持时间窗口策略，根据`single_combine_time_window`将单人连续消息通过符号连接合并为一句，根据`qa_match_time_window`匹配问答对。
 - **训练多模态大模型**:在`include_type`中添加`images`启用，并通过`image_max_pixels`和`max_image_num`参数控制图片数量和大小，以减少显存占用。
 - **Image to Text**:在`include_type`中添加`images`并配置 `vision_api` 参数，将使用外部多模态模型将图片转为文本，最终生成的数据集**仍用于训练纯文本语言模型**。
 - 可以启用`clean_dataset`中的`enable_clean`选项，对数据进行清洗，以达到更好效果（多模态数据暂不支持）。* 当前支持使用 `llm judge` 对聊天记录进行打分，提供 **vllm 离线推理** 和 **API 在线推理** 两种方式。默认离线推理，可通过将 `settings.jsonc` 文件中的 `"online_llm_clear": false` 修改为 `true` 来启用 API 在线推理模式，并配置相应的 `base_url`、`llm_api_key`、`model_name` 等参数。所有兼容 OpenAI 接口的模型均可接入。

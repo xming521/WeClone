@@ -2,10 +2,10 @@
     "version": "0.3.0",
     "common_args": {
         "model_name_or_path": "./models/Qwen2.5-VL-7B-Instruct",
-        "adapter_name_or_path": "./model_output", //同时做为train_sft_args的output_dir
+        "adapter_name_or_path": "./model_output", // Also serves as the output_dir for train_sft_args
         "template": "qwen2_vl",
-        "default_system": "请你扮演一名人类，不要说自己是人工智能",
-        "language": "en", // 聊天常用语言: zh(中文), en(英文)
+        "default_system": "Please act like a human and don't say you are an artificial intelligence",
+        "language": "en", // Common chat language: zh(中文), en(English)
         "finetuning_type": "lora",
         "media_dir": "dataset/media",
         "image_max_pixels": 409920, //720P
@@ -16,7 +16,7 @@
         "full_log": false
     },
     "make_dataset_args": {
-        //数据处理配置
+        // Data processing configuration
         "platform": "telegram", //wechat,telegram
         "telegram_args": {
             "my_id": "user1234567890"
@@ -25,44 +25,44 @@
             "text",
             "image"
         ],
-        "max_image_num": 2, // 单条数据最大图片数量
-        "blocked_words": [ // 禁用词
+        "max_image_num": 2, // Maximum number of images per data entry
+        "blocked_words": [ // Blocked words
             "e.g. Name",
             "e.g. Password",
             "//....."
         ],
-        "single_combine_strategy": "time_window", // 单人组成单句策略
-        "qa_match_strategy": "time_window", // 组成qa策略
-        "single_combine_time_window": 2, // 单人组成单句时间窗口（分钟）,
-        "qa_match_time_window": 5, // 组成qa时间窗口（分钟）,
-        "combine_msg_max_length": 2048, // 组合后消息最大长度 
-        "messages_max_length": 2048, // messages最长字符数量 配合cutoff_len 使用
+        "single_combine_strategy": "time_window", // Single person message combination strategy
+        "qa_match_strategy": "time_window", // QA combination strategy
+        "single_combine_time_window": 2, // Time window for single person message combination (minutes)
+        "qa_match_time_window": 5, // Time window for QA combination (minutes)
+        "combine_msg_max_length": 2048, // Maximum length of combined messages
+        "messages_max_length": 2048, // Maximum character count for messages, used with cutoff_len
         "clean_dataset": {
             "enable_clean": false,
             "clean_strategy": "llm",
             "llm": {
-                "accept_score": 2, //可以接受的llm打分阈值,1分最差，5分最好,低于此分数的数据不会用于训练
+                "accept_score": 2, // Acceptable LLM score threshold, 1 is worst, 5 is best, data below this score will not be used for training
             }
         },
         "online_llm_clear": false,
         "base_url": "https://xxx/v1",
         "llm_api_key": "xxxxx",
-        "model_name": "xxx", //建议使用参数较大的模型，例如DeepSeek-V3
+        "model_name": "xxx", // Recommend using models with larger parameters, e.g. DeepSeek-V3
         "clean_batch_size": 10,
         "vision_api": {
-            "enable": false, // 设置为 true 来开启此功能
+            "enable": false, // Set to true to enable this feature
             "api_key": "xxx",
-            "api_url": "https://xxx/v1", // 例如阿里云，或替换为其他兼容OpenAI的API地址
-            "model_name": "xxx", // 要使用的多模态模型名称,例如qwen-vl-max
-            "max_workers": 5 // 并行调用API的线程数，最多不要超过8
+            "api_url": "https://xxx/v1", // e.g. Alibaba Cloud, or replace with other OpenAI-compatible API addresses
+            "model_name": "xxx", // Multimodal model name to use, e.g. qwen-vl-max
+            "max_workers": 5 // Number of parallel API call threads, maximum should not exceed 8
         }
     },
     "train_sft_args": {
-        //微调配置
+        // Fine-tuning configuration
         "stage": "sft",
         "dataset": "chat-sft",
         "dataset_dir": "./dataset/res_csv/sft",
-        "freeze_multi_modal_projector": false, //MLLM 训练时是否冻结多模态投影器。
+        "freeze_multi_modal_projector": false, // Whether to freeze the multimodal projector during MLLM training
         "use_fast_tokenizer": true,
         "lora_target": "q_proj,v_proj,visual.merger.mlp.0,visual.merger.mlp.2",
         "lora_rank": 4,
@@ -83,7 +83,7 @@
         "flash_attn": "fa2",
         "preprocessing_num_workers": 16,
         "dataloader_num_workers": 4
-        // "deepspeed": "ds_config.json" //多卡训练
+        // "deepspeed": "ds_config.json" // Multi-GPU training
     },
     "infer_args": {
         "repetition_penalty": 1.2,

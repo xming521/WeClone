@@ -1,23 +1,19 @@
 import base64
+import concurrent.futures
 import os
 import time
 from pathlib import Path
 
 import requests
 
+from weclone.utils.config_models import WCMakeDatasetConfig
 from weclone.utils.log import logger
 
 
 def check_image_file_exists(file_path: str) -> str | bool:
-    """
-    检查传入的文件路径，提取文件名（去掉前缀和扩展名），
-    然后检查 dataset/images 目录下是否存在对应的文件（不论扩展名）
-    """
     try:
-        # 直接使用 os.path.normpath 处理路径，然后转换为正斜杠
         normalized_path = os.path.normpath(file_path).replace("\\", "/")
 
-        # 提取文件名
         filename_with_ext = os.path.basename(normalized_path)
         filename_without_ext = Path(filename_with_ext).stem
 
@@ -41,10 +37,11 @@ def check_image_file_exists(file_path: str) -> str | bool:
 class ImageToTextProcessor:
     """通过兼容OpenAI API的多模态LLM将图片转换为文本。"""
 
-    def __init__(self, api_url: str, api_key: str, model_name: str):
+    def __init__(self, api_url: str, api_key: str, model_name: str, config: WCMakeDatasetConfig):
         self.api_url = api_url.rstrip("/")
         self.api_key = api_key
         self.model_name = model_name
+        self.config = config
         self.prompt = """
         请描述这张图片的内容，重点关注：
         1. 如果是截图，描述界面内容和操作
@@ -53,6 +50,55 @@ class ImageToTextProcessor:
         4. 如果是生活照片，简要描述场景和内容。
         请用简洁明了的语言描述，不超过100字。"""
 
+    def _process_images_in_parallel(self, qa_list):
+        """并行处理所有对话中的图片，并将描述替换回对话文本。"""
+        all_image_paths = []
+        media_dir = self.config.media_dir
+
+        # 遍历所有对话，收集并构造完整的图片路径
+        for qa_pair in qa_list:
+            if qa_pair.images:
+                image_list = qa_pair.images if isinstance(qa_pair.images, list) else [qa_pair.images]
+                for relative_path in image_list:
+                    full_path = os.path.join(media_dir, relative_path)
+                    all_image_paths.append(full_path)
+
+        if not all_image_paths:
+            logger.info("未在对话中找到任何图片，跳过识别。")
+            return qa_list
+
+        logger.info(f"共找到 {len(all_image_paths)} 张有效图片需要识别。")
+        max_workers = self.config.vision_api.max_workers
+
+        # 使用线程池并行调用API，executor.map 会保持结果顺序与输入一致
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # 现在传递给 image_processor 的是完整的路径
+            image_descriptions = list(executor.map(self.describe_image, all_image_paths))
+
+        desc_iterator = iter(image_descriptions)
+        for qa_pair in qa_list:
+            if not qa_pair.images:
+                continue
+
+            for message in qa_pair.messages:
+                # 替换消息内容中的 <image> 占位符
+                num_images_in_message = message.content.count("<image>")
+                for _ in range(num_images_in_message):
+                    try:
+                        description = next(desc_iterator)
+                        # 使用 count=1 确保每次只替换一个占位符，并添加换行符以增强可读性
+                        message.content = message.content.replace(
+                            "<image>", f"\n[图片描述: {description}]\n", 1
+                        )
+                    except StopIteration:
+                        logger.error("图片数量与描述数量不匹配，可能存在逻辑错误。")
+                        message.content = message.content.replace("<image>", "\n[图片描述缺失]\n", 1)
+
+            # 清空图片列表，因为它们已被转换为文本
+            qa_pair.images.clear()
+
+        return qa_list
+
     def _encode_image_to_base64(self, image_path: str) -> str:
         """将图片编码为base64"""
         try:
@@ -60,7 +106,7 @@ class ImageToTextProcessor:
                 return base64.b64encode(image_file.read()).decode("utf-8")
         except Exception as e:
             logger.error(f"编码图片失败 {image_path}: {e}")
-            return None
+            return ""
 
     def _get_image_format(self, image_path: str) -> str:
         """获取图片格式"""

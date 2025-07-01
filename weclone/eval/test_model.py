@@ -20,7 +20,6 @@ completion_config = {
 
 completion_config = type("Config", (object,), completion_config)()
 
-# 初始化 OpenAI 客户端
 client = OpenAI(api_key="""sk-test""", base_url="http://127.0.0.1:8005/v1")
 
 
@@ -31,17 +30,15 @@ def handler_text(content: str, history: list, config):
     messages.append({"role": "user", "content": content})
     history.append({"role": "user", "content": content})
     try:
-        # 使用新的 API 调用方式
-        # 将 messages 转换为正确的类型
         typed_messages = cast(List[ChatCompletionMessageParam], messages)
         response = client.chat.completions.create(
             model=config.model,
-            messages=typed_messages,  # 传递转换后的列表
+            messages=typed_messages,
             max_tokens=50,
         )
     except openai.APIError as e:
         history.pop()
-        return "AI接口出错,请重试\n" + str(e)
+        return "AI interface error, please try again\n" + str(e)
 
     resp = str(response.choices[0].message.content)  # type: ignore
     resp = resp.replace("\n ", "")

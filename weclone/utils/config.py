@@ -17,7 +17,7 @@ from .tools import dict_to_argv
 
 
 def load_base_config() -> WcConfig:
-    """加载基础配置文件并创建WcConfig对象"""
+    """Load base configuration file and create WcConfig object"""
     config_path = os.environ.get("WECLONE_CONFIG_PATH", "./settings.jsonc")
     logger.info(f"Loading configuration from: {config_path}")
 
@@ -31,7 +31,7 @@ def load_base_config() -> WcConfig:
         logger.error(f"Error loading configuration file {config_path}: {e}")
         sys.exit(1)
 
-    # 使用 OmegaConf 解析配置，然后转换为 Pydantic 模型验证
+    # Use OmegaConf to parse configuration, then convert to Pydantic model for validation
     try:
         omega_config = OmegaConf.create(s_config_dict)
         config_dict_for_validation = OmegaConf.to_container(omega_config, resolve=True)
@@ -48,7 +48,7 @@ def load_base_config() -> WcConfig:
 
 
 def create_config_by_arg_type(arg_type: str, wc_config: WcConfig) -> BaseModel:
-    """根据参数类型创建对应的配置对象,添加可能用到的参数,添加的参数会在model_validator中删除"""
+    """Create corresponding configuration object based on argument type, merge common_config"""
     if arg_type == "cli_args":
         return wc_config.cli_args
 
@@ -70,7 +70,7 @@ def create_config_by_arg_type(arg_type: str, wc_config: WcConfig) -> BaseModel:
 
     elif arg_type == "make_dataset":
         make_dataset_config = wc_config.make_dataset_args.model_dump()
-        # TODO 下面三个参数放到common里？
+        # TODO: Should the following three parameters be moved to common?
         train_sft_args = wc_config.train_sft_args
         extra_values = {
             "dataset": train_sft_args.dataset,
@@ -81,25 +81,23 @@ def create_config_by_arg_type(arg_type: str, wc_config: WcConfig) -> BaseModel:
         return WCMakeDatasetConfig(**config_dict)
 
     else:
-        raise ValueError("暂不支持的参数类型")
+        raise ValueError("Unsupported argument type")
 
 
 def process_config_dict_and_argv(arg_type: str, config_pydantic: BaseModel) -> None:
-    """处理配置字典并更新sys.argv"""
+    """Process configuration dictionary and update sys.argv"""
     config_dict = config_pydantic.model_dump(mode="json")
 
     sys.argv += dict_to_argv(config_dict)
 
 
 def load_config(arg_type: str) -> BaseModel:
-    """加载配置的主函数"""
-    # 加载基础配置
+    """Main function for loading configuration"""
+    # Load base configuration
     wc_config = load_base_config()
 
-    # 根据类型创建配置对象
     config_pydantic = create_config_by_arg_type(arg_type, wc_config)
 
-    # 处理配置字典和命令行参数
     process_config_dict_and_argv(arg_type, config_pydantic)
 
     return config_pydantic
