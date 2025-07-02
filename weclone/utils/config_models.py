@@ -1,6 +1,7 @@
 from enum import Enum
 from typing import TYPE_CHECKING, List, Optional
 
+from loguru import logger
 from pydantic import BaseModel, Field, model_validator
 
 if TYPE_CHECKING:
@@ -120,7 +121,7 @@ class VisionApiConfig(BaseConfigModel):
 
 class TelegramArgs(BaseModel):
     model_config = {"extra": "forbid"}
-    my_id: str = Field(default=..., description="Your own telegram id")
+    my_id: str = Field(default="user1234567890", description="Your own telegram id")
 
 
 class MakeDatasetArgs(BaseConfigModel):
@@ -264,4 +265,13 @@ class WCMakeDatasetConfig(CommonArgs, MakeDatasetArgs):
     def process_config(self):
         if self.dataset == "wechat-sft":
             self.dataset = "chat-sft"
+
+        # Validate Telegram configuration
+        if self.platform == PlatformType.TELEGRAM:
+            if self.telegram_args is None or self.telegram_args.my_id == "user1234567890":
+                logger.error(
+                    "When using the Telegram platform, please set a valid `telegram_args.my_id`. The `from_id` in `result.json` for the messages you send represents your user ID."
+                )
+                exit(1)
+
         return self

@@ -123,12 +123,7 @@ Please use [Telegram Desktop](https://desktop.telegram.org/) to export chat reco
 ```bash
 weclone-cli make-dataset
 ```
-- Currently supports time window strategy. Messages from a single person are combined into one sentence by symbols based on `single_combine_time_window`, and Q&A pairs are matched based on `qa_match_time_window`.
-- For **training multimodal large models**: Enable by adding `images` to `include_type`, and control image quantity and size through `image_max_pixels` and `max_image_num` parameters to reduce VRAM usage.
-- For **Image to Text**: Add `images` to `include_type` and configure `vision_api` parameters. The system will use external multimodal models to convert images to text, and the final generated dataset **is still used for training text-only LLM**.
-- You can enable the `enable_clean` option in `clean_dataset` to clean the data for better results (multimodal data is not currently supported). The current system supports using `llm judge` to score chat records, providing **vllm offline inference** and **API online inference** methods. By default, offline inference is enabled. To switch to API-based online inference mode, modify `"online_llm_clear": false` to `true` in the `settings.jsonc` file, and configure relevant parameters such as `base_url`, `llm_api_key`, and `model_name`. All models compatible with OpenAI interface can be accessed.
-- After obtaining the `llm scoring score distribution`, you can filter acceptable data by setting the `accept_score` parameter, and appropriately reduce the `lora_dropout` parameter in `train_sft_args` to improve the model's fitting effect.
-更多参数请查看文档[配置参数](https://docs.weclone.love/config/config.html)
+More Parameter Details: [Data Preprocessing](http://localhost:5173/deploy/data_preprocessing.html#%E7%9B%B8%E5%85%B3%E5%8F%82%E6%95%B0)需要英文版
 
 ## Configure Parameters and Fine-tune Model
 
@@ -213,7 +208,6 @@ Usage steps:
 
 
 
-
 ## 📌 Roadmap
 - [ ] Support more data sources
 - [ ] Richer context: including contextual conversations, chat participant information, time, etc.
@@ -226,7 +220,6 @@ Usage steps:
 ## Troubleshooting
 #### [Official Documentation FAQ](https://www.weclone.love/FAQ.html)    
 It is also recommended to use [DeepWiki](https://deepwiki.com/xming521/WeClone) for problem solving.
-
 
 
 ## ❤️ Contributing
