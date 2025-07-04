@@ -10,7 +10,7 @@ from langchain_core.prompts import PromptTemplate
 from tqdm import tqdm
 
 from weclone.core.inference.online_infer import OnlineLLM
-from weclone.data.models import QaPair, QaPairScore
+from weclone.data.models import QaPair, QaPairScore, QaPairScoreWithId
 from weclone.prompts.clean_data import CLEAN_PROMPT, ONLINE_LLM_CLEAN_PROMPT
 from weclone.utils.config_models import WCMakeDatasetConfig
 from weclone.utils.log import logger
@@ -175,7 +175,7 @@ class OlineLLMCleaningStrategy(CleaningStrategy):
             # Fill template
             prompt_text = prompt_template.invoke({"qa_list": qa_list_json}).text
             try:
-                response = client.chat(prompt_text)
+                response = client.chat(prompt_text, temperature=0)
                 result_text = response.choices[0].message.content
                 # print("Model response:",result_text)
                 # If there is <think> … </think>, keep only the content after </think>
@@ -191,7 +191,7 @@ class OlineLLMCleaningStrategy(CleaningStrategy):
                     continue
 
                 for item in score_list:
-                    parsed_scores.append(QaPairScore(**item))
+                    parsed_scores.append(QaPairScoreWithId(**item))
             except Exception as e:
                 ids_in_batch = [qa["id"] for qa in qa_list]
                 logger.error(

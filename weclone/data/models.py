@@ -50,6 +50,10 @@ class QaPairScore(BaseModel):
     score: int = Field(ge=1, le=5)
 
 
+class QaPairScoreWithId(QaPairScore):
+    id: int
+
+
 cut_type_data = {
     "zh_CN": [
         "Cut",

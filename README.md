@@ -55,12 +55,13 @@
 
 ### Recent Updates
 [25/06/05] Support for image modal data fine-tuning
+[25/07/10] Data source added Telegram
 
 ### Hardware Requirements
 
 The project uses Qwen2.5-VL-7B-Instruct model by default with LoRA method for SFT stage fine-tuning. You can also use other models and methods supported by [LLaMA Factory](https://github.com/hiyouga/LLaMA-Factory/tree/main#supported-models).
 
-Estimated VRAM requirements (text-only large model memory usage as follows, vision models increase based on image quantity and size): 
+Estimated VRAM requirements: 
 | Method                          | Precision |   7B  |  14B  |  30B  |   70B  |   `x`B  |
 | ------------------------------- | --------- | ----- | ----- | ----- | ------ | ------- |
 | Full (`bf16` or `fp16`)         |    32     | 120GB | 240GB | 600GB | 1200GB | `18x`GB |
@@ -162,9 +163,12 @@ weclone-cli server
 weclone-cli test-model
 ```
 
-## 🖼️ Fine-tuning Results
+## 🖼️ Results Showcase
 > [!TIP] 
-> **英文例子怎么发 More cases can be found on [XiaoHongShu](https://www.xiaohongshu.com/user/profile/628109730000000021029de4)**  
+> **We're looking for interesting examples of native English speakers chatting with WeClone! Feel free to share them with us on Twitter.
+
+？？？
+ More cases can be found on [XiaoHongShu](https://www.xiaohongshu.com/user/profile/628109730000000021029de4)**  
 
 Using the Qwen2.5VL 32B model with approximately 10,000 processed effective data samples, the loss was reduced to around 3.6:
 <details>
