@@ -1,19 +1,26 @@
 {
-    "version": "0.2.24",
+    "version": "0.3.0",
     "common_args": {
-        "model_name_or_path": "./Qwen2.5-7B-Instruct",
+        "model_name_or_path": "./models/Qwen2.5-7B-Instruct",
         "adapter_name_or_path": "./model_output", //同时做为train_sft_args的output_dir
         "template": "qwen",
         "default_system": "请你扮演一名人类，不要说自己是人工智能",
+        "media_dir": "dataset/media",
         "finetuning_type": "lora",
+        "enable_thinking": false,
         "trust_remote_code": true
     },
     "cli_args": {
-        "full_log": false
+        "full_log": false,
+        "log_level": "INFO"
     },
     "make_dataset_args": {
         //数据处理配置
-        "platform": "wechat",
+        "platform": "wechat", //wechat,telegram
+        "language": "zh", // 聊天常用语言: zh(中文) 或 en(英文)
+        "telegram_args": {
+            "my_id": "user1234567890"
+        },
         "include_type": [
             "text"
         ],
@@ -26,8 +33,8 @@
         "qa_match_strategy": "time_window", // 组成qa策略
         "single_combine_time_window": 2, // 单人组成单句时间窗口（分钟）,
         "qa_match_time_window": 5, // 组成qa时间窗口（分钟）,
-        "combine_msg_max_length": 256, // 组合后消息最大长度 配合cutoff_len 使用
-        "prompt_with_history": false, // 是否在prompt中包含历史对话
+        "combine_msg_max_length": 2048, // 组合后消息最大长度 配合cutoff_len 使用
+        "messages_max_length": 2048, // messages最长字符数量 配合cutoff_len 使用
         "clean_dataset": {
             "enable_clean": false,
             "clean_strategy": "llm",
@@ -43,7 +50,7 @@
         "vision_api": {
             "enable": false, // 设置为 true 来开启此功能
             "api_key": "xxx",
-            "api_url": "https://xxx/v1", // 例如阿里云，或替换为其他兼容OpenAI的API地址
+            "api_url": "https://xxx/v1", // 兼容OpenAI的API地址
             "model_name": "xxx", // 要使用的多模态模型名称,例如qwen-vl-max
             "max_workers": 5 // 并行调用API的线程数，最多不要超过8
         }
@@ -62,7 +69,7 @@
         "per_device_train_batch_size": 8,
         "gradient_accumulation_steps": 4,
         "lr_scheduler_type": "cosine",
-        "cutoff_len": 256,
+        "cutoff_len": 2048,
         "logging_steps": 10,
         "save_steps": 100,
         "learning_rate": 1e-4,
@@ -80,9 +87,12 @@
         "top_p": 0.65
     },
     "vllm_args": {
-        "gpu_memory_utilization": 0.9
+        "gpu_memory_utilization": 0.9,
+        // "data_parallel_size": 2,
+        // "quantization": "bitsandbytes", 
+        // "load_format": "bitsandbytes"
     },
     "test_model_args": {
-        "test_data_path": "dataset/test_data.json"
+        "test_data_path": "dataset/eval/test_data-zh.json"
     }
 }

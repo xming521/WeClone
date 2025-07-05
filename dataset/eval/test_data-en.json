@@ -1,0 +1,157 @@
+{
+    "questions": [
+        [
+            "Have you eaten?",
+            "What did you eat?",
+            "Was it delicious?",
+            "How much did it cost?",
+            "Can you treat me to a meal?"
+        ],
+        [
+            "What are you doing?",
+            "What are you planning to do later?"
+        ],
+        [
+            "What are you busy with?",
+            "Do you have any special plans for today?",
+            "How are you feeling?"
+        ],
+        [
+            "Anything new happening recently?",
+            "Do you have any interesting stories to share?"
+        ],
+        [
+            "How was your weekend?",
+            "What fun things did you do?"
+        ],
+        [
+            "Have you watched any good movies or TV shows recently?",
+            "Any recommendations?",
+            "What was it about?"
+        ],
+        [
+            "How's the weather today?",
+            "How about on your end?"
+        ],
+        [
+            "Is work/study going well recently?",
+            "Have you encountered any challenges?"
+        ],
+        [
+            "Hey, what are you busy with right now?",
+            "Do you have any special plans for today?",
+            "Everything going smoothly, I hope?"
+        ],
+        [
+            "How's the weather on your side?",
+            "Is it sunny or a bit gloomy?",
+            "Is it cold or hot?"
+        ],
+        [
+            "Is it mealtime yet?",
+            "Planning to treat yourself to something delicious today?",
+            "Anything special you want to eat, or any restaurant you want to try?"
+        ],
+        [
+            "Any fun news or memes online recently?",
+            "Come across any interesting videos or jokes? Share them with me!"
+        ],
+        [
+            "What are your plans for later?",
+            "How do you plan to spend the rest of the day?"
+        ],
+        [
+            "Did anything catch your eye today?",
+            "Let's just chat casually, any light topics?"
+        ],
+        [
+            "Any new discoveries or insights today?",
+            "Did today feel fast or slow? How was the pace?"
+        ],
+        [
+            "How's your surroundings right now, noisy or quiet?",
+            "Did you go out for a walk today? Was it crowded outside?",
+            "Look out the window, anything special to see?"
+        ],
+        [
+            "Have you eaten?",
+            "What did you eat? Did you like it?"
+        ],
+        [
+            "How was your day? Are you tired?",
+            "What's up?"
+        ],
+        [
+            "How's your health recently?",
+            "Nothing bothering you, right?"
+        ],
+        [
+            "Are you busy today?",
+            "What have you been up to?"
+        ],
+        [
+            "Everyone at home doing well?",
+            "Need any help with anything?"
+        ],
+        [
+            "Did you go out today?",
+            "Is it cold/hot outside? Dress warmly/stay cool."
+        ],
+        [
+            "Anything happy happening recently? Tell me about it!",
+            "Or any troubles you want to talk about?"
+        ],
+        [
+            "Go to bed early tonight, don't stay up too late.",
+            "How's your sleep been lately?"
+        ],
+        [
+            "Need anything? Just let me know.",
+            "Do you have enough money?"
+        ],
+        [
+            "See anything interesting today?",
+            "Or anything you want to share with me?"
+        ],
+        [
+            "Any weekend plans?",
+            "Want to grab a meal together or go out?"
+        ],
+        [
+            "How are those friends you keep in touch with?",
+            "You should get together more often."
+        ],
+        [
+            "Is work/study going smoothly?",
+            "Don't put too much pressure on yourself."
+        ],
+        [
+            "What delicious food did you make today?",
+            "Let me try some next time!"
+        ],
+        [
+            "Any news recently?",
+            "Tell me about it."
+        ],
+        [
+            "How's so-and-so doing lately?",
+            "Haven't heard from him/her in a while."
+        ],
+        [
+            "Are you in a good mood today?",
+            "You look good/a bit tired."
+        ],
+        [
+            "Anything you want to eat? I'll make it/bring it for you next time.",
+            "Or anywhere you want to go? I'll come with you."
+        ],
+        [
+            "Have you been watching any TV shows/movies recently?",
+            "Any good recommendations for me?"
+        ],
+        [
+            "If there's nothing urgent, go home/rest early.",
+            "Stay safe."
+        ]
+    ]
+}

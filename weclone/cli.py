@@ -5,11 +5,14 @@ from pathlib import Path
 from typing import cast
 
 import click
-import commentjson
+import pyjson5
+from rich.console import Console
+from rich.panel import Panel
+from rich.text import Text
 
 from weclone.utils.config import load_config
 from weclone.utils.config_models import CliArgs
-from weclone.utils.log import capture_output, logger
+from weclone.utils.log import capture_output, configure_log_level_from_config, logger
 
 cli_config: CliArgs | None = None
 
@@ -21,18 +24,31 @@ except ImportError:
 
 def clear_argv(func):
     """
-    装饰器：在调用被装饰函数前，清理 sys.argv，只保留脚本名。调用后恢复原始 sys.argv。
-    用于防止参数被 Hugging Face HfArgumentParser 解析造成 ValueError。
+    Decorator: Clear sys.argv before calling the decorated function, keeping only the script name. Restore original sys.argv after calling.
+    Used to prevent arguments from being parsed by Hugging Face HfArgumentParser causing ValueError.
     """
 
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         original_argv = sys.argv.copy()
-        sys.argv = [original_argv[0]]  # 只保留脚本名
+        sys.argv = [original_argv[0]]  # Keep only script name
         try:
             return func(*args, **kwargs)
         finally:
-            sys.argv = original_argv  # 恢复原始 sys.argv
+            sys.argv = original_argv  # Restore original sys.argv
+
+    return wrapper
+
+
+def with_community_info(func):
+    """
+    Decorator: Show community info before executing the command
+    """
+
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        show_community_info()
+        return func(*args, **kwargs)
 
     return wrapper
 
@@ -57,84 +73,136 @@ def apply_common_decorators(capture_output_enabled=False):
     return decorator
 
 
-@click.group()
-@click.option("--config-path", default=None, help="指定配置文件路径，会设置WECLONE_CONFIG_PATH环境变量")
-def cli(config_path):
-    """WeClone: 从聊天记录创造数字分身的一站式解决方案"""
+@click.group(invoke_without_command=True)
+@click.option(
+    "--config-path",
+    default=None,
+    help="Specify config file path, or set WECLONE_CONFIG_PATH environment variable",
+)
+@click.pass_context
+def cli(ctx, config_path):
+    """WeClone: One-stop solution for creating digital avatars from chat history"""
+    # Only show community info when no subcommand is invoked
+    if ctx.invoked_subcommand is None:
+        show_community_info()
+        click.echo(ctx.get_help())
+        return
+
     if config_path:
         os.environ["WECLONE_CONFIG_PATH"] = config_path
-        logger.info(f"配置文件路径已设置为: {config_path}")
+        logger.info(f"Config file path set to: {config_path}")
 
     _check_project_root()
     _check_versions()
     global cli_config
     cli_config = cast(CliArgs, load_config(arg_type="cli_args"))
 
+    configure_log_level_from_config()
 
-@cli.command("make-dataset", help="处理聊天记录CSV文件，生成问答对数据集。")
+
+@cli.command("make-dataset", help="Process chat history CSV files to generate Q&A pair datasets.")
+@with_community_info
 @apply_common_decorators()
 def qa_generator():
-    """处理聊天记录CSV文件，生成问答对数据集。"""
+    """Process chat history CSV files to generate Q&A pair datasets."""
     from weclone.data.qa_generator import DataProcessor
 
     processor = DataProcessor()
     processor.main()
 
 
-@cli.command("train-sft", help="使用准备好的数据集对模型进行微调。")
+@cli.command("train-sft", help="Fine-tune the model using prepared datasets.")
 @apply_common_decorators()
 def train_sft():
-    """使用准备好的数据集对模型进行微调。"""
+    """Fine-tune the model using prepared datasets."""
     from weclone.train.train_sft import main as train_sft_main
 
     train_sft_main()
 
 
-@cli.command("webchat-demo", help="启动 Web UI 与微调后的模型进行交互测试。")  # 命令名修改为 web-demo
+@cli.command("webchat-demo", help="Launch Web UI for interactive testing with fine-tuned model.")
 @apply_common_decorators()
 def web_demo():
-    """启动 Web UI 与微调后的模型进行交互测试。"""
+    """Launch Web UI for interactive testing with fine-tuned model."""
     from weclone.eval.web_demo import main as web_demo_main
 
     web_demo_main()
 
 
-# TODO 添加评估功能 @cli.command("eval-model", help="使用从训练数据中划分出来的验证集评估。")
+# TODO Add evaluation functionality @cli.command("eval-model", help="Evaluate using validation set split from training data.")
 @apply_common_decorators()
 def eval_model():
-    """使用从训练数据中划分出来的验证集评估。"""
+    """Evaluate using validation set split from training data."""
     from weclone.eval.eval_model import main as evaluate_main
 
     evaluate_main()
 
 
-@cli.command("test-model", help="使用常见聊天问题测试模型。")
+@cli.command("test-model", help="Test model with common chat questions.")
 @apply_common_decorators()
 def test_model():
-    """测试"""
+    """Test model with common chat questions."""
     from weclone.eval.test_model import main as test_main
 
     test_main()
 
 
-@cli.command("server", help="启动API服务，提供模型推理接口。")
+@cli.command("server", help="Start API service providing model inference interface.")
 @apply_common_decorators()
 def server():
-    """启动API服务，提供模型推理接口。"""
+    """Start API service providing model inference interface."""
     from weclone.server.api_service import main as server_main
 
     server_main()
 
 
+@cli.command("version", help="Show WeClone version information.")
+@with_community_info
+def version():
+    """Show WeClone version information."""
+    pass
+
+
+def show_community_info():
+    console = Console()
+    content = Text()
+    content.append("📱 Official group\n", style="bold green")
+    content.append("   • Telegram: ", style="bold cyan")
+    content.append("https://t.me/+JEdak4m0XEQ3NGNl\n", style="bright_blue")
+    content.append("   • QQ群: ", style="bold cyan")
+    content.append("708067078\n\n", style="bright_green")
+    content.append("🌐 Social media\n", style="bold magenta")
+    content.append("   • Twitter: ", style="bold cyan")
+    content.append("https://x.com/weclone567\n", style="bright_blue")
+    content.append("   • 小红书: ", style="bold cyan")
+    content.append("🔍 搜索WeClone\n\n", style="bright_blue")
+    content.append("📚 Official resources\n", style="bold red")
+    content.append("   • Repository: ", style="bold cyan")
+    content.append("https://github.com/xming521/WeClone\n", style="bright_blue")
+    content.append("   • Homepage: ", style="bold cyan")
+    content.append("https://www.weclone.love/\n", style="bright_blue")
+    content.append("   • Document: ", style="bold cyan")
+    content.append("https://docs.weclone.love/\n\n", style="bright_blue")
+    content.append("💡 感谢您的关注和支持！Thank you for your support!", style="bold bright_green")
+    panel = Panel(
+        content,
+        title="🌟 Community & Social Media",
+        title_align="center",
+        border_style="bright_cyan",
+        padding=(1, 2),
+    )
+    console.print(panel)
+
+
 def _check_project_root():
-    """检查当前目录是否为项目根目录，并验证项目名称。"""
+    """Check if current directory is project root and verify project name."""
     project_root_marker = "pyproject.toml"
     current_dir = Path(os.getcwd())
     pyproject_path = current_dir / project_root_marker
 
     if not pyproject_path.is_file():
-        logger.error(f"未在当前目录找到 {project_root_marker} 文件。")
-        logger.error("请确保在WeClone项目根目录下运行此命令。")
+        logger.error(f"{project_root_marker} file not found in current directory.")
+        logger.error("Please ensure you are running this command in the WeClone project root directory.")
         sys.exit(1)
 
     try:
@@ -142,18 +210,18 @@ def _check_project_root():
             pyproject_data = tomllib.load(f)
         project_name = pyproject_data.get("project", {}).get("name")
         if project_name != "WeClone":
-            logger.error("请确保在正确的 WeClone 项目根目录下运行。")
+            logger.error("Please ensure you are running in the correct WeClone project root directory.")
             sys.exit(1)
     except tomllib.TOMLDecodeError as e:
-        logger.error(f"错误：无法解析 {pyproject_path} 文件: {e}")
+        logger.error(f"Error: Unable to parse {pyproject_path} file: {e}")
         sys.exit(1)
     except Exception as e:
-        logger.error(f"读取或处理 {pyproject_path} 时发生意外错误: {e}")
+        logger.error(f"Unexpected error occurred while reading or processing {pyproject_path}: {e}")
         sys.exit(1)
 
 
 def _check_versions():
-    """比较本地 settings.jsonc 版本和 pyproject.toml 中的配置文件指南版本"""
+    """Compare local settings.jsonc version with config file guide version in pyproject.toml"""
     if tomllib is None:  # Skip check if toml parser failed to import
         return
 
@@ -164,52 +232,62 @@ def _check_versions():
     settings_version = None
     config_guide_version = None
     config_changelog = None
+    project_version = None
 
     if SETTINGS_PATH.exists():
         try:
             with open(SETTINGS_PATH, "r", encoding="utf-8") as f:
-                settings_data = commentjson.load(f)
+                content = f.read()
+                settings_data = pyjson5.loads(content)
                 settings_version = settings_data.get("version")
         except Exception as e:
-            logger.error(f"错误：无法读取或解析 {SETTINGS_PATH}: {e}")
-            logger.error("请确保 settings.jsonc 文件存在且格式正确。")
+            logger.error(f"Error: Unable to read or parse {SETTINGS_PATH}: {e}")
+            logger.error("Please ensure settings.jsonc file exists and is properly formatted.")
             sys.exit(1)
     else:
-        logger.error(f"错误：未找到配置文件 {SETTINGS_PATH}。")
-        logger.error("请确保 settings.jsonc 文件位于项目根目录。")
+        logger.error(f"Error: Config file {SETTINGS_PATH} not found.")
+        logger.error("Please ensure settings.jsonc file is located in the project root directory.")
         sys.exit(1)
 
     if PYPROJECT_PATH.exists():
         try:
-            with open(PYPROJECT_PATH, "rb") as f:  # tomllib 需要二进制模式
+            with open(PYPROJECT_PATH, "rb") as f:  # tomllib requires binary mode
                 pyproject_data = tomllib.load(f)
                 weclone_tool_data = pyproject_data.get("tool", {}).get("weclone", {})
                 config_guide_version = weclone_tool_data.get("config_version")
                 config_changelog = weclone_tool_data.get("config_changelog", "N/A")
+                project_version = pyproject_data.get("project", {}).get("version")
         except Exception as e:
-            logger.warning(f"警告：无法读取或解析 {PYPROJECT_PATH}: {e}。无法检查配置文件是否为最新。")
+            logger.warning(
+                f"Warning: Unable to read or parse {PYPROJECT_PATH}: {e}. Cannot check if config file is up to date."
+            )
     else:
-        logger.warning(f"警告：未找到文件 {PYPROJECT_PATH}。无法检查配置文件是否为最新。")
+        logger.warning(
+            f"Warning: File {PYPROJECT_PATH} not found. Cannot check if config file is up to date."
+        )
 
     if not settings_version:
-        logger.error(f"错误：在 {SETTINGS_PATH} 中未找到 'version' 字段。")
-        logger.error("请从 settings.template.json 复制或更新您的 settings.jsonc 文件。")
+        logger.error(f"Error: 'version' field not found in {SETTINGS_PATH}.")
+        logger.error("Please copy from settings.template.json or update your settings.jsonc file.")
         sys.exit(1)
 
     if config_guide_version:
         if settings_version != config_guide_version:
             logger.warning(
-                f"警告：您的 settings.jsonc 文件版本 ({settings_version}) 与项目建议的配置版本 ({config_guide_version}) 不一致。"
+                f"Warning: Your settings.jsonc file version ({settings_version}) does not match the project's recommended config version ({config_guide_version})."
             )
             logger.warning(
-                "这可能导致意外行为或错误。请从 settings.template.json 复制或更新您的 settings.jsonc 文件。"
+                "This may cause unexpected behavior or errors. Please copy from settings.template.json or update your settings.jsonc file."
             )
-            # TODO 根据版本号打印更新日志
-            logger.warning(f"配置文件更新日志：\n{config_changelog}")
-    elif PYPROJECT_PATH.exists():  # 如果文件存在但未读到版本
+            # TODO Print update log based on version number
+            logger.warning(f"Config file changelog:\n{config_changelog}")
+
+        logger.info(f"📦 Project Version: {project_version}")
+        logger.info(f"⚙️  Config Version: {settings_version}")
+    elif PYPROJECT_PATH.exists():  # If file exists but version not found
         logger.warning(
-            f"警告：在 {PYPROJECT_PATH} 的 [tool.weclone] 下未找到 'config_version' 字段。"
-            "无法确认您的 settings.jsonc 是否为最新配置版本。"
+            f"Warning: 'config_version' field not found under [tool.weclone] in {PYPROJECT_PATH}. "
+            "Cannot confirm if your settings.jsonc is the latest config version."
         )
 
 

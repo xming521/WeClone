@@ -9,6 +9,7 @@ class OnlineLLM:
         self.default_system = default_system
         self.client = OpenAI(api_key=self.api_key, base_url=self.base_url)
 
+    # TODO 需要做一个线程池进行并发
     def chat(
         self,
         prompt_text,
@@ -29,7 +30,6 @@ class OnlineLLM:
             temperature=temperature,
             max_tokens=max_tokens,
             top_p=top_p,
-            # enable_thinking=enable_thinking   适配Qwen3动态开启推理
         )
 
         return response

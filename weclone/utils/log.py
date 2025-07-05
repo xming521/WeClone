@@ -1,27 +1,42 @@
+import logging
+import os
 import sys
+import time
 from functools import wraps
 
 from loguru import logger
 
 logger.remove()
 
+env_log_level = os.getenv("WC_LOG_LEVEL")
+# Initialize basic log configuration, will be reconfigured later by configure_log_level_from_config
 logger.add(
     sys.stderr,
     format="<green><b>[WeClone]</b></green> <level>{level.name[0]}</level> | <level>{time:HH:mm:ss}</level> | <level>{message}</level>",
     colorize=True,
-    level="INFO",
+    level=env_log_level.upper() if env_log_level else "INFO",
 )
 
-logger.add(
-    "logs/weclone.log",  # 日志文件路径
-    rotation="1 day",  # 每天轮换一个新的日志文件
-    retention="7 days",  # 保留最近7天的日志文件
-    compression="zip",  # 压缩旧的日志文件
-    level="DEBUG",  # 文件日志级别
-    format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | {name}:{function}:{line} - {message}",  # 日志格式
-    encoding="utf-8",  # 文件编码
-    enqueue=True,  # 异步写入，避免阻塞
-)
+
+class InterceptHandler(logging.Handler):
+    def __init__(self, level=logging.INFO):
+        super().__init__(level)
+
+    def emit(self, record):
+        # Check log level, only handle logs at specified level and above
+        if record.levelno < self.level:
+            return
+
+        timestamp = time.strftime("%H:%M:%S")
+        level_color = "\033[36m" if record.levelno >= logging.INFO else "\033[0m"
+        reset_color = "\033[0m"
+        message = f"[{record.name}] | {level_color}{record.levelname[0]}{reset_color} | {timestamp} | {record.getMessage()}"
+        print(message, file=sys.stderr)
+
+
+# Bridge standard logging to loguru
+intercept_handler = InterceptHandler(level=logging.INFO)
+logging.basicConfig(handlers=[intercept_handler], level=0, force=True)
 
 
 def capture_output(func):
@@ -90,3 +105,43 @@ def capture_output(func):
             logger.remove(sink_id)
 
     return wrapper
+
+
+def configure_log_level_from_config():
+    """
+    Read log level from config file and set complete log configuration
+    Should be called after config is loaded
+    """
+    log_level = "INFO"  # default value
+
+    try:
+        from weclone.utils.config import load_config
+
+        cli_config = load_config(arg_type="cli_args")
+        log_level = getattr(cli_config, "log_level", "INFO")
+    except Exception as e:
+        logger.warning(f"Unable to load log level from config, using default INFO level: {e}")
+
+    logger.remove()
+
+    logger.add(
+        sys.stderr,
+        format="<green><b>[WeClone]</b></green> <level>{level.name[0]}</level> | <level>{time:HH:mm:ss}</level> | <level>{message}</level>",
+        colorize=True,
+        level=log_level.upper(),
+    )
+
+    logger.add(
+        "logs/weclone.log",
+        rotation="1 day",
+        retention="7 days",
+        compression="zip",
+        level="DEBUG",
+        format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | {name}:{function}:{line} - {message}",
+        encoding="utf-8",
+        enqueue=True,
+    )
+
+    intercept_handler.setLevel(log_level.upper())
+
+    logger.info(f"Log level has been set to: {log_level.upper()}")

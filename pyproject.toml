@@ -1,6 +1,6 @@
 [project]
 name = "WeClone"
-version = "0.2.24"
+version = "0.3.0"
 description = "One-stop solution for creating your digital avatar from chat history"
 authors = [{ name = "xming521" }]
 readme = "README.md"
@@ -8,7 +8,7 @@ requires-python = ">=3.10,<3.11"
 
 dependencies = [
   "pandas",
-  "commentjson",
+  "pyjson5",
   "omegaconf",
   "click",
   "tqdm",
@@ -18,17 +18,17 @@ dependencies = [
   "tomli; python_version < '3.11'",
   "langchain",
   "openai==1.76.0",
+  "pip"
 ]
 
 [tool.weclone]
-# 配置文件的版本号，当配置文件结构或重要默认值发生变化时，应增加此版本号
-config_version = "0.2.24"
+# Configuration file version number. This number should be incremented when the configuration file structure or important default values change.
+config_version = "0.3.0"
 
-# 配置文件更新日志
 config_changelog = """
-[0.2.21] - 2025-05-01 - 增加在线llm清洗数据配置，兼容openai风格接口。
-[0.2.22] - 2025-06-05 - 支持图片模态聊天记录微调。
-[0.2.24] - 2025-06-19 - add test_model_args and vllm_args。
+[0.2.22] - 2025-06-05 - Support image modality chat history fine-tuning
+[0.2.24] - 2025-06-19 - add test_model_args and vllm_args.
+[0.3.00] - 2025-06-30 - Support TG chat logs, add language parameter, add log level parameter.
 """
 
 [dependency-groups]
@@ -39,6 +39,8 @@ main = [
   "transformers==4.52.1",
   "accelerate==1.7.0",
   "triton==3.3.0; platform_system == 'Linux'",
+  "presidio_analyzer[transformers]",
+  "presidio_anonymizer",
 ]
 sparktts = [
   "einops>=0.8.1",
@@ -82,18 +84,14 @@ torchvision = [
 
 
 [[tool.uv.index]]
-url = "https://pypi.tuna.tsinghua.edu.cn/simple/"
-default = true
-
-[[tool.uv.index]]
 name = "pytorch-cu126"
 url = "https://download.pytorch.org/whl/cu126"
 explicit = true
 
 [tool.setuptools.packages.find]
-where = ["."]                      # 表示在项目根目录开始查找
-include = ["weclone*"]             # 只包含名为 weclone 的目录及其子包
-exclude = ["*tests*", "*archive*"] # 可以选择性排除其他模式，比如测试目录
+where = ["."]                      
+include = ["weclone*"]             
+exclude = ["*tests*", "*archive*"]
 
 
 [tool.pyright]
@@ -129,4 +127,4 @@ lint.select = [
 target-version = "py310"
 
 [tool.pytest.ini_options]
-addopts = "-x"
+addopts = "-x -v -s --tb=short"
