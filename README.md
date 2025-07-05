@@ -185,7 +185,7 @@ Usage steps:
 2. Deploy messaging platforms like Discord, Telegram, Slack in AstrBot
 3. Execute `weclone-cli server` to start the API service
 4. Add a new service provider in AstrBot, select OpenAI type, fill in the API Base URL according to AstrBot's deployment method (e.g., for docker deployment it might be http://172.17.0.1:8005/v1), fill in the model as gpt-3.5-turbo, and enter any API Key
-5. Tool calling is not supported after fine-tuning, please turn off the default tools first by sending the command: `/tool off all` on the messaging platform, otherwise the fine-tuned effect won't be visible.
+5. Tool calling is not supported after fine-tuning, please turn off the default tools first by sending the command: `/tool off_all` on the messaging platform, otherwise the fine-tuned effect won't be visible.
 6. Set the system prompt in AstrBot according to the default_system used during fine-tuning.
 ![5](https://github.com/user-attachments/assets/19de7072-076a-4cdf-8ae6-46b9b89f536a)
 > [!IMPORTANT]
