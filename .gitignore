@@ -150,6 +150,7 @@ model_output*
 data/test
 .vscode
 *-my*.*
+test-scripts-my/
 *.csv
 !tests/tests_data/test_person/test_0_730.csv
 *test.*

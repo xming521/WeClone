@@ -40,7 +40,7 @@
 
 ### Chat Platform Support
 
-| Platform | Text | Images | Voice | Video | Animated Emojis | Links (Sharing) | Quote | Forward | Location | Files |
+| Platform | Text | Images | Voice | Video | Animated Emojis/Stickers | Links (Sharing) | Quote | Forward | Location | Files |
 |----------|------|--------|-------|-------|-----------------|-----------------|-------|---------|----------|-------|
 | WeChat | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Telegram | ✅ | ✅ | ❌ | ❌ | ⚠️Convert to Emoji | ❌ | ❌ | ✅ | ✅ | ❌ |
@@ -54,7 +54,7 @@
 > - Windows environment has not been rigorously tested. You can use WSL as the runtime environment.
 
 ### Recent Updates
-[25/06/05] Support for image modal data fine-tuning
+[25/06/05] Support for image modal data fine-tuning   
 [25/07/10] Data source added Telegram
 
 ### Hardware Requirements
@@ -124,7 +124,7 @@ Please use [Telegram Desktop](https://desktop.telegram.org/) to export chat reco
 ```bash
 weclone-cli make-dataset
 ```
-More Parameter Details: [Data Preprocessing](http://localhost:5173/deploy/data_preprocessing.html#%E7%9B%B8%E5%85%B3%E5%8F%82%E6%95%B0)需要英文版
+More Parameter Details: [Data Preprocessing](http://localhost:5173/deploy/data_preprocessing.html#%E7%9B%B8%E5%85%B3%E5%8F%82%E6%95%B0)（need english version）
 
 ## Configure Parameters and Fine-tune Model
 
@@ -166,8 +166,6 @@ weclone-cli test-model
 ## 🖼️ Results Showcase
 > [!TIP] 
 > **We're looking for interesting examples of native English speakers chatting with WeClone! Feel free to share them with us on Twitter.
-
-？？？
  More cases can be found on [XiaoHongShu](https://www.xiaohongshu.com/user/profile/628109730000000021029de4)**  
 
 Using the Qwen2.5VL 32B model with approximately 10,000 processed effective data samples, the loss was reduced to around 3.6:
