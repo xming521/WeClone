@@ -183,7 +183,7 @@ weclone-cli test-model
 2. 在 AstrBot 中部署消息平台
 3. 执行 `weclone-cli server` 启动api服务
 4. 在 AstrBot 中新增服务提供商，类型选择OpenAI，API Base URL 根据AstrBot部署方式填写（例如docker部署可能为http://172.17.0.1:8005/v1） ，模型填写gpt-3.5-turbo,API Key随意填写一个
-5. 微调后不支持工具调用，请先关掉默认的工具，消息平台发送指令： `/tool off all`，否则会没有微调后的效果。 
+5. 微调后不支持工具调用，请先关掉默认的工具，消息平台发送指令： `/tool off_all`，否则会没有微调后的效果。 
 6. 根据微调时使用的default_system，在 AstrBot 中设置系统提示词。
 ![5](https://github.com/user-attachments/assets/19de7072-076a-4cdf-8ae6-46b9b89f536a)
 > [!IMPORTANT]
