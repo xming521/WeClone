@@ -23,12 +23,10 @@
 简体中文｜
   <a href="https://github.com/xming521/WeClone/blob/master/README.md" target="_blank">English</a>｜
   <a href="https://www.weclone.love/" target="_blank"> 项目主页 </a> ｜
-  <a href="https://docs.weclone.love/what-is-weclone.html" target="_blank"> 项目文档 </a> ｜
+  <a href="https://docs.weclone.love/what-is-weclone.html" target="_blank"> 项目文档 </a>
   
 </p>
 
-> [!IMPORTANT]
-> ### WhatsApp and Telegram chat logs integration for digital avatar creation is coming !
 
 ## ✨核心功能
 - 💫 涵盖打造数字分身的全链路方案，包括聊天数据导出、预处理、模型训练、部署
@@ -37,8 +35,6 @@
 - 🛡️ 隐私信息过滤，本地化微调部署，数据安全可控
 
 ## 📋特性与说明
-> [!IMPORTANT]
-> ### WeClone 目前未与任何平台合作，未发行任何数字货币。唯一官方网站：[weclone.love](https://www.weclone.love)，谨防仿冒。
 
 ### 聊天平台适配
 
@@ -51,10 +47,10 @@
 > - WeClone仍在快速迭代期，当前效果不代表最终效果。  
 > - 微调LLM效果很大程度取决于模型大小、聊天数据的数量和质量，理论上模型越大，数据越多，效果越好。
 > - 7B模型很容易训练成为大笨蛋，14B模型勉强可以交流，32B及以上的模型效果会更好。   
-> - Windows环境未进行严格测试，可以使用WSL作为运行环境。详细教程可点击[Windows部署指南](https://blog.051088.xyz/2025/05/14/WeClone-%E7%94%A8%E5%BE%AE%E4%BF%A1%E8%81%8A%E5%A4%A9%E8%AE%B0%E5%BD%95%E6%89%93%E9%80%A0%E8%87%AA%E5%B7%B1%E7%9A%84AI%E6%95%B0%E5%AD%97%E5%88%86%E8%BA%AB/)查看。
+> - Windows环境未进行严格测试，可以使用WSL作为运行环境。
 
 ### 近期更新
-[25/06/05]支持图片模态数据微调
+[25/06/05]支持图片模态数据微调   
 [25/07/10]数据源增加Telegram
 
 ### 硬件要求
@@ -100,14 +96,9 @@ python -c "import torch; print('CUDA是否可用:', torch.cuda.is_available());"
 5.（可选）安装FlashAttention，加速训练和推理：`uv pip install flash-attn --no-build-isolation` 版本问题可以使用[prebuild-wheels](https://github.com/mjun0812/flash-attention-prebuild-wheels/releases)的预编译包安装。
 
 ## 模型下载
-国内推荐使用[ModelScope](https://www.modelscope.cn/docs/models/download)下载模型。不建议使用：
-```bash
-git lfs install
-git clone https://www.modelscope.cn/Qwen/Qwen2.5-7B-Instruct.git models/Qwen2.5-VL-7B-Instruct
-```
+中国境内推荐使用[ModelScope](https://www.modelscope.cn/docs/models/download)下载模型。
 
 ## 数据准备
-- 首先根据需要修改配置文件中的`language`、`platform`、`include_type`。
 
 ### Telegram
 请使用[Telegram Desktop](https://desktop.telegram.org/)导出聊天记录，点击右上角点击导出聊天记录，选择照片类型，格式选择JSON。可以导出多个联系人（不建议使用群聊记录），然后将导出的`ChatExport_*`文件夹放在`./dataset/telegram`目录即可，也就是不同人聊天记录的文件夹一起放在 `./dataset/telegram`。
@@ -117,6 +108,7 @@ git clone https://www.modelscope.cn/Qwen/Qwen2.5-7B-Instruct.git models/Qwen2.5-
 
 
 ## 数据预处理
+- 首先根据需要修改配置文件中的`language`、`platform`、`include_type`。
 - 项目默认通过Microsoft Presidio去除了数据中的`电话号码、电子邮件地址、信用卡号码（12-19位数字）、IP地址、地理位置名称、国际银行账户号码、加密货币钱包地址、年龄信息、通用身份证号码`,但是不能保证100%过滤识别。
 - 所以在`settings.jsonc`中提供了一个禁用词词库`blocked_words`，可以自行添加需要过滤的词句（会默认去掉包括禁用词的整句）。
 > [!IMPORTANT]
@@ -167,8 +159,7 @@ weclone-cli test-model
 
 ## 🖼️ 微调效果
 > [!TIP] 
-> **QQ群内有部署好的Qwen2.5VL 32B Bot，可以体验效果。更多案例可以关注[小红书](https://www.
-xiaohongshu.com/user/profile/628109730000000021029de4)** 
+> **QQ群内有部署好的Qwen2.5VL 32B Bot，可以体验效果。更多案例可以关注[小红书](https://www.xiaohongshu.com/user/profile/628109730000000021029de4)** 
 
 使用Qwen2.5VL 32B模型，大概1万条处理后的有效数据，loss降到了3.6左右的效果：
 <details>
@@ -257,6 +248,9 @@ pre-commit install
 ## ⚠️ 免责声明
 > [!CAUTION]
 > **本项目仅供学习、研究和实验用途，用于生产环境存在较大风险，请谨慎评估。请勿用于非法用途，后果自负。**
+
+> [!IMPORTANT]
+> #### WeClone 目前未与任何平台合作，未发行任何数字货币。唯一官方网站：[weclone.love](https://www.weclone.love)，谨防仿冒。
 <details>
 <summary>点击查看免责条款</summary>
 
@@ -313,11 +307,8 @@ pre-commit install
 **一旦您下载、克隆、修改、分发或以任何方式使用本项目的代码或模型，即表示您已完整阅读、理解并同意无条件接受本免责声明的全部条款。**
 
 </details>
+
 **请用户慎重阅读并理解本免责声明的所有内容，确保在使用本项目时严格遵守相关规定。**
-
-
-<br>  
-<br>  
 <br>  
 
 ## ⭐ Star History
