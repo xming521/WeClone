@@ -35,8 +35,6 @@
 - 🛡️ Privacy information filtering with localized fine-tuning and deployment for secure and controllable data
 
 ## 📋Features & Notes
-> [!IMPORTANT]
-> ### WeClone is currently not partnered with any platform and has not issued any cryptocurrency. The only official website is: [weclone.love](https://www.weclone.love). Beware of imitations.
 
 ### Chat Platform Support
 
@@ -46,7 +44,6 @@
 | Telegram | ✅ | ✅ | ❌ | ❌ | ⚠️Convert to Emoji | ❌ | ❌ | ✅ | ✅ | ❌ |
 
  
-
 > [!IMPORTANT]
 > - WeClone is still in rapid iteration phase, current performance does not represent final results.  
 > - LLM fine-tuning effectiveness largely depends on model size, quantity and quality of chat data. Theoretically, larger models with more data yield better results.
@@ -209,7 +206,6 @@ Usage steps:
 <img width="400px" alt="image" src="https://github.com/user-attachments/assets/dbb0fd0a-f760-42db-acd0-bb99c859b52e" />
 
 
-
 ## 📌 Roadmap
 - [ ] Support more data sources
 - [ ] Richer context: including contextual conversations, chat participant information, time, etc.
@@ -235,7 +231,7 @@ uv pip install --group dev -e .
 pre-commit install
 ```
 
-The project uses `pytest` for testing, `pyright` for type checking, and `ruff` for code formatting.
+The project uses `pytest` for testing, `pyright` for type checking, and `ruff` for code formatting.   
 Before submitting your code, you should run `pytest tests` to ensure all tests pass.
 
 
@@ -252,6 +248,10 @@ This project also benefits from excellent open source projects such as [PyWxDump
 ## ⚠️ Disclaimer
 > [!CAUTION]
 > **This project is for learning, research and experimental purposes only. There are significant risks in using it for production environments, please assess carefully. Do not use for illegal purposes, consequences are at your own risk.**
+
+> [!IMPORTANT]
+> #### WeClone is currently not partnered with any platform and has not issued any cryptocurrency. The only official website is: [weclone.love](https://www.weclone.love). Beware of imitations.
+
 <details>
 <summary>Click to view disclaimer terms</summary>
 
