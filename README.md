@@ -54,8 +54,8 @@
 > - Windows environment has not been rigorously tested. You can use WSL as the runtime environment.
 
 ### Recent Updates
-[25/06/05] Support for image modal data fine-tuning   
-[25/07/10] Data source added Telegram
+[25/07/10] Data source added Telegram   
+[25/06/05] Support for image modal data fine-tuning    
 
 ### Hardware Requirements
 
@@ -308,10 +308,8 @@ This disclaimer may be revised with project updates, users should regularly chec
 **Once you download, clone, modify, distribute or use the code or models of this project in any way, it indicates that you have fully read, understood and agreed to unconditionally accept all terms of this disclaimer.**
 
 </details>
-**Please carefully read and understand all contents of this disclaimer, ensuring strict compliance with relevant regulations when using this project.**
 
-<br>  
-<br>  
+**Please carefully read and understand all contents of this disclaimer, ensuring strict compliance with relevant regulations when using this project.**
 <br>  
 
 ## ⭐ Star History
