@@ -23,7 +23,7 @@
 简体中文｜
   <a href="https://github.com/xming521/WeClone/blob/master/README.md" target="_blank">English</a>｜
   <a href="https://www.weclone.love/" target="_blank"> 项目主页 </a> ｜
-  <a href="https://docs.weclone.love/what-is-weclone.html" target="_blank"> 项目文档 </a>
+  <a href="https://docs.weclone.love/docs/introduce/what-is-weclone.html" target="_blank"> 项目文档 </a>
   
 </p>
 
@@ -104,7 +104,7 @@ python -c "import torch; print('CUDA是否可用:', torch.cuda.is_available());"
 请使用[Telegram Desktop](https://desktop.telegram.org/)导出聊天记录，点击右上角点击导出聊天记录，选择照片类型，格式选择JSON。可以导出多个联系人（不建议使用群聊记录），然后将导出的`ChatExport_*`文件夹放在`./dataset/telegram`目录即可，也就是不同人聊天记录的文件夹一起放在 `./dataset/telegram`。
 
 ### 微信
-请使用[PyWxDump](https://github.com/xaoyaoo/PyWxDump)或其他开源工具导出微信聊天记录。详细步骤查看官方文档：[微信聊天记录导出](https://www.weclone.love/deploy/export-chat-history.html#%E5%BE%AE%E4%BF%A1)
+请使用[PyWxDump](https://github.com/xaoyaoo/PyWxDump)或其他开源工具导出微信聊天记录。详细步骤查看官方文档：[微信聊天记录导出](https://docs.weclone.love/zh/docs/deploy/export-chat-history.html#%E5%BE%AE%E4%BF%A1)
 
 
 ## 数据预处理
@@ -118,7 +118,7 @@ python -c "import torch; print('CUDA是否可用:', torch.cuda.is_available());"
 ```bash
 weclone-cli make-dataset
 ```
-数据处理更多参数说明：[数据预处理](https://www.weclone.love/deploy/data_preprocessing.html#%E7%9B%B8%E5%85%B3%E5%8F%82%E6%95%B0)
+数据处理更多参数说明：[数据预处理](https://docs.weclone.love/zh/docs/deploy/data_preprocessing.html#%E7%9B%B8%E5%85%B3%E5%8F%82%E6%95%B0)
 
 ## 配置参数并微调模型
 
@@ -214,7 +214,7 @@ weclone-cli test-model
 
 
 ## 问题解决
-#### [官方文档FAQ](https://www.weclone.love/FAQ.html)    
+#### [官方文档FAQ](https://docs.weclone.love/docs/introduce/FAQ.html)    
 同时建议使用[DeepWiki](https://deepwiki.com/xming521/WeClone)解决问题。
 
 #### 教程资源

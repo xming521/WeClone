@@ -22,7 +22,7 @@
   <a href="https://github.com/xming521/WeClone/blob/master/README_zh.md" target="_blank">简体中文</a>｜
   English</a>｜
   <a href="https://www.weclone.love/" target="_blank"> Project Homepage </a> ｜
-  <a href="https://docs.weclone.love/what-is-weclone.html" target="_blank"> Documentation </a> 
+  <a href="https://docs.weclone.love/docs/introduce/what-is-weclone.html" target="_blank"> Documentation </a> 
 </p>
 
 > [!IMPORTANT]
@@ -121,7 +121,7 @@ Please use [Telegram Desktop](https://desktop.telegram.org/) to export chat reco
 ```bash
 weclone-cli make-dataset
 ```
-More Parameter Details: [Data Preprocessing](http://localhost:5173/deploy/data_preprocessing.html#%E7%9B%B8%E5%85%B3%E5%8F%82%E6%95%B0)（need english version）
+More Parameter Details: [Data Preprocessing](https://docs.weclone.love/docs/deploy/data_preprocessing.html#related-parameters)
 
 ## Configure Parameters and Fine-tune Model
 
@@ -216,7 +216,7 @@ Usage steps:
 - [ ] COT (Chain of Thought) thinking support
 
 ## Troubleshooting
-#### [Official Documentation FAQ](https://www.weclone.love/FAQ.html)    
+#### [Official Documentation FAQ](https://docs.weclone.love/docs/introduce/FAQ.html)    
 It is also recommended to use [DeepWiki](https://deepwiki.com/xming521/WeClone) for problem solving.
 
 
