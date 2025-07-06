@@ -23,7 +23,8 @@
         },
         "include_type": [
             "text",
-            "image"
+            "image",
+            // "sticker" //Converting stickers to emojis can lead to the model outputting too many emojis.
         ],
         "max_image_num": 2, // Maximum number of images per data entry
         "blocked_words": [ // Blocked words

@@ -52,6 +52,7 @@ class DataModality(StrEnum):
 
     TEXT = "text"
     IMAGE = "image"
+    STICKER = "sticker"
     # AUDIO = "audio"
     # VIDEO = "video"
 
