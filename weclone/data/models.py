@@ -129,7 +129,7 @@ skip_type_data = {
     "en": [
         "add friend",
         "recommend official account",
-        "animated emoji",
+        "sticker",
         "location",
         "file",
         "location sharing",

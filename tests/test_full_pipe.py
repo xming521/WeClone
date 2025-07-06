@@ -20,6 +20,11 @@ DATASET_CSV_DIR = os.path.join(PROJECT_ROOT, "dataset", "csv")
 TESTS_DIR = os.path.dirname(__file__)
 TEST_DATA_PERSON_DIR = os.path.join(TESTS_DIR, "tests_data", "test_person")
 
+# Backup directories
+BACKUP_DIR = os.path.join(PROJECT_ROOT, "test_backup")
+MODEL_OUTPUT_BACKUP = os.path.join(BACKUP_DIR, "model_output")
+DATASET_CSV_BACKUP = os.path.join(BACKUP_DIR, "dataset_csv")
+
 test_logger = logger.bind()
 test_logger.remove()
 test_logger.add(
@@ -62,11 +67,26 @@ def print_config_header(config_file: str):
     test_logger.info(" " * padding_left + title + " " * padding_right)
     test_logger.info("═" * line_length)
 
-def set_test_env():
-    if os.path.exists("model_output"): 
-        shutil.rmtree("model_output")
+@pytest.fixture(scope="session", autouse=True)
+def setup_test_environment():
+    """Setup test environment once for the entire test session"""
+    test_logger.info("🔧 开始设置测试环境...")
+    
+    # Create backup directory
+    if os.path.exists(BACKUP_DIR):
+        shutil.rmtree(BACKUP_DIR)
+    os.makedirs(BACKUP_DIR)
+    
+    # Backup model_output if it exists
+    if os.path.exists("model_output"):
+        shutil.move("model_output", MODEL_OUTPUT_BACKUP)
+        test_logger.info("已备份 model_output 目录")
+    
+    # Backup DATASET_CSV_DIR if it exists
     if os.path.exists(DATASET_CSV_DIR):
-        shutil.rmtree(DATASET_CSV_DIR)
+        shutil.move(DATASET_CSV_DIR, DATASET_CSV_BACKUP)
+        test_logger.info("已备份 dataset/csv 目录")
+    
     os.makedirs(DATASET_CSV_DIR)
     
     test_person_csv_dir = os.path.join(DATASET_CSV_DIR, "test_person")
@@ -77,7 +97,56 @@ def set_test_env():
         if os.path.isfile(source_item_path) and item_name.lower().endswith('.csv'):
             destination_item_path = os.path.join(test_person_csv_dir, item_name)
             shutil.copy2(source_item_path, destination_item_path)
-        
+    
+    test_logger.info("✅ 测试环境设置完成")
+    
+    yield  # This is where the testing happens
+    
+    # Cleanup after all tests are done
+    test_logger.info("🧹 开始恢复测试环境...")
+    
+    if os.path.exists("model_output"):
+        shutil.rmtree("model_output")
+    if os.path.exists(DATASET_CSV_DIR):
+        shutil.rmtree(DATASET_CSV_DIR)
+    
+    if os.path.exists(MODEL_OUTPUT_BACKUP):
+        shutil.move(MODEL_OUTPUT_BACKUP, "model_output")
+    
+    if os.path.exists(DATASET_CSV_BACKUP):
+        shutil.move(DATASET_CSV_BACKUP, DATASET_CSV_DIR)
+    
+    if os.path.exists(BACKUP_DIR):
+        shutil.rmtree(BACKUP_DIR)
+    
+    test_logger.info("✅ 测试环境恢复完成")
+
+
+def restore_test_env():
+    """Manual environment cleanup for direct execution (deprecated for pytest)"""
+    test_logger.info("🧹 手动恢复测试环境...")
+    
+    # Remove test directories
+    if os.path.exists("model_output"):
+        shutil.rmtree("model_output")
+    if os.path.exists(DATASET_CSV_DIR):
+        shutil.rmtree(DATASET_CSV_DIR)
+    
+    # Restore original directories if they were backed up
+    if os.path.exists(MODEL_OUTPUT_BACKUP):
+        shutil.move(MODEL_OUTPUT_BACKUP, "model_output")
+        test_logger.info("已恢复 model_output 目录")
+    
+    if os.path.exists(DATASET_CSV_BACKUP):
+        shutil.move(DATASET_CSV_BACKUP, DATASET_CSV_DIR)
+        test_logger.info("已恢复 dataset/csv 目录")
+    
+    # Remove backup directory
+    if os.path.exists(BACKUP_DIR):
+        shutil.rmtree(BACKUP_DIR)
+        test_logger.info("已清理备份目录")
+    
+    test_logger.info("✅ 测试环境恢复完成")
 
 def run_cli_command(command: list[str], config_path: str, timeout: int | None = None, background: bool = False) -> Union[subprocess.CompletedProcess, subprocess.Popen]:
     """Execute a CLI command and return the result.
@@ -196,12 +265,17 @@ def run_test_model_test(config_file: str, server_process: subprocess.Popen):
                 server_process.kill()  # Force kill if the process hasn't terminated
             test_logger.info("服务器已关闭")
 
+def clean_model_output():
+    """Clean model_output directory before each config test"""
+    if os.path.exists("model_output"):
+        shutil.rmtree("model_output")
+
 @pytest.mark.parametrize("config_file", get_config_files())
 def test_full_pipeline_for_config(config_file):
     """为每个配置文件完整执行所有测试步骤"""
     print_config_header(config_file)
     
-    set_test_env()
+    clean_model_output()
     
     server_process = None
     try:
@@ -224,4 +298,8 @@ def test_full_pipeline_for_config(config_file):
         raise
 
 if __name__ == "__main__":
-    set_test_env()
+    try:
+        # If running directly, you would put your test code here
+        pass
+    finally:
+        restore_test_env()

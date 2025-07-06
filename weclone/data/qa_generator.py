@@ -49,9 +49,10 @@ class DataProcessor:
         elif self.config.platform == PlatformType.TELEGRAM:
             self.cut_type_list = cut_type_list.get_items(lang="en")
             self.skip_type_list = skip_type_list.get_items(lang="en")
-            self.skip_type_list.remove("animated emoji")
             self.include_type = [t for t in self.include_type if t.lower() != "text"]
             self.cut_type_list = [t for t in self.cut_type_list if t not in self.include_type]
+            if DataModality.STICKER in self.include_type:
+                self.skip_type_list.remove("sticker")
 
         # blocked words
         config_blocked_words = self.config.blocked_words
@@ -578,7 +579,7 @@ class DataProcessor:
                         df.loc[i, "modality"] = DataModality.IMAGE
                     else:
                         df.loc[i, "type_name"] = "Cut"
-            elif df.loc[i, "type_name"] in ["animated emoji"]:
+            elif df.loc[i, "type_name"] in ["sticker"]:
                 if self.c.platform in [PlatformType.WECHAT, PlatformType.TELEGRAM]:
                     df.loc[i, "src"] = ""
                     continue

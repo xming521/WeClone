@@ -4,20 +4,21 @@ import os
 import shutil
 import sys
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 from pandas import Timestamp
 
 from weclone.data.models import ChatMessage
-from weclone.utils.config_models import WCMakeDatasetConfig
+from weclone.utils.config_models import DataModality, WCMakeDatasetConfig
 from weclone.utils.log import logger
 
 
 class TelegramChatParser:
     """Telegram chat parser that converts JSON format to data conforming to ChatMessage structure"""
 
-    def __init__(self, my_user_id: Optional[str] = None):
-        self.my_user_id = my_user_id
+    def __init__(self, config: WCMakeDatasetConfig):
+        self.config = config
+        self.my_user_id = config.telegram_args.my_id if config.telegram_args else None
         self.message_counter = 0
 
         self.type_mapping = {
@@ -27,7 +28,7 @@ class TelegramChatParser:
             "animation": "video",
             "voice_message": "voice",
             "audio_file": "file",
-            "sticker": "animated emoji",
+            "sticker": "sticker",
             "file": "file",
             "location": "location",
             "poll": "(share) card link",
@@ -65,7 +66,8 @@ class TelegramChatParser:
                 src_path = message.get("file", "")
             elif media_type == "sticker":
                 src_path = message.get("file", "")
-                if not msg_content.strip():
+                # Only set sticker emoji as msg_content if STICKER is in include_type
+                if DataModality.STICKER in self.config.include_type and not msg_content.strip():
                     msg_content = message.get("sticker_emoji", "")
             else:
                 src_path = message.get("file", "")
@@ -309,8 +311,6 @@ def process_telegram_dataset(config: WCMakeDatasetConfig) -> None:
             else:
                 os.remove(item_path)
 
-    my_id = config.telegram_args.my_id
-
     for folder_name in os.listdir(telegram_dir):
         folder_path = os.path.join(telegram_dir, folder_name)
         if not os.path.isdir(folder_path):
@@ -332,7 +332,7 @@ def process_telegram_dataset(config: WCMakeDatasetConfig) -> None:
         csv_folder_name = f"{safe_name}-{safe_type}-{safe_id}"
         csv_folder_path = os.path.join(csv_output_dir, csv_folder_name)
 
-        parser = TelegramChatParser(my_user_id=my_id)
+        parser = TelegramChatParser(config=config)
         messages = parser.process_chat(jdata)
 
         if messages:
