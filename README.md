@@ -26,7 +26,7 @@
 </p>
 
 > [!IMPORTANT]
-> ### WhatsApp and Telegram chat logs integration for digital avatar creation is coming !
+> ### Telegram is now supported as a data source !
 
 ## ✨Core Features
 - 💫 Complete end-to-end solution for creating digital avatars, including chat data export, preprocessing, model training, and deployment
@@ -36,7 +36,7 @@
 
 ## 📋Features & Notes
 
-### Chat Platform Support
+### Data Source Platform Support
 
 | Platform | Text | Images | Voice | Video | Animated Emojis/Stickers | Links (Sharing) | Quote | Forward | Location | Files |
 |----------|------|--------|-------|-------|-----------------|-----------------|-------|---------|----------|-------|
