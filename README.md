@@ -193,17 +193,20 @@ Usage steps:
 
 ### LangBot
 
-[LangBot](https://github.com/RockChinQ/LangBot) is an open-source LLM chatbot platform that connects to various global instant messaging platforms, suitable for various scenarios.
+[LangBot](https://github.com/langbot-app/LangBot) is an easy-to-use open-source LLM chatbot platform suitable for various scenarios. It connects to various global instant messaging platforms. You can set up your IM bot in just 5 minutes.
+
+<img width="400px" alt="image" src="https://github.com/user-attachments/assets/de44e6e3-3a53-44d9-af76-96364cfca30f" />
 
 1. [Deploy LangBot](https://github.com/RockChinQ/LangBot/blob/master/README_EN.md#-getting-started)
-2. Add a robot in LangBot
+2. Add a bot (Discord, Telegram, Slack, Lark e.g.) in LangBot
+3. Execute `weclone-cli server` to start the WeClone API service
 4. Add a new model in the model page, name it `gpt-3.5-turbo`, select OpenAI as the provider, fill in the request URL as WeClone's address. For detailed connection methods, refer to the [documentation](https://docs.langbot.app/en/workshop/network-details.html), and enter any API Key.
 
-<img width="400px" alt="image" src="https://github.com/user-attachments/assets/fc167dea-7c93-4d94-9c5f-db709d0320ba" />
+<img width="400px" alt="image" src="https://github.com/user-attachments/assets/835853ab-6ddc-459e-ae21-b04c38a85b5b" />
 
 6. Select the model you just added in the pipeline configuration, or modify the prompt configuration
 
-<img width="400px" alt="image" src="https://github.com/user-attachments/assets/dbb0fd0a-f760-42db-acd0-bb99c859b52e" />
+<img width="400px" alt="image" src="https://github.com/user-attachments/assets/da61342d-84f9-4f02-87bc-3d4c7cdf187c" />
 
 
 ## 📌 Roadmap
