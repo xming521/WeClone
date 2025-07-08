@@ -422,10 +422,7 @@ class DataProcessor:
                     "，",
                     ",",
                 ]:
-                    if self.c.language == LanguageType.ZH:
-                        combined_content += "，"
-                    else:
-                        combined_content += "|"
+                    combined_content += "\n"
 
                 if i.modality == DataModality.IMAGE:
                     combined_src_list.append(i.src)
