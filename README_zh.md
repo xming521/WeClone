@@ -96,7 +96,10 @@ python -c "import torch; print('CUDA是否可用:', torch.cuda.is_available());"
 5.（可选）安装FlashAttention，加速训练和推理：`uv pip install flash-attn --no-build-isolation` 版本问题可以使用[prebuild-wheels](https://github.com/mjun0812/flash-attention-prebuild-wheels/releases)的预编译包安装。
 
 ## 模型下载
-中国境内推荐使用[ModelScope](https://www.modelscope.cn/docs/models/download)下载模型。
+中国境内推荐使用[ModelScope](https://www.modelscope.cn/docs/models/download)下载模型。例如下载WeClone默认模型：
+```bash
+modelscope download --model Qwen/Qwen2.5-7B-Instruct --local_dir ./models/Qwen2.5-7B-Instruct
+```
 
 ## 数据准备
 
@@ -134,7 +137,7 @@ weclone-cli train-sft
 ### 多卡训练
 取消`settings.jsonc`中`deepspeed`行代码注释，使用以下命令多卡训练：
 ```bash
-uv pip install deepspeed
+uv pip install "deepspeed<=0.16.9"
 deepspeed --num_gpus=使用显卡数量 weclone/train/train_sft.py
 ```
 

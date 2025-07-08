@@ -1,6 +1,6 @@
 [project]
 name = "WeClone"
-version = "0.3.0"
+version = "0.3.01"
 description = "One-stop solution for creating your digital avatar from chat history"
 authors = [{ name = "xming521" }]
 readme = "README.md"
