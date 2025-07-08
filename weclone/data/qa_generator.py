@@ -549,6 +549,7 @@ class DataProcessor:
         for i in df.index:
             if df.loc[i, "type_name"].lower() in ["文本", "text"]:  # type: ignore
                 msg_str = str(df.loc[i, "msg"])
+                msg_str = msg_str.replace("\n", "")
                 if self.c.language == LanguageType.ZH:
                     if (
                         re.search(r"1\d{10}", msg_str)
