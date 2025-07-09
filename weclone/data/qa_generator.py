@@ -278,13 +278,17 @@ class DataProcessor:
                     )
                     return qa_id
 
+                system_content = self.system_prompt
+                if self.c.add_time:
+                    system_content += f" Current datetime: {time_stamp.strftime('%Y-%m-%d %H:%M:%S')}"
+
                 qa_pair = self.QaPair(
                     id=qa_id,
                     time=time_stamp,
                     score=0,
                     messages=current_conversation_messages.copy(),
                     images=current_conversation_images.copy(),
-                    system=self.system_prompt,
+                    system=system_content,
                 )
                 qa_res.append(qa_pair)
                 return qa_id + 1
