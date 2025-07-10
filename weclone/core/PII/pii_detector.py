@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import List, Optional, cast
 
-from presidio_analyzer import AnalyzerEngine, Pattern, PatternRecognizer, RecognizerRegistry
+from presidio_analyzer import AnalyzerEngine, Pattern, PatternRecognizer
 from presidio_analyzer.nlp_engine import NlpEngineProvider
 from presidio_anonymizer import AnonymizerEngine
 from presidio_anonymizer.entities.engine.recognizer_result import (
@@ -179,9 +179,7 @@ class ChinesePIIDetector(PIIDetector):
     """Chinese PII detector, extended to recognize Chinese-specific PII"""
 
     def __init__(self, threshold: float = 0.5):
-        self.language = "zh"
-        self.threshold = threshold
-        self._init_engines()
+        super().__init__(language="zh", threshold=threshold)
 
         # Filter out country-specific entities that are not relevant for Chinese context
         country_prefixes = ["US_", "UK_", "SG_", "AU_", "IN_"]
@@ -197,12 +195,6 @@ class ChinesePIIDetector(PIIDetector):
             and (entity in supported_entities or entity in ["NUMERIC_ID", "CHINESE_PII"])
         ]
         logger.info(f"Chinese PII filtered entity types: {self.filtered_entities}")
-
-    def _init_engines(self):
-        registry = RecognizerRegistry()
-        self.analyzer = AnalyzerEngine(registry=registry)
-
-        self._add_custom_recognizers(language="zh")
 
     def _add_custom_recognizers(self, language: str):
         # Add parent class recognizers first
