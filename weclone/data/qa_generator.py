@@ -10,7 +10,7 @@ os.environ.setdefault("VLLM_WORKER_MULTIPROC_METHOD", "spawn")
 import pandas as pd
 from pandas import Timestamp
 
-from weclone.core.PII.pii_detector import PIIDetector
+from weclone.core.PII.pii_detector import ChinesePIIDetector, PIIDetector
 from weclone.data.chat_parsers.telegram_parser import process_telegram_dataset
 from weclone.data.clean.strategies import LLMCleaningStrategy, OlineLLMCleaningStrategy
 from weclone.data.models import (
@@ -80,7 +80,9 @@ class DataProcessor:
             )
 
         # PII detection
-        if self.config.language == LanguageType.EN:
+        if self.config.language == LanguageType.ZH:
+            self.pii_detector = ChinesePIIDetector()
+        else:
             self.pii_detector = PIIDetector(language=self.config.language)
 
         # dataset cleaning
@@ -554,20 +556,9 @@ class DataProcessor:
             if df.loc[i, "type_name"].lower() in ["文本", "text"]:  # type: ignore
                 msg_str = str(df.loc[i, "msg"])
                 msg_str = msg_str.replace("\n", "")
-                if self.c.language == LanguageType.ZH:
-                    if (
-                        re.search(r"1\d{10}", msg_str)
-                        or re.search(r"\d{18}", msg_str)
-                        or re.search(r"\w+@\w+", msg_str)
-                        or r"\\xa0" in msg_str
-                        or r"\\u" in msg_str
-                    ):
-                        df = df.drop(index=i)
-                        continue
-                else:
-                    if self.pii_detector.has_pii(msg_str):
-                        df = df.drop(index=i)
-                        continue
+                if self.pii_detector.has_pii(msg_str):
+                    df = df.drop(index=i)
+                    continue
                 for blocked_word in self.blocked_words:
                     if blocked_word in msg_str:
                         df = df.drop(index=i)

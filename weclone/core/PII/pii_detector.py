@@ -1,10 +1,12 @@
-import re
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import List, Optional, cast
 
 from presidio_analyzer import AnalyzerEngine, Pattern, PatternRecognizer
 from presidio_analyzer.nlp_engine import NlpEngineProvider
 from presidio_anonymizer import AnonymizerEngine
+from presidio_anonymizer.entities.engine.recognizer_result import (
+    RecognizerResult as AnonymizerRecognizerResult,  # type: ignore
+)
 
 # from presidio_analyzer.analyzer_engine import logger as presidio_logger
 from weclone.utils.log import logger
@@ -29,11 +31,12 @@ class PIIDetector:
         self._init_engines()
         self.anonymizer = AnonymizerEngine()
         self.not_filtered_entities = ["DATE_TIME", "PERSON", "URL", "NRP"]
-        self.supported_entities = self.get_supported_entities()
+        self.supported_entities = self.get_all_entities()
         self.filtered_entities = [
             entity for entity in self.supported_entities if entity not in self.not_filtered_entities
         ]
-        logger.info(f"Privacy filtered entity types: {self.filtered_entities}")
+        if self.language == "en":
+            logger.info(f"Privacy filtered entity types: {self.filtered_entities}")
 
     def _init_engines(self):
         model_mapping = {
@@ -56,7 +59,7 @@ class PIIDetector:
 
         self.analyzer = AnalyzerEngine(nlp_engine=nlp_engine)
 
-        self._add_custom_recognizers()
+        self._add_custom_recognizers(language=self.language)
 
         # self.anonymizer = AnonymizerEngine()
 
@@ -64,15 +67,18 @@ class PIIDetector:
             f"Presidio engine initialized successfully, using language: {self.language}, model: {model_name}"
         )
 
-    def _add_custom_recognizers(self):
+    def _add_custom_recognizers(self, language: str):
         # Create numeric ID recognizer - matches 5+ digit numbers or numbers with - separators
         numeric_id_patterns = [
             Pattern(name="numeric_id", regex=r"\b(?:\d{5,}|\d+-\d+(?:-\d+)*)\b", score=0.8),
+            Pattern(name="unicode_escape_id", regex=r"\\u[0-9a-fA-F]{4}", score=0.8),
+            Pattern(name="hex_escape_id", regex=r"\\xa0", score=0.8),
         ]
 
         numeric_id_recognizer = PatternRecognizer(
             supported_entity="NUMERIC_ID",
             patterns=numeric_id_patterns,
+            supported_language=language,
             name="numeric_id_recognizer",
             context=["id", "编号", "号码", "代码", "code", "number", "序号", "sequence", "identifier"],
         )
@@ -141,7 +147,9 @@ class PIIDetector:
                 text=text, language=self.language, entities=entities, score_threshold=self.threshold
             )
 
-            anonymized_result = self.anonymizer.anonymize(text=text, analyzer_results=analyzer_results)
+            anonymized_result = self.anonymizer.anonymize(
+                text=text, analyzer_results=cast(List[AnonymizerRecognizerResult], analyzer_results)
+            )
 
             logger.info(f"Successfully anonymized {len(analyzer_results)} PII entities")
             return anonymized_result.text
@@ -153,67 +161,65 @@ class PIIDetector:
     def get_supported_entities(self) -> List[str]:
         return self.analyzer.get_supported_entities(language=self.language)
 
+    def get_all_entities(self) -> List[str]:
+        """Get all entities including custom ones from the registry"""
+        predefined_entities = self.get_supported_entities()
+        custom_entities = []
+
+        # Get custom entities from registry
+        for recognizer in self.analyzer.registry.recognizers:
+            for entity in recognizer.supported_entities:
+                if entity not in predefined_entities and entity not in custom_entities:
+                    custom_entities.append(entity)
+
+        return predefined_entities + custom_entities
+
 
 class ChinesePIIDetector(PIIDetector):
     """Chinese PII detector, extended to recognize Chinese-specific PII"""
 
     def __init__(self, threshold: float = 0.5):
         super().__init__(language="zh", threshold=threshold)
-        self._init_chinese_patterns()
 
-    def _init_chinese_patterns(self):
-        self.chinese_patterns = {
-            "CHINESE_ID_CARD": re.compile(r"\b\d{15}|\d{18}|\d{17}[Xx]\b"),
-            "CHINESE_PHONE": re.compile(r"\b1[3-9]\d{9}\b"),
-            "CHINESE_NAME": re.compile(r"[\u4e00-\u9fff]{2,4}"),
-            "QQ_NUMBER": re.compile(r"\b[1-9]\d{4,10}\b"),
-            "WECHAT_ID": re.compile(r"\bwxid_[a-zA-Z0-9]{22}\b"),
-        }
+        # Filter out country-specific entities that are not relevant for Chinese context
+        country_prefixes = ["US_", "UK_", "SG_", "AU_", "IN_"]
+        # Get entities that are actually supported by the analyzer
+        all_entities = self.get_all_entities()
+        supported_entities = self.get_supported_entities()
 
-    def detect_chinese_pii(self, text: str) -> List[PIIResult]:
-        chinese_results = []
+        self.filtered_entities = [
+            entity
+            for entity in all_entities
+            if entity not in self.not_filtered_entities
+            and not any(entity.startswith(prefix) for prefix in country_prefixes)
+            and (entity in supported_entities or entity in ["NUMERIC_ID", "CHINESE_PII"])
+        ]
+        logger.info(f"Chinese PII filtered entity types: {self.filtered_entities}")
 
-        for entity_type, pattern in self.chinese_patterns.items():
-            matches = pattern.finditer(text)
-            for match in matches:
-                result = PIIResult(
-                    entity_type=entity_type,
-                    start=match.start(),
-                    end=match.end(),
-                    score=0.9,
-                    text=match.group(),
-                )
-                chinese_results.append(result)
+    def _add_custom_recognizers(self, language: str):
+        # Add parent class recognizers first
+        super()._add_custom_recognizers(language="zh")
 
-        return chinese_results
+        # Add Chinese-specific recognizers that are not covered by NUMERIC_ID
+        chinese_patterns = [
+            Pattern(name="chinese_id_with_x", regex=r"\b\d{17}[Xx]\b", score=0.9),
+            Pattern(
+                name="chinese_email", regex=r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b", score=0.9
+            ),
+            Pattern(
+                name="chinese_email_with_plus",
+                regex=r"\b[A-Za-z0-9._%+-]+\+[A-Za-z0-9._%+-]*@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b",
+                score=0.95,
+            ),
+        ]
 
-    def detect_pii(self, text: str, entities: Optional[List[str]] = None) -> List[PIIResult]:
-        """Override detection method, combining presidio and Chinese patterns"""
-        presidio_results = super().detect_pii(text)
+        chinese_recognizer = PatternRecognizer(
+            supported_entity="CHINESE_PII",
+            supported_language="zh",
+            patterns=chinese_patterns,
+            name="chinese_pii_recognizer",
+            context=["中文PII"],
+        )
+        self.analyzer.registry.add_recognizer(chinese_recognizer)
 
-        chinese_results = self.detect_chinese_pii(text)
-
-        all_results = presidio_results + chinese_results
-        all_results = self._remove_duplicates(all_results)
-
-        logger.info(f"检测到 {len(presidio_results)} 个标准PII和 {len(chinese_results)} 个中文PII")
-        return all_results
-
-    def _remove_duplicates(self, results: List[PIIResult]) -> List[PIIResult]:
-        """Remove overlapping detection results"""
-        if not results:
-            return results
-
-        results.sort(key=lambda x: (x.start, x.end))
-
-        unique_results = [results[0]]
-        for result in results[1:]:
-            last_result = unique_results[-1]
-            # Keep if current result doesn't overlap with previous result
-            if result.start >= last_result.end:
-                unique_results.append(result)
-            # If overlapping, keep the one with higher confidence
-            elif result.score > last_result.score:
-                unique_results[-1] = result
-
-        return unique_results
+        logger.info("Chinese PII recognizer added")
