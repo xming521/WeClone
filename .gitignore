@@ -154,6 +154,7 @@ test-scripts-my/
 *.csv
 !tests/tests_data/test_person/test_0_730.csv
 *test.*
+*-exp.*
 *users.json   
 Spark-TTS-0.5B/
 uv.lock
