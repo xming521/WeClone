@@ -215,6 +215,16 @@ def run_make_dataset_test(config_file: str):
     result = run_cli_command(["make-dataset"], config_file)
     assert result.returncode == 0, f"make-dataset command execution failed for config {config_file}"
 
+    # Check if blocked_words filtering is working correctly
+    sft_file_path = os.path.join(PROJECT_ROOT_DIR, "dataset", "res_csv", "sft", "sft-my.json")
+    with open(sft_file_path, 'r', encoding='utf-8') as f:
+        content = f.read()
+        if "hh" in content:
+            assert False, f"blocked_words filtering failed for config {config_file}: found 'hh' in {sft_file_path}"
+    test_logger.info(f"✅ blocked_words filtering check passed for config {config_file}")
+
+    
+
 def run_train_sft_test(config_file: str):
     """执行 train-sft 测试"""
     print_test_header("train-sft", config_file)

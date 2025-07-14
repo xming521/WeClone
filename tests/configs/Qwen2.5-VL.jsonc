@@ -21,6 +21,10 @@
             "text",
             "image"
         ],
+        "blocked_words": [
+            "1234567890",
+            "hh"
+        ],
         "max_image_num": 2, // 单条数据最大图片数量
         "single_combine_strategy": "time_window", // 单人组成单句策略
         "qa_match_strategy": "time_window", // 组成qa策略

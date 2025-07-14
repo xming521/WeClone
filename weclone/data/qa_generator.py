@@ -582,6 +582,8 @@ class DataProcessor:
 
         # Process other message types
         for i in df.index:
+            if df.loc[i, "type_name"].lower() in ["文本", "text"]:
+                continue
             if df.loc[i, "type_name"].lower() in ["图片", "image"]:  # type: ignore
                 if self.c.platform in [PlatformType.WECHAT, PlatformType.TELEGRAM]:
                     result = check_image_file_exists(str(df.loc[i, "src"]))
