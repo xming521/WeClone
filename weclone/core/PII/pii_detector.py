@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import List, Optional, cast
 
-from presidio_analyzer import AnalyzerEngine, Pattern, PatternRecognizer
+from presidio_analyzer import AnalyzerEngine, BatchAnalyzerEngine, Pattern, PatternRecognizer
 from presidio_analyzer.nlp_engine import NlpEngineProvider
 from presidio_anonymizer import AnonymizerEngine
 from presidio_anonymizer.entities.engine.recognizer_result import (
@@ -61,6 +61,8 @@ class PIIDetector:
 
         self._add_custom_recognizers(language=self.language)
 
+        self.batch_analyzer = BatchAnalyzerEngine(analyzer_engine=self.analyzer)
+
         # self.anonymizer = AnonymizerEngine()
 
         logger.info(
@@ -90,6 +92,22 @@ class PIIDetector:
     def has_pii(self, text: str, entities: Optional[List[str]] = None) -> bool:
         pii_results = self.detect_pii(text)
         return len(pii_results) > 0
+
+    def batch_has_pii(self, texts: List[str]) -> List[bool]:
+        """
+        Check if multiple texts contain PII information using batch processing
+
+        Args:
+            texts: List of texts to be checked
+
+        Returns:
+            List of boolean values indicating whether each text contains PII
+        """
+        if not texts or not isinstance(texts, list):
+            return []
+
+        batch_results = self.batch_detect_pii(texts)
+        return [len(results) > 0 for results in batch_results]
 
     def detect_pii(self, text: str) -> List[PIIResult]:
         """
@@ -127,6 +145,66 @@ class PIIDetector:
             logger.debug(f"Detected {len(pii_results)} PII entities")
 
         return pii_results
+
+    def batch_detect_pii(self, texts: List[str]) -> List[List[PIIResult]]:
+        """
+        Detect PII information in multiple texts using batch processing
+
+        Args:
+            texts: List of texts to be detected
+
+        Returns:
+            List of lists containing detected PII information for each text
+        """
+        if not texts or not isinstance(texts, list):
+            return []
+
+        # Filter out empty or non-string texts
+        valid_texts = []
+        text_indices = []
+        for i, text in enumerate(texts):
+            if text and isinstance(text, str):
+                valid_texts.append(text)
+                text_indices.append(i)
+
+        if not valid_texts:
+            return [[] for _ in texts]
+
+        # Use batch analyzer for multiple texts
+        results_iterator = self.batch_analyzer.analyze_iterator(
+            texts=valid_texts,
+            language=self.language,
+            entities=self.filtered_entities,
+            score_threshold=self.threshold,
+            n_process=12,
+            batch_size=16,
+        )
+
+        # Process results
+        all_pii_results = [[] for _ in texts]
+
+        for batch_idx, results in enumerate(results_iterator):
+            original_idx = text_indices[batch_idx]
+            text = valid_texts[batch_idx]
+
+            pii_results = []
+            for result in results:
+                pii_result = PIIResult(
+                    entity_type=result.entity_type,
+                    start=result.start,
+                    end=result.end,
+                    score=result.score,
+                    text=text[result.start : result.end],
+                )
+                pii_results.append(pii_result)
+
+            all_pii_results[original_idx] = pii_results
+
+        total_entities = sum(len(results) for results in all_pii_results)
+        if total_entities > 0:
+            logger.debug(f"Batch detected {total_entities} PII entities across {len(valid_texts)} texts")
+
+        return all_pii_results
 
     def anonymize_text(self, text: str, entities: Optional[List[str]] = None) -> str:
         """

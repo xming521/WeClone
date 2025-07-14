@@ -551,19 +551,38 @@ class DataProcessor:
         if "is_forward" in df.columns:
             df = df[~((df["is_sender"] == 1) & (df["is_forward"]))]
 
-        # If type_name is text and msg contains phone numbers, ID numbers, emails, URLs, delete this row
+        # Batch process text messages for PII detection and blocked words
+        text_indices = []
+        text_messages = []
+
         for i in df.index:
             if df.loc[i, "type_name"].lower() in ["文本", "text"]:  # type: ignore
                 msg_str = str(df.loc[i, "msg"])
                 msg_str = msg_str.replace("\n", "")
-                if self.pii_detector.has_pii(msg_str):
-                    df = df.drop(index=i)
+                text_indices.append(i)
+                text_messages.append(msg_str)
+
+        # TODO Deleting directly by batch_has_pii returning true/false.
+        indices_to_drop = []
+        if text_messages:
+            pii_results = self.pii_detector.batch_has_pii(text_messages)
+
+            for idx, (df_index, msg_str, has_pii) in enumerate(zip(text_indices, text_messages, pii_results)):
+                if has_pii:
+                    indices_to_drop.append(df_index)
                     continue
+
+                # Check blocked words
                 for blocked_word in self.blocked_words:
                     if blocked_word in msg_str:
-                        df = df.drop(index=i)
+                        indices_to_drop.append(df_index)
                         break
-            elif df.loc[i, "type_name"].lower() in ["图片", "image"]:  # type: ignore
+
+        df = df.drop(index=indices_to_drop)
+
+        # Process other message types
+        for i in df.index:
+            if df.loc[i, "type_name"].lower() in ["图片", "image"]:  # type: ignore
                 if self.c.platform in [PlatformType.WECHAT, PlatformType.TELEGRAM]:
                     result = check_image_file_exists(str(df.loc[i, "src"]))
                     if isinstance(result, str) and df.loc[i, "is_sender"] == 0:
