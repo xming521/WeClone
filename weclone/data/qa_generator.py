@@ -282,7 +282,7 @@ class DataProcessor:
 
                 system_content = self.system_prompt
                 if self.c.add_time:
-                    system_content += f" Current datetime: {time_stamp.strftime('%Y-%m-%d %H:%M:%S')}"
+                    system_content += f" Current datetime: {time_stamp.strftime('%m-%d %H:%M:%S')}"
 
                 qa_pair = self.QaPair(
                     id=qa_id,
