@@ -4,7 +4,7 @@ import shutil
 import subprocess
 import sys
 import time
-from typing import Optional, Union, cast
+from typing import Callable, Optional, Union, cast
 from unittest import mock
 
 import pytest
@@ -19,6 +19,7 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 DATASET_CSV_DIR = os.path.join(PROJECT_ROOT, "dataset", "csv")
 TESTS_DIR = os.path.dirname(__file__)
 TEST_DATA_PERSON_DIR = os.path.join(TESTS_DIR, "tests_data", "test_person")
+
 
 # Backup directories
 BACKUP_DIR = os.path.join(PROJECT_ROOT, "test_backup")
@@ -67,10 +68,9 @@ def print_config_header(config_file: str):
     test_logger.info(" " * padding_left + title + " " * padding_right)
     test_logger.info("═" * line_length)
 
-@pytest.fixture(scope="session", autouse=True)
-def setup_test_environment():
-    """Setup test environment once for the entire test session"""
-    test_logger.info("🔧 开始设置测试环境...")
+def setup_data_environment(data_folder_name: str = "test_person"):
+    """Setup test data environment for specified folder"""
+    test_logger.info(f"🔧 设置 {data_folder_name} 测试数据...")
     
     # Create backup directory
     if os.path.exists(BACKUP_DIR):
@@ -89,14 +89,26 @@ def setup_test_environment():
     
     os.makedirs(DATASET_CSV_DIR)
     
-    test_person_csv_dir = os.path.join(DATASET_CSV_DIR, "test_person")
-    os.makedirs(test_person_csv_dir)
+    # Setup specified test data folder
+    test_data_source_dir = os.path.join(TESTS_DIR, "tests_data", data_folder_name)
+    test_data_csv_dir = os.path.join(DATASET_CSV_DIR, data_folder_name)
+    os.makedirs(test_data_csv_dir)
 
-    for item_name in os.listdir(TEST_DATA_PERSON_DIR):
-        source_item_path = os.path.join(TEST_DATA_PERSON_DIR, item_name)
+    for item_name in os.listdir(test_data_source_dir):
+        source_item_path = os.path.join(test_data_source_dir, item_name)
         if os.path.isfile(source_item_path) and item_name.lower().endswith('.csv'):
-            destination_item_path = os.path.join(test_person_csv_dir, item_name)
+            destination_item_path = os.path.join(test_data_csv_dir, item_name)
             shutil.copy2(source_item_path, destination_item_path)
+    
+    test_logger.info(f"✅ {data_folder_name} 测试数据设置完成")
+
+@pytest.fixture(scope="session", autouse=True)
+def setup_test_environment():
+    """Setup test environment once for the entire test session"""
+    test_logger.info("🔧 开始设置测试环境...")
+    
+    # Use the generic setup function with default test_person data
+    setup_data_environment("test_person")
     
     test_logger.info("✅ 测试环境设置完成")
     

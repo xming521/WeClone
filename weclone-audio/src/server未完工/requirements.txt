@@ -1,5 +1,0 @@
-flask
-gevent
-python-dotenv
-edge-tts
-emoji

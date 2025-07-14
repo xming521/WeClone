@@ -72,7 +72,7 @@ class PIIDetector:
     def _add_custom_recognizers(self, language: str):
         # Create numeric ID recognizer - matches 5+ digit numbers or numbers with - separators
         numeric_id_patterns = [
-            Pattern(name="numeric_id", regex=r"\b(?:\d{5,}|\d+-\d+(?:-\d+)*)\b", score=0.8),
+            Pattern(name="numeric_id", regex=r"\b(?:[A-Za-z]*\d{5,}[A-Za-z]*|\d+-\d+(?:-\d+)*)\b", score=0.8),
             Pattern(name="unicode_escape_id", regex=r"\\u[0-9a-fA-F]{4}", score=0.8),
             Pattern(name="hex_escape_id", regex=r"\\xa0", score=0.8),
         ]
