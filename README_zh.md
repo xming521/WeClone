@@ -49,7 +49,7 @@
 | 平台 | 部署支持 |
 |------|------|
 | Telegram | ✅ | 
-| WhatsApp | ✅ | 
+| WhatsApp | 🚧 | 
 | Discord | ✅ | 
 | Slack | ✅ | 
 
