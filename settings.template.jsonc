@@ -16,7 +16,7 @@
     },
     "make_dataset_args": {
         //数据处理配置
-        "platform": "wechat", //wechat,telegram
+        "platform": "chat", //chat,telegram
         "language": "zh", // 聊天常用语言: zh(中文) 或 en(英文)
         "telegram_args": {
             "my_id": "user1234567890"

@@ -39,7 +39,7 @@ class DataProcessor:
         self.QaPair = QaPair
 
         self.include_type = self.config.include_type
-        if self.config.platform == PlatformType.WECHAT:
+        if self.config.platform == PlatformType.CHAT:
             self.cut_type_list = cut_type_list.get_items(lang="zh_CN")
             self.skip_type_list = skip_type_list.get_items(lang="zh_CN")
             self.include_type = cut_type_list.translate_batch(
@@ -217,7 +217,6 @@ class DataProcessor:
                     continue
                 csvfile_path = os.path.join(chat_obj_folder_path, csvfile)
                 csv_files.append(csvfile_path)
-        # Extract starting number from filename, e.g., wxid_..._0_5000.csv → 0
         pattern = re.compile(r"_(\d+)_\d+\.csv$")
 
         def extract_start(fp: str) -> int:
@@ -585,7 +584,7 @@ class DataProcessor:
             if df.loc[i, "type_name"].lower() in ["文本", "text"]:
                 continue
             if df.loc[i, "type_name"].lower() in ["图片", "image"]:  # type: ignore
-                if self.c.platform in [PlatformType.WECHAT, PlatformType.TELEGRAM]:
+                if self.c.platform in [PlatformType.CHAT, PlatformType.TELEGRAM]:
                     result = check_image_file_exists(str(df.loc[i, "src"]))
                     if isinstance(result, str) and df.loc[i, "is_sender"] == 0:
                         df.loc[i, "src"] = result
@@ -594,7 +593,7 @@ class DataProcessor:
                     else:
                         df.loc[i, "type_name"] = "Cut"
             elif df.loc[i, "type_name"] in ["sticker"]:
-                if self.c.platform in [PlatformType.WECHAT, PlatformType.TELEGRAM]:
+                if self.c.platform in [PlatformType.CHAT, PlatformType.TELEGRAM]:
                     df.loc[i, "src"] = ""
                     continue
             else:

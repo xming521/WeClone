@@ -31,7 +31,7 @@
 ## ✨Core Features
 - 💫 Complete end-to-end solution for creating digital avatars, including chat data export, preprocessing, model training, and deployment
 - 💬 Fine-tune LLM using chat history with support for image modal data, infusing it with that authentic "flavor"
-- 🔗 Integrate with Telegram, WeChat, WhatsApp (coming soon) to create your own digital avatar
+- 🔗 Integrate with Telegram, WhatsApp (coming soon) to create your own digital avatar
 - 🛡️ Privacy information filtering with localized fine-tuning and deployment for secure and controllable data
 
 ## 📋Features & Notes
@@ -40,7 +40,6 @@
 
 | Platform | Text | Images | Voice | Video | Animated Emojis/Stickers | Links (Sharing) | Quote | Forward | Location | Files |
 |----------|------|--------|-------|-------|-----------------|-----------------|-------|---------|----------|-------|
-| WeChat | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Telegram | ✅ | ✅ | ❌ | ❌ | ⚠️Convert to Emoji | ❌ | ❌ | ✅ | ✅ | ❌ |
 
  
@@ -169,23 +168,13 @@ weclone-cli test-model
 
 ## 🖼️ Results Showcase
 > [!TIP] 
-> **We're looking for interesting examples of native English speakers chatting with WeClone! Feel free to share them with us on Twitter.
- More cases can be found on [XiaoHongShu](https://www.xiaohongshu.com/user/profile/628109730000000021029de4)**  
+> **We're looking for interesting examples of native English speakers chatting with WeClone! Feel free to share them with us on Twitter.**  
 
-Using the Qwen2.5VL 32B model with approximately 10,000 processed effective data samples, the loss was reduced to around 3.6:
-<details>
-<summary>Screenshots</summary>
-<div style="display: flex; flex-wrap: wrap; gap: 10px;">
-<img src="https://github.com/user-attachments/assets/b7d81f9b-ea56-4f7e-8ee5-7f4171bdc66d" alt="alt text" style="width: 52%; min-width: 150px;"> 
-<img src="https://github.com/user-attachments/assets/62e58de8-1a73-44fc-a948-0d2e949e44a0" alt="alt text" style="width: 52%; min-width: 150px;">
-<img src="https://github.com/user-attachments/assets/6bf6d0cc-7ff1-4748-a096-3850d924f954" alt="alt text" style="width: 52%; min-width: 150px;">
-</div>
-</details>
 
 
 ## 🤖 Deploy to Chat Bots
 ### AstrBot
-[AstrBot](https://github.com/AstrBotDevs/AstrBot) is an easy-to-use multi-platform LLM chatbot and development framework ✨ Supports Discord, Telegram, Slack, QQ, WeChat, Enterprise WeChat, Feishu and other platforms.      
+[AstrBot](https://github.com/AstrBotDevs/AstrBot) is an easy-to-use multi-platform LLM chatbot and development framework ✨ Supports Discord, Telegram, Slack, Feishu and other platforms.      
 
 Usage steps:
 1. Deploy AstrBot

@@ -61,9 +61,6 @@ dev = ["pytest", "pytest-order", "pyright", "ruff", "pre-commit"]
 weclone-cli = "weclone.cli:cli"
 
 [tool.uv]
-conflicts = [
-  # [{ group = "wx" }, { group = "xcodec" }],
-]
 
 [tool.uv.pip]
 torch-backend = "auto"

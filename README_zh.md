@@ -31,7 +31,7 @@
 ## ✨核心功能
 - 💫 涵盖打造数字分身的全链路方案，包括聊天数据导出、预处理、模型训练、部署
 - 💬 使用聊天记录微调LLM，支持图片模态数据，让大模型有"那味儿"
-- 🔗 绑定到微信、QQ、Telegram、企微、飞书机器人，实现自己的数字分身
+- 🔗 绑定到Discord, Telegram, Slack, Feishu等，实现自己的数字分身
 - 🛡️ 隐私信息过滤，本地化微调部署，数据安全可控
 
 ## 📋特性与说明
@@ -40,7 +40,7 @@
 
 | 平台 | 文字 | 图片 | 语音 | 视频 | 动画表情 | 链接(分享) | 引用 | 转发 | 位置 | 文件 |
 |------|------|------|------|------|----------|-----------|------|------|------|------|
-| 微信 | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| 微信(暂不支持) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Telegram | ✅ | ✅ | ❌ | ❌ | ⚠️转为Emjoy | ❌ | ❌ | ✅ | ✅ | ❌ |
 
 > [!IMPORTANT]
@@ -107,9 +107,6 @@ modelscope download --model Qwen/Qwen2.5-7B-Instruct --local_dir ./models/Qwen2.
 ### Telegram
 请使用[Telegram Desktop](https://desktop.telegram.org/)导出聊天记录，点击右上角点击导出聊天记录，选择照片类型，格式选择JSON。可以导出多个联系人（不建议使用群聊记录），然后将导出的`ChatExport_*`文件夹放在`./dataset/telegram`目录即可，也就是不同人聊天记录的文件夹一起放在 `./dataset/telegram`。
 
-### 微信
-请使用[PyWxDump](https://github.com/xaoyaoo/PyWxDump)或其他开源工具导出微信聊天记录。详细步骤查看官方文档：[微信聊天记录导出](https://docs.weclone.love/zh/docs/deploy/export-chat-history.html#%E5%BE%AE%E4%BF%A1)
-
 
 ## 数据预处理
 - 首先根据需要修改配置文件中的`language`、`platform`、`include_type`。
@@ -163,24 +160,14 @@ weclone-cli test-model
 
 ## 🖼️ 微调效果
 > [!TIP] 
-> **QQ群内有部署好的Qwen2.5VL 32B Bot，可以体验效果。更多案例可以关注[小红书](https://www.xiaohongshu.com/user/profile/628109730000000021029de4)** 
-
-使用Qwen2.5VL 32B模型，大概1万条处理后的有效数据，loss降到了3.6左右的效果：
-<details>
-<summary>截图</summary>
-<div style="display: flex; flex-wrap: wrap; gap: 10px;">
-<img src="https://github.com/user-attachments/assets/b7d81f9b-ea56-4f7e-8ee5-7f4171bdc66d" alt="alt text" style="width: 52%; min-width: 150px;"> 
-<img src="https://github.com/user-attachments/assets/62e58de8-1a73-44fc-a948-0d2e949e44a0" alt="alt text" style="width: 52%; min-width: 150px;">
-<img src="https://github.com/user-attachments/assets/6bf6d0cc-7ff1-4748-a096-3850d924f954" alt="alt text" style="width: 52%; min-width: 150px;">
-</div>
-</details>
+> **社群内有部署好的Qwen2.5VL 32B Bot，可以体验效果。** 
 
 
 ## 🤖 部署到聊天机器人
 
 ### AstrBot
 
-[AstrBot](https://github.com/AstrBotDevs/AstrBot) 是易上手的多平台 LLM 聊天机器人及开发框架 ✨ 平台支持 QQ、QQ频道、Telegram、微信、企微、飞书。      
+[AstrBot](https://github.com/AstrBotDevs/AstrBot) 是易上手的多平台 LLM 聊天机器人及开发框架 ✨ 平台支持Telegram、飞书等。      
 
 使用步骤：
 1. 部署 AstrBot
@@ -221,10 +208,6 @@ weclone-cli test-model
 #### [官方文档FAQ](https://docs.weclone.love/docs/introduce/FAQ.html)    
 同时建议使用[DeepWiki](https://deepwiki.com/xming521/WeClone)解决问题。
 
-#### 教程资源
-<a href="https://blog.051088.xyz/2025/05/14/WeClone-%E7%94%A8%E5%BE%AE%E4%BF%A1%E8%81%8A%E5%A4%A9%E8%AE%B0%E5%BD%95%E6%89%93%E9%80%A0%E8%87%AA%E5%B7%B1%E7%9A%84AI%E6%95%B0%E5%AD%97%E5%88%86%E8%BA%AB/" target="_blank">Windows部署指南</a> ｜
-<a href="https://blog.051088.xyz/posts/weclone-linux-tutorial/" target="_blank"> Linux部署指南【保姆级】</a>
-
 ## ❤️ 贡献代码
 
 欢迎任何 Issues/Pull Requests！
@@ -251,7 +234,9 @@ pre-commit install
 
 ## ⚠️ 免责声明
 > [!CAUTION]
-> **本项目仅供学习、研究和实验用途，用于生产环境存在较大风险，请谨慎评估。请勿用于非法用途，后果自负。**
+> **本项目仅供学习、研究和实验用途，用于生产环境存在较大风险，请谨慎评估。请勿用于非法用途，后果自负。**   
+> [针对违规获取及利用微信终端用户数据行为的打击公告](https://mp.weixin.qq.com/s/A6h4ZLTE2EPrY7kJ5fHE2g)
+
 
 > [!IMPORTANT]
 > #### WeClone 目前未与任何平台合作，未发行任何数字货币。唯一官方网站：[weclone.love](https://www.weclone.love)，谨防仿冒。
