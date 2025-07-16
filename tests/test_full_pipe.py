@@ -234,6 +234,12 @@ def run_make_dataset_test(config_file: str):
         if "hh" in content:
             assert False, f"blocked_words filtering failed for config {config_file}: found 'hh' in {sft_file_path}"
     test_logger.info(f"✅ blocked_words filtering check passed for config {config_file}")
+    
+    # Check if <image> tags count is correct for Qwen2.5-VL.jsonc config
+    if "Qwen2.5-VL.jsonc" in config_file:
+        image_count = content.count("<image>")
+        assert image_count == 3, f"Expected 3 <image> tags in {sft_file_path} for config {config_file}, but found {image_count}"
+        test_logger.info(f"✅ <image> tags count check passed for config {config_file}: found {image_count} <image> tags")
 
     
 
