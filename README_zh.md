@@ -40,8 +40,18 @@
 
 | 平台 | 文字 | 图片 | 语音 | 视频 | 动画表情 | 链接(分享) | 引用 | 转发 | 位置 | 文件 |
 |------|------|------|------|------|----------|-----------|------|------|------|------|
-| 微信(暂不支持) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Telegram | ✅ | ✅ | ❌ | ❌ | ⚠️转为Emjoy | ❌ | ❌ | ✅ | ✅ | ❌ |
+| WhatsApp | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 |
+| Discord | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 |
+| Slack | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 |
+
+### 部署平台支持
+| 平台 | 部署支持 |
+|------|------|
+| Telegram | ✅ | 
+| WhatsApp | ✅ | 
+| Discord | ✅ | 
+| Slack | ✅ | 
 
 > [!IMPORTANT]
 > - WeClone仍在快速迭代期，当前效果不代表最终效果。  
@@ -230,7 +240,7 @@ pre-commit install
   <img src="https://contrib.rocks/image?repo=xming521/WeClone" />
 </a>
 
-同时本项目受益于[PyWxDump](https://github.com/xaoyaoo/PyWxDump)、[LLaMA-Factory](https://github.com/hiyouga/LLaMA-Factory)、[AstrBot](https://github.com/AstrBotDevs/AstrBot)、[LangBot](https://github.com/RockChinQ/LangBot)等优秀开源项目。
+同时本项目受益于[LLaMA-Factory](https://github.com/hiyouga/LLaMA-Factory)、[AstrBot](https://github.com/AstrBotDevs/AstrBot)、[LangBot](https://github.com/RockChinQ/LangBot)等优秀开源项目。
 
 ## ⚠️ 免责声明
 > [!CAUTION]

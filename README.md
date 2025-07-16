@@ -41,8 +41,19 @@
 | Platform | Text | Images | Voice | Video | Animated Emojis/Stickers | Links (Sharing) | Quote | Forward | Location | Files |
 |----------|------|--------|-------|-------|-----------------|-----------------|-------|---------|----------|-------|
 | Telegram | ✅ | ✅ | ❌ | ❌ | ⚠️Convert to Emoji | ❌ | ❌ | ✅ | ✅ | ❌ |
-
+| WhatsApp | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 |
+| Discord | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 |
+| Slack | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 |
  
+### Deployment Platform Support
+
+| Platform | Deployment Support |
+|----------|--------------------|
+| Telegram | ✅ |
+| WhatsApp | 🚧 |
+| Discord | ✅ |
+| Slack | ✅ |
+
 > [!IMPORTANT]
 > - WeClone is still in rapid iteration phase, current performance does not represent final results.  
 > - LLM fine-tuning effectiveness largely depends on model size, quantity and quality of chat data. Theoretically, larger models with more data yield better results.
