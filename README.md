@@ -151,13 +151,6 @@ uv pip install "deepspeed<=0.16.9"
 deepspeed --num_gpus=number_of_gpus weclone/train/train_sft.py
 ```
 
-### Multi-GPU Training
-Uncomment the `deepspeed` line in `settings.jsonc` and use the following command for multi-GPU training:
-```bash
-uv pip install "deepspeed<=0.16.9"
-deepspeed --num_gpus=number_of_gpus weclone/train/train_sft.py
-```
-
 ### Simple Inference with Browser Demo
 Test suitable temperature and top_p values, then modify `infer_args` in settings.jsonc for subsequent inference use.
 ```bash
