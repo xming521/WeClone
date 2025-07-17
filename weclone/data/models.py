@@ -56,6 +56,7 @@ class QaPairScoreWithId(QaPairScore):
 
 cut_type_data = {
     "zh_CN": [
+        "cut",
         "Cut",
         "图片",
         "视频",
@@ -66,7 +67,6 @@ cut_type_data = {
         "(分享)笔记",
         "(分享)小程序",
         "(分享)收藏夹",
-        "(分享)小说(猜)",
         "(分享)视频号名片",
         "(分享)视频号视频",
         "粘贴的文本",  # 无法解析的分享链接
@@ -84,10 +84,10 @@ cut_type_data = {
         "(share) note",
         "(share) mini program",
         "(share) favorites",
-        "(share) novel (guess)",
         "(share) video account card",
         "(share) video account video",
         "pasted text",  # Unparseable share link
+        "unknown",
     ],
 }
 
@@ -102,29 +102,14 @@ skip_type_data = {
         "位置",
         "文件",
         "位置共享",
-        "接龙",
         "引用回复",
-        "视频号直播或直播回放",
-        "用户上传的GIF表情",
-        "文件(猜)",
         "群公告",
-        "视频号直播或直播回放等",
-        "游戏相关",
         "转账",
-        "赠送红包封面",
         "语音通话",
-        "企业微信打招呼(猜)",
-        "企业微信添加好友(猜)",
         "系统通知",
-        "消息撤回1",
+        "消息撤回",
         "拍一拍",
-        "消息撤回5",
-        "消息撤回6",
-        "消息撤回33",
-        "消息撤回36",
-        "消息撤回57",
         "邀请加群",
-        "未知-11000,0",
     ],
     "en": [
         "add friend",
@@ -139,6 +124,7 @@ skip_type_data = {
         "voice call",
         "system notification",
         "message recall",
+        "pat pat",
         "invite to group",
     ],
 }

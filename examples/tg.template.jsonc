@@ -16,7 +16,7 @@
     },
     "make_dataset_args": {
         // Data processing configuration
-        "platform": "telegram", //wechat,telegram
+        "platform": "telegram", //chat,telegram
         "language": "en", // Common chat language: zh(中文), en(English)
         "telegram_args": {
             "my_id": "user1234567890"

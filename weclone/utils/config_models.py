@@ -11,8 +11,8 @@ if TYPE_CHECKING:
 class StrEnum(str, Enum):
     """
     Pydantic-friendly string enum base class
-    Supports direct string comparison, e.g.: `if platform == PlatformType.WECHAT`
-    Also supports string literal comparison, e.g.: `if platform == "wechat"`
+    Supports direct string comparison, e.g.: `if platform == PlatformType.CHAT`
+    Also supports string literal comparison, e.g.: `if platform == "chat"`
     """
 
     def __str__(self) -> str:
@@ -35,8 +35,7 @@ class BaseConfigModel(BaseModel):
 class PlatformType(StrEnum):
     """Data source platform"""
 
-    WECHAT = "wechat"
-    # QQ = "qq"
+    CHAT = "chat"
     TELEGRAM = "telegram"
 
 
@@ -134,6 +133,7 @@ class MakeDatasetArgs(BaseConfigModel):
     include_type: List[DataModality] = Field([DataModality.TEXT], description="Types of data to include")
     max_image_num: int = Field(2, description="Maximum number of images per single data entry")
     blocked_words: List[str] = Field([], description="List of blocked words")
+    add_time: bool = Field(False, description="Whether to add time to the dataset")
     single_combine_strategy: CombineStrategy = Field(
         CombineStrategy.TIME_WINDOW,
         description="Strategy for combining single person's messages into a single sentence",
@@ -240,8 +240,6 @@ class WCTrainSftConfig(CommonArgs, TrainSftArgs):
     def process_config(self):
         adapter_name_value = getattr(self, "adapter_name_or_path", None)
 
-        if self.dataset == "wechat-sft":
-            self.dataset = "chat-sft"
         if adapter_name_value:
             self.output_dir = adapter_name_value
 
@@ -264,9 +262,6 @@ class WCMakeDatasetConfig(CommonArgs, MakeDatasetArgs):
 
     @model_validator(mode="after")
     def process_config(self):
-        if self.dataset == "wechat-sft":
-            self.dataset = "chat-sft"
-
         # Validate Telegram configuration
         if self.platform == PlatformType.TELEGRAM:
             if self.telegram_args is None or self.telegram_args.my_id == "user1234567890":

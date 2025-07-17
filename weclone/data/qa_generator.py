@@ -10,7 +10,7 @@ os.environ.setdefault("VLLM_WORKER_MULTIPROC_METHOD", "spawn")
 import pandas as pd
 from pandas import Timestamp
 
-from weclone.core.PII.pii_detector import PIIDetector
+from weclone.core.PII.pii_detector import ChinesePIIDetector, PIIDetector
 from weclone.data.chat_parsers.telegram_parser import process_telegram_dataset
 from weclone.data.clean.strategies import LLMCleaningStrategy, OlineLLMCleaningStrategy
 from weclone.data.models import (
@@ -39,7 +39,7 @@ class DataProcessor:
         self.QaPair = QaPair
 
         self.include_type = self.config.include_type
-        if self.config.platform == PlatformType.WECHAT:
+        if self.config.platform == PlatformType.CHAT:
             self.cut_type_list = cut_type_list.get_items(lang="zh_CN")
             self.skip_type_list = skip_type_list.get_items(lang="zh_CN")
             self.include_type = cut_type_list.translate_batch(
@@ -80,7 +80,9 @@ class DataProcessor:
             )
 
         # PII detection
-        if self.config.language == LanguageType.EN:
+        if self.config.language == LanguageType.ZH:
+            self.pii_detector = ChinesePIIDetector()
+        else:
             self.pii_detector = PIIDetector(language=self.config.language)
 
         # dataset cleaning
@@ -215,7 +217,6 @@ class DataProcessor:
                     continue
                 csvfile_path = os.path.join(chat_obj_folder_path, csvfile)
                 csv_files.append(csvfile_path)
-        # Extract starting number from filename, e.g., wxid_..._0_5000.csv → 0
         pattern = re.compile(r"_(\d+)_\d+\.csv$")
 
         def extract_start(fp: str) -> int:
@@ -278,13 +279,17 @@ class DataProcessor:
                     )
                     return qa_id
 
+                system_content = self.system_prompt
+                if self.c.add_time:
+                    system_content += f" Current datetime: {time_stamp.strftime('%m-%d %H:%M:%S')}"
+
                 qa_pair = self.QaPair(
                     id=qa_id,
                     time=time_stamp,
                     score=0,
                     messages=current_conversation_messages.copy(),
                     images=current_conversation_images.copy(),
-                    system=self.system_prompt,
+                    system=system_content,
                 )
                 qa_res.append(qa_pair)
                 return qa_id + 1
@@ -422,10 +427,7 @@ class DataProcessor:
                     "，",
                     ",",
                 ]:
-                    if self.c.language == LanguageType.ZH:
-                        combined_content += "，"
-                    else:
-                        combined_content += "|"
+                    combined_content += "\n"
 
                 if i.modality == DataModality.IMAGE:
                     combined_src_list.append(i.src)
@@ -548,30 +550,41 @@ class DataProcessor:
         if "is_forward" in df.columns:
             df = df[~((df["is_sender"] == 1) & (df["is_forward"]))]
 
-        # If type_name is text and msg contains phone numbers, ID numbers, emails, URLs, delete this row
+        # Batch process text messages for PII detection and blocked words
+        text_indices = []
+        text_messages = []
+
         for i in df.index:
             if df.loc[i, "type_name"].lower() in ["文本", "text"]:  # type: ignore
                 msg_str = str(df.loc[i, "msg"])
-                if self.c.language == LanguageType.ZH:
-                    if (
-                        re.search(r"1\d{10}", msg_str)
-                        or re.search(r"\d{18}", msg_str)
-                        or re.search(r"\w+@\w+", msg_str)
-                        or r"\\xa0" in msg_str
-                        or r"\\u" in msg_str
-                    ):
-                        df = df.drop(index=i)
-                        continue
-                else:
-                    if self.pii_detector.has_pii(msg_str):
-                        df = df.drop(index=i)
-                        continue
+                msg_str = msg_str.replace("\n", "")
+                text_indices.append(i)
+                text_messages.append(msg_str)
+
+        # TODO Deleting directly by batch_has_pii returning true/false.
+        indices_to_drop = []
+        if text_messages:
+            pii_results = self.pii_detector.batch_has_pii(text_messages)
+
+            for idx, (df_index, msg_str, has_pii) in enumerate(zip(text_indices, text_messages, pii_results)):
+                if has_pii:
+                    indices_to_drop.append(df_index)
+                    continue
+
+                # Check blocked words
                 for blocked_word in self.blocked_words:
                     if blocked_word in msg_str:
-                        df = df.drop(index=i)
+                        indices_to_drop.append(df_index)
                         break
-            elif df.loc[i, "type_name"].lower() in ["图片", "image"]:  # type: ignore
-                if self.c.platform in [PlatformType.WECHAT, PlatformType.TELEGRAM]:
+
+        df = df.drop(index=indices_to_drop)
+
+        # Process other message types
+        for i in df.index:
+            if df.loc[i, "type_name"].lower() in ["文本", "text"]:
+                continue
+            if df.loc[i, "type_name"].lower() in ["图片", "image"]:  # type: ignore
+                if self.c.platform in [PlatformType.CHAT, PlatformType.TELEGRAM]:
                     result = check_image_file_exists(str(df.loc[i, "src"]))
                     if isinstance(result, str) and df.loc[i, "is_sender"] == 0:
                         df.loc[i, "src"] = result
@@ -580,7 +593,7 @@ class DataProcessor:
                     else:
                         df.loc[i, "type_name"] = "Cut"
             elif df.loc[i, "type_name"] in ["sticker"]:
-                if self.c.platform in [PlatformType.WECHAT, PlatformType.TELEGRAM]:
+                if self.c.platform in [PlatformType.CHAT, PlatformType.TELEGRAM]:
                     df.loc[i, "src"] = ""
                     continue
             else:

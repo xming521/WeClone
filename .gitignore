@@ -154,6 +154,8 @@ test-scripts-my/
 *.csv
 !tests/tests_data/test_person/test_0_730.csv
 *test.*
+*-exp.*
+experiment/
 *users.json   
 Spark-TTS-0.5B/
 uv.lock
@@ -182,3 +184,4 @@ dataset/**/*.ico
 
 dataset/*telegram*/*
 !*.gitkeep
+WC-exp/*

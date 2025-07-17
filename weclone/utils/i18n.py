@@ -6,8 +6,27 @@ class MultiLangList:
         self.translations = translations
         self.current_lang = default_lang
         self.default_lang = default_lang
+        # Validate that all translation lists have the same length
+        self._validate_translations()
         # 创建反向映射字典，用于快速查找
         self._build_reverse_mapping()
+
+    def _validate_translations(self):
+        """Validate that all translation lists have the same length"""
+        if not self.translations:
+            raise ValueError("Translations dictionary cannot be empty")
+
+        # Get the length of the first list as reference
+        first_lang = next(iter(self.translations))
+        expected_length = len(self.translations[first_lang])
+
+        # Check if all lists have the same length
+        for lang, items in self.translations.items():
+            if len(items) != expected_length:
+                raise ValueError(
+                    f"Translation list for '{lang}' has {len(items)} items, "
+                    f"expected {expected_length} items (same as '{first_lang}')"
+                )
 
     def _build_reverse_mapping(self):
         """构建反向映射，用于根据文本查找对应的索引和其他语言翻译"""
