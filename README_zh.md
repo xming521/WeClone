@@ -1,4 +1,4 @@
-![download](https://github.com/user-attachments/assets/5842e84e-004f-4afd-9373-af64e9575b78)
+![download](https://github.com/user-attachments/assets/cd4a87c6-1649-4ce5-bce8-bd5b08b278de)
 <h3 align="center">🚀 One-stop solution for creating your digital avatar from chat history 💡</h3>  
 <h3 align="center">🚀从聊天记录创造数字分身的一站式解决方案💡</h3>  
 
