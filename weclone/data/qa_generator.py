@@ -618,7 +618,7 @@ class DataProcessor:
         processed_qa_res = []
         for idx, item in enumerate(qa_res):
             item_dict = {
-                "id": idx,
+                "id": str(idx),
                 "time": item.time.isoformat() if item.time else None,
                 "score": item.score,
                 "messages": [{"role": msg.role, "content": msg.content} for msg in item.messages],
