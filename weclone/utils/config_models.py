@@ -80,7 +80,7 @@ class CommonArgs(BaseConfigModel):
     """NOTE that all parameters here will be parsed by `HfArgumentParser`. Non-HfArgumentParser parameters should be placed in make_dataset_args."""
 
     model_name_or_path: str = Field(...)
-    adapter_name_or_path: str = Field("./model_output", description="Also as output_dir of train_sft_args")
+    adapter_name_or_path: Optional[str] = Field(None, description="Also as output_dir of train_sft_args")
     template: str = Field(..., description="model template")
     default_system: str = Field(..., description="default system prompt")
     finetuning_type: FinetuningType = Field(FinetuningType.LORA)
@@ -243,10 +243,9 @@ class WCTrainSftConfig(CommonArgs, TrainSftArgs):
         if adapter_name_value:
             self.output_dir = adapter_name_value
 
-        try:
+        # Always remove adapter_name_or_path field after processing
+        if hasattr(self, "adapter_name_or_path"):
             delattr(self, "adapter_name_or_path")
-        except AttributeError:
-            pass
 
         return self
 

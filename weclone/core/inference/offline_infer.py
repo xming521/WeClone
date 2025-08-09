@@ -143,6 +143,8 @@ def vllm_infer(
         chat_template_kwargs={"enable_thinking": False},
     )  # type: ignore
 
+    del llm
+
     failed_indexs = []
     if guided_decoding_class:
         # TODO better json decode  https://github.com/vllm-project/vllm/commit/1d0ae26c8544fd5a62e171e30c2dcc2973a23bc8#diff-3b27790a2ce97bc50cdd5476f7b0057da682ed0d1ec8426a7b76c5e21454e57d

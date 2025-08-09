@@ -185,3 +185,10 @@ dataset/**/*.ico
 dataset/*telegram*/*
 !*.gitkeep
 WC-exp/*
+
+modeloutputs/*
+/tmp/*
+cache.pkl
+hfd.sh
+rpa_cache.pkl
+settings-bot8006.jsonc

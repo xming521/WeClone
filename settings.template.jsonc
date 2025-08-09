@@ -84,7 +84,7 @@
     "infer_args": {
         "repetition_penalty": 1.2,
         "temperature": 0.5,
-        "max_length": 50,
+        "max_length": 256,
         "top_p": 0.65
     },
     "vllm_args": {
