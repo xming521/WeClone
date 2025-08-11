@@ -66,7 +66,7 @@
         "freeze_multi_modal_projector": false, // Whether to freeze the multimodal projector during MLLM training
         "use_fast_tokenizer": true,
         "lora_target": "q_proj,v_proj,visual.merger.mlp.0,visual.merger.mlp.2",
-        "lora_rank": 16,
+        "lora_rank": 8,
         "lora_dropout": 0.25,
         "weight_decay": 0.1,
         "overwrite_cache": true,
