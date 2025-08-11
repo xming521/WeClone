@@ -140,7 +140,7 @@ def vllm_infer(
         messages_list,
         sampling_params,
         lora_request=lora_request,
-        chat_template_kwargs={"enable_thinking": False},
+        chat_template_kwargs={"enable_thinking": enable_thinking},
     )  # type: ignore
 
     del llm

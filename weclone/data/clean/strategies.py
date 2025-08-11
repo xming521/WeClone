@@ -104,16 +104,18 @@ class LLMCleaningStrategy(CleaningStrategy):
             template=self.make_dataset_config.template,
             temperature=0,
             guided_decoding_class=QaPairScore,
-            repetition_penalty=1.5,
-            enable_thinking=False,
+            repetition_penalty=1.1,
+            enable_thinking=self.make_dataset_config.clean_dataset.llm.enable_thinking,
             cutoff_len=self.make_dataset_config.messages_max_length + 1024,  # add prompt length
-            max_new_tokens=200,
+            max_new_tokens=1024 if self.make_dataset_config.clean_dataset.llm.enable_thinking else 200,
         )
 
         parsed_scores = cast(List[QaPairScore], parsed_scores)
 
         parsed_score_idx = 0
         for data_idx, qa in enumerate(data):
+            if qa.images:
+                continue
             if data_idx in failed_indexs:
                 logger.warning(f"Index {data_idx} (ID: {qa.id}) parsing failed, skipped")
                 qa.score = 0

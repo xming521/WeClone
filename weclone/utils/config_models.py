@@ -101,6 +101,7 @@ class LLMCleanConfig(BaseConfigModel):
         2,
         description="Acceptable LLM scoring threshold: 1 (worst) to 5 (best). Data scoring below this threshold will not be used for training.",
     )
+    enable_thinking: bool = Field(False, description="used in llama-factory")
 
 
 class CleanDatasetConfig(BaseConfigModel):
