@@ -86,14 +86,17 @@ class LLMCleaningStrategy(CleaningStrategy):
         inputs = []
         prompt_template = PromptTemplate.from_template(CLEAN_PROMPT)
         for qa in data:
-            messages_str = ""
-            for msg in qa.messages:
-                if msg.role == "user":
-                    messages_str += f"Q: {msg.content}\n"
-                elif msg.role == "assistant":
-                    messages_str += f"A: {msg.content}\n"
-            prompt_value = prompt_template.invoke({"id": qa.id, "messages": messages_str.strip()})
-            inputs.append(prompt_value.to_string())
+            if qa.images:
+                qa.score = 6
+            else:
+                messages_str = ""
+                for msg in qa.messages:
+                    if msg.role == "user":
+                        messages_str += f"Q: {msg.content}\n"
+                    elif msg.role == "assistant":
+                        messages_str += f"A: {msg.content}\n"
+                prompt_value = prompt_template.invoke({"id": qa.id, "messages": messages_str.strip()})
+                inputs.append(prompt_value.to_string())
 
         parsed_scores, failed_indexs = vllm_infer(
             inputs,

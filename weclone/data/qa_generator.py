@@ -89,10 +89,6 @@ class DataProcessor:
         clean_dataset_config = self.config.clean_dataset
 
         if self.enable_clean:
-            if DataModality.IMAGE in self.config.include_type:
-                logger.error("Enabling clean_dataset does not support image type messages")
-                exit()
-
             if clean_dataset_config.clean_strategy == "llm":
                 if self.config.online_llm_clear:
                     self.clean_strategy = OlineLLMCleaningStrategy(make_dataset_config=self.config)
