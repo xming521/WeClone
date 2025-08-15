@@ -1,6 +1,6 @@
 [project]
 name = "WeClone"
-version = "0.3.01"
+version = "0.3.02"
 description = "One-stop solution for creating your digital avatar from chat history"
 authors = [{ name = "xming521" }]
 readme = "README.md"
@@ -23,12 +23,12 @@ dependencies = [
 
 [tool.weclone]
 # Configuration file version number. This number should be incremented when the configuration file structure or important default values change.
-config_version = "0.3.0"
+config_version = "0.3.02"
 
 config_changelog = """
-[0.2.22] - 2025-06-05 - Support image modality chat history fine-tuning
 [0.2.24] - 2025-06-19 - add test_model_args and vllm_args.
 [0.3.00] - 2025-06-30 - Support TG chat logs, add language parameter, add log level parameter.
+[0.3.02] - 2025-08-15 - Allow the use of the enable_thinking to control offline cleaning..
 """
 
 [dependency-groups]
