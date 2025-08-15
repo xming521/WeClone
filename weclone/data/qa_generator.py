@@ -579,6 +579,10 @@ class DataProcessor:
         for i in df.index:
             if df.loc[i, "type_name"].lower() in ["文本", "text"]:
                 continue
+            if df.loc[i, "src"].lower().endswith(".gif"):
+                df.loc[i, "src"] = ""
+                df.loc[i, "type_name"] = "动画表情" if self.c.platform == PlatformType.CHAT else "sticker"
+                continue
             if df.loc[i, "type_name"].lower() in ["图片", "image"]:  # type: ignore
                 if self.c.platform in [PlatformType.CHAT, PlatformType.TELEGRAM]:
                     result = check_image_file_exists(str(df.loc[i, "src"]))
@@ -588,7 +592,7 @@ class DataProcessor:
                         df.loc[i, "modality"] = DataModality.IMAGE
                     else:
                         df.loc[i, "type_name"] = "Cut"
-            elif df.loc[i, "type_name"] in ["sticker"]:
+            elif df.loc[i, "type_name"] in ["sticker", "动画表情"]:
                 if self.c.platform in [PlatformType.CHAT, PlatformType.TELEGRAM]:
                     df.loc[i, "src"] = ""
                     continue
