@@ -107,7 +107,7 @@ class LLMCleanConfig(BaseConfigModel):
 class CleanDatasetConfig(BaseConfigModel):
     enable_clean: bool = False
     clean_strategy: CleanStrategy = CleanStrategy.LLM
-    llm: LLMCleanConfig = LLMCleanConfig(accept_score=2)
+    llm: LLMCleanConfig = LLMCleanConfig(accept_score=2, enable_thinking=False)
 
 
 class VisionApiConfig(BaseConfigModel):
@@ -212,6 +212,14 @@ class TestModelArgs(BaseConfigModel):
     test_data_path: str = Field(default="dataset/eval/test_data-en.json", description="Test data path")
 
 
+class CommonMethods:
+    def _parse_dataset_name(self) -> str:
+        """Parse and process dataset name"""
+        if hasattr(self, "include_type") and "image" in getattr(self, "include_type", []):
+            return getattr(self, "dataset", "") + "-vl"
+        return getattr(self, "dataset", "")
+
+
 class WcConfig(BaseModel):
     model_config = {"extra": "forbid"}
 
@@ -231,11 +239,12 @@ class WCInferConfig(CommonArgs, InferArgs):
     pass
 
 
-class WCTrainSftConfig(CommonArgs, TrainSftArgs):
+class WCTrainSftConfig(CommonArgs, TrainSftArgs, CommonMethods):
     """Final configuration model for SFT training"""
 
     # Training output directory, converted from adapter_name_or_path
     output_dir: Optional[str] = Field(None)
+    dataset: str = Field(..., description="Dataset name")
 
     @model_validator(mode="after")
     def process_config(self):
@@ -244,14 +253,17 @@ class WCTrainSftConfig(CommonArgs, TrainSftArgs):
         if adapter_name_value:
             self.output_dir = adapter_name_value
 
+        self.dataset = self._parse_dataset_name()
         # Always remove adapter_name_or_path field after processing
         if hasattr(self, "adapter_name_or_path"):
             delattr(self, "adapter_name_or_path")
+        if hasattr(self, "include_type"):
+            delattr(self, "include_type")
 
         return self
 
 
-class WCMakeDatasetConfig(CommonArgs, MakeDatasetArgs):
+class WCMakeDatasetConfig(CommonArgs, MakeDatasetArgs, CommonMethods):
     """Final configuration model for creating datasets"""
 
     model_config = {"extra": "allow"}  # Explicitly set to allow
@@ -269,5 +281,7 @@ class WCMakeDatasetConfig(CommonArgs, MakeDatasetArgs):
                     "When using the Telegram platform, please set a valid `telegram_args.my_id`. The `from_id` in `result.json` for the messages you send represents your user ID."
                 )
                 exit(1)
+
+        self.dataset = self._parse_dataset_name()
 
         return self

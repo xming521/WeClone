@@ -41,6 +41,7 @@
             "clean_strategy": "llm",
             "llm": {
                 "accept_score": 2, //可以接受的llm打分阈值,1分最差，5分最好,低于此分数的数据不会用于训练
+                "enable_thinking": true
             }
         },
         "online_llm_clear": false,

@@ -96,8 +96,8 @@ class DataProcessor:
                     from llamafactory.extras.packages import is_vllm_available
 
                     if not is_vllm_available():
-                        logger.warning("vLLM is not available, dataset cleaning is temporarily disabled.")
-                        self.enable_clean = False
+                        logger.error("vLLM is not available, dataset cleaning is not supported.")
+                        sys.exit(1)
                     else:
                         self.clean_strategy = LLMCleaningStrategy(make_dataset_config=self.config)
 

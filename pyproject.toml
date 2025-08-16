@@ -36,6 +36,7 @@ main = [
   "llamafactory @ git+https://github.com/hiyouga/LLaMA-Factory.git",
   "vllm==0.10.0; platform_system == 'Linux'",
   "torch==2.7.1",
+  "torchvision==0.22.1",
   "transformers==4.53.2",
   "accelerate==1.7.0",
   "triton==3.3.1; platform_system == 'Linux'",

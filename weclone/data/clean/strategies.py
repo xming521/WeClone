@@ -35,7 +35,7 @@ class CleaningStrategy(ABC):
         """
         config = self.make_dataset_config
         original_dataset_name = config.dataset
-        cleaned_dataset_name = "chat-sft-cleaned"
+        cleaned_dataset_name = original_dataset_name + "-cleaned"
 
         dataset_dir = config.dataset_dir
         dataset_info_path = os.path.join(dataset_dir, "dataset_info.json")

@@ -23,7 +23,7 @@ def load_base_config() -> WcConfig:
 
     try:
         with open(config_path, "r", encoding="utf-8") as f:
-            s_config_dict: Dict[str, Any] = pyjson5.load(f)
+            s_config_dict: Dict[str, Any] = pyjson5.loads(f.read())
     except FileNotFoundError:
         logger.error(f"Configuration file not found: {config_path}")
         sys.exit(1)
@@ -65,6 +65,7 @@ def create_config_by_arg_type(arg_type: str, wc_config: WcConfig) -> BaseModel:
         return wc_config.test_model_args
 
     elif arg_type == "train_sft":
+        common_config["include_type"] = wc_config.make_dataset_args.include_type
         config_dict = {**common_config, **wc_config.train_sft_args.model_dump()}
         return WCTrainSftConfig(**config_dict)
 

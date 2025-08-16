@@ -4,6 +4,34 @@
         "formatting": "sharegpt",
         "columns": {
             "messages": "messages",
+            "system": "system"
+        },
+        "tags": {
+            "role_tag": "role",
+            "content_tag": "content",
+            "user_tag": "user",
+            "assistant_tag": "assistant"
+        }
+    },
+    "chat-sft-cleaned": {
+        "file_name": "./sft-my-cleaned.json",
+        "formatting": "sharegpt",
+        "columns": {
+            "messages": "messages",
+            "system": "system"
+        },
+        "tags": {
+            "role_tag": "role",
+            "content_tag": "content",
+            "user_tag": "user",
+            "assistant_tag": "assistant"
+        }
+    },
+    "chat-sft-vl": {
+        "file_name": "./sft-my.json",
+        "formatting": "sharegpt",
+        "columns": {
+            "messages": "messages",
             "system": "system",
             "images": "images"
         },
@@ -14,7 +42,7 @@
             "assistant_tag": "assistant"
         }
     },
-    "chat-sft-cleaned": {
+    "chat-sft-vl-cleaned": {
         "file_name": "./sft-my-cleaned.json",
         "formatting": "sharegpt",
         "columns": {
