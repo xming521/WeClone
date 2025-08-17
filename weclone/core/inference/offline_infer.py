@@ -55,7 +55,7 @@ def vllm_infer(
     pipeline_parallel_size: int = 1,
     image_max_pixels: int = 768 * 768,
     image_min_pixels: int = 32 * 32,
-) -> tuple[List[RequestOutput] | List[BaseModel], List[int]]:
+) -> tuple[List[RequestOutput] | List[Optional[BaseModel]], List[int]]:
     r"""Perform batch generation using vLLM engine, which supports tensor parallelism.
 
     Returns:
@@ -155,11 +155,12 @@ def vllm_infer(
                 parsed_result = guided_decoding_class.model_validate_json(json_text)
                 parsed_results.append(parsed_result)
             except Exception as e:
+                # Note that the failed_indexs is the sequential index ID, not the original input ID.
                 logger.warning(
-                    f"Failed to parse JSON from result at index {idx}: {result.outputs[0].text[:100]}..., error: {e}"
+                    f"Failed to parse JSON from result at sequence index {idx}: {result.outputs[0].text[:100]}..., error: {e}"
                 )
                 failed_indexs.append(idx)
-                # parsed_results.append(None)
+                parsed_results.append(None)
         results = parsed_results
 
     return results, failed_indexs

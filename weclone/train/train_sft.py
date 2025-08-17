@@ -31,8 +31,11 @@ def main():
                 f"Dataset file '{data_path}' does not exist, please check if make-dataset was executed"
             )
 
-    cleaner = LLMCleaningStrategy(make_dataset_config=dataset_config)
-    train_config.dataset = cleaner.clean()
+    if not dataset_config.clean_dataset.enable_clean:
+        logger.info("Data cleaning is not enabled, will use the original dataset.")
+    else:
+        cleaner = LLMCleaningStrategy(make_dataset_config=dataset_config)
+        train_config.dataset = cleaner.clean()
 
     formatted_config = json.dumps(train_config.model_dump(mode="json"), indent=4, ensure_ascii=False)
     logger.info(f"Fine-tuning configuration:\n{formatted_config}")

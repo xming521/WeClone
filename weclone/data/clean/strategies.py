@@ -110,23 +110,30 @@ class LLMCleaningStrategy(CleaningStrategy):
             max_new_tokens=1024 if self.make_dataset_config.clean_dataset.llm.enable_thinking else 200,
         )
 
-        parsed_scores = cast(List[QaPairScore], parsed_scores)
+        # We align scores by iterating only non-image examples and popping from the head of parsed_scores.
+        # Build an iterator over parsed results for simplicity and safety.
+        parsed_iter = iter(cast(List[QaPairScore | None], parsed_scores))
+        non_image_count = 0
+        failed_count = 0
 
-        parsed_score_idx = 0
-        for data_idx, qa in enumerate(data):
+        for qa in data:
             if qa.images:
                 continue
-            if data_idx in failed_indexs:
-                logger.warning(f"Index {data_idx} (ID: {qa.id}) parsing failed, skipped")
+            non_image_count += 1
+            parsed_item = next(parsed_iter, None)
+            if parsed_item is None:
+                failed_count += 1
                 qa.score = 0
-            elif parsed_score_idx < len(parsed_scores):
-                qa.score = parsed_scores[parsed_score_idx].score
-                parsed_score_idx += 1
             else:
-                logger.warning(
-                    f"Index {data_idx} (ID: {qa.id}) has no corresponding parsed_score, set to default score 0"
-                )
-                qa.score = 0
+                qa.score = parsed_item.score
+
+        # Sanity check: number of Nones should equal failed_indexs; and total length matches non-image count
+        assert failed_count == len(failed_indexs), (
+            f"Mismatch: failed_count({failed_count}) != failed_indexs({len(failed_indexs)})"
+        )
+        assert len(cast(List[QaPairScore | None], parsed_scores)) == non_image_count, (
+            f"Mismatch: len(parsed_scores)({len(cast(List[QaPairScore | None], parsed_scores))}) != non_image_count({non_image_count})"
+        )
 
         scores = [qa.score for qa in data if qa.score is not None]
         score_series = pd.Series(scores)
