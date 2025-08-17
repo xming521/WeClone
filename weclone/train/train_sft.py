@@ -31,8 +31,8 @@ def main():
                 f"Dataset file '{data_path}' does not exist, please check if make-dataset was executed"
             )
 
-    if not dataset_config.clean_dataset.enable_clean or "image" in dataset_config.include_type:
-        logger.info("Data cleaning is not enabled or images are included, will use the original dataset.")
+    if not dataset_config.clean_dataset.enable_clean:
+        logger.info("Data cleaning is not enabled, will use the original dataset.")
     else:
         cleaner = LLMCleaningStrategy(make_dataset_config=dataset_config)
         train_config.dataset = cleaner.clean()

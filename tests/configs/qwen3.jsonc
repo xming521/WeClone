@@ -1,7 +1,7 @@
 {
     "version": "0.2.22",
     "common_args": {
-        "model_name_or_path": "./models/Qwen3-4B",
+        "model_name_or_path": "./models/Qwen3-0.6B",
         "adapter_name_or_path": "./model_output", //同时做为train_sft_args的output_dir
         "template": "qwen3",
         "default_system": "请你扮演一名人类，不要说自己是人工智能",
@@ -33,10 +33,11 @@
         "qa_match_time_window": 5, // 组成qa时间窗口（分钟）,
         "combine_msg_max_length": 256, // 组合后消息最大长度 配合cutoff_len 使用
         "clean_dataset": {
-            "enable_clean": false,
+            "enable_clean": true,
             "clean_strategy": "llm",
             "llm": {
                 "accept_score": 2, //可以接受的llm打分阈值,1分最差，5分最好,低于此分数的数据不会用于训练
+                "enable_thinking": true
             }
         },
         "vision_api": {

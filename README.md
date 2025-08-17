@@ -58,7 +58,7 @@
 > [!IMPORTANT]
 > - WeClone is still in rapid iteration phase, current performance does not represent final results.  
 > - LLM fine-tuning effectiveness largely depends on model size, quantity and quality of chat data. Theoretically, larger models with more data yield better results.
-> - 7B models are prone to becoming "dumb", 14B models can barely communicate, while 32B+ models perform much better.   
+> - The performance of the 7B model is average, while models with 14B or more parameters tend to deliver better results.   
 > - Windows environment has not been rigorously tested. You can use WSL as the runtime environment.
 
 ### Recent Updates

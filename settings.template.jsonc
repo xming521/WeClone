@@ -41,6 +41,7 @@
             "clean_strategy": "llm",
             "llm": {
                 "accept_score": 2, //可以接受的llm打分阈值,1分最差，5分最好,低于此分数的数据不会用于训练
+                "enable_thinking": true
             }
         },
         "online_llm_clear": false,
@@ -63,12 +64,12 @@
         "dataset_dir": "./dataset/res_csv/sft",
         "use_fast_tokenizer": true,
         "lora_target": "q_proj,v_proj",
-        "lora_rank": 4,
-        "lora_dropout": 0.3,
+        "lora_rank": 8,
+        "lora_dropout": 0.25,
         "weight_decay": 0.1,
         "overwrite_cache": true,
-        "per_device_train_batch_size": 8,
-        "gradient_accumulation_steps": 4,
+        "per_device_train_batch_size": 2,
+        "gradient_accumulation_steps": 16,
         "lr_scheduler_type": "cosine",
         "cutoff_len": 2048,
         "logging_steps": 10,
@@ -84,7 +85,7 @@
     "infer_args": {
         "repetition_penalty": 1.2,
         "temperature": 0.5,
-        "max_length": 50,
+        "max_length": 256,
         "top_p": 0.65
     },
     "vllm_args": {

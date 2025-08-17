@@ -89,10 +89,6 @@ class DataProcessor:
         clean_dataset_config = self.config.clean_dataset
 
         if self.enable_clean:
-            if DataModality.IMAGE in self.config.include_type:
-                logger.error("Enabling clean_dataset does not support image type messages")
-                exit()
-
             if clean_dataset_config.clean_strategy == "llm":
                 if self.config.online_llm_clear:
                     self.clean_strategy = OlineLLMCleaningStrategy(make_dataset_config=self.config)
@@ -100,8 +96,8 @@ class DataProcessor:
                     from llamafactory.extras.packages import is_vllm_available
 
                     if not is_vllm_available():
-                        logger.warning("vLLM is not available, dataset cleaning is temporarily disabled.")
-                        self.enable_clean = False
+                        logger.error("vLLM is not available, dataset cleaning is not supported.")
+                        sys.exit(1)
                     else:
                         self.clean_strategy = LLMCleaningStrategy(make_dataset_config=self.config)
 
@@ -583,6 +579,10 @@ class DataProcessor:
         for i in df.index:
             if df.loc[i, "type_name"].lower() in ["文本", "text"]:
                 continue
+            if df.loc[i, "src"].lower().endswith(".gif"):
+                df.loc[i, "src"] = ""
+                df.loc[i, "type_name"] = "动画表情" if self.c.platform == PlatformType.CHAT else "sticker"
+                continue
             if df.loc[i, "type_name"].lower() in ["图片", "image"]:  # type: ignore
                 if self.c.platform in [PlatformType.CHAT, PlatformType.TELEGRAM]:
                     result = check_image_file_exists(str(df.loc[i, "src"]))
@@ -592,7 +592,7 @@ class DataProcessor:
                         df.loc[i, "modality"] = DataModality.IMAGE
                     else:
                         df.loc[i, "type_name"] = "Cut"
-            elif df.loc[i, "type_name"] in ["sticker"]:
+            elif df.loc[i, "type_name"] in ["sticker", "动画表情"]:
                 if self.c.platform in [PlatformType.CHAT, PlatformType.TELEGRAM]:
                     df.loc[i, "src"] = ""
                     continue
@@ -618,7 +618,7 @@ class DataProcessor:
         processed_qa_res = []
         for idx, item in enumerate(qa_res):
             item_dict = {
-                "id": idx,
+                "id": str(idx),
                 "time": item.time.isoformat() if item.time else None,
                 "score": item.score,
                 "messages": [{"role": msg.role, "content": msg.content} for msg in item.messages],
