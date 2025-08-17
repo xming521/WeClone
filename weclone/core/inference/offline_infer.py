@@ -1,6 +1,7 @@
 import re
 from typing import List, Optional, cast
 
+import torch
 from llamafactory.data import get_template_and_fix_tokenizer
 from llamafactory.extras.misc import get_device_count
 from llamafactory.hparams import get_infer_args
@@ -144,6 +145,7 @@ def vllm_infer(
     )  # type: ignore
 
     del llm
+    torch.cuda.empty_cache()
 
     failed_indexs = []
     if guided_decoding_class:
