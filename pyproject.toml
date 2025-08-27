@@ -79,6 +79,10 @@ torchvision = [
   { index = "pytorch-cu126", marker = "platform_system == 'Windows'" },
   { index = "pytorch-cu126", marker = "platform_system == 'Linux'" },
 ]
+triton = [
+  { index = "pytorch-cu126", marker = "platform_system == 'Windows'" },
+  { index = "pytorch-cu126", marker = "platform_system == 'Linux'" },
+]
 
 
 [[tool.uv.index]]
