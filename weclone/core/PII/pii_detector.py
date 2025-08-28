@@ -176,8 +176,8 @@ class PIIDetector:
             language=self.language,
             entities=self.filtered_entities,
             score_threshold=self.threshold,
-            n_process=12,
-            batch_size=16,
+            n_process=24,
+            batch_size=32,
         )
 
         # Process results

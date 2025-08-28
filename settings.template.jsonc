@@ -48,7 +48,7 @@
         "base_url": "https://xxx/v1",
         "llm_api_key": "xxxxx",
         "model_name": "xxx", //建议使用参数较大的模型，例如DeepSeek-V3
-        "clean_batch_size": 10,
+        "clean_batch_size": 50,
         "vision_api": {
             "enable": false, // 设置为 true 来开启此功能
             "api_key": "xxx",
