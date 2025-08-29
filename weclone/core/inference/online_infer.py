@@ -2,8 +2,11 @@ from concurrent.futures import Future, ThreadPoolExecutor
 from typing import Any, Callable, List, Optional, Union
 
 from openai import OpenAI
-from openai.types.chat import ChatCompletionMessageParam
+from openai.types.chat import ChatCompletion, ChatCompletionMessageParam
+from pydantic import BaseModel
 
+from weclone.core.inference.offline_infer import parse_guided_decoding_results
+from weclone.utils.log import logger
 from weclone.utils.retry import retry_openai_api
 
 
@@ -68,8 +71,23 @@ class OnlineLLM:
         top_p: float = 0.95,
         stream: bool = False,
         callback: Optional[Callable[[int, Any], None]] = None,
-    ) -> List[Union[Any, Exception]]:
-        """Process multiple chat requests concurrently using thread pool"""
+        guided_decoding_class: Optional[type[BaseModel]] = None,
+    ) -> Union[List[Union[ChatCompletion, Exception]], tuple[List[Optional[BaseModel]], List[int]]]:
+        """Process multiple chat requests concurrently using thread pool
+
+        Args:
+            prompts: List of prompt strings
+            temperature: Sampling temperature
+            max_tokens: Maximum tokens to generate
+            top_p: Top-p sampling parameter
+            stream: Whether to stream the response
+            callback: Optional callback function called for each result
+            guided_decoding_class: Pydantic model class for JSON validation
+
+        Returns:
+            If enable_json_decode is False: List of ChatCompletion or Exception objects
+            If enable_json_decode is True: Tuple of (parsed_results, failed_indices)
+        """
         futures = []
 
         for i, prompt in enumerate(prompts):
@@ -88,6 +106,18 @@ class OnlineLLM:
                 results[i] = e
                 if callback:
                     callback(i, e)
+
+        if guided_decoding_class:
+            successful_results = [r for r in results if isinstance(r, ChatCompletion)]
+            if len(successful_results) < len(results):
+                logger.warning(
+                    f"Some requests failed, only {len(successful_results)}/{len(results)} will be parsed"
+                )
+
+            parsed_results, failed_indexs = parse_guided_decoding_results(
+                successful_results, guided_decoding_class
+            )
+            return parsed_results, failed_indexs
 
         return results
 
