@@ -58,8 +58,14 @@ def parse_guided_decoding_results(
             parsed_result = guided_decoding_class.model_validate_json(json_text)
             parsed_results.append(parsed_result)
         except Exception as e:
+            if isinstance(result, RequestOutput):
+                log_text = result.outputs[0].text[:100] + "..."
+            elif isinstance(result, ChatCompletion):
+                log_text = result.choices[0].message.content[:100] + "..."
+            else:
+                log_text = str(result)[:100] + "..."
             logger.warning(
-                f"Failed to parse JSON from result at sequence index {idx}: {result.outputs[0].text[:100]}..., error: {e}"
+                f"Failed to parse JSON from result at sequence index {idx}: {log_text}, error: {e}"
             )
             failed_indexs.append(idx)
             parsed_results.append(None)

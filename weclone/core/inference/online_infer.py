@@ -1,3 +1,4 @@
+import logging
 from concurrent.futures import Future, ThreadPoolExecutor
 from typing import Any, Callable, List, Optional, Union
 
@@ -8,6 +9,9 @@ from pydantic import BaseModel
 from weclone.core.inference.offline_infer import parse_guided_decoding_results
 from weclone.utils.log import logger
 from weclone.utils.retry import retry_openai_api
+
+logging.getLogger("openai._base_client").setLevel(logging.WARNING)
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 
 class OnlineLLM:
@@ -48,6 +52,7 @@ class OnlineLLM:
             max_tokens=max_tokens,
             top_p=top_p,
             response_format={"type": "json_object"},
+            # extra_body={"chat_template_kwargs": {"enable_thinking": False}}
         )
 
         return response
