@@ -63,6 +63,9 @@
 [25/06/05]支持图片模态数据微调   
 [25/07/10]数据源增加Telegram
 
+### 在线微调
+- 大模型实验室 (Lab4AI) (送50元代金券): https://www.lab4ai.cn/project/detail?utm_source=weclone1&id=ab83d14684fa45d197f67eddb3d8316c&type=project
+
 ### 硬件要求
 
 项目默认使用Qwen2.5-7B-Instruct模型，LoRA方法对sft阶段微调，大约需要16GB显存。也可以使用[LLaMA Factory](https://github.com/hiyouga/LLaMA-Factory/blob/main/README_zh.md#%E6%A8%A1%E5%9E%8B)支持的其他模型和方法。
