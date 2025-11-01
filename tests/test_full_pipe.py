@@ -96,7 +96,7 @@ def setup_data_environment(data_folder_name: str = "test_person"):
 
     for item_name in os.listdir(test_data_source_dir):
         source_item_path = os.path.join(test_data_source_dir, item_name)
-        if os.path.isfile(source_item_path) and item_name.lower().endswith('.csv'):
+        if os.path.isfile(source_item_path) :
             destination_item_path = os.path.join(test_data_csv_dir, item_name)
             shutil.copy2(source_item_path, destination_item_path)
     

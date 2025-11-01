@@ -1,9 +1,9 @@
 {
     "version": "0.2.22",
     "common_args": {
-        "model_name_or_path": "./models/Qwen3-0.6B",
+        "model_name_or_path": "./models/Qwen2.5-0.5B",
         "adapter_name_or_path": "./model_output", //同时做为train_sft_args的output_dir
-        "template": "qwen3",
+        "template": "qwen",
         "default_system": "请你扮演一名人类，不要说自己是人工智能",
         "finetuning_type": "lora",
         "media_dir": "dataset/media",
@@ -26,6 +26,8 @@
             "hh"
         ],
         "language": "zh",
+        "add_relation": true,
+        "add_time": true,
         "max_image_num": 2, // 单条数据最大图片数量
         "single_combine_strategy": "time_window", // 单人组成单句策略
         "qa_match_strategy": "time_window", // 组成qa策略

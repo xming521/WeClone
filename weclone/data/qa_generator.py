@@ -115,6 +115,8 @@ class DataProcessor:
 
         self.c = self.config
 
+        self.relations = {}
+
     def main(self):
         self.pre_parse_chat_dataset()
 
@@ -129,11 +131,11 @@ class DataProcessor:
         message_list: List[ChatMessage] = []
         for csv_file in csv_files:
             logger.debug(f"Starting to process CSV file: {csv_file}")
-            chat_messages = self.load_csv(csv_file)
+            chat_messages = self.load_file(csv_file)
             message_list.extend(self.group_consecutive_messages(messages=chat_messages))
             # self.process_by_msgtype(chat_message)
             logger.debug(f"Processing completed: {csv_file}, loaded {len(chat_messages)} messages in total")
-        qa_res = self.match_qa(message_list)
+        qa_res = self.match_qa(messages=message_list)
         qa_res = [item for item in qa_res if isinstance(item, QaPair)]
 
         if self.image_processor:
@@ -244,6 +246,7 @@ class DataProcessor:
 
         conversation_messages: List[Message] = []
         conversation_images: List[str] = []
+        conversation_talker = ""
 
         def _calculate_qa_length(
             messages: List[Message], new_user_content: str, new_assistant_content: str
@@ -260,6 +263,7 @@ class DataProcessor:
             time_stamp: Timestamp,
             current_conversation_messages: List[Message],
             current_conversation_images: List[str],
+            talker: str = "",
         ) -> int:
             """Helper function to save the current QA pair."""
             nonlocal qa_res  # Allow modification of qa_res from the outer scope
@@ -277,7 +281,11 @@ class DataProcessor:
 
                 system_content = self.system_prompt
                 if self.c.add_time:
-                    system_content += f" Current datetime: {time_stamp.strftime('%m-%d %H:%M:%S')}"
+                    system_content += f"\n 现在是{time_stamp.strftime('%m-%d %H:%M')}"
+                if self.c.add_relation and talker:
+                    relation = self.relations.get(talker, "")
+                    if relation:
+                        system_content += f"\n 对方是你的{relation}，你们正在聊天"
 
                 qa_pair = self.QaPair(
                     id=qa_id,
@@ -306,6 +314,7 @@ class DataProcessor:
                         last_message.CreateTime if last_message else msg.CreateTime,
                         conversation_messages,
                         conversation_images,
+                        conversation_talker,
                     )
                 # Reset state
                 current_state = WAITING_INSTRUCTION
@@ -313,6 +322,7 @@ class DataProcessor:
                 last_message = None
                 conversation_messages = []
                 conversation_images = []
+                conversation_talker = ""
                 continue
 
             if current_state == WAITING_INSTRUCTION:
@@ -325,6 +335,7 @@ class DataProcessor:
                                 last_message.CreateTime,
                                 conversation_messages,
                                 conversation_images,
+                                conversation_talker,
                             )
                             conversation_messages = []
                             conversation_images = []
@@ -332,6 +343,7 @@ class DataProcessor:
                     # Regardless of whether a new conversation has just been started, this 'msg' now becomes the current instruction.
                     current_instruction = msg
                     last_message = msg
+                    conversation_talker = msg.talker
                     current_state = WAITING_RESPONSE
 
             elif current_state == WAITING_RESPONSE:
@@ -343,11 +355,13 @@ class DataProcessor:
                                 last_message.CreateTime,
                                 conversation_messages,
                                 conversation_images,
+                                conversation_talker,
                             )
                             conversation_messages = []
                             conversation_images = []
                     current_instruction = msg
                     last_message = msg
+                    conversation_talker = msg.talker
                     # State remains unchanged
                 else:  # Own message - use strategy to determine if it belongs to the same conversation
                     if last_message and self.qa_match_strategy.is_same_conversation([last_message], msg):
@@ -376,6 +390,7 @@ class DataProcessor:
                 last_message.CreateTime,
                 conversation_messages,
                 conversation_images,
+                conversation_talker,
             )
 
         return qa_res
@@ -529,10 +544,26 @@ class DataProcessor:
         # elif chat_message.modality == DataModality.IMAGE:
         #     self.process_image(chat_message)
 
-    def load_csv(self, file_path) -> List[ChatMessage]:
+    def load_file(self, file_path) -> List[ChatMessage]:
         """
         Perform overall first preprocessing, filter rows that don't meet conditions, check if images exist and change type to cut if not, add DataModality field
         """
+        folder_path = os.path.dirname(file_path)
+        folder_name = os.path.basename(folder_path)
+
+        if folder_name not in self.relations:
+            users_json_path = os.path.join(folder_path, "users.json")
+            if os.path.exists(users_json_path):
+                try:
+                    with open(users_json_path, encoding="utf-8") as f:
+                        users_data = json.load(f)
+                        relation = users_data.get("relation", "")
+                        if relation:
+                            self.relations[folder_name] = relation
+                            logger.debug(f"Loaded relation for {folder_name}: {relation}")
+                except (FileNotFoundError, json.JSONDecodeError) as e:
+                    logger.warning(f"Failed to load users.json from {folder_path}: {e}")
+
         df = pd.read_csv(
             file_path,
             encoding="utf-8",
