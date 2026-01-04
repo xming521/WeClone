@@ -279,19 +279,42 @@ class DataProcessor:
                     )
                     return qa_id
 
+                if (
+                    len(current_conversation_messages) == 2
+                    and current_conversation_messages[0].role == "user"
+                    and current_conversation_messages[0].content == "<begin_chat>"
+                ):
+                    return qa_id
+
                 system_content = self.system_prompt
                 if self.c.add_time:
-                    system_content += f"\n 现在是{time_stamp.strftime('%m-%d %H:%M')}"
+                    system_content += f"\n 现在时间是{time_stamp.strftime('%m-%d %H:%M')}"
                 if self.c.add_relation and talker:
                     relation = self.relations.get(talker, "")
                     if relation:
                         system_content += f"\n 对方是你的{relation}，你们正在聊天"
 
+                processed_messages = current_conversation_messages.copy()
+                for i in range(len(processed_messages) - 1):
+                    if (
+                        processed_messages[i].role == "user"
+                        and "<begin_chat>" in processed_messages[i].content
+                        and i + 1 < len(processed_messages)
+                        and processed_messages[i + 1].role == "assistant"
+                    ):
+                        assistant_content = processed_messages[i + 1].content
+                        processed_messages[i] = Message(
+                            role="user",
+                            content=processed_messages[i].content.replace(
+                                "<begin_chat>", f"<begin_chat>你应该说：{assistant_content}</begin_chat>"
+                            ),
+                        )
+
                 qa_pair = self.QaPair(
                     id=qa_id,
                     time=time_stamp,
                     score=0,
-                    messages=current_conversation_messages.copy(),
+                    messages=processed_messages,
                     images=current_conversation_images.copy(),
                     system=system_content,
                 )
@@ -345,6 +368,22 @@ class DataProcessor:
                     last_message = msg
                     conversation_talker = msg.talker
                     current_state = WAITING_RESPONSE
+                elif msg.is_sender == 1:  # Own message as first message
+                    if last_message and not self.qa_match_strategy.is_same_conversation([last_message], msg):
+                        if conversation_messages:
+                            qa_id_counter = _save_current_qa_pair(
+                                qa_id_counter,
+                                last_message.CreateTime,
+                                conversation_messages,
+                                conversation_images,
+                                conversation_talker,
+                            )
+                            conversation_messages = []
+                            conversation_images = []
+
+                    conversation_messages.append(Message(role="user", content="<begin_chat>"))
+                    conversation_messages.append(Message(role="assistant", content=msg.msg))
+                    last_message = msg
 
             elif current_state == WAITING_RESPONSE:
                 if msg.is_sender == 0:  # Received message from other party
