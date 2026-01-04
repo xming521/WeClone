@@ -1,6 +1,5 @@
 import json
 import os
-import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import List, cast
@@ -183,39 +182,29 @@ class OlineLLMCleaningStrategy(CleaningStrategy):
                 prompt_value = prompt_template.invoke({"id": qa.id, "messages": messages_str.strip()})
                 inputs.append(prompt_value.to_string())
 
-        prompt_template = PromptTemplate.from_template(CLEAN_PROMPT)
-
-        parsed_scores = []
         clean_batch_size = config.clean_batch_size
+        all_parsed_scores = []
 
         for i in tqdm(range(0, len(inputs), clean_batch_size), desc="Online model scoring progress"):
             batch = inputs[i : i + clean_batch_size]
 
             try:
-                responses = client.chat_batch(batch, temperature=0)
+                parsed_results, failed_indexs = client.chat_batch(
+                    batch, temperature=0, guided_decoding_class=QaPairScoreWithId
+                )
 
-                for j, response in enumerate(responses):
-                    if isinstance(response, Exception):
-                        logger.error(f"Failed to get response for batch item {i + j}: {str(response)}")
-                        continue
-                    result_text = response.choices[0].message.content
-                    if "</think>" in result_text:
-                        result_text = result_text.split("</think>", 1)[1]
-                    result_text = re.sub(r"^```json\s*|```$", "", result_text.strip(), flags=re.MULTILINE)
-                    try:
-                        item_res = json.loads(result_text)
-                    except json.JSONDecodeError as e:
-                        logger.error(
-                            f"JSON parsing failed for batch item {i + j}: {e}\nContent: {result_text}"
-                        )
-                        continue
-                    parsed_scores.append(QaPairScoreWithId(**item_res))
+                for j, parsed_result in enumerate(parsed_results):
+                    if parsed_result is not None:
+                        all_parsed_scores.append(parsed_result)
+                    else:
+                        logger.warning(f"Failed to parse result for batch item at index {i + j}")
+
             except Exception as e:
                 logger.error(
                     f"Failed to call online model or parse result for batch starting at index {i}, error: {str(e)}"
                 )
 
-        score_map = {score.id: score.score for score in parsed_scores}
+        score_map = {score.id: score.score for score in all_parsed_scores}
         for qa in data:
             if qa.id in score_map:
                 qa.score = score_map[qa.id]
