@@ -6,6 +6,7 @@ from llamafactory.data import get_template_and_fix_tokenizer
 from llamafactory.extras.misc import get_device_count
 from llamafactory.hparams import get_infer_args
 from llamafactory.model import load_tokenizer
+from openai.types.chat import ChatCompletion
 from pydantic import BaseModel
 from vllm import LLM, SamplingParams
 from vllm.lora.request import LoRARequest
@@ -28,6 +29,48 @@ def extract_json_from_text(text: str) -> str:
     if match:
         return match.group(1).strip()
     return text.strip()
+
+
+def parse_guided_decoding_results(
+    results: List[RequestOutput] | List[ChatCompletion] | List, guided_decoding_class: type[BaseModel]
+) -> tuple[List[Optional[BaseModel]], List[int]]:
+    """Parse guided decoding results and return parsed results with failed indices.
+
+    Args:
+        results: Raw vLLM generation results
+        guided_decoding_class: Pydantic model class for validation
+
+    Returns:
+        tuple: (parsed_results, failed_indices) where failed_indices contains
+               indices of failed JSON parsing
+    """
+    parsed_results = []
+    failed_indexs = []
+
+    for idx, result in enumerate(results):
+        try:
+            if isinstance(result, RequestOutput):
+                json_text = extract_json_from_text(result.outputs[0].text)
+            elif isinstance(result, ChatCompletion):
+                json_text = extract_json_from_text(result.choices[0].message.content)
+            else:
+                raise ValueError(f"Unsupported result type: {type(result)}")
+            parsed_result = guided_decoding_class.model_validate_json(json_text)
+            parsed_results.append(parsed_result)
+        except Exception as e:
+            if isinstance(result, RequestOutput):
+                log_text = result.outputs[0].text[:100] + "..."
+            elif isinstance(result, ChatCompletion):
+                log_text = result.choices[0].message.content[:100] + "..."
+            else:
+                log_text = str(result)[:100] + "..."
+            logger.warning(
+                f"Failed to parse JSON from result at sequence index {idx}: {log_text}, error: {e}"
+            )
+            failed_indexs.append(idx)
+            parsed_results.append(None)
+
+    return parsed_results, failed_indexs
 
 
 def vllm_infer(
@@ -147,22 +190,9 @@ def vllm_infer(
     del llm
     torch.cuda.empty_cache()
 
-    failed_indexs = []
     if guided_decoding_class:
         # TODO better json decode  https://github.com/vllm-project/vllm/commit/1d0ae26c8544fd5a62e171e30c2dcc2973a23bc8#diff-3b27790a2ce97bc50cdd5476f7b0057da682ed0d1ec8426a7b76c5e21454e57d
-        parsed_results = []
-        for idx, result in enumerate(results):
-            try:
-                json_text = extract_json_from_text(result.outputs[0].text)
-                parsed_result = guided_decoding_class.model_validate_json(json_text)
-                parsed_results.append(parsed_result)
-            except Exception as e:
-                # Note that the failed_indexs is the sequential index ID, not the original input ID.
-                logger.warning(
-                    f"Failed to parse JSON from result at sequence index {idx}: {result.outputs[0].text[:100]}..., error: {e}"
-                )
-                failed_indexs.append(idx)
-                parsed_results.append(None)
-        results = parsed_results
-
-    return results, failed_indexs
+        parsed_results, failed_indexs = parse_guided_decoding_results(results, guided_decoding_class)
+        return parsed_results, failed_indexs
+    else:
+        return results, []

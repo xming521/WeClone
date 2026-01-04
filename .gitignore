@@ -193,3 +193,7 @@ cache.pkl
 hfd.sh
 rpa_cache.pkl
 settings-bot8006.jsonc
+models_final/*
+/data/*
+/llamaboard_cache
+eval_Result/*

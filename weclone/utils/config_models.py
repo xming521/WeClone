@@ -135,6 +135,7 @@ class MakeDatasetArgs(BaseConfigModel):
     max_image_num: int = Field(2, description="Maximum number of images per single data entry")
     blocked_words: List[str] = Field([], description="List of blocked words")
     add_time: bool = Field(False, description="Whether to add time to the dataset")
+    add_relation: bool = Field(False, description="Whether to add chat member relationship to the dataset")
     single_combine_strategy: CombineStrategy = Field(
         CombineStrategy.TIME_WINDOW,
         description="Strategy for combining single person's messages into a single sentence",

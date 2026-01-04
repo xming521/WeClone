@@ -89,7 +89,7 @@ Estimated VRAM requirements:
 2. It is recommended to use [uv](https://docs.astral.sh/uv/) to install dependencies, which is a very fast Python environment manager. After installing uv, you can use the following commands to create a new Python environment and install dependencies. 
 ```bash
 git clone https://github.com/xming521/WeClone.git && cd WeClone
-uv venv .venv --python=3.10
+uv venv .venv --python=3.12
 source .venv/bin/activate # windows .venv\Scripts\activate
 uv pip install --group main -e . 
 ```

@@ -1,6 +1,5 @@
 import json
 import os
-import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import List, cast
@@ -11,7 +10,7 @@ from tqdm import tqdm
 
 from weclone.core.inference.online_infer import OnlineLLM
 from weclone.data.models import QaPair, QaPairScore, QaPairScoreWithId
-from weclone.prompts.clean_data import CLEAN_PROMPT, ONLINE_LLM_CLEAN_PROMPT
+from weclone.prompts.clean_data import CLEAN_PROMPT
 from weclone.utils.config_models import WCMakeDatasetConfig
 from weclone.utils.log import logger
 
@@ -155,6 +154,7 @@ class LLMCleaningStrategy(CleaningStrategy):
 class OlineLLMCleaningStrategy(CleaningStrategy):
     """Strategy for data cleaning using large language models"""
 
+    # TODO: images clean support
     def judge(self, data: List[QaPair]) -> None:
         config = self.make_dataset_config
         logger.info("Starting online model scoring of data")
@@ -164,53 +164,47 @@ class OlineLLMCleaningStrategy(CleaningStrategy):
             api_key=config.llm_api_key,
             base_url=config.base_url,
             model_name=config.model_name,
-            default_system=config.default_system,
+            max_workers=config.clean_batch_size + 5,
         )
-        prompt_template = PromptTemplate.from_template(ONLINE_LLM_CLEAN_PROMPT)
 
-        parsed_scores = []
+        inputs = []
+        prompt_template = PromptTemplate.from_template(CLEAN_PROMPT)
+        for qa in data:
+            if qa.images:
+                qa.score = 6
+            else:
+                messages_str = ""
+                for msg in qa.messages:
+                    if msg.role == "user":
+                        messages_str += f"Q: {msg.content}\n"
+                    elif msg.role == "assistant":
+                        messages_str += f"A: {msg.content}\n"
+                prompt_value = prompt_template.invoke({"id": qa.id, "messages": messages_str.strip()})
+                inputs.append(prompt_value.to_string())
+
         clean_batch_size = config.clean_batch_size
+        all_parsed_scores = []
 
-        for i in tqdm(range(0, len(data), clean_batch_size), desc="Online model scoring progress"):
-            batch = data[i : i + clean_batch_size]
-            # Construct qa_list for current batch
-            # qa_list = [{"id": qa.id, "Q": qa.instruction, "A": qa.output} for qa in batch]
-            qa_list = [
-                {
-                    "id": qa.id,
-                    "Q": next((msg.content for msg in qa.messages if msg.role == "user"), ""),
-                    "A": next((msg.content for msg in qa.messages if msg.role == "assistant"), ""),
-                }
-                for qa in batch
-            ]
-            qa_list_json = json.dumps(qa_list, ensure_ascii=False)
-            # Fill template
-            prompt_text = prompt_template.invoke({"qa_list": qa_list_json}).text
+        for i in tqdm(range(0, len(inputs), clean_batch_size), desc="Online model scoring progress"):
+            batch = inputs[i : i + clean_batch_size]
+
             try:
-                response = client.chat(prompt_text, temperature=0)
-                result_text = response.choices[0].message.content
-                # print("Model response:",result_text)
-                # If there is <think> … </think>, keep only the content after </think>
-                if "</think>" in result_text:
-                    result_text = result_text.split("</think>", 1)[1]
-                # Remove leading and trailing ```json or ``` code block markers
-                result_text = re.sub(r"^```json\s*|```$", "", result_text.strip(), flags=re.MULTILINE)
-                # Skip if occasional parsing failures occur
-                try:
-                    score_list = json.loads(result_text)
-                except json.JSONDecodeError as e:
-                    logger.error(f"JSON parsing failed, skipping this batch: {e}\nContent: {result_text}")
-                    continue
-
-                for item in score_list:
-                    parsed_scores.append(QaPairScoreWithId(**item))
-            except Exception as e:
-                ids_in_batch = [qa["id"] for qa in qa_list]
-                logger.error(
-                    f"Failed to call online model or parse result, current batch QA ID list: {ids_in_batch}, error: {str(e)}"
+                parsed_results, failed_indexs = client.chat_batch(
+                    batch, temperature=0, guided_decoding_class=QaPairScoreWithId
                 )
 
-        score_map = {score.id: score.score for score in parsed_scores}
+                for j, parsed_result in enumerate(parsed_results):
+                    if parsed_result is not None:
+                        all_parsed_scores.append(parsed_result)
+                    else:
+                        logger.warning(f"Failed to parse result for batch item at index {i + j}")
+
+            except Exception as e:
+                logger.error(
+                    f"Failed to call online model or parse result for batch starting at index {i}, error: {str(e)}"
+                )
+
+        score_map = {score.id: score.score for score in all_parsed_scores}
         for qa in data:
             if qa.id in score_map:
                 qa.score = score_map[qa.id]
@@ -218,7 +212,6 @@ class OlineLLMCleaningStrategy(CleaningStrategy):
                 logger.warning(f"No score obtained for QA ID {qa.id}, default assigned 0")
                 qa.score = 0
 
-        # Calculate score distribution and print logs (consistent with local version)
         scores = [qa.score for qa in data if qa.score is not None]
         score_series = pd.Series(scores)
         score_counts = score_series.value_counts().sort_index()

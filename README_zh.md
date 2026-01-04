@@ -87,7 +87,7 @@
 2.建议使用 [uv](https://docs.astral.sh/uv/)安装依赖，这是一个非常快速的 Python 环境管理器。安装uv后，您可以使用以下命令创建一个新的Python环境并安装依赖项，速度较慢可以开启代理：
 ```bash
 git clone https://github.com/xming521/WeClone.git && cd WeClone
-uv venv .venv --python=3.10
+uv venv .venv --python=3.12
 source .venv/bin/activate # windows下执行 .venv\Scripts\activate
 uv pip install --group main -e . # 国内用户使用镜像：-i https://pypi.tuna.tsinghua.edu.cn/simple/ 
 uv pip install https://github.com/explosion/spacy-models/releases/download/zh_core_web_sm-3.8.0/zh_core_web_sm-3.8.0-py3-none-any.whl

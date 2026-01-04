@@ -1,10 +1,10 @@
 [project]
 name = "WeClone"
-version = "0.3.02"
+version = "0.3.03"
 description = "One-stop solution for creating your digital avatar from chat history"
 authors = [{ name = "xming521" }]
 readme = "README.md"
-requires-python = ">=3.10,<3.11"
+requires-python = ">=3.12,<3.13"
 
 dependencies = [
   "pandas",
@@ -15,7 +15,6 @@ dependencies = [
   "pydantic==2.10.6",
   "setuptools>=78.1.0",
   "loguru>=0.7.3",
-  "tomli; python_version < '3.11'",
   "langchain",
   "openai==1.87.0",
   "pip"
@@ -23,20 +22,22 @@ dependencies = [
 
 [tool.weclone]
 # Configuration file version number. This number should be incremented when the configuration file structure or important default values change.
-config_version = "0.3.02"
+config_version = "0.3.03"
 
 config_changelog = """
-[0.2.24] - 2025-06-19 - add test_model_args and vllm_args.
 [0.3.00] - 2025-06-30 - Support TG chat logs, add language parameter, add log level parameter.
 [0.3.02] - 2025-08-15 - Allow the use of the enable_thinking to control offline cleaning..
+[0.3.03] - 2025-11-01 - Add chat member relationship switch.
 """
 
 [dependency-groups]
 main = [
-  "llamafactory @ git+https://github.com/hiyouga/LLaMA-Factory.git",
+  "llamafactory==0.9.4",
   "vllm==0.10.0; platform_system == 'Linux'",
-  "torch==2.7.1",
-  "torchvision==0.22.1",
+  "torch==2.7.1+cu126; platform_system == 'Linux' or platform_system == 'Windows'",
+  "torchvision==0.22.1+cu126; platform_system == 'Linux' or platform_system == 'Windows'",
+  "torchaudio==2.7.1+cu126; platform_system == 'Linux' or platform_system == 'Windows'",
+  "torchdata>=0.10.0; platform_system == 'Linux' or platform_system == 'Windows'",
   "transformers==4.53.2",
   "accelerate==1.7.0",
   "triton==3.3.1; platform_system == 'Linux'",
@@ -83,7 +84,10 @@ triton = [
   { index = "pytorch-cu126", marker = "platform_system == 'Windows'" },
   { index = "pytorch-cu126", marker = "platform_system == 'Linux'" },
 ]
-
+torchdata = [
+  { index = "pytorch-cu126", marker = "platform_system == 'Windows'" },
+  { index = "pytorch-cu126", marker = "platform_system == 'Linux'" },
+]
 
 [[tool.uv.index]]
 name = "pytorch-cu126"
@@ -105,7 +109,7 @@ ignore = ["**/archive"]
 reportMissingImports = "error"
 reportMissingTypeStubs = false
 
-pythonVersion = "3.10"
+pythonVersion = "3.12"
 pythonPlatform = "Linux"
 
 [tool.ruff]
@@ -126,7 +130,7 @@ lint.select = [
   "C4",    # flake8-comprehensions
   "Q",     # flake8-quotes
 ]
-target-version = "py310"
+target-version = "py312"
 
 [tool.pytest.ini_options]
 addopts = "-x -v -s --tb=short"

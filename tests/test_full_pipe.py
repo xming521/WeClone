@@ -96,7 +96,7 @@ def setup_data_environment(data_folder_name: str = "test_person"):
 
     for item_name in os.listdir(test_data_source_dir):
         source_item_path = os.path.join(test_data_source_dir, item_name)
-        if os.path.isfile(source_item_path) and item_name.lower().endswith('.csv'):
+        if os.path.isfile(source_item_path) :
             destination_item_path = os.path.join(test_data_csv_dir, item_name)
             shutil.copy2(source_item_path, destination_item_path)
     
@@ -260,13 +260,11 @@ def run_webchat_demo_test(config_file: str):
     """执行 webchat-demo 测试"""
     print_test_header("webchat-demo", config_file)
     
-    with mock.patch("weclone.eval.web_demo.main") as mock_main:
-        mock_main.return_value = None
-        try:
-            result = run_cli_command(["webchat-demo"], config_file, timeout=20)
-            assert result.returncode == 0, f"webchat-demo command execution failed for config {config_file}"
-        except subprocess.TimeoutExpired:
-            pass
+    try:
+        result = run_cli_command(["webchat-demo"], config_file, timeout=20)
+        assert result.returncode == 0, f"webchat-demo command execution failed for config {config_file}"
+    except subprocess.TimeoutExpired:
+        pass
 
 def run_server_test(config_file: str) -> subprocess.Popen:
     """执行 server 测试，返回进程对象"""

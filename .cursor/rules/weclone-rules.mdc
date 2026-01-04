@@ -14,4 +14,3 @@ alwaysApply: true
 - The project uses uv as the package manager and pyproject.toml as the project configuration file.
 - You should write as few code comments as possible.
 - Prefer using the encapsulated logger `from weclone.utils.log import logger` for printing.
-- Comments should prioritize the use of English.
