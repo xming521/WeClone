@@ -6,7 +6,7 @@ from openai import OpenAI
 from openai.types.chat import ChatCompletion, ChatCompletionMessageParam
 from pydantic import BaseModel
 
-from weclone.core.inference.offline_infer import parse_guided_decoding_results
+from weclone.core.inference.offline_infer import extract_json_from_text
 from weclone.utils.log import logger
 from weclone.utils.retry import retry_openai_api
 
@@ -126,15 +126,32 @@ class OnlineLLM:
                     callback(i, e)
 
         if guided_decoding_class:
-            successful_results = [r for r in results if isinstance(r, ChatCompletion)]
-            if len(successful_results) < len(results):
-                logger.warning(
-                    f"Some requests failed, only {len(successful_results)}/{len(results)} will be parsed"
-                )
+            parsed_results: List[Optional[BaseModel]] = [None] * len(prompts)
+            failed_indexs: List[int] = []
 
-            parsed_results, failed_indexs = parse_guided_decoding_results(
-                successful_results, guided_decoding_class
-            )
+            for i, result in enumerate(results):
+                if isinstance(result, Exception):
+                    failed_indexs.append(i)
+                    logger.warning(f"Request at index {i} failed with exception: {result}")
+                elif isinstance(result, ChatCompletion):
+                    try:
+                        content = result.choices[0].message.content
+                        if content is None:
+                            raise ValueError("Message content is None")
+                        json_text = extract_json_from_text(content)
+                        parsed_result = guided_decoding_class.model_validate_json(json_text)
+                        parsed_results[i] = parsed_result
+                    except Exception as e:
+                        content = result.choices[0].message.content
+                        log_text = (content[:100] + "...") if content else "None"
+                        logger.warning(
+                            f"Failed to parse JSON from result at index {i}: {log_text}, error: {e}"
+                        )
+                        failed_indexs.append(i)
+                else:
+                    logger.warning(f"Unexpected result type at index {i}: {type(result)}")
+                    failed_indexs.append(i)
+
             return parsed_results, failed_indexs
 
         return results
