@@ -196,3 +196,4 @@ settings-bot8006.jsonc
 models_final/*
 /data/*
 /llamaboard_cache
+eval_Result/*

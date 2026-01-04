@@ -22,6 +22,8 @@ class OnlineLLM:
         model_name: str,
         default_system: Optional[str] = None,
         max_workers: int = 10,
+        prompt_with_system: bool = False,
+        response_format: str = "json_object",
     ):
         self.api_key = api_key
         self.base_url = base_url
@@ -30,6 +32,8 @@ class OnlineLLM:
         self.max_workers = max_workers
         self.client = OpenAI(api_key=self.api_key, base_url=self.base_url, max_retries=0)
         self.executor = ThreadPoolExecutor(max_workers=max_workers)
+        self.prompt_with_system = prompt_with_system
+        self.response_format = response_format
 
     @retry_openai_api(max_retries=200, base_delay=30.0, max_delay=180.0)
     def chat(
@@ -40,20 +44,29 @@ class OnlineLLM:
         top_p: float = 0.95,
         stream: bool = False,
     ):
-        messages: List[ChatCompletionMessageParam] = [
-            # {"role": "system", "content": self.default_system},
-            {"role": "user", "content": prompt_text},
-        ]
-        response = self.client.chat.completions.create(
-            model=self.model_name,
-            messages=messages,
-            stream=stream,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            top_p=top_p,
-            response_format={"type": "json_object"},
+        messages: List[ChatCompletionMessageParam] = []
+        if self.prompt_with_system:
+            messages = prompt_text
+        else:
+            messages = [
+                # {"role": "system", "content": self.default_system},
+                {"role": "user", "content": prompt_text},
+            ]
+
+        params = {
+            "model": self.model_name,
+            "messages": messages,
+            "stream": stream,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+            "top_p": top_p,
             # extra_body={"chat_template_kwargs": {"enable_thinking": False}}
-        )
+        }
+
+        if self.response_format:
+            params["response_format"] = {"type": self.response_format}
+
+        response = self.client.chat.completions.create(**params)
 
         return response
 

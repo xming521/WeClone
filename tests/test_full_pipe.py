@@ -260,13 +260,11 @@ def run_webchat_demo_test(config_file: str):
     """执行 webchat-demo 测试"""
     print_test_header("webchat-demo", config_file)
     
-    with mock.patch("weclone.eval.web_demo.main") as mock_main:
-        mock_main.return_value = None
-        try:
-            result = run_cli_command(["webchat-demo"], config_file, timeout=20)
-            assert result.returncode == 0, f"webchat-demo command execution failed for config {config_file}"
-        except subprocess.TimeoutExpired:
-            pass
+    try:
+        result = run_cli_command(["webchat-demo"], config_file, timeout=20)
+        assert result.returncode == 0, f"webchat-demo command execution failed for config {config_file}"
+    except subprocess.TimeoutExpired:
+        pass
 
 def run_server_test(config_file: str) -> subprocess.Popen:
     """执行 server 测试，返回进程对象"""
