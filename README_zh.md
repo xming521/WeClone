@@ -240,7 +240,7 @@ pre-commit install
 提交代码前你应该先运行`pytest tests`确保所有测试通过。
 
 ## 🙏 致谢
-
+BUPT VCIS Lab的支持
 感谢以下代码贡献者和社区里其他成员的贡献
 
 <a href="https://github.com/xming521/WeClone/graphs/contributors">
