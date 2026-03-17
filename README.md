@@ -137,6 +137,31 @@ weclone-cli make-dataset
 ```
 More Parameter Details: [Data Preprocessing](https://docs.weclone.love/docs/deploy/data_preprocessing.html#related-parameters)
 
+#### Online LLM Providers for Data Cleaning
+
+When using `online_llm_clear`, you can set `llm_provider` to quickly configure a supported provider.  The provider presets automatically populate `base_url` and `model_name` (which can still be overridden explicitly):
+
+| Provider | `llm_provider` | Default Model | API Docs |
+|----------|----------------|---------------|----------|
+| OpenAI | `"openai"` | `gpt-4o-mini` | [platform.openai.com](https://platform.openai.com/docs) |
+| DeepSeek | `"deepseek"` | `deepseek-chat` | [platform.deepseek.com](https://platform.deepseek.com/docs) |
+| MiniMax | `"minimax"` | `MiniMax-M2.5` | [platform.minimax.io](https://platform.minimax.io/docs/api-reference/text-openai-api) |
+| Custom | `"custom"` | *(manual)* | Any OpenAI-compatible API |
+
+Example using MiniMax for data cleaning:
+```jsonc
+"make_dataset_args": {
+    "online_llm_clear": true,
+    "llm_provider": "minimax",
+    "llm_api_key": "your-minimax-api-key",
+    // base_url and model_name are auto-filled:
+    // base_url → https://api.minimax.io/v1
+    // model_name → MiniMax-M2.5
+}
+```
+
+> You can also use the China endpoint by explicitly setting `"base_url": "https://api.minimaxi.com/v1"`.
+
 ## Configure Parameters and Fine-tune Model
 
 - (Optional) Modify `model_name_or_path`, `template`, `lora_target` in `settings.jsonc` to select other locally downloaded models.   

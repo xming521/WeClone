@@ -15,6 +15,9 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 
 
 class OnlineLLM:
+    # Providers that do not support the response_format parameter
+    _NO_RESPONSE_FORMAT_PROVIDERS = {"api.minimax.io", "api.minimaxi.com"}
+
     def __init__(
         self,
         api_key: str,
@@ -33,7 +36,26 @@ class OnlineLLM:
         self.client = OpenAI(api_key=self.api_key, base_url=self.base_url, max_retries=0)
         self.executor = ThreadPoolExecutor(max_workers=max_workers)
         self.prompt_with_system = prompt_with_system
-        self.response_format = response_format
+        self._supports_response_format = not self._is_no_response_format_provider(base_url)
+        self.response_format = response_format if self._supports_response_format else ""
+
+    @staticmethod
+    def _is_no_response_format_provider(base_url: str) -> bool:
+        """Check if the provider does not support the response_format parameter."""
+        if not base_url:
+            return False
+        base_url_lower = base_url.lower()
+        return any(host in base_url_lower for host in OnlineLLM._NO_RESPONSE_FORMAT_PROVIDERS)
+
+    @staticmethod
+    def clamp_temperature(temperature: float, base_url: str) -> float:
+        """Clamp temperature for providers that require it to be in (0.0, 1.0].
+
+        MiniMax API rejects temperature=0; use a small positive value instead.
+        """
+        if OnlineLLM._is_no_response_format_provider(base_url) and temperature <= 0:
+            return 0.01
+        return temperature
 
     @retry_openai_api(max_retries=200, base_delay=30.0, max_delay=180.0)
     def chat(
@@ -52,6 +74,8 @@ class OnlineLLM:
                 # {"role": "system", "content": self.default_system},
                 {"role": "user", "content": prompt_text},
             ]
+
+        temperature = self.clamp_temperature(temperature, self.base_url)
 
         params = {
             "model": self.model_name,
