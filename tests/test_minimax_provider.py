@@ -168,6 +168,24 @@ class TestTemperatureClamping:
         result = OnlineLLM.clamp_temperature(0.0, "https://api.minimaxi.com/v1")
         assert result == 0.01
 
+    def test_above_one_clamped_for_minimax(self):
+        result = OnlineLLM.clamp_temperature(1.5, "https://api.minimax.io/v1")
+        assert result == 1.0
+
+    def test_above_one_unchanged_for_openai(self):
+        result = OnlineLLM.clamp_temperature(1.5, "https://api.openai.com/v1")
+        assert result == 1.5
+
+    def test_clamp_temperature_none_url(self):
+        """Temperature passes through unchanged when base_url is None."""
+        result = OnlineLLM.clamp_temperature(0.0, None)
+        assert result == 0.0
+
+    def test_clamp_temperature_empty_url(self):
+        """Temperature passes through unchanged when base_url is empty string."""
+        result = OnlineLLM.clamp_temperature(0.0, "")
+        assert result == 0.0
+
 
 # ---------------------------------------------------------------------------
 # Unit Tests – response_format handling
@@ -206,6 +224,18 @@ class TestResponseFormatHandling:
         assert llm.response_format == ""
 
     @patch("weclone.core.inference.online_infer.OpenAI")
+    def test_minimax_overrides_explicit_response_format(self, mock_openai_cls):
+        """Even when response_format is explicitly passed, MiniMax should clear it."""
+        llm = OnlineLLM(
+            api_key="test-key",
+            base_url="https://api.minimax.io/v1",
+            model_name="MiniMax-M2.5",
+            response_format="json_object",
+        )
+        assert llm.response_format == ""
+        assert llm._supports_response_format is False
+
+    @patch("weclone.core.inference.online_infer.OpenAI")
     def test_chat_omits_response_format_for_minimax(self, mock_openai_cls):
         mock_client = MagicMock()
         mock_openai_cls.return_value = mock_client
@@ -219,11 +249,9 @@ class TestResponseFormatHandling:
         )
         llm.chat("Hello")
 
-        call_kwargs = mock_client.chat.completions.create.call_args
+        _, kwargs = mock_client.chat.completions.create.call_args
         # response_format should NOT be in the call params
-        assert "response_format" not in call_kwargs.kwargs and (
-            not call_kwargs.args or "response_format" not in str(call_kwargs)
-        )
+        assert "response_format" not in kwargs
 
     @patch("weclone.core.inference.online_infer.OpenAI")
     def test_chat_includes_response_format_for_openai(self, mock_openai_cls):

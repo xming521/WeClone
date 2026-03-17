@@ -200,9 +200,9 @@ class MakeDatasetArgs(BaseConfigModel):
         """Apply provider presets when llm_provider is set."""
         if self.llm_provider and self.llm_provider in LLM_PROVIDER_PRESETS:
             preset = LLM_PROVIDER_PRESETS[self.llm_provider]
-            if not self.base_url:
+            if self.base_url is None:
                 self.base_url = preset["base_url"]
-            if not self.model_name:
+            if self.model_name is None:
                 self.model_name = preset["model_name"]
         return self
 

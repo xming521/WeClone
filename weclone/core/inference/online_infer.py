@@ -51,10 +51,11 @@ class OnlineLLM:
     def clamp_temperature(temperature: float, base_url: str) -> float:
         """Clamp temperature for providers that require it to be in (0.0, 1.0].
 
-        MiniMax API rejects temperature=0; use a small positive value instead.
+        MiniMax API rejects temperature=0 and values above 1.0;
+        clamp to (0.01, 1.0] for MiniMax providers.
         """
-        if OnlineLLM._is_no_response_format_provider(base_url) and temperature <= 0:
-            return 0.01
+        if OnlineLLM._is_no_response_format_provider(base_url):
+            return min(max(temperature, 0.01), 1.0)
         return temperature
 
     @retry_openai_api(max_retries=200, base_delay=30.0, max_delay=180.0)
