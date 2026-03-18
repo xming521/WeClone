@@ -145,7 +145,7 @@ When using `online_llm_clear`, you can set `llm_provider` to quickly configure a
 |----------|----------------|---------------|----------|
 | OpenAI | `"openai"` | `gpt-4o-mini` | [platform.openai.com](https://platform.openai.com/docs) |
 | DeepSeek | `"deepseek"` | `deepseek-chat` | [platform.deepseek.com](https://platform.deepseek.com/docs) |
-| MiniMax | `"minimax"` | `MiniMax-M2.5` | [platform.minimax.io](https://platform.minimax.io/docs/api-reference/text-openai-api) |
+| MiniMax | `"minimax"` | `MiniMax-M2.7` | [platform.minimax.io](https://platform.minimax.io/docs/api-reference/text-openai-api) |
 | Custom | `"custom"` | *(manual)* | Any OpenAI-compatible API |
 
 Example using MiniMax for data cleaning:
@@ -156,7 +156,7 @@ Example using MiniMax for data cleaning:
     "llm_api_key": "your-minimax-api-key",
     // base_url and model_name are auto-filled:
     // base_url → https://api.minimax.io/v1
-    // model_name → MiniMax-M2.5
+    // model_name → MiniMax-M2.7
 }
 ```
 

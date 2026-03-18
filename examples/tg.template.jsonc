@@ -48,11 +48,11 @@
         "online_llm_clear": false,
         // llm_provider: "openai", "deepseek", "minimax", or "custom"
         // When set, auto-fills base_url and model_name if not explicitly provided.
-        // e.g. "minimax" → base_url: https://api.minimax.io/v1, model_name: MiniMax-M2.5
+        // e.g. "minimax" → base_url: https://api.minimax.io/v1, model_name: MiniMax-M2.7
         // "llm_provider": "minimax",
         "base_url": "https://xxx/v1",
         "llm_api_key": "xxxxx",
-        "model_name": "xxx", // Recommend using models with larger parameters, e.g. DeepSeek-V3, MiniMax-M2.5
+        "model_name": "xxx", // Recommend using models with larger parameters, e.g. DeepSeek-V3, MiniMax-M2.7
         "clean_batch_size": 10,
         "vision_api": {
             "enable": false, // Set to true to enable this feature

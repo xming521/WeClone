@@ -142,7 +142,7 @@ weclone-cli make-dataset
 |--------|----------------|----------|----------|
 | OpenAI | `"openai"` | `gpt-4o-mini` | [platform.openai.com](https://platform.openai.com/docs) |
 | DeepSeek | `"deepseek"` | `deepseek-chat` | [platform.deepseek.com](https://platform.deepseek.com/docs) |
-| MiniMax | `"minimax"` | `MiniMax-M2.5` | [platform.minimax.io](https://platform.minimax.io/docs/api-reference/text-openai-api) |
+| MiniMax | `"minimax"` | `MiniMax-M2.7` | [platform.minimax.io](https://platform.minimax.io/docs/api-reference/text-openai-api) |
 | 自定义 | `"custom"` | *(手动填写)* | 任何 OpenAI 兼容 API |
 
 使用 MiniMax 进行数据清洗示例：
@@ -153,7 +153,7 @@ weclone-cli make-dataset
     "llm_api_key": "your-minimax-api-key",
     // base_url 和 model_name 自动填充：
     // base_url → https://api.minimax.io/v1
-    // model_name → MiniMax-M2.5
+    // model_name → MiniMax-M2.7
 }
 ```
 

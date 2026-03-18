@@ -20,7 +20,7 @@ def _extract_json_from_text(text: str) -> str:
     first JSON object so that the payload can be parsed by Pydantic in
     integration tests.
     """
-    # Strip <think>…</think> blocks (MiniMax M2.5 thinking output)
+    # Strip <think>…</think> blocks (MiniMax M2.7 thinking output)
     cleaned = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
     # Strip markdown code fences
     m = re.search(r"```json\s*(.*?)\s*```", cleaned, re.DOTALL)
@@ -73,7 +73,7 @@ class TestLLMProviderPresets:
     def test_minimax_preset_values(self):
         preset = LLM_PROVIDER_PRESETS[LLMProvider.MINIMAX]
         assert preset["base_url"] == "https://api.minimax.io/v1"
-        assert preset["model_name"] == "MiniMax-M2.5"
+        assert preset["model_name"] == "MiniMax-M2.7"
 
     def test_openai_preset_values(self):
         preset = LLM_PROVIDER_PRESETS[LLMProvider.OPENAI]
@@ -100,7 +100,7 @@ class TestMakeDatasetArgsProviderPresets:
     def test_minimax_provider_fills_base_url_and_model(self):
         args = MakeDatasetArgs(llm_provider="minimax", **self._base_args)
         assert args.base_url == "https://api.minimax.io/v1"
-        assert args.model_name == "MiniMax-M2.5"
+        assert args.model_name == "MiniMax-M2.7"
 
     def test_explicit_base_url_overrides_preset(self):
         args = MakeDatasetArgs(
@@ -109,16 +109,16 @@ class TestMakeDatasetArgsProviderPresets:
             **self._base_args,
         )
         assert args.base_url == "https://api.minimaxi.com/v1"
-        assert args.model_name == "MiniMax-M2.5"
+        assert args.model_name == "MiniMax-M2.7"
 
     def test_explicit_model_name_overrides_preset(self):
         args = MakeDatasetArgs(
             llm_provider="minimax",
-            model_name="MiniMax-M2.5-highspeed",
+            model_name="MiniMax-M2.7-highspeed",
             **self._base_args,
         )
         assert args.base_url == "https://api.minimax.io/v1"
-        assert args.model_name == "MiniMax-M2.5-highspeed"
+        assert args.model_name == "MiniMax-M2.7-highspeed"
 
     def test_no_provider_leaves_fields_none(self):
         args = MakeDatasetArgs(**self._base_args)
@@ -199,7 +199,7 @@ class TestResponseFormatHandling:
         llm = OnlineLLM(
             api_key="test-key",
             base_url="https://api.minimax.io/v1",
-            model_name="MiniMax-M2.5",
+            model_name="MiniMax-M2.7",
         )
         assert llm.response_format == ""
         assert llm._supports_response_format is False
@@ -219,7 +219,7 @@ class TestResponseFormatHandling:
         llm = OnlineLLM(
             api_key="test-key",
             base_url="https://api.minimaxi.com/v1",
-            model_name="MiniMax-M2.5",
+            model_name="MiniMax-M2.7",
         )
         assert llm.response_format == ""
 
@@ -229,7 +229,7 @@ class TestResponseFormatHandling:
         llm = OnlineLLM(
             api_key="test-key",
             base_url="https://api.minimax.io/v1",
-            model_name="MiniMax-M2.5",
+            model_name="MiniMax-M2.7",
             response_format="json_object",
         )
         assert llm.response_format == ""
@@ -245,7 +245,7 @@ class TestResponseFormatHandling:
         llm = OnlineLLM(
             api_key="test-key",
             base_url="https://api.minimax.io/v1",
-            model_name="MiniMax-M2.5",
+            model_name="MiniMax-M2.7",
         )
         llm.chat("Hello")
 
@@ -310,7 +310,7 @@ class TestMiniMaxIntegration:
         llm = OnlineLLM(
             api_key=MINIMAX_API_KEY,
             base_url="https://api.minimax.io/v1",
-            model_name="MiniMax-M2.5",
+            model_name="MiniMax-M2.7",
             response_format="",
         )
         response = llm.chat(
@@ -327,7 +327,7 @@ class TestMiniMaxIntegration:
         llm = OnlineLLM(
             api_key=MINIMAX_API_KEY,
             base_url="https://api.minimax.io/v1",
-            model_name="MiniMax-M2.5",
+            model_name="MiniMax-M2.7",
             response_format="",
         )
         response = llm.chat(
@@ -346,7 +346,7 @@ class TestMiniMaxIntegration:
         llm = OnlineLLM(
             api_key=MINIMAX_API_KEY,
             base_url="https://api.minimax.io/v1",
-            model_name="MiniMax-M2.5",
+            model_name="MiniMax-M2.7",
             response_format="",
         )
         # This would fail without clamping since MiniMax rejects temperature=0
@@ -369,7 +369,7 @@ class TestMiniMaxIntegration:
         llm = OnlineLLM(
             api_key=MINIMAX_API_KEY,
             base_url="https://api.minimax.io/v1",
-            model_name="MiniMax-M2.5",
+            model_name="MiniMax-M2.7",
             response_format="",
         )
         prompts = [

@@ -83,7 +83,7 @@ LLM_PROVIDER_PRESETS = {
     },
     LLMProvider.MINIMAX: {
         "base_url": "https://api.minimax.io/v1",
-        "model_name": "MiniMax-M2.5",
+        "model_name": "MiniMax-M2.7",
     },
 }
 
