@@ -48,6 +48,7 @@
 ### 部署平台支持
 | 平台 | 部署支持 |
 |------|------|
+| 个人微信 |✅ (基于 **openclaw-weixin**)|
 | Telegram | ✅ | 
 | WhatsApp | 🚧 | 
 | Discord | ✅ | 
