@@ -52,6 +52,7 @@
 |----------|--------------------|
 | Telegram | ✅ |
 | WhatsApp | 🚧 |
+| WeChat (Personal Account) |✅ (Based on **openclaw-weixin**)|
 | Discord | ✅ |
 | Slack | ✅ |
 
