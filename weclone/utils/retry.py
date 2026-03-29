@@ -99,7 +99,7 @@ def retry_openai_api(
 ):
     """
     专门用于OpenAI API调用的重试装饰器
-    处理OpenAI特有的异常类型
+    对所有Exception执行重试
     """
 
     def decorator(func):
@@ -110,18 +110,7 @@ def retry_openai_api(
                     return func(*args, **kwargs)
 
                 except Exception as e:
-                    # 检查是否是速率限制或临时错误
-                    error_message = str(e).lower()
-                    should_retry = (
-                        "rate limit" in error_message
-                        or "429" in error_message
-                        or "too many requests" in error_message
-                        or "server error" in error_message
-                        or "timeout" in error_message
-                        or "connection" in error_message
-                    )
-
-                    if should_retry and attempt < max_retries:
+                    if attempt < max_retries:
                         delay = _calculate_delay(attempt, base_delay, max_delay, backoff_factor, jitter)
                         logger.warning(
                             f"OpenAI API调用失败: {type(e).__name__}: {e}，"
@@ -130,12 +119,11 @@ def retry_openai_api(
                         )
                         time.sleep(delay)
                         continue
-                    else:
-                        if attempt >= max_retries:
-                            logger.error(
-                                f"OpenAI API调用在 {max_retries + 1} 次尝试后最终失败: {type(e).__name__}: {e}"
-                            )
-                        raise
+
+                    logger.error(
+                        f"OpenAI API调用在 {max_retries + 1} 次尝试后最终失败: {type(e).__name__}: {e}"
+                    )
+                    raise
 
             return None
 
