@@ -135,6 +135,31 @@ weclone-cli make-dataset
 ```
 数据处理更多参数说明：[数据预处理](https://docs.weclone.love/zh/docs/deploy/data_preprocessing.html#%E7%9B%B8%E5%85%B3%E5%8F%82%E6%95%B0)
 
+#### 在线 LLM 供应商（数据清洗）
+
+使用 `online_llm_clear` 时，可通过 `llm_provider` 快速配置供应商，自动填充 `base_url` 和 `model_name`（仍可手动覆盖）：
+
+| 供应商 | `llm_provider` | 默认模型 | API 文档 |
+|--------|----------------|----------|----------|
+| OpenAI | `"openai"` | `gpt-4o-mini` | [platform.openai.com](https://platform.openai.com/docs) |
+| DeepSeek | `"deepseek"` | `deepseek-chat` | [platform.deepseek.com](https://platform.deepseek.com/docs) |
+| MiniMax | `"minimax"` | `MiniMax-M2.7` | [platform.minimax.io](https://platform.minimax.io/docs/api-reference/text-openai-api) |
+| 自定义 | `"custom"` | *(手动填写)* | 任何 OpenAI 兼容 API |
+
+使用 MiniMax 进行数据清洗示例：
+```jsonc
+"make_dataset_args": {
+    "online_llm_clear": true,
+    "llm_provider": "minimax",
+    "llm_api_key": "your-minimax-api-key",
+    // base_url 和 model_name 自动填充：
+    // base_url → https://api.minimax.io/v1
+    // model_name → MiniMax-M2.7
+}
+```
+
+> 国内用户可手动设置 `"base_url": "https://api.minimaxi.com/v1"`（注意多一个 i）。
+
 ## 配置参数并微调模型
 
 - (可选)修改 `settings.jsonc` 的 `model_name_or_path` 、`template`、 `lora_target`选择本地下载好的其他模型。  

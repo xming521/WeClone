@@ -62,6 +62,32 @@ class CombineStrategy(StrEnum):
     TIME_WINDOW = "time_window"
 
 
+class LLMProvider(StrEnum):
+    """LLM provider for online API calls"""
+
+    OPENAI = "openai"
+    DEEPSEEK = "deepseek"
+    MINIMAX = "minimax"
+    CUSTOM = "custom"
+
+
+# Provider preset configurations: base_url and default model
+LLM_PROVIDER_PRESETS = {
+    LLMProvider.OPENAI: {
+        "base_url": "https://api.openai.com/v1",
+        "model_name": "gpt-4o-mini",
+    },
+    LLMProvider.DEEPSEEK: {
+        "base_url": "https://api.deepseek.com/v1",
+        "model_name": "deepseek-chat",
+    },
+    LLMProvider.MINIMAX: {
+        "base_url": "https://api.minimax.io/v1",
+        "model_name": "MiniMax-M2.7",
+    },
+}
+
+
 class CleanStrategy(StrEnum):
     """Data cleaning strategy"""
 
@@ -156,6 +182,11 @@ class MakeDatasetArgs(BaseConfigModel):
     )
     clean_dataset: CleanDatasetConfig = Field(CleanDatasetConfig(), description="Data cleaning configuration")
     online_llm_clear: bool = Field(False)
+    llm_provider: Optional[LLMProvider] = Field(
+        None,
+        description="LLM provider preset (openai, deepseek, minimax, custom). "
+        "When set, auto-fills base_url and model_name if not explicitly provided.",
+    )
     base_url: Optional[str] = Field(None, description="Base URL for online LLM")
     llm_api_key: Optional[str] = Field(None, description="API key for online LLM")
     model_name: Optional[str] = Field(
@@ -163,6 +194,17 @@ class MakeDatasetArgs(BaseConfigModel):
     )
     clean_batch_size: int = Field(10, description="Batch size for data cleaning")
     vision_api: VisionApiConfig = Field(VisionApiConfig())
+
+    @model_validator(mode="after")
+    def apply_provider_presets(self):
+        """Apply provider presets when llm_provider is set."""
+        if self.llm_provider and self.llm_provider in LLM_PROVIDER_PRESETS:
+            preset = LLM_PROVIDER_PRESETS[self.llm_provider]
+            if self.base_url is None:
+                self.base_url = preset["base_url"]
+            if self.model_name is None:
+                self.model_name = preset["model_name"]
+        return self
 
 
 class TrainSftArgs(BaseConfigModel):
