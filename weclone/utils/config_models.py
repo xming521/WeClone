@@ -207,6 +207,13 @@ class InferArgs(BaseConfigModel):
 
 class VllmArgs(BaseConfigModel):
     gpu_memory_utilization: float = Field(default=0.9, description="vllm GPU memory utilization")
+    dtype: Optional[str] = Field(
+        default=None,
+        description=(
+            "Data type for vLLM inference. Set to 'float16' for GPUs with compute capability < 8.0 "
+            "(e.g., Tesla T4, V100) that do not support bfloat16."
+        ),
+    )
 
 
 class TestModelArgs(BaseConfigModel):
