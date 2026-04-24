@@ -34,7 +34,7 @@ def _check_api_server() -> None:
         client.models.list()
     except openai.APIConnectionError:
         logger.error(
-            "Cannot connect to the API server at http://127.0.0.1:8005. "
+            f"Cannot connect to the API server at {client.base_url}. "
             "Please start the server first by running: weclone-cli server"
         )
         sys.exit(1)
