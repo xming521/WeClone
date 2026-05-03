@@ -46,9 +46,13 @@
             }
         },
         "online_llm_clear": false,
+        // llm_provider: 可选 "openai", "deepseek", "minimax", "custom"
+        // 设置后会自动填充 base_url 和 model_name（若未显式指定）
+        // 例如设为 "minimax" 时，base_url 默认 https://api.minimax.io/v1，model_name 默认 MiniMax-M2.7
+        // "llm_provider": "minimax",
         "base_url": "https://xxx/v1",
         "llm_api_key": "xxxxx",
-        "model_name": "xxx", //建议使用参数较大的模型，例如DeepSeek-V3
+        "model_name": "xxx", //建议使用参数较大的模型，例如DeepSeek-V3, MiniMax-M2.7
         "clean_batch_size": 50,
         "vision_api": {
             "enable": false, // 设置为 true 来开启此功能
