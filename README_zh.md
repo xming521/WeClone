@@ -48,6 +48,7 @@
 ### 部署平台支持
 | 平台 | 部署支持 |
 |------|------|
+| 个人微信 |✅ (基于 **openclaw-weixin**)|
 | Telegram | ✅ | 
 | WhatsApp | 🚧 | 
 | Discord | ✅ | 
@@ -240,7 +241,7 @@ pre-commit install
 提交代码前你应该先运行`pytest tests`确保所有测试通过。
 
 ## 🙏 致谢
-
+BUPT VCIS Lab的支持
 感谢以下代码贡献者和社区里其他成员的贡献
 
 <a href="https://github.com/xming521/WeClone/graphs/contributors">
