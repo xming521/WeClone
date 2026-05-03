@@ -11,7 +11,21 @@ from pydantic import BaseModel
 from vllm import LLM, SamplingParams
 from vllm.lora.request import LoRARequest
 from vllm.outputs import RequestOutput
-from vllm.sampling_params import GuidedDecodingParams
+
+try:
+    from vllm.sampling_params import GuidedDecodingParams as _GuidedDecodingParams  # type: ignore[attr-defined]
+
+    _STRUCTURED_OUTPUTS_PARAMS = None
+except ImportError:
+    _GuidedDecodingParams = None  # type: ignore[assignment,misc]
+    from vllm.sampling_params import StructuredOutputsParams as _STRUCTURED_OUTPUTS_PARAMS  # type: ignore[assignment]
+
+
+def _make_guided_decoding_params(json_schema: dict, disable_any_whitespace: bool = True):
+    if _GuidedDecodingParams is not None:
+        return _GuidedDecodingParams(json=json_schema, disable_any_whitespace=disable_any_whitespace)
+    return _STRUCTURED_OUTPUTS_PARAMS(json=json_schema, disable_any_whitespace=disable_any_whitespace)  # type: ignore[misc]
+
 
 from weclone.utils.config import load_config
 from weclone.utils.config_models import VllmArgs
@@ -134,22 +148,28 @@ def vllm_infer(
     template_obj = get_template_and_fix_tokenizer(tokenizer, data_args)
     template_obj.mm_plugin.expand_mm_tokens = False  # for vllm generate
 
+    guided_decoding_params = None
     if guided_decoding_class:
         json_schema = guided_decoding_class.model_json_schema()
-        guided_decoding_params = GuidedDecodingParams(json=json_schema, disable_any_whitespace=True)
+        guided_decoding_params = _make_guided_decoding_params(json_schema)
 
-    sampling_params = SamplingParams(
-        repetition_penalty=generating_args.repetition_penalty or 1.0,
-        temperature=generating_args.temperature,
-        top_p=generating_args.top_p or 1.0,
-        top_k=generating_args.top_k or -1,
-        stop_token_ids=template_obj.get_stop_token_ids(tokenizer),
-        max_tokens=generating_args.max_new_tokens,
-        skip_special_tokens=skip_special_tokens,
-        seed=seed,
-        bad_words=bad_words,
-        guided_decoding=guided_decoding_params if guided_decoding_class else None,
-    )
+    _sampling_kwargs: dict = {
+        "repetition_penalty": generating_args.repetition_penalty or 1.0,
+        "temperature": generating_args.temperature,
+        "top_p": generating_args.top_p or 1.0,
+        "top_k": generating_args.top_k or -1,
+        "stop_token_ids": template_obj.get_stop_token_ids(tokenizer),
+        "max_tokens": generating_args.max_new_tokens,
+        "skip_special_tokens": skip_special_tokens,
+        "seed": seed,
+        "bad_words": bad_words,
+    }
+    if guided_decoding_params is not None:
+        if _GuidedDecodingParams is not None:
+            _sampling_kwargs["guided_decoding"] = guided_decoding_params
+        else:
+            _sampling_kwargs["structured_outputs"] = guided_decoding_params
+    sampling_params = SamplingParams(**_sampling_kwargs)
     if model_args.adapter_name_or_path is not None:
         lora_request = LoRARequest("default", 1, model_args.adapter_name_or_path[0])
     else:
@@ -163,9 +183,10 @@ def vllm_infer(
         "disable_log_stats": True,
         "enable_lora": model_args.adapter_name_or_path is not None,
         "enable_prefix_caching": True,
-        "guided_decoding_backend": "guidance",
-        "guided_decoding_disable_any_whitespace": True,
     }
+    if _GuidedDecodingParams is not None:
+        engine_args["guided_decoding_backend"] = "guidance"
+        engine_args["guided_decoding_disable_any_whitespace"] = True
 
     if template_obj.mm_plugin.__class__.__name__ != "BasePlugin":
         engine_args["limit_mm_per_prompt"] = {"image": 4, "video": 2, "audio": 2}
