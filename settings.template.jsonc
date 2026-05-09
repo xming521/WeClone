@@ -91,8 +91,9 @@
     },
     "vllm_args": {
         "gpu_memory_utilization": 0.9,
+        // "dtype": "float16", // For GPUs with compute capability < 8.0 (e.g., Tesla T4, V100) that don't support bfloat16
         // "data_parallel_size": 2,
-        // "quantization": "bitsandbytes", 
+        // "quantization": "bitsandbytes",
         // "load_format": "bitsandbytes"
     },
     "test_model_args": {
