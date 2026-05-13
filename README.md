@@ -66,9 +66,6 @@
 [25/07/10] Data source added Telegram   
 [25/06/05] Support for image modal data fine-tuning    
 
-### Online Fine-Tuning
-- Big Model Lab (Lab4AI) (with 50 CNY voucher): https://www.lab4ai.cn/project/detail?utm_source=weclone1&id=ab83d14684fa45d197f67eddb3d8316c&type=project
-
 ### Hardware Requirements
 
 The project uses Qwen2.5-VL-7B-Instruct model by default with LoRA method for SFT stage fine-tuning. You can also use other models and methods supported by [LLaMA Factory](https://github.com/hiyouga/LLaMA-Factory/tree/main#supported-models).
@@ -252,12 +249,7 @@ Thanks to the following code contributors and other community members for their 
 </a>
 
 This project also benefits from excellent open source projects such as [PyWxDump](https://github.com/xaoyaoo/PyWxDump), [LLaMA-Factory](https://github.com/hiyouga/LLaMA-Factory), [AstrBot](https://github.com/AstrBotDevs/AstrBot), [LangBot](https://github.com/RockChinQ/LangBot), and others.
-<p>This project is supported by:</p>
-<p>
-  <a href="https://www.digitalocean.com/">
-    <img src="https://opensource.nyc3.cdn.digitaloceanspaces.com/attribution/assets/SVG/DO_Logo_horizontal_blue.svg" width="201px">
-  </a>
-</p>
+
 
 ## ⚠️ Disclaimer
 > [!CAUTION]
