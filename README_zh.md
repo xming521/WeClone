@@ -93,7 +93,7 @@ uv pip install https://github.com/explosion/spacy-models/releases/download/zh_co
 
 3.将配置文件模板复制一份并重命名为`settings.jsonc`，后续配置修改在此文件进行：
 ```bash
-cp settings.template.jsonc settings.jsonc
+cp examples/tg.template.jsonc settings.jsonc
 ```
 - 微调**多模态模型**时，请使用[examples/mllm.template.jsonc](https://github.com/xming521/WeClone/blob/master/examples/mllm.template.jsonc)作为配置文件。
 
