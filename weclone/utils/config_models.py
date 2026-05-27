@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, List, Literal, Optional
 
 from loguru import logger
 from pydantic import BaseModel, Field, model_validator
@@ -135,7 +135,7 @@ class MakeDatasetArgs(BaseConfigModel):
     max_image_num: int = Field(2, description="Maximum number of images per single data entry")
     blocked_words: List[str] = Field([], description="List of blocked words")
     add_time: bool = Field(False, description="Whether to add time to the dataset")
-    add_relation: bool = Field(False, description="Whether to add chat member relationship to the dataset")
+    add_relation: bool = Field(False, description="Whether to add chat relation to the dataset")
     single_combine_strategy: CombineStrategy = Field(
         CombineStrategy.TIME_WINDOW,
         description="Strategy for combining single person's messages into a single sentence",
@@ -165,6 +165,39 @@ class MakeDatasetArgs(BaseConfigModel):
     vision_api: VisionApiConfig = Field(VisionApiConfig())
 
 
+class QuantizationArgs(BaseConfigModel):
+    """Quantization arguments aligned with LLaMA-Factory QuantizationArguments.
+
+    These parameters are passed directly to LLaMA-Factory's HfArgumentParser
+    for both training and inference. LLaMA-Factory internally maps
+    ``quantization_bit`` to ``BitsAndBytesConfig(load_in_4bit/load_in_8bit)``,
+    so there is no need to expose ``load_in_4bit`` / ``load_in_8bit`` directly.
+
+    Reference: LLaMA-Factory src/llamafactory/hparams/model_args.py QuantizationArguments
+    """
+
+    quantization_method: Optional[str] = Field(
+        None,
+        description="Quantization method: bnb, gptq, awq, aqlm, quanto, eetq, hqq, mxfp4, fp8",
+    )
+    quantization_bit: Optional[int] = Field(
+        None,
+        description="Number of bits for on-the-fly quantization (e.g. 4 or 8)",
+    )
+    quantization_type: Optional[Literal["nf4", "fp4"]] = Field(
+        None,
+        description="Quantization data type for bitsandbytes int4 training: nf4 or fp4",
+    )
+    double_quantization: Optional[bool] = Field(
+        None,
+        description="Whether to use double quantization in bitsandbytes int4 training",
+    )
+
+    def get_non_none_dict(self) -> dict:
+        """Return only the non-None fields as a dict, for merging into other configs."""
+        return {k: v for k, v in self.model_dump().items() if v is not None}
+
+
 class TrainSftArgs(BaseConfigModel):
     stage: str = Field("sft", description="Training stage")
     dataset: str = Field(..., description="Dataset name")
@@ -190,6 +223,10 @@ class TrainSftArgs(BaseConfigModel):
     plot_loss: bool = Field(True, description="Whether to plot loss curve")
     fp16: bool = Field(True, description="Whether to use fp16")
     flash_attn: str = Field("fa2", description="Flash Attention type")
+    quantization: QuantizationArgs = Field(
+        default_factory=QuantizationArgs,
+        description="Quantization settings for on-the-fly quantization (QLoRA, etc.)",
+    )
     preprocessing_num_workers: int = Field(16, description="Number of preprocessing worker processes")
     dataloader_num_workers: int = Field(4, description="Number of dataloader worker processes")
     deepspeed: Optional[str] = Field(
@@ -207,6 +244,12 @@ class InferArgs(BaseConfigModel):
 
 class VllmArgs(BaseConfigModel):
     gpu_memory_utilization: float = Field(default=0.9, description="vllm GPU memory utilization")
+    quantization: Optional[str] = Field(
+        default=None, description="Quantization method for vLLM, e.g. 'awq', 'gptq'"
+    )
+    load_format: Optional[str] = Field(
+        default=None, description="Format for loading weights, e.g. 'awq', 'gptq'"
+    )
 
 
 class TestModelArgs(BaseConfigModel):
@@ -235,7 +278,7 @@ class WcConfig(BaseModel):
 
 
 class WCInferConfig(CommonArgs, InferArgs):
-    """Final configuration model for Web Demo"""
+    """Final configuration model for Web Demo / API Service (based on LLaMA-Factory ChatModel)"""
 
     pass
 
