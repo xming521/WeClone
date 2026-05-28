@@ -206,10 +206,6 @@ class TrainSftArgs(BaseConfigModel):
         None,
         description="Existing LoRA adapter path to continue SFT from. Output still uses common_args.adapter_name_or_path.",
     )
-    create_new_adapter: bool = Field(
-        False,
-        description="Whether to create a new LoRA adapter instead of continuing resume_adapter_name_or_path.",
-    )
     freeze_multi_modal_projector: bool = Field(
         False, description="Whether to freeze multimodal projector during MLLM training"
     )
