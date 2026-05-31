@@ -202,6 +202,10 @@ class TrainSftArgs(BaseConfigModel):
     stage: str = Field("sft", description="Training stage")
     dataset: str = Field(..., description="Dataset name")
     dataset_dir: str = Field("./dataset/res_csv/sft", description="Dataset directory")
+    resume_adapter_name_or_path: Optional[str] = Field(
+        None,
+        description="Existing LoRA adapter path to continue SFT from. Output still uses common_args.adapter_name_or_path.",
+    )
     freeze_multi_modal_projector: bool = Field(
         False, description="Whether to freeze multimodal projector during MLLM training"
     )
@@ -233,6 +237,16 @@ class TrainSftArgs(BaseConfigModel):
         None, description="DeepSpeed configuration file path for multi-GPU training"
     )
     do_train: bool = Field(True)
+
+
+class TrainPtArgs(TrainSftArgs):
+    stage: str = Field("pt", description="Pre-training stage")
+    dataset: str = Field(..., description="Pre-training dataset name")
+    output_dir: Optional[str] = Field(None, description="PT output directory")
+    packing: Optional[bool] = Field(
+        None,
+        description="Whether to pack sequences. LlamaFactory enables packing automatically for stage=pt.",
+    )
 
 
 class InferArgs(BaseConfigModel):
@@ -272,6 +286,7 @@ class WcConfig(BaseModel):
     cli_args: CliArgs = Field(..., description="Command line arguments")
     make_dataset_args: MakeDatasetArgs = Field(..., description="Dataset processing parameters")
     train_sft_args: TrainSftArgs = Field(..., description="SFT fine-tuning parameters")
+    train_pt_args: Optional[TrainPtArgs] = Field(None, description="PT continued pre-training parameters")
     infer_args: InferArgs = Field(..., description="Inference parameters")
     vllm_args: VllmArgs = Field(VllmArgs())
     test_model_args: TestModelArgs = Field(TestModelArgs())
@@ -292,17 +307,44 @@ class WCTrainSftConfig(CommonArgs, TrainSftArgs, CommonMethods):
 
     @model_validator(mode="after")
     def process_config(self):
-        adapter_name_value = getattr(self, "adapter_name_or_path", None)
+        output_adapter_value = getattr(self, "adapter_name_or_path", None)
+        resume_adapter_value = getattr(self, "resume_adapter_name_or_path", None)
 
-        if adapter_name_value:
-            self.output_dir = adapter_name_value
+        if output_adapter_value:
+            self.output_dir = output_adapter_value
+
+        if resume_adapter_value:
+            self.adapter_name_or_path = resume_adapter_value
+        elif hasattr(self, "adapter_name_or_path"):
+            delattr(self, "adapter_name_or_path")
 
         self.dataset = self._parse_dataset_name()
-        # Always remove adapter_name_or_path field after processing
-        if hasattr(self, "adapter_name_or_path"):
-            delattr(self, "adapter_name_or_path")
+        if hasattr(self, "resume_adapter_name_or_path"):
+            delattr(self, "resume_adapter_name_or_path")
+        if hasattr(self, "quantization"):
+            delattr(self, "quantization")
         if hasattr(self, "include_type"):
             delattr(self, "include_type")
+
+        return self
+
+
+class WCTrainPtConfig(CommonArgs, TrainPtArgs):
+    """Final configuration model for continued pre-training"""
+
+    output_dir: Optional[str] = Field(None)
+
+    @model_validator(mode="after")
+    def process_config(self):
+        adapter_name_value = getattr(self, "adapter_name_or_path", None)
+
+        if self.output_dir is None and adapter_name_value:
+            self.output_dir = adapter_name_value
+
+        if hasattr(self, "adapter_name_or_path"):
+            delattr(self, "adapter_name_or_path")
+        if hasattr(self, "quantization"):
+            delattr(self, "quantization")
 
         return self
 
