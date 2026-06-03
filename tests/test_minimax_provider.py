@@ -73,7 +73,7 @@ class TestLLMProviderPresets:
     def test_minimax_preset_values(self):
         preset = LLM_PROVIDER_PRESETS[LLMProvider.MINIMAX]
         assert preset["base_url"] == "https://api.minimax.io/v1"
-        assert preset["model_name"] == "MiniMax-M2.7"
+        assert preset["model_name"] == "MiniMax-M3"
 
     def test_openai_preset_values(self):
         preset = LLM_PROVIDER_PRESETS[LLMProvider.OPENAI]
@@ -100,7 +100,7 @@ class TestMakeDatasetArgsProviderPresets:
     def test_minimax_provider_fills_base_url_and_model(self):
         args = MakeDatasetArgs(llm_provider="minimax", **self._base_args)
         assert args.base_url == "https://api.minimax.io/v1"
-        assert args.model_name == "MiniMax-M2.7"
+        assert args.model_name == "MiniMax-M3"
 
     def test_explicit_base_url_overrides_preset(self):
         args = MakeDatasetArgs(
@@ -109,7 +109,7 @@ class TestMakeDatasetArgsProviderPresets:
             **self._base_args,
         )
         assert args.base_url == "https://api.minimaxi.com/v1"
-        assert args.model_name == "MiniMax-M2.7"
+        assert args.model_name == "MiniMax-M3"
 
     def test_explicit_model_name_overrides_preset(self):
         args = MakeDatasetArgs(
