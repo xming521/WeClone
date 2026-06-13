@@ -115,7 +115,8 @@ class DataProcessor:
 
         self.c = self.config
 
-        self.relations = {}
+        self.relations: dict[str, str] = {}
+        self.partner_remarks: dict[str, str] = {}
 
     def main(self):
         self.pre_parse_chat_dataset()
@@ -146,7 +147,8 @@ class DataProcessor:
         if self.enable_clean:
             self.clean_strategy.judge(qa_res)  # type: ignore
 
-        self.save_result(qa_res)
+        output_path = self.save_result(qa_res)
+        self._execute_stage2_script(output_path)
         self._execute_length_cdf_script()
 
         logger.success(
@@ -203,6 +205,15 @@ class DataProcessor:
             logger.error(f"Failed to execute length_cdf.py script: missing configuration item {str(e)}")
         except Exception as e:
             logger.error(f"Unknown error occurred while executing length_cdf.py script: {str(e)}")
+
+    def _execute_stage2_script(self, input_path: str):
+        """Build second-stage datasets from the first-stage SFT JSON without modifying it."""
+        try:
+            from weclone.data.make_dataset_stage2 import build_stage2_outputs
+
+            build_stage2_outputs(input_path=input_path)
+        except Exception as e:
+            logger.error(f"Failed to execute make-dataset stage2 script: {str(e)}")
 
     def get_csv_files(self):
         """Traverse the folder to get all CSV file paths and sort by starting sequence number in filename"""
@@ -289,6 +300,7 @@ class DataProcessor:
                 system_content = self.system_prompt
                 if self.c.add_time:
                     system_content += f"\n 现在时间是{time_stamp.strftime('%m-%d %H:%M')}"
+                chat_with = self.partner_remarks.get(talker, "")
                 if self.c.add_relation and talker:
                     relation = self.relations.get(talker, "")
                     if relation:
@@ -317,6 +329,7 @@ class DataProcessor:
                     messages=processed_messages,
                     images=current_conversation_images.copy(),
                     system=system_content,
+                    chat_with=chat_with,
                 )
                 qa_res.append(qa_pair)
                 return qa_id + 1
@@ -366,7 +379,7 @@ class DataProcessor:
                     # Regardless of whether a new conversation has just been started, this 'msg' now becomes the current instruction.
                     current_instruction = msg
                     last_message = msg
-                    conversation_talker = msg.talker
+                    conversation_talker = msg.chat_talker or msg.talker
                     current_state = WAITING_RESPONSE
                 elif msg.is_sender == 1:  # Own message as first message
                     if last_message and not self.qa_match_strategy.is_same_conversation([last_message], msg):
@@ -383,6 +396,7 @@ class DataProcessor:
 
                     conversation_messages.append(Message(role="user", content="<begin_chat>"))
                     conversation_messages.append(Message(role="assistant", content=msg.msg))
+                    conversation_talker = msg.chat_talker or conversation_talker
                     last_message = msg
 
             elif current_state == WAITING_RESPONSE:
@@ -400,7 +414,7 @@ class DataProcessor:
                             conversation_images = []
                     current_instruction = msg
                     last_message = msg
-                    conversation_talker = msg.talker
+                    conversation_talker = msg.chat_talker or msg.talker
                     # State remains unchanged
                 else:  # Own message - use strategy to determine if it belongs to the same conversation
                     if last_message and self.qa_match_strategy.is_same_conversation([last_message], msg):
@@ -505,6 +519,7 @@ class DataProcessor:
                 CreateTime=messages[-1].CreateTime,  # Use the time of the last message
                 modality=base_msg.modality,
                 is_forward=base_msg.is_forward,
+                chat_talker=base_msg.chat_talker,
             )
 
             return combined_message
@@ -583,25 +598,67 @@ class DataProcessor:
         # elif chat_message.modality == DataModality.IMAGE:
         #     self.process_image(chat_message)
 
+    @staticmethod
+    def _load_users_data(folder_path: str) -> dict:
+        users_json_path = os.path.join(folder_path, "users.json")
+        if not os.path.exists(users_json_path):
+            return {}
+        try:
+            with open(users_json_path, encoding="utf-8") as f:
+                data = json.load(f)
+                return data if isinstance(data, dict) else {}
+        except (FileNotFoundError, json.JSONDecodeError) as e:
+            logger.warning(f"Failed to load users.json from {folder_path}: {e}")
+            return {}
+
+    @staticmethod
+    def _find_partner_talker(folder_name: str, df: pd.DataFrame, users_data: dict) -> str:
+        """Find the non-self talker for this chat folder."""
+        received_talkers = []
+        if "is_sender" in df.columns and "talker" in df.columns:
+            is_received = df["is_sender"].astype(str) == "0"
+            received_talkers = [
+                str(talker).strip()
+                for talker in df.loc[is_received, "talker"].dropna().astype(str).unique()
+                if str(talker).strip()
+            ]
+
+        if folder_name in received_talkers:
+            return folder_name
+        if len(received_talkers) == 1:
+            return received_talkers[0]
+        if isinstance(users_data.get(folder_name), dict):
+            return folder_name
+        return folder_name
+
+    def _load_chat_metadata(self, folder_path: str, df: pd.DataFrame) -> str:
+        folder_name = os.path.basename(folder_path)
+        users_data = self._load_users_data(folder_path)
+        partner_talker = self._find_partner_talker(folder_name, df, users_data)
+
+        relation = users_data.get("relation", "")
+        if relation:
+            self.relations[folder_name] = relation
+            self.relations[partner_talker] = relation
+            logger.debug(f"Loaded relation for {folder_name}: {relation}")
+
+        partner_info = users_data.get(partner_talker)
+        chat_with = ""
+        if isinstance(partner_info, dict):
+            chat_with = str(partner_info.get("remark", "")).strip()
+
+        self.partner_remarks[folder_name] = chat_with
+        self.partner_remarks[partner_talker] = chat_with
+        if chat_with:
+            logger.debug(f"Loaded chat partner remark for {folder_name}: {chat_with}")
+
+        return partner_talker
+
     def load_file(self, file_path) -> List[ChatMessage]:
         """
         Perform overall first preprocessing, filter rows that don't meet conditions, check if images exist and change type to cut if not, add DataModality field
         """
         folder_path = os.path.dirname(file_path)
-        folder_name = os.path.basename(folder_path)
-
-        if folder_name not in self.relations:
-            users_json_path = os.path.join(folder_path, "users.json")
-            if os.path.exists(users_json_path):
-                try:
-                    with open(users_json_path, encoding="utf-8") as f:
-                        users_data = json.load(f)
-                        relation = users_data.get("relation", "")
-                        if relation:
-                            self.relations[folder_name] = relation
-                            logger.debug(f"Loaded relation for {folder_name}: {relation}")
-                except (FileNotFoundError, json.JSONDecodeError) as e:
-                    logger.warning(f"Failed to load users.json from {folder_path}: {e}")
 
         df = pd.read_csv(
             file_path,
@@ -610,6 +667,9 @@ class DataProcessor:
             escapechar=None,
             keep_default_na=False,
         )
+
+        partner_talker = self._load_chat_metadata(folder_path, df)
+        df["chat_talker"] = partner_talker
 
         df = df[~df["type_name"].isin(values=self.skip_type_list)]
 
@@ -678,7 +738,7 @@ class DataProcessor:
     def process_text(self, chat_message: ChatMessage):
         pass
 
-    def save_result(self, qa_res: List[QaPair]):
+    def save_result(self, qa_res: List[QaPair]) -> str:
         """
         Saves the list of QaPair objects to a JSON file after converting them to dictionaries.
 
@@ -694,6 +754,7 @@ class DataProcessor:
                 "messages": [{"role": msg.role, "content": msg.content} for msg in item.messages],
                 "images": item.images,
                 "system": item.system,
+                "chat_with": item.chat_with,
             }
             processed_qa_res.append(item_dict)
 
@@ -704,6 +765,7 @@ class DataProcessor:
         logger.success(
             f"Chat record processing successful, {len(qa_res)} entries in total, saved to {output_path}"
         )
+        return output_path
 
 
 if __name__ == "__main__":

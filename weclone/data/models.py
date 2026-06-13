@@ -21,6 +21,7 @@ class ChatMessage:
     room_name: Optional[str] = None  # chat room name
     is_forward: bool = False  # whether it's a forwarded message
     modality: Optional[DataModality] = None  # message modality, set in qa_generator.py
+    chat_talker: Optional[str] = None  # other party of this chat, set in qa_generator.py
 
 
 @dataclass
@@ -44,6 +45,7 @@ class QaPair:
     messages: list[Message]
     images: list[str]
     system: str
+    chat_with: str = ""
 
 
 class QaPairScore(BaseModel):
