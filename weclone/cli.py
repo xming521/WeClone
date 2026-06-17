@@ -120,6 +120,15 @@ def train_sft():
     train_sft_main()
 
 
+@cli.command("train-pt", help="Continue pre-training the model using prepared text datasets.")
+@apply_common_decorators()
+def train_pt():
+    """Continue pre-training the model using prepared text datasets."""
+    from weclone.train.train_pt import main as train_pt_main
+
+    train_pt_main()
+
+
 @cli.command("webchat-demo", help="Launch Web UI for interactive testing with fine-tuned model.")
 @apply_common_decorators()
 def web_demo():

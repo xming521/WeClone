@@ -10,6 +10,7 @@ from .config_models import (
     WcConfig,
     WCInferConfig,
     WCMakeDatasetConfig,
+    WCTrainPtConfig,
     WCTrainSftConfig,
 )
 from .log import logger
@@ -92,6 +93,18 @@ def create_config_by_arg_type(arg_type: str, wc_config: WcConfig) -> BaseModel:
 
         config_dict = {**common_config, **train_dict}
         return WCTrainSftConfig(**config_dict)
+
+    elif arg_type == "train_pt":
+        if wc_config.train_pt_args is None:
+            logger.error("Missing `train_pt_args` in configuration file.")
+            sys.exit(1)
+
+        train_dict = wc_config.train_pt_args.model_dump()
+        train_dict.pop("quantization", None)
+        train_dict.update(_flatten_quantization_args(wc_config.train_pt_args))
+
+        config_dict = {**common_config, **train_dict}
+        return WCTrainPtConfig(**config_dict)
 
     elif arg_type == "make_dataset":
         make_dataset_config = wc_config.make_dataset_args.model_dump()
