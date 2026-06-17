@@ -573,6 +573,7 @@ def build_llm_client(
     timeout: int | None = None,
     effort: str = "low",
     command: str = "codex",
+    sandbox: str = "read-only",
 ) -> LLMClient:
     normalized_provider = normalize_provider(provider)
     resolved_model = model or model_name
@@ -584,6 +585,7 @@ def build_llm_client(
             max_workers=max_workers,
             timeout=timeout or 120,
             command=command,
+            sandbox=sandbox,
         )
 
     if config_path is None:

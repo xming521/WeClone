@@ -301,6 +301,20 @@ def _clear_existing_stage2_outputs(output_dir: Path, input_path: Path) -> None:
         path.unlink()
 
 
+def _chat_with_id(chat_with_index: int) -> str:
+    return f"chat_with_{chat_with_index:04d}"
+
+
+def _assign_group_ids(items: list[dict[str, Any]], chat_with_id: str) -> list[dict[str, Any]]:
+    assigned_items = []
+    for local_index, item in enumerate(items):
+        assigned_item = copy.deepcopy(item)
+        assigned_item["chat_with_id"] = chat_with_id
+        assigned_item["local_id"] = str(local_index)
+        assigned_items.append(assigned_item)
+    return assigned_items
+
+
 def build_stage2_outputs(
     input_path: Path | str = DEFAULT_INPUT_PATH,
     output_dir: Path | str = DEFAULT_OUTPUT_DIR,
@@ -355,8 +369,9 @@ def build_stage2_outputs(
     total_filtered_low_information_count = 0
     total_reason_counts: dict[str, int] = defaultdict(int)
 
-    for chat_with in chat_with_order:
+    for chat_with_index, chat_with in enumerate(chat_with_order):
         items = grouped[chat_with]
+        chat_with_id = _chat_with_id(chat_with_index)
         sorted_items = sorted(items, key=lambda pair: _time_sort_key(pair[1], pair[0]))
         processed_items = [_remove_system_and_begin_chat_messages(item) for _, item in sorted_items]
         kept_items, filter_stats = _filter_low_information_items(
@@ -364,6 +379,7 @@ def build_stage2_outputs(
             ltp=ltp,
             batch_size=ltp_batch_size,
         )
+        kept_items = _assign_group_ids(kept_items, chat_with_id)
         total_filtered_low_information_count += filter_stats["filtered_count"]
         for reason, count in filter_stats["reason_counts"].items():
             total_reason_counts[reason] += count
@@ -376,6 +392,7 @@ def build_stage2_outputs(
         total_written += len(kept_items)
         manifest.append(
             {
+                "chat_with_id": chat_with_id,
                 "chat_with": chat_with,
                 "file_name": output_filename,
                 "output_path": str(output_path),
