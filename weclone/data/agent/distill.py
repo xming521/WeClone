@@ -1,4 +1,6 @@
 import json
+from datetime import datetime, timedelta, timezone
+from pickle import TRUE
 import threading
 import time
 from dataclasses import fields, is_dataclass
@@ -9,7 +11,7 @@ from typing import Any, Iterable
 import pyjson5
 from tqdm import tqdm
 
-from weclone.prompts.chat_distill import STATE_EXTRACT_PROMPT
+from weclone.prompts.chat_distill import build_state_extract_prompt
 from weclone.utils.log import logger
 
 DEFAULT_INPUT_DIR = Path("dataset/res_csv/agent/people")
@@ -18,22 +20,10 @@ DEFAULT_STATE_PATH = None
 DEFAULT_CONFIG_PATH = Path("settings.jsonc")
 DEFAULT_TARGET_ROLE = "assistant"
 DEFAULT_PROVIDER = "codex_exec"
-DEFAULT_MODEL = None
-DEFAULT_EFFORT = "low"
-DEFAULT_BATCH_SIZE = 1
-DEFAULT_CODEX_COMMAND = "codex"
-DEFAULT_CODEX_SANDBOX = "read-only"
-DEFAULT_MAX_TOKENS = 4096
-DEFAULT_TIMEOUT = None
+DEFAULT_OVERWRITE = True
+
 DEFAULT_LIMIT_FILES = None
 DEFAULT_LIMIT_RECORDS = None
-DEFAULT_OVERWRITE = False
-DEFAULT_DRY_RUN = False
-DEFAULT_INDENT = 2
-
-PROMPT_PLACEHOLDER = "{{CHAT_JSON}}"
-TERMINAL_STATUSES = {"done", "failed"}
-WRITEBACK_FIELD = "state_memories"
 _print_lock = threading.Lock()
 
 
@@ -45,18 +35,18 @@ def default_args() -> SimpleNamespace:
         config_path=DEFAULT_CONFIG_PATH,
         target_role=DEFAULT_TARGET_ROLE,
         llm_provider=None,
-        model=DEFAULT_MODEL,
+        model=None,
         effort=None,
         batch_size=None,
         codex_command=None,
         codex_sandbox=None,
-        max_tokens=DEFAULT_MAX_TOKENS,
-        timeout=DEFAULT_TIMEOUT,
+        max_tokens=None,
+        timeout=None,
         limit_files=DEFAULT_LIMIT_FILES,
         limit_records=DEFAULT_LIMIT_RECORDS,
         overwrite=DEFAULT_OVERWRITE,
-        dry_run=DEFAULT_DRY_RUN,
-        indent=DEFAULT_INDENT,
+        dry_run=False,
+        indent=2,
     )
 
 
@@ -77,54 +67,42 @@ def load_codex_exec_config(config_path: Path) -> dict[str, Any]:
     return codex_config
 
 
-def optional_str(*values: Any) -> str | None:
-    for value in values:
-        if value is None:
-            continue
-        text = str(value).strip()
-        if text:
-            return text
-    return None
+def required_config_value(config: dict[str, Any], key: str, config_path: Path) -> Any:
+    value = config.get(key)
+    if value is None or value == "":
+        raise ValueError(f"codex_exec_args.{key} is required in {config_path}")
+    return value
 
 
-def optional_int(*values: Any) -> int | None:
-    for value in values:
-        if value is None or value == "":
-            continue
-        return int(value)
-    return None
+def required_config_str(config: dict[str, Any], key: str, config_path: Path) -> str:
+    text = str(required_config_value(config, key, config_path)).strip()
+    if not text:
+        raise ValueError(f"codex_exec_args.{key} is required in {config_path}")
+    return text
+
+
+def required_config_int(config: dict[str, Any], key: str, config_path: Path) -> int:
+    value = int(required_config_value(config, key, config_path))
+    if value < 1:
+        raise ValueError(f"codex_exec_args.{key} must be >= 1 in {config_path}")
+    return value
 
 
 def resolve_llm_args(args: SimpleNamespace) -> SimpleNamespace:
     args.llm_provider = args.llm_provider or DEFAULT_PROVIDER
+    codex_config = load_codex_exec_config(args.config_path)
+    args.batch_size = required_config_int(codex_config, "batch_size", args.config_path)
+    args.max_tokens = required_config_int(codex_config, "max_tokens", args.config_path)
+    args.timeout = required_config_int(codex_config, "timeout", args.config_path)
+
     if args.llm_provider != "codex_exec":
         args.model = None
-        args.batch_size = max(1, optional_int(args.batch_size, DEFAULT_BATCH_SIZE) or 1)
         return args
 
-    codex_config = load_codex_exec_config(args.config_path)
-    args.model = optional_str(args.model, codex_config.get("model"), DEFAULT_MODEL)
-    if args.model is None:
-        raise ValueError(
-            f"codex_exec model is required. Set codex_exec_args.model in {args.config_path} "
-            "or pass --model."
-        )
-    args.effort = optional_str(args.effort, codex_config.get("effort"), DEFAULT_EFFORT)
-    args.batch_size = max(
-        1,
-        optional_int(args.batch_size, codex_config.get("batch_size"), DEFAULT_BATCH_SIZE) or 1,
-    )
-    args.timeout = optional_int(args.timeout, codex_config.get("timeout"), DEFAULT_TIMEOUT)
-    args.codex_command = optional_str(
-        args.codex_command,
-        codex_config.get("command"),
-        DEFAULT_CODEX_COMMAND,
-    )
-    args.codex_sandbox = optional_str(
-        args.codex_sandbox,
-        codex_config.get("sandbox"),
-        DEFAULT_CODEX_SANDBOX,
-    )
+    args.model = required_config_str(codex_config, "model", args.config_path)
+    args.effort = required_config_str(codex_config, "effort", args.config_path)
+    args.codex_command = required_config_str(codex_config, "command", args.config_path)
+    args.codex_sandbox = required_config_str(codex_config, "sandbox", args.config_path)
     return args
 
 
@@ -167,6 +145,32 @@ def chat_items(data: Any) -> list[dict[str, Any]]:
     return [item for item in data if isinstance(item, dict) and isinstance(item.get("messages"), list)]
 
 
+def parse_sample_time(value: Any) -> datetime | None:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    try:
+        parsed = datetime.fromisoformat(text[:-1] + "+00:00" if text.endswith("Z") else text)
+    except ValueError:
+        return None
+    if parsed.tzinfo is not None:
+        parsed = parsed.astimezone(timezone.utc).replace(tzinfo=None)
+    return parsed
+
+
+def current_state_time_window(items: list[dict[str, Any]]) -> tuple[datetime | None, datetime | None]:
+    times = [parsed for item in items if (parsed := parse_sample_time(item.get("time"))) is not None]
+    if not times:
+        return None, None
+    latest_time = max(times)
+    return latest_time, latest_time - timedelta(days=14)
+
+
+def allow_current_state(item: dict[str, Any], cutoff_time: datetime | None) -> bool:
+    sample_time = parse_sample_time(item.get("time"))
+    return cutoff_time is not None and sample_time is not None and sample_time >= cutoff_time
+
+
 def default_state_path(output_dir: Path) -> Path:
     return output_dir / "distill_state.json"
 
@@ -206,7 +210,7 @@ def now_ts() -> str:
 
 
 def is_terminal(record: Any) -> bool:
-    return isinstance(record, dict) and str(record.get("status") or "") in TERMINAL_STATUSES
+    return isinstance(record, dict) and str(record.get("status") or "") in {"done", "failed"}
 
 
 def make_record(
@@ -237,13 +241,36 @@ def memories_from_payload(payload: dict[str, Any]) -> list[Any] | None:
     return None
 
 
+def filter_current_state_payload(payload: dict[str, Any], *, include_current_state: bool) -> dict[str, Any]:
+    if include_current_state:
+        return payload
+
+    memories = memories_from_payload(payload)
+    if memories is None:
+        return payload
+
+    filtered_memories = [
+        memory
+        for memory in memories
+        if not (isinstance(memory, dict) and memory.get("type") == "current_state")
+    ]
+    if len(filtered_memories) == len(memories):
+        return payload
+
+    filtered_payload = dict(payload)
+    result = dict(payload.get("result") or {})
+    result["memories"] = filtered_memories
+    filtered_payload["result"] = result
+    return filtered_payload
+
+
 def apply_payload_to_item(item: dict[str, Any], payload: dict[str, Any]) -> bool:
     memories = memories_from_payload(payload)
     if memories is None:
         return False
-    if item.get(WRITEBACK_FIELD) == memories:
+    if item.get("state_memories") == memories:
         return False
-    item[WRITEBACK_FIELD] = memories
+    item["state_memories"] = memories
     return True
 
 
@@ -268,15 +295,7 @@ def other_role(target_role: str) -> str:
 
 
 def render_chat(item: dict[str, Any], *, target_role: str, sample_id: str) -> str:
-    a_role = other_role(target_role)
-    lines = [
-        f"sample_id: {sample_id}",
-        f"sample_time: {item.get('time', '')}",
-        f"chat_with: {item.get('chat_with', '')}",
-        f"role_mapping: A={a_role}, B={target_role}",
-        "说明：只抽取 B 的信息；A 的内容只作为上下文证据。",
-        "messages:",
-    ]
+    lines = ["messages:"]
 
     for message_index, message in enumerate(item.get("messages", [])):
         if not isinstance(message, dict):
@@ -292,9 +311,16 @@ def render_chat(item: dict[str, Any], *, target_role: str, sample_id: str) -> st
     return "\n".join(lines)
 
 
-def build_prompt(item: dict[str, Any], *, target_role: str, sample_id: str) -> str:
+def build_prompt(
+    item: dict[str, Any],
+    *,
+    target_role: str,
+    sample_id: str,
+    include_current_state: bool = True,
+) -> str:
     rendered_chat = render_chat(item, target_role=target_role, sample_id=sample_id)
-    return STATE_EXTRACT_PROMPT.replace(PROMPT_PLACEHOLDER, rendered_chat)
+    prompt = build_state_extract_prompt(include_current_state=include_current_state)
+    return prompt.replace("{{CHAT_JSON}}", rendered_chat)
 
 
 def response_payload(response: Any) -> dict[str, Any]:
@@ -307,14 +333,25 @@ def response_payload(response: Any) -> dict[str, Any]:
     }
 
 
-def run_dry_preview(source_path: Path, item: dict[str, Any], *, target_role: str, sample_id: str) -> None:
+def run_dry_preview(
+    source_path: Path,
+    item: dict[str, Any],
+    *,
+    target_role: str,
+    sample_id: str,
+    include_current_state: bool,
+) -> None:
     rendered_chat = render_chat(item, target_role=target_role, sample_id=sample_id)
-    prompt = STATE_EXTRACT_PROMPT.replace(PROMPT_PLACEHOLDER, rendered_chat)
+    prompt = build_state_extract_prompt(include_current_state=include_current_state).replace(
+        "{{CHAT_JSON}}",
+        rendered_chat,
+    )
     preview = rendered_chat[:2000]
     suffix = "" if len(rendered_chat) <= len(preview) else "\n...<truncated>"
     logger.info(
         f"Dry run: {source_path.name} sample_id={sample_id}, "
-        f"chat_chars={len(rendered_chat)}, prompt_chars={len(prompt)}"
+        f"chat_chars={len(rendered_chat)}, prompt_chars={len(prompt)}, "
+        f"include_current_state={include_current_state}"
     )
     print(preview + suffix)
 
@@ -340,6 +377,7 @@ def process_file(
 ) -> tuple[int, int]:
     source_data = load_json(source_path)
     all_items = chat_items(source_data)
+    latest_time, current_state_cutoff_time = current_state_time_window(all_items)
     items = all_items
     if limit_records is not None:
         items = items[:limit_records]
@@ -356,6 +394,7 @@ def process_file(
 
     for source_index, item in enumerate(items):
         sample_id = sample_id_for(item, source_index)
+        include_current_state = allow_current_state(item, current_state_cutoff_time)
         key = state_key(source_path, sample_id)
         record = entries.get(key)
         if not isinstance(record, dict):
@@ -365,11 +404,13 @@ def process_file(
         if is_terminal(record):
             payload = record.get("payload")
             if isinstance(payload, dict) and not dry_run:
+                payload = filter_current_state_payload(payload, include_current_state=include_current_state)
+                record["payload"] = payload
                 writeback_changed = apply_payload_to_item(item, payload) or writeback_changed
             skipped_count += 1
             continue
 
-        if not overwrite and isinstance(item.get(WRITEBACK_FIELD), list):
+        if not overwrite and isinstance(item.get("state_memories"), list):
             record["status"] = "done"
             record["done_reason"] = "input_writeback"
             record["updated_at"] = now_ts()
@@ -377,12 +418,23 @@ def process_file(
             continue
 
         if dry_run:
-            run_dry_preview(source_path, item, target_role=target_role, sample_id=sample_id)
+            run_dry_preview(
+                source_path,
+                item,
+                target_role=target_role,
+                sample_id=sample_id,
+                include_current_state=include_current_state,
+            )
             return 1, 0
 
         from weclone.core.inference.llm_client import LLMRequest
 
-        prompt = build_prompt(item, target_role=target_role, sample_id=sample_id)
+        prompt = build_prompt(
+            item,
+            target_role=target_role,
+            sample_id=sample_id,
+            include_current_state=include_current_state,
+        )
         request = LLMRequest.from_prompt(
             prompt,
             provider=provider,
@@ -394,13 +446,16 @@ def process_file(
                 "source_file": str(source_path),
                 "source_index": source_index,
                 "sample_id": sample_id,
+                "include_current_state": include_current_state,
             },
         )
-        request_rows.append((key, source_index, item, sample_id, request))
+        request_rows.append((key, source_index, item, sample_id, include_current_state, request))
 
     log(
         f"{source_path.name}: total={len(items)} pending={len(request_rows)} "
-        f"skipped={skipped_count} batch_size={batch_size}"
+        f"skipped={skipped_count} batch_size={batch_size} "
+        f"latest_time={latest_time.isoformat() if latest_time else ''} "
+        f"current_state_since={current_state_cutoff_time.isoformat() if current_state_cutoff_time else ''}"
     )
     if writeback_changed and not dry_run:
         atomic_save_any_json(source_path, source_data, indent=indent)
@@ -416,10 +471,10 @@ def process_file(
     )
     try:
         for batch in batched(request_rows, batch_size):
-            responses = client.generate_batch(row[4] for row in batch)
+            responses = client.generate_batch(row[5] for row in batch)
             call_count += len(batch)
 
-            for key, source_index, item, sample_id, _request in batch:
+            for key, source_index, item, sample_id, include_current_state, _request in batch:
                 record = entries[key]
                 response = responses.pop(0) if responses else None
                 if response is None:
@@ -436,9 +491,17 @@ def process_file(
                     "chat_with": item.get("chat_with", ""),
                     "target_role": target_role,
                     "role_mapping": {"A": other_role(target_role), "B": target_role},
+                    "include_current_state": include_current_state,
+                    "current_state_window_days": 14,
+                    "latest_sample_time": latest_time.isoformat() if latest_time else "",
+                    "current_state_since": current_state_cutoff_time.isoformat() if current_state_cutoff_time else "",
                     "result": response.parsed_json,
                     "response": response_payload(response),
                 }
+                payload = filter_current_state_payload(
+                    payload,
+                    include_current_state=include_current_state,
+                )
                 if response.ok:
                     writeback_changed = apply_payload_to_item(item, payload) or writeback_changed
                 record["status"] = "done" if response.ok else "failed"
