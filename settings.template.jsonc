@@ -89,6 +89,15 @@
         "max_length": 256,
         "top_p": 0.65
     },
+    "embedding_service_args": {
+        "model_name_or_path": "./models/Qwen3-Embedding-4B",
+        "device": "cuda:0",
+        "host": "127.0.0.1",
+        "port": 8097,
+        "max_length": 4096,
+        "min_retry_max_length": 512,
+        "request_timeout": 120
+    },
     "vllm_args": {
         "gpu_memory_utilization": 0.9,
         // "data_parallel_size": 2,

@@ -17,7 +17,9 @@ dependencies = [
   "loguru>=0.7.3",
   "langchain",
   "openai==1.87.0",
-  "pip"
+  "pip",
+  "milvus-lite",
+  "pymilvus",
 ]
 
 [tool.weclone]

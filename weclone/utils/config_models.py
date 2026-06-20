@@ -96,6 +96,16 @@ class CliArgs(BaseModel):
     log_level: str = Field("INFO", description="DEBUG, INFO, WARNING, ERROR, CRITICAL")
 
 
+class CodexExecArgs(BaseConfigModel):
+    model: Optional[str] = None
+    effort: Optional[str] = None
+    batch_size: Optional[int] = None
+    max_tokens: Optional[int] = None
+    timeout: Optional[int] = None
+    command: Optional[str] = None
+    sandbox: Optional[str] = None
+
+
 class LLMCleanConfig(BaseConfigModel):
     accept_score: int = Field(
         2,
@@ -256,6 +266,22 @@ class InferArgs(BaseConfigModel):
     max_length: int = Field(..., description="Maximum generation length")
 
 
+class EmbeddingServiceArgs(BaseConfigModel):
+    model_name_or_path: str = Field(
+        "./models/Qwen3-Embedding-4B",
+        description="Default local embedding model path or Hugging Face model id",
+    )
+    device: str = Field("cuda:0", description="Device used by the local embedding service")
+    host: str = Field("127.0.0.1", description="Local embedding service host")
+    port: int = Field(8097, description="Local embedding service port")
+    max_length: int = Field(4096, description="Maximum token length for embedding inputs")
+    min_retry_max_length: int = Field(
+        512,
+        description="Minimum token length when retrying after CUDA OOM",
+    )
+    request_timeout: float = Field(120.0, description="HTTP client timeout for embedding requests")
+
+
 class VllmArgs(BaseConfigModel):
     gpu_memory_utilization: float = Field(default=0.9, description="vllm GPU memory utilization")
     quantization: Optional[str] = Field(
@@ -284,10 +310,12 @@ class WcConfig(BaseModel):
     version: str = Field(..., description="Configuration file version")
     common_args: CommonArgs = Field(..., description="Common parameters")
     cli_args: CliArgs = Field(..., description="Command line arguments")
+    codex_exec_args: Optional[CodexExecArgs] = None
     make_dataset_args: MakeDatasetArgs = Field(..., description="Dataset processing parameters")
     train_sft_args: TrainSftArgs = Field(..., description="SFT fine-tuning parameters")
     train_pt_args: Optional[TrainPtArgs] = Field(None, description="PT continued pre-training parameters")
     infer_args: InferArgs = Field(..., description="Inference parameters")
+    embedding_service_args: EmbeddingServiceArgs = Field(default_factory=EmbeddingServiceArgs)
     vllm_args: VllmArgs = Field(VllmArgs())
     test_model_args: TestModelArgs = Field(TestModelArgs())
 
