@@ -18,8 +18,6 @@ dependencies = [
   "langchain",
   "openai==1.87.0",
   "pip",
-  "milvus-lite",
-  "pymilvus",
 ]
 
 [tool.weclone]
@@ -100,6 +98,9 @@ explicit = true
 where = ["."]                      
 include = ["weclone*"]             
 exclude = ["*tests*", "*archive*"]
+
+[tool.setuptools.package-data]
+weclone = ["resources/tokenizers/deepseek_v3/*.json"]
 
 
 [tool.pyright]

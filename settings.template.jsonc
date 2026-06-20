@@ -94,7 +94,7 @@
         "device": "cuda:0",
         "host": "127.0.0.1",
         "port": 8097,
-        "max_length": 4096,
+        "max_length": 2048,
         "min_retry_max_length": 512,
         "request_timeout": 120
     },
