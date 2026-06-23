@@ -26,6 +26,7 @@ ProviderName = Literal["codex_exec", "api"]
 Message = dict[str, str]
 ParsedJson = dict[str, Any] | list[Any]
 LLM_REQUEST_LOG_DIR = Path(__file__).resolve().parents[3] / "logs" / "llm_requests"
+CODEX_EXEC_RUN_DIR = Path(__file__).resolve().parents[3] / "logs" / "codex_exec"
 _LLM_REQUEST_LOG_LOCK = Lock()
 
 
@@ -383,7 +384,8 @@ class CodexExecClient(BaseBatchMixin):
         self.timeout = timeout
         self.command = command
         self.sandbox = sandbox
-        self.cwd = Path(cwd) if cwd else None
+        self.cwd = Path(cwd).resolve() if cwd else Path(__file__).resolve().parents[3]
+        self.requests_dir = CODEX_EXEC_RUN_DIR / "requests"
         self.extra_args = list(extra_args or [])
 
     def _build_command(
@@ -430,7 +432,12 @@ class CodexExecClient(BaseBatchMixin):
         _log_llm_request(request, provider=self.provider, model=model)
         t0 = time.time()
 
-        with tempfile.TemporaryDirectory(prefix="codex-exec-") as tmp_dir:
+        self.requests_dir.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(
+            prefix="request-",
+            dir=self.requests_dir,
+            ignore_cleanup_errors=True,
+        ) as tmp_dir:
             tmp_path = Path(tmp_dir)
             output_path = tmp_path / "last_message.txt"
             schema_path = None
@@ -444,7 +451,7 @@ class CodexExecClient(BaseBatchMixin):
                 request,
                 output_path=output_path,
                 schema_path=schema_path,
-                cwd=self.cwd or tmp_path,
+                cwd=self.cwd,
             )
 
             try:

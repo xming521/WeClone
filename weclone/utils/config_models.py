@@ -106,6 +106,10 @@ class CodexExecArgs(BaseConfigModel):
     sandbox: Optional[str] = None
 
 
+class AgentDistillArgs(BaseConfigModel):
+    llm_provider: str = Field("codex_exec", description="LLM backend for agent distill: codex_exec or api")
+
+
 class LLMCleanConfig(BaseConfigModel):
     accept_score: int = Field(
         2,
@@ -311,6 +315,7 @@ class WcConfig(BaseModel):
     common_args: CommonArgs = Field(..., description="Common parameters")
     cli_args: CliArgs = Field(..., description="Command line arguments")
     codex_exec_args: Optional[CodexExecArgs] = None
+    agent_distill_args: Optional[AgentDistillArgs] = None
     make_dataset_args: MakeDatasetArgs = Field(..., description="Dataset processing parameters")
     train_sft_args: TrainSftArgs = Field(..., description="SFT fine-tuning parameters")
     train_pt_args: Optional[TrainPtArgs] = Field(None, description="PT continued pre-training parameters")

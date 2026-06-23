@@ -67,6 +67,25 @@ def load_codex_exec_config(config_path: Path) -> dict[str, Any]:
     return codex_config
 
 
+def load_agent_distill_config(config_path: Path) -> dict[str, Any]:
+    config_data = pyjson5.loads(config_path.read_text(encoding="utf-8"))
+    distill_config = config_data.get("agent_distill_args", {})
+    if distill_config is None:
+        return {}
+    if not isinstance(distill_config, dict):
+        raise ValueError(f"agent_distill_args must be an object in {config_path}")
+    return distill_config
+
+
+def normalize_llm_provider(provider: Any) -> str:
+    text = str(provider or DEFAULT_PROVIDER).strip().lower().replace("-", "_")
+    if text in {"codex", "codex_exec"}:
+        return "codex_exec"
+    if text in {"api", "openai", "deepseek", "openrouter", "openai_compatible"}:
+        return "api"
+    raise ValueError(f"unknown agent_distill_args.llm_provider: {provider}")
+
+
 def required_config_value(config: dict[str, Any], key: str, config_path: Path) -> Any:
     value = config.get(key)
     if value is None or value == "":
@@ -89,7 +108,8 @@ def required_config_int(config: dict[str, Any], key: str, config_path: Path) -> 
 
 
 def resolve_llm_args(args: SimpleNamespace) -> SimpleNamespace:
-    args.llm_provider = args.llm_provider or DEFAULT_PROVIDER
+    distill_config = load_agent_distill_config(args.config_path)
+    args.llm_provider = normalize_llm_provider(args.llm_provider or distill_config.get("llm_provider"))
     codex_config = load_codex_exec_config(args.config_path)
     args.batch_size = required_config_int(codex_config, "batch_size", args.config_path)
     args.max_tokens = required_config_int(codex_config, "max_tokens", args.config_path)

@@ -14,6 +14,10 @@
         "full_log": false,
         "log_level": "INFO"
     },
+    "agent_distill_args": {
+        // state/event distill 使用的 LLM 后端：codex_exec 或 api
+        "llm_provider": "codex_exec"
+    },
     "make_dataset_args": {
         //数据处理配置
         "platform": "chat", //chat,telegram
