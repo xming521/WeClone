@@ -326,6 +326,6 @@ This disclaimer may be revised with project updates, users should regularly chec
 
 <div align="center">
 
-[![Star History Chart](https://api.star-history.com/svg?repos=xming521/WeClone&type=Date)](https://www.star-history.com/#xming521/WeClone&Date)
+[![Star History Chart](https://star-history.dera.page/svg?repos=xming521/WeClone&type=Date)](https://star-history.dera.page/#xming521/WeClone&Date)
 
 </div>
