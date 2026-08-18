@@ -56,6 +56,12 @@ def _calculate_retry_delay(
     return delay
 
 
+def _as_chat_messages(messages: Any) -> List[ChatCompletionMessageParam]:
+    if isinstance(messages, str):
+        return [{"role": "user", "content": messages}]
+    return messages
+
+
 class OnlineLLM:
     def __init__(
         self,
@@ -95,11 +101,7 @@ class OnlineLLM:
         stream: bool = False,
         extra_body: Optional[dict[str, Any]] = None,
     ):
-        # messages: List[ChatCompletionMessageParam] = []
-        # messages = [
-        #     {"role": "system", "content": self.default_system},
-        #     {"role": "user", "content": messages},
-        # ]
+        messages = _as_chat_messages(messages)
 
         params = {
             "model": self.model_name,
@@ -188,7 +190,7 @@ class OnlineLLM:
 
         Returns:
             If guided_decoding_class is None: List of ChatCompletion or Exception objects
-            If guided_decoding_class is provided: List of parsed BaseModel objects or error message strings
+            If guided_decoding_class is provided: Tuple of (parsed_results, failed_indices)
         """
         futures = []
 
@@ -211,17 +213,20 @@ class OnlineLLM:
 
         if guided_decoding_class:
             parsed_results: List[Union[BaseModel, str]] = []
+            failed_indices: List[int] = []
 
             for i, result in enumerate(results):
                 if isinstance(result, Exception):
                     error_msg = f"Exception: {type(result).__name__}: {str(result)}"
                     parsed_results.append(error_msg)
+                    failed_indices.append(i)
                     logger.warning(f"Request at index {i} failed with exception: {result}")
                 elif isinstance(result, ChatCompletion):
                     finish_reason = result.choices[0].finish_reason
                     if finish_reason != "stop":
                         error_msg = f"finish_reason: {finish_reason}"
                         parsed_results.append(error_msg)
+                        failed_indices.append(i)
                         logger.warning(f"Request at index {i} finished with reason: {finish_reason}")
                     else:
                         try:
@@ -234,6 +239,7 @@ class OnlineLLM:
                         except Exception as e:
                             error_msg = f"model_validate_json: {type(e).__name__}: {str(e)}"
                             parsed_results.append(error_msg)
+                            failed_indices.append(i)
                             content = result.choices[0].message.content
                             log_text = (content[:100] + "...") if content else "None"
                             logger.warning(
@@ -242,9 +248,10 @@ class OnlineLLM:
                 else:
                     error_msg = f"Unexpected result type: {type(result).__name__}"
                     parsed_results.append(error_msg)
+                    failed_indices.append(i)
                     logger.warning(f"Unexpected result type at index {i}: {type(result)}")
 
-            return parsed_results
+            return parsed_results, failed_indices
 
         return results
 
