@@ -1,16 +1,60 @@
 {
-  "chat-sft": {
-    "file_name": "sft-demo.json",
-    "formatting": "sharegpt",
-    "columns": {
-      "messages": "messages",
-      "system": "system"
+    "chat-sft": {
+        "file_name": "./sft-demo.json",
+        "formatting": "sharegpt",
+        "columns": {
+            "messages": "messages",
+            "system": "system"
+        },
+        "tags": {
+            "role_tag": "role",
+            "content_tag": "content",
+            "user_tag": "user",
+            "assistant_tag": "assistant"
+        }
     },
-    "tags": {
-      "role_tag": "role",
-      "content_tag": "content",
-      "user_tag": "user",
-      "assistant_tag": "assistant"
+    "chat-sft-cleaned": {
+        "file_name": "./sft-demo-cleaned.json",
+        "formatting": "sharegpt",
+        "columns": {
+            "messages": "messages",
+            "system": "system"
+        },
+        "tags": {
+            "role_tag": "role",
+            "content_tag": "content",
+            "user_tag": "user",
+            "assistant_tag": "assistant"
+        }
+    },
+    "chat-sft-vl": {
+        "file_name": "./sft-demo.json",
+        "formatting": "sharegpt",
+        "columns": {
+            "messages": "messages",
+            "system": "system",
+            "images": "images"
+        },
+        "tags": {
+            "role_tag": "role",
+            "content_tag": "content",
+            "user_tag": "user",
+            "assistant_tag": "assistant"
+        }
+    },
+    "chat-sft-vl-cleaned": {
+        "file_name": "./sft-demo-cleaned.json",
+        "formatting": "sharegpt",
+        "columns": {
+            "messages": "messages",
+            "system": "system",
+            "images": "images"
+        },
+        "tags": {
+            "role_tag": "role",
+            "content_tag": "content",
+            "user_tag": "user",
+            "assistant_tag": "assistant"
+        }
     }
-  }
 }
