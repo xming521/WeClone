@@ -1,0 +1,16 @@
+{
+  "chat-sft": {
+    "file_name": "sft-demo.json",
+    "formatting": "sharegpt",
+    "columns": {
+      "messages": "messages",
+      "system": "system"
+    },
+    "tags": {
+      "role_tag": "role",
+      "content_tag": "content",
+      "user_tag": "user",
+      "assistant_tag": "assistant"
+    }
+  }
+}
