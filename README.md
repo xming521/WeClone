@@ -146,6 +146,12 @@ More Parameter Details: [Data Preprocessing](https://docs.weclone.love/docs/depl
 weclone-cli train-sft
 ```
 
+> [!NOTE]
+> **Mac Device (Apple Silicon) Fine-tuning Notes**:
+> - LlamaFactory supports training using Mac's MPS (Metal Performance Shaders). No additional configuration is needed, PyTorch will automatically recognize the MPS device.
+> - `flash-attn` **cannot be installed** on Mac (FlashAttention only supports NVIDIA GPUs). Therefore, please ensure you change `flash_attn` in `train_sft_args` within `settings.jsonc` from the default `"fa2"` to `"sdpa"` or `"auto"` to prevent the training command from crashing.
+> - Limited by Mac's unified memory, it is recommended to appropriately reduce `per_device_train_batch_size` and `cutoff_len` based on your machine's unified memory size (accounting for other applications' usage).
+
 ### Multi-GPU Training
 Uncomment the `deepspeed` line in `settings.jsonc` and use the following command for multi-GPU training:
 ```bash
