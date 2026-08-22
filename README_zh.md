@@ -143,6 +143,12 @@ weclone-cli make-dataset
 weclone-cli train-sft
 ```
 
+> [!NOTE]
+> **Mac 设备（Apple Silicon）微调注意事项**：
+> - LlamaFactory 支持使用 Mac 的 MPS（Metal Performance Shaders）进行训练，无需额外配置，PyTorch 会自动识别 MPS 设备。
+> - Mac 上**无法安装** `flash-attn`（FlashAttention 仅支持 NVIDIA GPU），因此请确保在 `settings.jsonc` 的 `train_sft_args` 中将 `flash_attn` 从默认的 `"fa2"` 修改为 `"sdpa"` 或 `"auto"`，以避免训练命令崩溃。
+> - 受限于 Mac 的统一内存，建议根据机型统一内存大小（需考虑其他应用占用）适当调小 `per_device_train_batch_size` 和 `cutoff_len`。
+
 ### 多卡训练
 取消`settings.jsonc`中`deepspeed`行代码注释，使用以下命令多卡训练：
 ```bash
