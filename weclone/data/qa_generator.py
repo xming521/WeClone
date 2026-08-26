@@ -701,8 +701,9 @@ class DataProcessor:
         with open(dataset_info_path, "r", encoding="utf-8") as f:
             dataset_info = json.load(f)
 
-        file_name = dataset_info.get(self.c.dataset, {}).get("file_name")
-        if not file_name:
+        dataset_entry = dataset_info.get(self.c.dataset) if isinstance(dataset_info, dict) else None
+        file_name = dataset_entry.get("file_name") if isinstance(dataset_entry, dict) else None
+        if not isinstance(file_name, str) or not file_name:
             raise ValueError(f"Dataset '{self.c.dataset}' must define file_name in {dataset_info_path}")
 
         output_path = os.path.join(self.c.dataset_dir, file_name)

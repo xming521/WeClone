@@ -3,6 +3,7 @@ import json
 import sys
 from types import ModuleType, SimpleNamespace
 
+import pytest
 from pandas import Timestamp
 
 from weclone.data.models import Message, QaPair
@@ -52,3 +53,19 @@ def test_save_result_updates_configured_dataset_file(tmp_path, monkeypatch):
     assert saved_data[0]["messages"][0]["content"] == "fresh data"
     assert output_path == str(dataset_path)
     assert not (tmp_path / "dataset/res_csv/sft/sft-my.json").exists()
+
+
+def test_save_result_rejects_non_object_dataset_entry(tmp_path, monkeypatch):
+    DataProcessor = _load_data_processor(monkeypatch)
+    dataset_dir = tmp_path / "custom-dataset"
+    dataset_dir.mkdir()
+    (dataset_dir / "dataset_info.json").write_text(
+        json.dumps({"custom-chat": None}),
+        encoding="utf-8",
+    )
+
+    processor = DataProcessor.__new__(DataProcessor)
+    processor.c = SimpleNamespace(dataset="custom-chat", dataset_dir=str(dataset_dir))
+
+    with pytest.raises(ValueError, match="must define file_name"):
+        processor.save_result([])
