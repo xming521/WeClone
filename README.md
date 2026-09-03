@@ -37,6 +37,9 @@
 ---
 
 ### WeClone × Infistar.cc 无限星河｜全模型 API · 为 AI 数字分身持续注入智能
+<a href="https://www.infistar.cc/register?aff=RYD228HX&ref_source=link">
+  <img width="700"  alt="Infistar.cc 无限星河" src="https://github.com/user-attachments/assets/960e62bc-646e-4976-9a13-f3756c629c72" />
+</a> <br> 
 
 感谢 Infistar.cc 无限星河 赞助本项目！<br>
 ⚡ 稳定高效的模型服务：价格低至官方渠道 1 折，模型倍率公开透明，多节点冗余保障，降低限流、429 与服务中断的影响；<br>
