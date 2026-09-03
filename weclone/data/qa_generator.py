@@ -146,11 +146,11 @@ class DataProcessor:
         if self.enable_clean:
             self.clean_strategy.judge(qa_res)  # type: ignore
 
-        self.save_result(qa_res)
+        output_path = self.save_result(qa_res)
         self._execute_length_cdf_script()
 
         logger.success(
-            f"Chat record processing successful, obtained {len(qa_res)} data entries in total, saved to ./dataset/res_csv/sft/sft-my.json"
+            f"Chat record processing successful, obtained {len(qa_res)} data entries in total, saved to {output_path}"
         )
 
     def pre_parse_chat_dataset(self):
@@ -678,7 +678,7 @@ class DataProcessor:
     def process_text(self, chat_message: ChatMessage):
         pass
 
-    def save_result(self, qa_res: List[QaPair]):
+    def save_result(self, qa_res: List[QaPair]) -> str:
         """
         Saves the list of QaPair objects to a JSON file after converting them to dictionaries.
 
@@ -697,13 +697,23 @@ class DataProcessor:
             }
             processed_qa_res.append(item_dict)
 
-        output_path = "./dataset/res_csv/sft/sft-my.json"
+        dataset_info_path = os.path.join(self.c.dataset_dir, "dataset_info.json")
+        with open(dataset_info_path, "r", encoding="utf-8") as f:
+            dataset_info = json.load(f)
+
+        dataset_entry = dataset_info.get(self.c.dataset) if isinstance(dataset_info, dict) else None
+        file_name = dataset_entry.get("file_name") if isinstance(dataset_entry, dict) else None
+        if not isinstance(file_name, str) or not file_name:
+            raise ValueError(f"Dataset '{self.c.dataset}' must define file_name in {dataset_info_path}")
+
+        output_path = os.path.join(self.c.dataset_dir, file_name)
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
         with open(output_path, "w", encoding="utf-8") as f:
             json.dump(processed_qa_res, f, ensure_ascii=False, indent=4)
         logger.success(
             f"Chat record processing successful, {len(qa_res)} entries in total, saved to {output_path}"
         )
+        return output_path
 
 
 if __name__ == "__main__":
