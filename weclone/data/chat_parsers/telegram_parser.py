@@ -282,15 +282,33 @@ class TelegramChatParser:
         logger.info(f"Image copying completed: successful {copied_count}, skipped {skipped_count}")
 
 
+def _iter_export_chats(jdata: Dict):
+    """Yield chat objects from both Telegram export layouts.
+
+    Telegram Desktop's full export wraps chats in ``{"chats": {"list": [...]}}``
+    while an individual chat export contains ``name`` and ``messages`` at the
+    top level. Keeping the normalization here lets the downstream parser use
+    the same chat-level contract for both formats.
+    """
+    chats = jdata.get("chats")
+    if isinstance(chats, dict) and isinstance(chats.get("list"), list):
+        yield from (chat for chat in chats["list"] if isinstance(chat, dict))
+    else:
+        yield jdata
+
+
+def _safe_path_component(value: object, fallback: str) -> str:
+    component = "".join(c for c in str(value) if c.isalnum() or c in "._-")
+    return component or fallback
+
+
 def process_telegram_dataset(config: WCMakeDatasetConfig) -> None:
     """
-    Process Telegram dataset, traverse all folders under dataset/telegram
-    Create corresponding folders for each telegram folder under dataset/csv
+    Process individual or full Telegram Desktop exports under ``dataset/telegram``.
 
-    Parameters
-    ----------
-    config : WCMakeDatasetConfig
-        Dataset configuration, contains telegram_args.my_id for determining sender
+    Each folder may contain either an individual chat ``result.json`` with
+    top-level ``messages`` or a full export whose chats are stored in
+    ``chats.list``. Every chat is written to its own CSV directory.
     """
     telegram_dir = "dataset/telegram"
     csv_output_dir = "dataset/csv"
@@ -311,33 +329,36 @@ def process_telegram_dataset(config: WCMakeDatasetConfig) -> None:
             else:
                 os.remove(item_path)
 
+    parser = TelegramChatParser(config=config)
     for folder_name in os.listdir(telegram_dir):
         folder_path = os.path.join(telegram_dir, folder_name)
         if not os.path.isdir(folder_path):
             continue
 
         json_path = os.path.join(folder_path, "result.json")
+        if not os.path.isfile(json_path):
+            logger.warning(f"Folder '{folder_name}' does not contain result.json, skipping")
+            continue
 
         with open(json_path, "r", encoding="utf-8") as file:
             jdata = json.load(file)
 
-        chat_name = jdata.get("name", "unknown")
-        chat_type = jdata.get("type", "unknown")
-        chat_id = jdata.get("id", "unknown")
+        export_chats = list(_iter_export_chats(jdata))
+        for chat_index, chat_data in enumerate(export_chats, start=1):
+            chat_name = chat_data.get("name", f"{folder_name}-{chat_index}")
+            chat_type = chat_data.get("type", "unknown")
+            chat_id = chat_data.get("id", chat_index)
 
-        safe_name = "".join(c for c in str(chat_name) if c.isalnum() or c in "._-")
-        safe_type = "".join(c for c in str(chat_type) if c.isalnum() or c in "._-")
-        safe_id = "".join(c for c in str(chat_id) if c.isalnum() or c in "._-")
+            safe_name = _safe_path_component(chat_name, f"chat-{chat_index}")
+            safe_type = _safe_path_component(chat_type, "unknown")
+            safe_id = _safe_path_component(chat_id, str(chat_index))
+            csv_folder_name = f"{safe_name}-{safe_type}-{safe_id}"
+            csv_folder_path = os.path.join(csv_output_dir, csv_folder_name)
 
-        csv_folder_name = f"{safe_name}-{safe_type}-{safe_id}"
-        csv_folder_path = os.path.join(csv_output_dir, csv_folder_name)
-
-        parser = TelegramChatParser(config=config)
-        messages = parser.process_chat(jdata)
-
-        if messages:
-            csv_file_path = os.path.join(csv_folder_path, f"{csv_folder_name}.csv")
-            parser.to_csv(messages, csv_file_path)
-            parser.copy_received_images(messages, folder_path)
-        else:
-            logger.warning(f"Folder '{folder_name}' has no valid messages")
+            messages = parser.process_chat(chat_data)
+            if messages:
+                csv_file_path = os.path.join(csv_folder_path, f"{csv_folder_name}.csv")
+                parser.to_csv(messages, csv_file_path)
+                parser.copy_received_images(messages, folder_path)
+            else:
+                logger.warning(f"Chat '{chat_name}' in folder '{folder_name}' has no valid messages")
