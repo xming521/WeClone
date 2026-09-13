@@ -8,7 +8,7 @@ import pandas as pd
 from langchain_core.prompts import PromptTemplate
 from tqdm import tqdm
 
-from weclone.core.inference.online_infer import OnlineLLM
+from weclone.core.inference import OpenAICompatibleClient
 from weclone.data.models import QaPair, QaPairScore, QaPairScoreWithId
 from weclone.prompts.clean_data import CLEAN_PROMPT
 from weclone.utils.config_models import WCMakeDatasetConfig
@@ -160,69 +160,63 @@ class OlineLLMCleaningStrategy(CleaningStrategy):
         logger.info("Starting online model scoring of data")
         logger.info(f"Using model {config.model_name}")
 
-        client = OnlineLLM(
-            api_key=config.llm_api_key,
-            base_url=config.base_url,
-            model_name=config.model_name,
-            max_workers=config.clean_batch_size + 5,
-        )
+        with OpenAICompatibleClient(api_key=config.llm_api_key, base_url=config.base_url, model=config.model_name, max_workers=config.clean_batch_size + 5) as client:
 
-        inputs = []
-        prompt_template = PromptTemplate.from_template(CLEAN_PROMPT)
-        for qa in data:
-            if qa.images:
-                qa.score = 6
-            else:
-                messages_str = ""
-                for msg in qa.messages:
-                    if msg.role == "user":
-                        messages_str += f"Q: {msg.content}\n"
-                    elif msg.role == "assistant":
-                        messages_str += f"A: {msg.content}\n"
-                prompt_value = prompt_template.invoke({"id": qa.id, "messages": messages_str.strip()})
-                inputs.append(prompt_value.to_string())
+            inputs = []
+            prompt_template = PromptTemplate.from_template(CLEAN_PROMPT)
+            for qa in data:
+                if qa.images:
+                    qa.score = 6
+                else:
+                    messages_str = ""
+                    for msg in qa.messages:
+                        if msg.role == "user":
+                            messages_str += f"Q: {msg.content}\n"
+                        elif msg.role == "assistant":
+                            messages_str += f"A: {msg.content}\n"
+                    prompt_value = prompt_template.invoke({"id": qa.id, "messages": messages_str.strip()})
+                    inputs.append(prompt_value.to_string())
 
-        clean_batch_size = config.clean_batch_size
-        all_parsed_scores = []
+            clean_batch_size = config.clean_batch_size
+            all_parsed_scores = []
 
-        for i in tqdm(range(0, len(inputs), clean_batch_size), desc="Online model scoring progress"):
-            batch = inputs[i : i + clean_batch_size]
+            for i in tqdm(range(0, len(inputs), clean_batch_size), desc="Online model scoring progress"):
+                batch = inputs[i : i + clean_batch_size]
 
-            try:
-                parsed_results, failed_indexs = client.chat_batch(
-                    batch, temperature=0, guided_decoding_class=QaPairScoreWithId
-                )
+                try:
+                    responses = client.chat_batch(batch, temperature=0, response_model=QaPairScoreWithId)
+                    parsed_results = [r.parsed_model if r.ok else None for r in responses]
 
-                for j, parsed_result in enumerate(parsed_results):
-                    if parsed_result is not None:
-                        all_parsed_scores.append(parsed_result)
-                    else:
-                        logger.warning(f"Failed to parse result for batch item at index {i + j}")
+                    for j, parsed_result in enumerate(parsed_results):
+                        if parsed_result is not None:
+                            all_parsed_scores.append(parsed_result)
+                        else:
+                            logger.warning(f"Failed to parse result for batch item at index {i + j}")
 
-            except Exception as e:
-                logger.error(
-                    f"Failed to call online model or parse result for batch starting at index {i}, error: {str(e)}"
-                )
+                except Exception as e:
+                    logger.error(
+                        f"Failed to call online model or parse result for batch starting at index {i}, error: {str(e)}"
+                    )
 
-        score_map = {score.id: score.score for score in all_parsed_scores}
-        for qa in data:
-            if qa.id in score_map:
-                qa.score = score_map[qa.id]
-            else:
-                logger.warning(f"No score obtained for QA ID {qa.id}, default assigned 0")
-                qa.score = 0
+            score_map = {score.id: score.score for score in all_parsed_scores}
+            for qa in data:
+                if qa.id in score_map:
+                    qa.score = score_map[qa.id]
+                else:
+                    logger.warning(f"No score obtained for QA ID {qa.id}, default assigned 0")
+                    qa.score = 0
 
-        scores = [qa.score for qa in data if qa.score is not None]
-        score_series = pd.Series(scores)
-        score_counts = score_series.value_counts().sort_index()
-        score_percentages = score_series.value_counts(normalize=True).sort_index() * 100
-        pd.set_option("display.unicode.east_asian_width", True)
-        distribution_df = pd.DataFrame(
-            {
-                "Count": score_counts,
-                "Percentage(%)": score_percentages.round(2),
-            }
-        )
-        distribution_df.index.name = "Score"
-        printable_df_str = distribution_df.reset_index().to_string(index=False)
-        logger.success(f"Online model scoring distribution:\n{printable_df_str}")
+            scores = [qa.score for qa in data if qa.score is not None]
+            score_series = pd.Series(scores)
+            score_counts = score_series.value_counts().sort_index()
+            score_percentages = score_series.value_counts(normalize=True).sort_index() * 100
+            pd.set_option("display.unicode.east_asian_width", True)
+            distribution_df = pd.DataFrame(
+                {
+                    "Count": score_counts,
+                    "Percentage(%)": score_percentages.round(2),
+                }
+            )
+            distribution_df.index.name = "Score"
+            printable_df_str = distribution_df.reset_index().to_string(index=False)
+            logger.success(f"Online model scoring distribution:\n{printable_df_str}")

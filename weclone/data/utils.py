@@ -3,11 +3,11 @@ import concurrent.futures
 import os
 from pathlib import Path
 
-import requests
+from weclone.core.inference import OpenAICompatibleClient, RetryPolicy
+from openai import APIConnectionError
 
 from weclone.utils.config_models import WCMakeDatasetConfig
 from weclone.utils.log import logger
-from weclone.utils.retry import retry_on_http_error
 
 
 def check_image_file_exists(file_path: str) -> str | bool:
@@ -115,14 +115,6 @@ class ImageToTextProcessor:
             return "jpeg"
         return suffix
 
-    @retry_on_http_error(
-        max_retries=5,
-        base_delay=15.0,
-        max_delay=300.0,
-        backoff_factor=2.0,
-        retry_on_status=[429, 500, 502, 503, 504],
-        retry_on_exceptions=[requests.exceptions.RequestException, ConnectionError, TimeoutError],
-    )
     def _call_vision_api(self, image_path: str) -> str:
         """调用Vision API（增加了重试机制）"""
         base64_image = self._encode_image_to_base64(image_path)
@@ -130,8 +122,6 @@ class ImageToTextProcessor:
             return "[图片处理失败：无法编码]"
 
         image_format = self._get_image_format(image_path)
-
-        headers = {"Content-Type": "application/json", "Authorization": f"Bearer {self.api_key}"}
 
         payload = {
             "model": self.model_name,
@@ -151,22 +141,18 @@ class ImageToTextProcessor:
             "temperature": 0.1,
         }
 
-        response = requests.post(
-            f"{self.api_url}/chat/completions", headers=headers, json=payload, timeout=60
-        )
-
-        if response.status_code == 200:
-            result = response.json()
-            if "choices" in result and len(result["choices"]) > 0:
-                content = result["choices"][0]["message"]["content"]
-                return content.strip()
-            else:
-                logger.warning(f"API响应格式异常: {result}")
-                return "[图片描述获取失败：API格式错误]"
-        else:
-            logger.error(f"API请求失败，状态码: {response.status_code}，原因: {response.reason}")
-            response.raise_for_status()  # 触发重试机制
-            return "[图片描述获取失败]"
+        policy = RetryPolicy(max_retries=5, base_delay=15.0, max_delay=300.0,
+                             retry_statuses=(429, 500, 502, 503, 504),
+                             retry_exceptions=(APIConnectionError, ConnectionError, TimeoutError))
+        with OpenAICompatibleClient(api_key=self.api_key, base_url=self.api_url, model=self.model_name,
+                                    timeout=60, retry_policy=policy) as client:
+            response = client.chat(payload["messages"], max_tokens=1000, temperature=0.1)
+        if response.ok:
+            return response.text.strip()
+        if response.metadata.get("http_status") == 200:
+            logger.warning("API响应格式异常: {}", response.error)
+            return "[图片描述获取失败：API格式错误]"
+        raise RuntimeError(response.error)
 
     def describe_image(self, image_path: str) -> str:
         """公开方法，用于描述单张图片内容"""

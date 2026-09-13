@@ -1,10 +1,9 @@
 import json
 import sys
-from typing import List, cast  # 导入 cast
+from typing import cast  # 导入 cast
 
-import openai
-from openai import OpenAI  # 导入 OpenAI 类
-from openai.types.chat import ChatCompletionMessageParam  # 导入消息参数类型
+import httpx
+from weclone.core.inference import OpenAICompatibleClient, RetryPolicy
 from tqdm import tqdm
 
 from weclone.utils.config import load_config
@@ -22,7 +21,7 @@ completion_config = {
 
 completion_config = type("Config", (object,), completion_config)()
 
-client = OpenAI(api_key="""sk-test""", base_url="http://127.0.0.1:8005/v1")
+client = OpenAICompatibleClient(api_key="""sk-test""", base_url="http://127.0.0.1:8005/v1", retry_policy=RetryPolicy(max_retries=2, base_delay=0.5, max_delay=8))
 
 
 def _check_api_server() -> None:
@@ -31,8 +30,9 @@ def _check_api_server() -> None:
     Exits with an error message if the server is not reachable.
     """
     try:
-        client.models.list()
-    except openai.APIConnectionError:
+        response = httpx.get(str(client.base_url).rstrip("/") + "/models", headers={"Authorization": f"Bearer {client.api_key}"}, timeout=45)
+        response.raise_for_status()
+    except httpx.HTTPError:
         logger.error(
             f"Cannot connect to the API server at {client.base_url}. "
             "Please start the server first by running: weclone-cli server"
@@ -46,18 +46,12 @@ def handler_text(content: str, history: list, config):
         messages.append(item)
     messages.append({"role": "user", "content": content})
     history.append({"role": "user", "content": content})
-    try:
-        typed_messages = cast(List[ChatCompletionMessageParam], messages)
-        response = client.chat.completions.create(
-            model=config.model,
-            messages=typed_messages,
-            max_tokens=50,
-        )
-    except openai.APIError as e:
+    response = client.chat(messages, model=config.model, max_tokens=50, timeout=600)
+    if not response.ok:
         history.pop()
-        return "AI interface error, please try again\n" + str(e)
+        return "AI interface error, please try again\n" + str(response.error)
 
-    resp = str(response.choices[0].message.content)  # type: ignore
+    resp = str(response.text)  # type: ignore
     resp = resp.replace("\n ", "")
     history.append({"role": "assistant", "content": resp})
     return resp
