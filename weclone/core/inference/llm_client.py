@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import subprocess
 import tempfile
 import time
@@ -244,14 +245,36 @@ def _maybe_parse_response_json(request: LLMRequest, text: str | None) -> ParsedJ
 
 
 def _classify_error(text: str) -> str:
-    lowered = (text or "").lower()
-    if any(key in lowered for key in ("overload", "rate limit", "rate_limit", "429", "too many requests")):
+    lowered = (text or "").lower().replace("_", " ").replace("-", " ")
+    if any(key in lowered for key in (
+        "overload", "rate limit", "rate_limit", "too many requests", "high demand",
+        "server busy", "容量不足",
+    )) or re.search(
+        r"\b(?:429|503)\b|"
+        r"\b(?:insufficient|not enough|at|exceeded|exhausted)\s+(?:model\s+|server\s+)?capacity\b|"
+        r"\bcapacity[ _-]*(?:exceeded|exhausted|unavailable|limit)", lowered,
+    ):
         return "overload/rate_limit"
     if any(key in lowered for key in ("usage limit", "quota", "exceeded", "out of credit", "insufficient")):
         return "quota"
     if any(key in lowered for key in ("auth", "unauthorized", "401", "login")):
         return "auth"
     return "other"
+
+
+def _codex_error_text(stdout: str, stderr: str) -> str:
+    errors = [stderr]
+    for line in stdout.splitlines():
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        item = event.get("item", {})
+        if event.get("type") in {"error", "turn.failed"} or (
+            isinstance(item, dict) and item.get("type") == "error"
+        ):
+            errors.append(line)
+    return "\n".join(errors)
 
 
 def _response_format_type_unavailable(exc: BadRequestError) -> bool:
@@ -407,6 +430,7 @@ class BaseBatchMixin:
             already_closed = self._closed
             self._closed = True
             self._stop_event.set()
+            self._condition.notify_all()
         if already_closed:
             if wait:
                 self._resources_closed.wait()
@@ -625,9 +649,23 @@ class CodexExecClient(BaseBatchMixin):
         enable_web_search: bool = False,
         audit_logger: LLMAuditLogger | None = None,
         isolated_cwd: bool = False,
+        request_interval_seconds: float | None = None,
+        capacity_cooldown_seconds: float | None = None,
+        config_path: str | Path | None = None,
     ):
         if isolated_cwd and cwd is not None:
             raise ValueError("cwd and isolated_cwd cannot be used together")
+        config_file = Path(config_path) if config_path else RUNTIME_ROOT / "settings.jsonc"
+        pacing = (
+            pyjson5.loads(config_file.read_text(encoding="utf-8")).get("codex_exec_args", {})
+            if config_file.exists() else {}
+        )
+        if request_interval_seconds is None:
+            request_interval_seconds = float(pacing.get("request_interval_seconds", 1.0))
+        if capacity_cooldown_seconds is None:
+            capacity_cooldown_seconds = float(pacing.get("capacity_cooldown_seconds", 10.0))
+        if request_interval_seconds < 0 or capacity_cooldown_seconds < 0:
+            raise ValueError("Codex request interval and capacity cooldown must be non-negative")
         self.model = model
         self.effort = effort
         self.max_workers = max_workers
@@ -639,7 +677,30 @@ class CodexExecClient(BaseBatchMixin):
         self.extra_args = list(extra_args or [])
         self.enable_web_search = enable_web_search
         self.isolated_cwd = isolated_cwd
+        self.request_interval_seconds = request_interval_seconds
+        self.capacity_cooldown_seconds = capacity_cooldown_seconds
+        self._next_launch_at = 0.0
         self._init_runtime(max_workers, audit_logger)
+
+    def _wait_for_launch(self) -> None:
+        with self._condition:
+            while not self._stop_event.is_set():
+                remaining = self._next_launch_at - time.monotonic()
+                if remaining <= 0:
+                    self._next_launch_at = time.monotonic() + self.request_interval_seconds
+                    return
+                self._condition.wait(timeout=remaining)
+            raise CancelledError("codex execution interrupted before launch")
+
+    def _cool_down(self) -> None:
+        with self._condition:
+            self._next_launch_at = max(
+                self._next_launch_at, time.monotonic() + self.capacity_cooldown_seconds
+            )
+            self._condition.notify_all()
+        logger.warning(
+            f"Codex capacity/rate limit: pause new requests for {self.capacity_cooldown_seconds:g}s"
+        )
 
     def _build_command(
         self,
@@ -689,6 +750,8 @@ class CodexExecClient(BaseBatchMixin):
             "enable_web_search": self.enable_web_search,
             "extra_args": self.extra_args,
             "isolated_cwd": self.isolated_cwd,
+            "request_interval_seconds": self.request_interval_seconds,
+            "capacity_cooldown_seconds": self.capacity_cooldown_seconds,
         }
 
     def _generate(self, request: LLMRequest, call: LLMAuditCall) -> LLMResponse:
@@ -725,6 +788,7 @@ class CodexExecClient(BaseBatchMixin):
             )
             proc = None
             try:
+                self._wait_for_launch()
                 proc = subprocess.Popen(
                     cmd,
                     stdin=subprocess.PIPE,
@@ -758,7 +822,11 @@ class CodexExecClient(BaseBatchMixin):
                             pass
                     else:
                         proc.kill()
-                    proc.communicate()
+                    stdout, stderr = proc.communicate()
+                    if isinstance(exc, subprocess.TimeoutExpired) and _classify_error(
+                        _codex_error_text(stdout, stderr)
+                    ) == "overload/rate_limit":
+                        self._cool_down()
                 call.finish_attempt(
                     1, status="timeout" if isinstance(exc, subprocess.TimeoutExpired) else "failed", error=exc
                 )
@@ -795,6 +863,11 @@ class CodexExecClient(BaseBatchMixin):
         if self.enable_web_search:
             metadata["web_search_calls"] = web_search_calls
         text = output_text or event_text
+        error_detail = _codex_error_text(stdout, stderr)
+        error_category = _classify_error(error_detail)
+        if error_category == "overload/rate_limit":
+            self._cool_down()
+            metadata["error_category"] = error_category
         error = None
         if proc.returncode != 0:
             detail = f"{stderr} || {output_text or stdout[:400]}"
@@ -866,6 +939,8 @@ def build_llm_client(
     cwd: str | Path | None = None,
     extra_args: Iterable[str] | None = None,
     isolated_cwd: bool = False,
+    request_interval_seconds: float | None = None,
+    capacity_cooldown_seconds: float | None = None,
 ) -> LLMClient:
     normalized_provider = normalize_provider(provider)
     resolved_model = model or model_name
@@ -883,6 +958,9 @@ def build_llm_client(
             cwd=cwd,
             extra_args=extra_args,
             isolated_cwd=isolated_cwd,
+            request_interval_seconds=request_interval_seconds,
+            capacity_cooldown_seconds=capacity_cooldown_seconds,
+            config_path=config_path,
         )
 
     if config_path is not None:

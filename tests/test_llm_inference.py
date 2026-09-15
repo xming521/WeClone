@@ -320,6 +320,13 @@ from pathlib import Path
 prompt = sys.stdin.read()
 if prompt == "timeout": time.sleep(10)
 if prompt == "fail": sys.stderr.write("fixture failed"); sys.exit(1)
+if prompt == "capacity": sys.stderr.write("Insufficient model capacity"); sys.exit(1)
+if prompt in {"capacity-event", "capacity-timeout"}:
+    print(json.dumps({"type": "turn.failed", "error": {"code": "model_capacity_exceeded"}}), flush=True)
+    if prompt == "capacity-timeout": time.sleep(10)
+    sys.exit(1)
+if prompt == "capacity-text":
+    print(json.dumps({"type": "item.completed", "item": {"type": "agent_message", "text": "rate limit 429"}}))
 output = Path(sys.argv[sys.argv.index("--output-last-message") + 1])
 output.write_text('{"score": 4}')
 print(json.dumps({"type": "item.completed", "item": {"type": "web_search"}}))
@@ -332,6 +339,7 @@ print(json.dumps({"type": "turn.completed", "usage": {"input_tokens": 12, "cache
         command=str(script),
         timeout=2,
         enable_web_search=True,
+        request_interval_seconds=0,
         audit_logger=LLMAuditLogger(tmp_path / "audit", strict=True),
     )
     client.requests_dir = tmp_path / "requests"
@@ -345,6 +353,120 @@ def test_codex_success_schema_usage_search_and_cleanup(codex):
     assert result.metadata["usage"]["cached_input_tokens"] == 5
     assert result.metadata["web_search_calls"] == 1
     assert not list(codex.requests_dir.iterdir())
+
+
+def test_codex_paces_concurrent_launches(codex, monkeypatch):
+    from weclone.core.inference import llm_client
+
+    codex.request_interval_seconds = 0.08
+    launches = []
+    popen = llm_client.subprocess.Popen
+
+    def launch(*args, **kwargs):
+        launches.append(time.monotonic())
+        return popen(*args, **kwargs)
+
+    monkeypatch.setattr(llm_client.subprocess, "Popen", launch)
+    results = codex.chat_batch(["a", "b", "c", "d"])
+    assert all(result.ok for result in results)
+    assert len(launches) == 4
+    assert all(b - a >= 0.065 for a, b in zip(launches, launches[1:]))
+
+
+@pytest.mark.parametrize("prompt", ["capacity", "capacity-event", "capacity-timeout"])
+def test_codex_capacity_delays_waiting_requests(codex, monkeypatch, prompt):
+    from weclone.core.inference import llm_client
+
+    codex.request_interval_seconds = 0.3
+    codex.capacity_cooldown_seconds = 0.4
+    launches, cooldowns = [], []
+    popen, cool_down = llm_client.subprocess.Popen, codex._cool_down
+
+    def launch(*args, **kwargs):
+        launches.append(time.monotonic())
+        return popen(*args, **kwargs)
+
+    def cool():
+        cooldowns.append(time.monotonic())
+        cool_down()
+
+    monkeypatch.setattr(llm_client.subprocess, "Popen", launch)
+    monkeypatch.setattr(codex, "_cool_down", cool)
+    first = codex.chat_async(prompt, timeout=0.15 if prompt == "capacity-timeout" else 2)
+    deadline = time.monotonic() + 2
+    while not launches and time.monotonic() < deadline:
+        time.sleep(0.005)
+    assert launches
+    second = codex.chat_async("score")
+    assert not first.result(timeout=2).ok
+    assert second.result(timeout=2).ok
+    assert len(cooldowns) == 1
+    assert launches[1] - cooldowns[0] >= 0.385
+
+
+def test_codex_does_not_throttle_on_normal_answer_text(codex, monkeypatch):
+    cool_down = Mock()
+    monkeypatch.setattr(codex, "_cool_down", cool_down)
+    assert codex.chat("capacity-text").ok
+    assert not codex.chat("fail").ok
+    cool_down.assert_not_called()
+
+
+def test_codex_can_cancel_during_launch_cooldown(codex, monkeypatch):
+    from weclone.core.inference import llm_client
+
+    popen = Mock()
+    monkeypatch.setattr(llm_client.subprocess, "Popen", popen)
+    codex._next_launch_at = time.monotonic() + 60
+    future = codex.chat_async("score")
+    deadline = time.monotonic() + 2
+    while codex._active_calls == 0 and time.monotonic() < deadline:
+        time.sleep(0.005)
+    assert codex._active_calls == 1
+    started = time.monotonic()
+    codex.close()
+    assert time.monotonic() - started < 1
+    assert future.result().metadata["error_type"] == "CancelledError"
+    popen.assert_not_called()
+
+
+def test_codex_pacing_config_and_explicit_override(tmp_path):
+    from weclone.core.inference import build_llm_client
+
+    config = tmp_path / "settings.jsonc"
+    config.write_text(json.dumps({"codex_exec_args": {
+        "request_interval_seconds": 0.25, "capacity_cooldown_seconds": 7,
+    }}))
+    with build_llm_client("codex_exec", model="fixture", config_path=config) as client:
+        assert (client.request_interval_seconds, client.capacity_cooldown_seconds) == (0.25, 7)
+    with CodexExecClient(config_path=config, request_interval_seconds=0) as client:
+        assert (client.request_interval_seconds, client.capacity_cooldown_seconds) == (0, 7)
+
+
+def test_codex_batch_refills_submitted_work_before_slowest_finishes(codex, monkeypatch):
+    started = [threading.Event() for _ in range(3)]
+    release = threading.Event()
+
+    def generate(request):
+        index = int(request.messages[0]["content"])
+        started[index].set()
+        if index == 0:
+            assert release.wait(timeout=2)
+        return llm_response(ok=True, text=str(index))
+
+    from weclone.core.inference import LLMResponse as llm_response
+
+    codex._executor.shutdown()
+    codex._executor = ThreadPoolExecutor(max_workers=2)
+    monkeypatch.setattr(codex, "generate", generate)
+    with ThreadPoolExecutor(max_workers=1) as runner:
+        result = runner.submit(codex.chat_batch, ["0", "1", "2"])
+        try:
+            assert started[0].wait(timeout=1)
+            assert started[2].wait(timeout=1)
+        finally:
+            release.set()
+        assert [r.text for r in result.result(timeout=2)] == ["0", "1", "2"]
 
 
 @pytest.mark.parametrize(

@@ -10,7 +10,10 @@ from threading import Lock
 from typing import Any, Optional, Sequence
 from urllib.parse import urlparse
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
+from ._common import logger, project_root
+
+
+REPO_ROOT = project_root()
 LEGACY_REPO_PARENT = REPO_ROOT.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
@@ -19,11 +22,9 @@ try:
     import torch
     import torch.nn.functional as F
     from transformers import AutoModel, AutoTokenizer
-    from weclone.utils.config import load_base_config
-    from weclone.utils.log import logger
 except ImportError as exc:
     raise RuntimeError(
-        "Missing embedding service dependencies. Activate the WeClone environment first."
+        "Missing embedding service dependencies. Install the embedding inference dependencies first."
     ) from exc
 
 DEFAULT_HOST = "127.0.0.1"
@@ -244,8 +245,12 @@ def _coerce_float(value: Any, default: float) -> float:
 
 def _load_settings_embedding_args() -> dict[str, Any]:
     try:
+        from weclone.utils.config import load_base_config
+
         config = load_base_config()
         return config.embedding_service_args.model_dump()
+    except ModuleNotFoundError:
+        return {}
     except SystemExit:
         return {}
     except Exception as exc:
