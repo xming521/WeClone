@@ -315,8 +315,17 @@ def codex(tmp_path):
     script = tmp_path / "fake-codex"
     script.write_text(
         f"#!{sys.executable}\n"
-        + """import json, sys, time
+        + """import json, sys, time, tomllib
 from pathlib import Path
+if sys.argv[1:3] == ["mcp", "list"]:
+    print(json.dumps([{"name": "fixture.mcp"}, {"name": "future-server"}]))
+    sys.exit(0)
+config = dict(arg.split("=", 1) for i, arg in enumerate(sys.argv) if i and sys.argv[i - 1] == "-c")
+instructions = Path(json.loads(config["model_instructions_file"])).read_text()
+assert instructions == "You are a helpful assistant. Follow the user's instructions and answer concisely.\\n"
+servers = tomllib.loads("servers=" + config["mcp_servers"])["servers"]
+assert servers["fixture.mcp"]["enabled"] is False
+assert servers["future-server"]["enabled"] is False
 prompt = sys.stdin.read()
 if prompt == "timeout": time.sleep(10)
 if prompt == "fail": sys.stderr.write("fixture failed"); sys.exit(1)
@@ -343,6 +352,7 @@ print(json.dumps({"type": "turn.completed", "usage": {"input_tokens": 12, "cache
         audit_logger=LLMAuditLogger(tmp_path / "audit", strict=True),
     )
     client.requests_dir = tmp_path / "requests"
+    client._disabled_mcp_args(tmp_path)
     yield client
     client.close()
 
@@ -353,6 +363,40 @@ def test_codex_success_schema_usage_search_and_cleanup(codex):
     assert result.metadata["usage"]["cached_input_tokens"] == 5
     assert result.metadata["web_search_calls"] == 1
     assert not list(codex.requests_dir.iterdir())
+
+
+@pytest.mark.parametrize("web_search", [False, True])
+def test_codex_minimal_context_defaults_and_explicit_web_search(codex, monkeypatch, web_search):
+    codex.enable_web_search = web_search
+    build = Mock(wraps=codex._build_command)
+    monkeypatch.setattr(codex, "_build_command", build)
+    result = codex.chat("score")
+    assert result.ok
+    kwargs = build.call_args.kwargs
+    cmd = codex._build_command(build.call_args.args[0], **kwargs)
+    config = dict(arg.split("=", 1) for i, arg in enumerate(cmd) if i and cmd[i - 1] == "-c")
+    assert json.loads(config["web_search"]) == ("live" if web_search else "disabled")
+    for key in (
+        "features.memories", "skills.include_instructions", "features.shell_tool",
+        "features.plugins", "features.apps", "features.image_generation", "agents.enabled",
+        "include_environment_context", "include_collaboration_mode_instructions",
+    ):
+        assert config[key] == "false"
+    assert config["project_doc_max_bytes"] == "0"
+    assert json.loads(config["developer_instructions"]) == ""
+    assert not kwargs["output_path"].parent.exists()
+    assert "--ignore-user-config" not in cmd
+
+
+def test_codex_mcp_discovery_runs_once_for_concurrent_requests(codex, monkeypatch):
+    from weclone.core.inference import llm_client
+
+    codex._mcp_overrides = None
+    run = Mock(wraps=llm_client.subprocess.run)
+    monkeypatch.setattr(llm_client.subprocess, "run", run)
+    assert all(r.ok for r in codex.chat_batch(["a", "b", "c"]))
+    assert run.call_count == 1
+    assert run.call_args.args[0] == [codex.command, "mcp", "list", "--json"]
 
 
 def test_codex_paces_concurrent_launches(codex, monkeypatch):

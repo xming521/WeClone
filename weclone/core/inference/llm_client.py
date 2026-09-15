@@ -8,7 +8,7 @@ from concurrent.futures import CancelledError, Future, ThreadPoolExecutor
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 from queue import Queue
-from threading import Condition, Event, Thread
+from threading import Condition, Event, Lock, Thread
 from typing import Any, Callable, Iterable, Literal, Protocol
 from urllib.parse import urlparse
 
@@ -680,7 +680,23 @@ class CodexExecClient(BaseBatchMixin):
         self.request_interval_seconds = request_interval_seconds
         self.capacity_cooldown_seconds = capacity_cooldown_seconds
         self._next_launch_at = 0.0
+        self._mcp_lock = Lock()
+        self._mcp_overrides: list[str] | None = None
         self._init_runtime(max_workers, audit_logger)
+
+    def _disabled_mcp_args(self, cwd: Path) -> list[str]:
+        with self._mcp_lock:
+            if self._mcp_overrides is None:
+                result = subprocess.run(
+                    [self.command, "mcp", "list", "--json"],
+                    cwd=cwd, capture_output=True, text=True, check=True, timeout=self.timeout,
+                )
+                entries = ", ".join(
+                    f"{json.dumps(server['name'], ensure_ascii=False)} = {{ enabled = false }}"
+                    for server in json.loads(result.stdout)
+                )
+                self._mcp_overrides = ["-c", "mcp_servers={" + entries + "}"] if entries else []
+            return self._mcp_overrides
 
     def _wait_for_launch(self) -> None:
         with self._condition:
@@ -715,8 +731,6 @@ class CodexExecClient(BaseBatchMixin):
             raise ValueError("model is required for codex exec backend")
 
         cmd = [self.command]
-        if self.enable_web_search:
-            cmd.append("--search")
         cmd += [
             "exec",
             "--json",
@@ -733,6 +747,31 @@ class CodexExecClient(BaseBatchMixin):
             "--model",
             model,
         ]
+        overrides = {
+            "model_instructions_file": str(output_path.parent / "instructions.md"),
+            "developer_instructions": "",
+            "project_doc_max_bytes": 0,
+            "skills.include_instructions": False,
+            "include_apps_instructions": False,
+            "include_collaboration_mode_instructions": False,
+            "include_environment_context": False,
+            "include_permissions_instructions": False,
+            "agents.enabled": False,
+            "orchestrator.mcp.enabled": False,
+            "orchestrator.skills.enabled": False,
+            "web_search": "live" if self.enable_web_search else "disabled",
+            "features.code_mode_host": True,
+        }
+        for feature in (
+            "memories", "multi_agent", "recommended_plugins", "plugins", "remote_plugin", "apps",
+            "shell_tool", "unified_exec", "goals", "sleep_tool", "image_generation", "view_image",
+            "computer_use", "browser_use", "browser_use_external", "in_app_browser", "skill_search",
+            "tool_suggest", "code_mode",
+        ):
+            overrides[f"features.{feature}"] = False
+        for key, value in overrides.items():
+            cmd += ["-c", f"{key}={json.dumps(value, ensure_ascii=False)}"]
+        cmd += self._disabled_mcp_args(cwd)
         effort = request.effort or self.effort
         if effort:
             cmd += ["-c", f"model_reasoning_effort={json.dumps(effort)}"]
@@ -752,6 +791,7 @@ class CodexExecClient(BaseBatchMixin):
             "isolated_cwd": self.isolated_cwd,
             "request_interval_seconds": self.request_interval_seconds,
             "capacity_cooldown_seconds": self.capacity_cooldown_seconds,
+            "minimal_context": True,
         }
 
     def _generate(self, request: LLMRequest, call: LLMAuditCall) -> LLMResponse:
@@ -769,6 +809,10 @@ class CodexExecClient(BaseBatchMixin):
         ) as tmp_dir:
             tmp_path = Path(tmp_dir)
             output_path = tmp_path / "last_message.txt"
+            (tmp_path / "instructions.md").write_text(
+                "You are a helpful assistant. Follow the user's instructions and answer concisely.\n",
+                encoding="utf-8",
+            )
             schema_path = None
             if request.json_schema:
                 schema_path = tmp_path / "output_schema.json"
