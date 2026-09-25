@@ -145,7 +145,7 @@ def _calculate_delay(
         delay += random.uniform(-jitter_range, jitter_range)
         delay = max(0, delay)  # 确保延迟不为负数
 
-    return delay
+    return min(delay, max_delay)
 
 
 class RetryConfig:
