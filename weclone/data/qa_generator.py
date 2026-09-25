@@ -147,7 +147,10 @@ class DataProcessor:
             self.clean_strategy.judge(qa_res)  # type: ignore
 
         self.save_result(qa_res)
-        self._execute_length_cdf_script()
+        if qa_res:
+            self._execute_length_cdf_script()
+        else:
+            logger.warning("No valid QA pairs generated; skipping cutoff_len calculation.")
 
         logger.success(
             f"Chat record processing successful, obtained {len(qa_res)} data entries in total, saved to ./dataset/res_csv/sft/sft-my.json"
