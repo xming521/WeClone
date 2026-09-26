@@ -57,8 +57,6 @@ def test_PII_make_dataset(config_file):
                     if message.get('role') == 'user':
                         logger.warning(f"User content: {message.get('content', '')}")
         
-        logger.warning("=" * 80)
-        logger.warning("⚠️  END OF UNFILTERED PII CONTENT")
 
     test_logger.info(f"✅ PII make-dataset test passed for config {config_file}")
 
