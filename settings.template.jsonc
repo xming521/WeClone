@@ -76,7 +76,7 @@
         "logging_steps": 10,
         "save_steps": 100,
         "learning_rate": 1e-4,
-        "warmup_ratio": 0.1,
+        "warmup_ratio": 0.05,
         "num_train_epochs": 2,
         "plot_loss": true,
         "fp16": true,
