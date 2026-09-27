@@ -15,8 +15,15 @@
         "log_level": "INFO"
     },
     "agent_distill_args": {
+        // false：复用抽取断点；true：重新抽取
+        "overwrite": false,
         // state/event distill 使用的 LLM 后端：codex_exec 或 api
-        "llm_provider": "codex_exec"
+        "llm_provider": "codex_exec",
+        // 是否执行 LLM 画像归并；false 时仍可分组，但跳过 prepare/run/apply
+        "merge_enabled": true,
+        // 每窗同时满足条数和正文字符上限；正文不计 ID、时间、角色标签；超长单条完整单独发送
+        "max_samples_per_window": 8,
+        "max_content_chars": 400
     },
     "make_dataset_args": {
         //数据处理配置

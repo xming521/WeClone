@@ -104,6 +104,8 @@ class CodexExecArgs(BaseConfigModel):
     timeout: Optional[int] = None
     command: Optional[str] = None
     sandbox: Optional[str] = None
+    request_interval_seconds: float = Field(1.0, ge=0)
+    capacity_cooldown_seconds: float = Field(10.0, ge=0)
 
 
 class AgentDistillArgs(BaseConfigModel):

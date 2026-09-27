@@ -202,3 +202,5 @@ eval_Result/*
 .claude/*
 dataset/res_csv/agent/*
 AGENTS.md
+logs/*
+web/node_modules/*
