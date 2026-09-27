@@ -1,4 +1,5 @@
 wandb/
+swanlog/
 weclone_archive-my/
 **/pycache/
 events.out.tfevents.*
@@ -23,6 +24,8 @@ __pycache__/
 build/
 develop-eggs/
 dist/
+!weclone/web/dist/
+!weclone/web/dist/**
 downloads/
 eggs/
 .eggs/
@@ -116,6 +119,7 @@ celerybeat.pid
 # Environments
 .env
 .venv
+.venv*
 env/
 venv/
 ENV/
@@ -198,3 +202,7 @@ models_final/*
 /llamaboard_cache
 eval_Result/*
 .claude/*
+dataset/res_csv/agent/*
+AGENTS.md
+logs/*
+web/node_modules/*
