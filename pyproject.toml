@@ -12,6 +12,7 @@ dependencies = [
   "omegaconf",
   "click",
   "tqdm",
+  "rich",
   "pydantic==2.10.6",
   "setuptools>=78.1.0",
   "loguru>=0.7.3",
