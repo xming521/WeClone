@@ -185,7 +185,7 @@ export function ReviewPanel() {
   const counts = { pending: 0, approved: 0, rejected: 0 };
   all.forEach((fact) => counts[fact.status]++);
   async function batch(status: ReviewStatus) {
-    if (!selected.length || !window.confirm(`将勾选的 ${selected.length} 条画像设为“${STATUS[status]}”？`)) return;
+    if (!selected.length) return;
     if (await c.review(selected, status)) setChecked(new Set());
   }
   return <section className="detail-section review-list">
