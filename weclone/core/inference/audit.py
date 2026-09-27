@@ -12,7 +12,6 @@ from uuid import uuid4
 
 from ._common import logger, project_root
 
-
 AUDIT_LOG_DIR_ENV = "LLM_AUDIT_LOG_DIR"
 DEFAULT_AUDIT_LOG_DIR = Path(
     os.environ.get(

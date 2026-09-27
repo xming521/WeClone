@@ -6,7 +6,6 @@ from urllib.parse import urlparse
 
 from loguru import logger as _logger
 
-
 logger = _logger
 
 

@@ -73,19 +73,26 @@ def run(args: argparse.Namespace) -> dict:
         "topics": topics,
         "sources": {sid: data["sources"][sid] for sid in sorted(source_ids)},
     }
-    save(args.output_dir / "attribute_mapping.json", [
-        {**item, "original_attr": attributes[item["id"] - 1]["attr"]} for item in mapping
-    ])
+    save(
+        args.output_dir / "attribute_mapping.json",
+        [{**item, "original_attr": attributes[item["id"] - 1]["attr"]} for item in mapping],
+    )
     save(args.output_dir / "identity_profile.json", result)
-    return {**counts, "topics": len(topics),
-            "canonical_attributes": sum(len(topic["attributes"]) for topic in topics),
-            "output_dir": str(args.output_dir)}
+    return {
+        **counts,
+        "topics": len(topics),
+        "canonical_attributes": sum(len(topic["attributes"]) for topic in topics),
+        "output_dir": str(args.output_dir),
+    }
 
 
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--input-path", type=Path,
-                        default=Path("dataset/res_csv/agent/memory_organization/organized_memories.json"))
+    parser.add_argument(
+        "--input-path",
+        type=Path,
+        default=Path("dataset/res_csv/agent/memory_organization/organized_memories.json"),
+    )
     parser.add_argument("--output-dir", type=Path)
     parser.add_argument("--config-path", type=Path, default=Path("settings.jsonc"))
     parser.add_argument("--llm-provider", choices=("api", "codex_exec"))

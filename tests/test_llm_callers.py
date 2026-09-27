@@ -10,7 +10,6 @@ from pydantic import BaseModel
 
 from weclone.core.inference import LLMResponse, RetryPolicy
 
-
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -91,6 +90,7 @@ def test_vision_payload_and_retry_contract(tmp_path):
     factory = Mock(return_value=client)
     import base64
     import os
+
     from openai import APIConnectionError
 
     namespace = definitions(

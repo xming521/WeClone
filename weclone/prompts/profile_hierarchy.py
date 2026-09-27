@@ -4,22 +4,33 @@ import json
 
 from weclone.prompts.memory_organization import DIMENSIONS
 
-
 SUBGROUP = {
     "type": "object",
     "properties": {"name": {"type": "string"}, "items": {"type": "array", "items": {"type": "integer"}}},
-    "required": ["name", "items"], "additionalProperties": False,
+    "required": ["name", "items"],
+    "additionalProperties": False,
 }
 SCHEMA = {
     "type": "object",
-    "properties": {"groups": {"type": "array", "items": {
-        "type": "object",
-        "properties": {"name": {"type": "string"}, "items": {
-            "type": "array", "items": {"anyOf": [{"type": "integer"}, SUBGROUP]},
-        }},
-        "required": ["name", "items"], "additionalProperties": False,
-    }}},
-    "required": ["groups"], "additionalProperties": False,
+    "properties": {
+        "groups": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string"},
+                    "items": {
+                        "type": "array",
+                        "items": {"anyOf": [{"type": "integer"}, SUBGROUP]},
+                    },
+                },
+                "required": ["name", "items"],
+                "additionalProperties": False,
+            },
+        }
+    },
+    "required": ["groups"],
+    "additionalProperties": False,
 }
 RULES = """将当前维度的画像属性组织成便于人浏览的层级结构，当前维度已是一级中心。
 按属性的实际含义形成多个二级主题；某主题内部存在清晰子主题时再设三级主题，否则直接挂属性。主题名须概括成员，不用某个狭窄属性代替整个主题；不预设类别或数量。
@@ -31,6 +42,10 @@ RULES = """将当前维度的画像属性组织成便于人浏览的层级结构
 
 
 def prompt(dim: int, attributes: list[dict]) -> str:
-    return RULES + "\n当前维度：" + DIMENSIONS[dim].split("：")[0] + "\n属性：\n" + json.dumps(
-        attributes, ensure_ascii=False, separators=(",", ":")
+    return (
+        RULES
+        + "\n当前维度："
+        + DIMENSIONS[dim].split("：")[0]
+        + "\n属性：\n"
+        + json.dumps(attributes, ensure_ascii=False, separators=(",", ":"))
     )

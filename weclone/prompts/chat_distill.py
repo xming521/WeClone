@@ -304,8 +304,13 @@ def build_window_extract_prompt(task: str, *, include_current_state: bool = True
 只输出一个合法 JSON 对象，唯一顶层字段为 results。results 是逐样本结果数组，每个输入样本对应一个对象；sample_id 原样复制输入 ID，每个 ID 必须且只能出现一次。
 """
     return (
-        header + rules + protocol + field_rules + "不得增加 result 包装字段。\n完整输出结构示例，数组元素按样本数量重复：\n"
-        + json.dumps({"results": [example]}, ensure_ascii=False, separators=(",", ":")) + suffix
+        header
+        + rules
+        + protocol
+        + field_rules
+        + "不得增加 result 包装字段。\n完整输出结构示例，数组元素按样本数量重复：\n"
+        + json.dumps({"results": [example]}, ensure_ascii=False, separators=(",", ":"))
+        + suffix
         + "\n独立样本输入：每个样本以单独一行 #ID 开始，ID 对应输出的 sample_id；到下一个 #ID 行或输入结束为止。\n"
         + "{{CHAT_SAMPLES}}"
     )

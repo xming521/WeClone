@@ -3,9 +3,9 @@ import concurrent.futures
 import os
 from pathlib import Path
 
-from weclone.core.inference import OpenAICompatibleClient, RetryPolicy
 from openai import APIConnectionError
 
+from weclone.core.inference import OpenAICompatibleClient, RetryPolicy
 from weclone.utils.config_models import WCMakeDatasetConfig
 from weclone.utils.log import logger
 
@@ -141,11 +141,20 @@ class ImageToTextProcessor:
             "temperature": 0.1,
         }
 
-        policy = RetryPolicy(max_retries=5, base_delay=15.0, max_delay=300.0,
-                             retry_statuses=(429, 500, 502, 503, 504),
-                             retry_exceptions=(APIConnectionError, ConnectionError, TimeoutError))
-        with OpenAICompatibleClient(api_key=self.api_key, base_url=self.api_url, model=self.model_name,
-                                    timeout=60, retry_policy=policy) as client:
+        policy = RetryPolicy(
+            max_retries=5,
+            base_delay=15.0,
+            max_delay=300.0,
+            retry_statuses=(429, 500, 502, 503, 504),
+            retry_exceptions=(APIConnectionError, ConnectionError, TimeoutError),
+        )
+        with OpenAICompatibleClient(
+            api_key=self.api_key,
+            base_url=self.api_url,
+            model=self.model_name,
+            timeout=60,
+            retry_policy=policy,
+        ) as client:
             response = client.chat(payload["messages"], max_tokens=1000, temperature=0.1)
         if response.ok:
             return response.text.strip()

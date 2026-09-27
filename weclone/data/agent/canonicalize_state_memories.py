@@ -165,9 +165,7 @@ def grouping_paths_for(grouping_path: Path, *, allow_extracted: bool = False) ->
     if grouping_path.is_file():
         return [grouping_path]
     if grouping_path.is_dir():
-        paths = sorted(
-            path for path in grouping_path.glob(f"*{DEFAULT_GROUPING_SUFFIX}") if path.is_file()
-        )
+        paths = sorted(path for path in grouping_path.glob(f"*{DEFAULT_GROUPING_SUFFIX}") if path.is_file())
         if not paths and allow_extracted:
             paths = sorted(path for path in grouping_path.glob("*.json") if path.is_file())
         if paths:
@@ -259,12 +257,13 @@ def prepare_tasks(args: SimpleNamespace) -> dict[str, Any]:
     data = load_json(grouping_path)
     if not isinstance(data, dict):
         raise ValueError(f"Expected grouping payload object: {grouping_path}")
-    output_path = Path(args.output_path) if args.output_path else default_task_path(grouping_path, Path(args.output_dir))
+    output_path = (
+        Path(args.output_path)
+        if args.output_path
+        else default_task_path(grouping_path, Path(args.output_dir))
+    )
 
-    tasks = [
-        build_merge_task(group)
-        for group in data.get("candidate_groups", [])
-    ]
+    tasks = [build_merge_task(group) for group in data.get("candidate_groups", [])]
     count = write_jsonl(output_path, tasks)
     report = {
         "created_at": now_ts(),
@@ -506,14 +505,19 @@ def run_llm_merge(args: SimpleNamespace) -> dict[str, Any]:
     finally:
         client.close()
 
-    done_rows = [entry["row"] for entry in entries.values() if entry.get("status") == "done" and isinstance(entry.get("row"), dict)]
+    done_rows = [
+        entry["row"]
+        for entry in entries.values()
+        if entry.get("status") == "done" and isinstance(entry.get("row"), dict)
+    ]
     count = write_jsonl(output_path, sorted(done_rows, key=lambda row: normalize_text(row.get("task_id"))))
     return {
         "tasks": len(tasks),
         "written_results": count,
         "pending": len(request_rows),
         "failed": sum(
-            entries.get(normalize_text(task.get("task_id") or task.get("group_id")), {}).get("status") == "failed"
+            entries.get(normalize_text(task.get("task_id") or task.get("group_id")), {}).get("status")
+            == "failed"
             for task in tasks
         ),
         "output_path": str(output_path),
@@ -544,9 +548,7 @@ def source_time_range(source_ids: Sequence[str], records_by_id: dict[str, dict[s
 
 def source_tags(source_ids: Sequence[str], records_by_id: dict[str, dict[str, Any]]) -> list[str]:
     return unique_texts(
-        tag
-        for source_id in source_ids
-        for tag in records_by_id.get(source_id, {}).get("tags") or []
+        tag for source_id in source_ids for tag in records_by_id.get(source_id, {}).get("tags") or []
     )
 
 
@@ -717,7 +719,10 @@ def build_singleton_memory(
 
 
 def record_is_high_value(record: dict[str, Any], *, min_importance: int, min_confidence: int) -> bool:
-    return coerce_int(record.get("importance")) >= min_importance and coerce_int(record.get("confidence")) >= min_confidence
+    return (
+        coerce_int(record.get("importance")) >= min_importance
+        and coerce_int(record.get("confidence")) >= min_confidence
+    )
 
 
 def apply_merge_results(args: SimpleNamespace) -> dict[str, Any]:
@@ -725,7 +730,11 @@ def apply_merge_results(args: SimpleNamespace) -> dict[str, Any]:
     if getattr(args, "skip_merge", False):
         return {"skipped": True, "input_path": str(grouping_path)}
     result_path = Path(args.results_path)
-    output_path = Path(args.output_path) if args.output_path else default_bank_path(grouping_path, Path(args.output_dir))
+    output_path = (
+        Path(args.output_path)
+        if args.output_path
+        else default_bank_path(grouping_path, Path(args.output_dir))
+    )
     data = load_json(grouping_path)
     if not isinstance(data, dict):
         raise ValueError(f"Expected grouping payload object: {grouping_path}")
@@ -834,7 +843,9 @@ def apply_merge_results(args: SimpleNamespace) -> dict[str, Any]:
         for record in data.get("records", [])
         if normalize_text(record.get("prefilter_status")) == "candidate"
     }
-    unresolved_candidate_ids = sorted(all_candidate_ids - covered_source_ids - {item["source_id"] for item in archive_items})
+    unresolved_candidate_ids = sorted(
+        all_candidate_ids - covered_source_ids - {item["source_id"] for item in archive_items}
+    )
     if unresolved_candidate_ids:
         warnings.append(f"Unresolved candidate source_ids: {len(unresolved_candidate_ids)}")
 
@@ -844,18 +855,37 @@ def apply_merge_results(args: SimpleNamespace) -> dict[str, Any]:
         "results_path": str(result_path),
         "person_id": person_id,
         "canonical_memories": [
-            {field: getattr(memory, field) for field in (
-                "content", "type", "tags", "importance", "confidence",
-                "preference_type", "status", "source_time_range",
-            )}
+            {
+                field: getattr(memory, field)
+                for field in (
+                    "content",
+                    "type",
+                    "tags",
+                    "importance",
+                    "confidence",
+                    "preference_type",
+                    "status",
+                    "source_time_range",
+                )
+            }
             for memory in canonical_memories
         ],
         "memory_provenance": [
-            {"memory_index": index, **{
-                field: getattr(memory, field) for field in (
-                    "id", "source_ids", "parent_id", "children_ids", "origin", "group_id", "time_scope",
-                )
-            }}
+            {
+                "memory_index": index,
+                **{
+                    field: getattr(memory, field)
+                    for field in (
+                        "id",
+                        "source_ids",
+                        "parent_id",
+                        "children_ids",
+                        "origin",
+                        "group_id",
+                        "time_scope",
+                    )
+                },
+            }
             for index, memory in enumerate(canonical_memories)
         ],
         "source_decisions": source_decisions,
@@ -935,7 +965,11 @@ def build_arg_parser() -> argparse.ArgumentParser:
         help="Grouping JSON file/directory, or the original input to leave unchanged with --skip-merge.",
     )
     apply.add_argument("--results-path", type=Path, default=None)
-    apply.add_argument("--skip-merge", action="store_true", help="Skip this stage; leave the input unchanged and write no output.")
+    apply.add_argument(
+        "--skip-merge",
+        action="store_true",
+        help="Skip this stage; leave the input unchanged and write no output.",
+    )
     apply.add_argument("--output-path", type=Path, default=None)
     apply.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     apply.add_argument("--singleton-min-importance", type=int, default=DEFAULT_SINGLETON_MIN_IMPORTANCE)
@@ -951,12 +985,32 @@ def fill_default_paths(args: argparse.Namespace) -> SimpleNamespace:
     grouping_path = Path(namespace.grouping_path)
     output_dir = Path(namespace.output_dir)
     if namespace.command == "run":
-        namespace.tasks_path = Path(namespace.tasks_path) if namespace.tasks_path else default_task_path(grouping_path, output_dir)
-        namespace.output_path = Path(namespace.output_path) if namespace.output_path else default_result_path(grouping_path, output_dir)
-        namespace.state_path = Path(namespace.state_path) if namespace.state_path else default_state_path(grouping_path, output_dir)
+        namespace.tasks_path = (
+            Path(namespace.tasks_path)
+            if namespace.tasks_path
+            else default_task_path(grouping_path, output_dir)
+        )
+        namespace.output_path = (
+            Path(namespace.output_path)
+            if namespace.output_path
+            else default_result_path(grouping_path, output_dir)
+        )
+        namespace.state_path = (
+            Path(namespace.state_path)
+            if namespace.state_path
+            else default_state_path(grouping_path, output_dir)
+        )
     elif namespace.command == "apply":
-        namespace.results_path = Path(namespace.results_path) if namespace.results_path else default_result_path(grouping_path, output_dir)
-        namespace.output_path = Path(namespace.output_path) if namespace.output_path else default_bank_path(grouping_path, output_dir)
+        namespace.results_path = (
+            Path(namespace.results_path)
+            if namespace.results_path
+            else default_result_path(grouping_path, output_dir)
+        )
+        namespace.output_path = (
+            Path(namespace.output_path)
+            if namespace.output_path
+            else default_bank_path(grouping_path, output_dir)
+        )
     return namespace
 
 
@@ -994,8 +1048,7 @@ def run_command(args: SimpleNamespace) -> dict[str, Any]:
 def print_command_report(args: SimpleNamespace, report: dict[str, Any]) -> None:
     if args.command == "prepare":
         print(
-            f"完成: input={args.grouping_path} tasks={report['tasks']} "
-            f"output={report['output_path']}",
+            f"完成: input={args.grouping_path} tasks={report['tasks']} output={report['output_path']}",
             flush=True,
         )
         return
@@ -1007,7 +1060,9 @@ def main(argv: Sequence[str] | None = None) -> None:
     parsed_args = parser.parse_args(argv)
     try:
         if getattr(parsed_args, "skip_merge", False) or not memory_merge_enabled(parsed_args.config_path):
-            print(json.dumps({"skipped": True, "command": parsed_args.command}, ensure_ascii=False), flush=True)
+            print(
+                json.dumps({"skipped": True, "command": parsed_args.command}, ensure_ascii=False), flush=True
+            )
             return
         requested_grouping_path = Path(parsed_args.grouping_path)
         validate_directory_mode_args(parsed_args, requested_grouping_path)

@@ -12,7 +12,6 @@ from urllib.parse import urlparse
 
 from ._common import logger, project_root
 
-
 REPO_ROOT = project_root()
 LEGACY_REPO_PARENT = REPO_ROOT.parent
 if str(REPO_ROOT) not in sys.path:
@@ -261,9 +260,7 @@ def _load_settings_embedding_args() -> dict[str, Any]:
 def load_service_config() -> EmbeddingServiceConfig:
     settings = _load_settings_embedding_args()
     model_name_or_path = normalize_text(
-        os.environ.get("EMBEDDING_SERVICE_MODEL")
-        or settings.get("model_name_or_path")
-        or DEFAULT_MODEL
+        os.environ.get("EMBEDDING_SERVICE_MODEL") or settings.get("model_name_or_path") or DEFAULT_MODEL
     )
     device = normalize_text(
         os.environ.get("EMBEDDING_SERVICE_DEVICE") or settings.get("device") or DEFAULT_DEVICE
@@ -280,8 +277,7 @@ def load_service_config() -> EmbeddingServiceConfig:
             DEFAULT_MAX_LENGTH,
         ),
         min_retry_max_length=_coerce_int(
-            os.environ.get("EMBEDDING_SERVICE_MIN_RETRY_MAX_LENGTH")
-            or settings.get("min_retry_max_length"),
+            os.environ.get("EMBEDDING_SERVICE_MIN_RETRY_MAX_LENGTH") or settings.get("min_retry_max_length"),
             DEFAULT_MIN_RETRY_MAX_LENGTH,
         ),
         request_timeout=_coerce_float(

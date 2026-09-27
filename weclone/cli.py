@@ -121,8 +121,9 @@ def distill_profile(ctx: click.Context, input_dir: Path | None, output_dir: Path
     from weclone.data.agent import distill_profile as extractor
 
     config_path = ctx.parent.params.get("config_path") if ctx.parent else None
-    extractor.main(input_dir=input_dir, output_dir=output_dir,
-                   config_path=Path(config_path) if config_path else None)
+    extractor.main(
+        input_dir=input_dir, output_dir=output_dir, config_path=Path(config_path) if config_path else None
+    )
 
 
 @cli.command("distill-event", help="Extract event memories from chat samples.")
@@ -133,8 +134,9 @@ def distill_event(ctx: click.Context, input_dir: Path | None, output_dir: Path |
     from weclone.data.agent import distill_event as extractor
 
     config_path = ctx.parent.params.get("config_path") if ctx.parent else None
-    extractor.main(input_dir=input_dir, output_dir=output_dir,
-                   config_path=Path(config_path) if config_path else None)
+    extractor.main(
+        input_dir=input_dir, output_dir=output_dir, config_path=Path(config_path) if config_path else None
+    )
 
 
 @cli.command("train-sft", help="Fine-tune the model using prepared datasets.")
@@ -182,10 +184,12 @@ def test_model():
     test_main()
 
 
-@cli.command("server-reset-password", help="Generate a new web password and invalidate existing web sessions.")
+@cli.command(
+    "server-reset-password", help="Generate a new web password and invalidate existing web sessions."
+)
 @click.option("--database", type=click.Path(path_type=Path, dir_okay=False))
 def server_reset_password(database: Path | None):
-    from weclone.server.auth import AuthStore, DEFAULT_DATABASE
+    from weclone.server.auth import DEFAULT_DATABASE, AuthStore
 
     AuthStore(database or DEFAULT_DATABASE, reset=True)
 
@@ -195,7 +199,9 @@ def server_reset_password(database: Path | None):
 @click.option("--port", type=click.IntRange(1, 65535), default=5175, envvar="API_PORT", show_default=True)
 @click.option("--database", type=click.Path(path_type=Path, dir_okay=False))
 @click.option("--source", type=click.Path(path_type=Path, dir_okay=False))
-@click.option("--inference", is_flag=True, help="Load the configured model and enable /v1 inference endpoints.")
+@click.option(
+    "--inference", is_flag=True, help="Load the configured model and enable /v1 inference endpoints."
+)
 @clear_argv
 def server(host: str, port: int, database: Path | None, source: Path | None, inference: bool):
     from weclone.server.app import serve

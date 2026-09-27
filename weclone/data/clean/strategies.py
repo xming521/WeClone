@@ -160,8 +160,12 @@ class OlineLLMCleaningStrategy(CleaningStrategy):
         logger.info("Starting online model scoring of data")
         logger.info(f"Using model {config.model_name}")
 
-        with OpenAICompatibleClient(api_key=config.llm_api_key, base_url=config.base_url, model=config.model_name, max_workers=config.clean_batch_size + 5) as client:
-
+        with OpenAICompatibleClient(
+            api_key=config.llm_api_key,
+            base_url=config.base_url,
+            model=config.model_name,
+            max_workers=config.clean_batch_size + 5,
+        ) as client:
             inputs = []
             prompt_template = PromptTemplate.from_template(CLEAN_PROMPT)
             for qa in data:

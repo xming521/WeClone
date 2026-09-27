@@ -17,7 +17,9 @@ from pydantic import BaseModel, Field
 
 SESSION_SECONDS = 30 * 24 * 60 * 60
 COOKIE = "weclone_session"
-DEFAULT_DATABASE = Path(__file__).resolve().parents[2] / "dataset/res_csv/agent/memory_organization/profile_review.sqlite3"
+DEFAULT_DATABASE = (
+    Path(__file__).resolve().parents[2] / "dataset/res_csv/agent/memory_organization/profile_review.sqlite3"
+)
 
 
 def password_hash(password: str, salt: str) -> str:
@@ -55,7 +57,9 @@ class AuthStore:
     def _replace_password(self, db):
         password = "".join(secrets.choice(string.ascii_letters + string.digits) for _ in range(12))
         salt = secrets.token_hex(16)
-        db.execute("INSERT OR REPLACE INTO credentials VALUES (1,?,?,0,0)", (salt, password_hash(password, salt)))
+        db.execute(
+            "INSERT OR REPLACE INTO credentials VALUES (1,?,?,0,0)", (salt, password_hash(password, salt))
+        )
         db.execute("DELETE FROM sessions")
         click.echo(f"WeClone 网页访问密码（仅显示一次，请保存）：{password}")
 
@@ -70,8 +74,10 @@ class AuthStore:
                 raise HTTPException(429, "尝试次数过多，请一分钟后再试")
             if not hmac.compare_digest(password_hash(password, salt), expected):
                 failures = (0 if blocked_until else failures) + 1
-                db.execute("UPDATE credentials SET failures=?, blocked_until=? WHERE id=1",
-                           (failures, now + 60 if failures >= 5 else 0))
+                db.execute(
+                    "UPDATE credentials SET failures=?, blocked_until=? WHERE id=1",
+                    (failures, now + 60 if failures >= 5 else 0),
+                )
                 db.commit()
                 raise HTTPException(401, "密码错误")
             db.execute("UPDATE credentials SET failures=0, blocked_until=0 WHERE id=1")
@@ -87,8 +93,9 @@ class AuthStore:
 
     def expiry(self, token: str):
         with self.connect() as db:
-            row = db.execute("SELECT expires FROM sessions WHERE hash=? AND expires>?",
-                             (self.digest(token), time.time())).fetchone()
+            row = db.execute(
+                "SELECT expires FROM sessions WHERE hash=? AND expires>?", (self.digest(token), time.time())
+            ).fetchone()
             return row[0] if row else None
 
     def logout(self, token: str):
@@ -107,7 +114,10 @@ def install_auth(app, database: Path):
     async def authenticate(request: Request, call_next):
         path = request.url.path
         if path == "/api" or path.startswith("/api/"):
-            if request.method not in {"GET", "HEAD", "OPTIONS"} and request.headers.get("X-WeClone-Request") != "1":
+            if (
+                request.method not in {"GET", "HEAD", "OPTIONS"}
+                and request.headers.get("X-WeClone-Request") != "1"
+            ):
                 response = JSONResponse({"detail": "请求验证失败"}, status_code=403)
             elif path != "/api/auth/login" and not store.expiry(request.cookies.get(COOKIE, "")):
                 response = JSONResponse({"detail": "请先输入访问密码"}, status_code=401)
@@ -121,8 +131,15 @@ def install_auth(app, database: Path):
     def login(body: Login, request: Request):
         token, expires = store.login(body.password)
         response = JSONResponse({"expires_at": expires})
-        response.set_cookie(COOKIE, token, max_age=SESSION_SECONDS, httponly=True,
-                            secure=request.url.scheme == "https", samesite="strict", path="/")
+        response.set_cookie(
+            COOKIE,
+            token,
+            max_age=SESSION_SECONDS,
+            httponly=True,
+            secure=request.url.scheme == "https",
+            samesite="strict",
+            path="/",
+        )
         return response
 
     @app.get("/api/auth/session")
@@ -133,6 +150,7 @@ def install_auth(app, database: Path):
     def logout(request: Request):
         store.logout(request.cookies.get(COOKIE, ""))
         response = JSONResponse({"ok": True})
-        response.delete_cookie(COOKIE, path="/", httponly=True,
-                               secure=request.url.scheme == "https", samesite="strict")
+        response.delete_cookie(
+            COOKIE, path="/", httponly=True, secure=request.url.scheme == "https", samesite="strict"
+        )
         return response

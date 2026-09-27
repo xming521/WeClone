@@ -1,6 +1,5 @@
 import json
 
-
 DIMENSIONS = {
     1: "人口学与基本身份：B的身份信息、社会位置和家庭角色等相对稳定事实。",
     3: "长期需求、动机与目标：B持续追求的结果、需求及明确表达的动机；具体待办和约定归计划与承诺，不从一次行动推定长期目标，但多次可以推测。单纯的喜恶、兴趣、习惯、偏好不属于本维度",
@@ -43,19 +42,21 @@ CLASSIFY_SCHEMA = {
 
 ATTRIBUTE_HIERARCHY_SCHEMA = {
     "type": "object",
-    "properties": {"items": {
-        "type": "array",
+    "properties": {
         "items": {
-            "type": "object",
-            "properties": {
-                "id": {"type": "integer"},
-                "topic": {"type": "string"},
-                "attr": {"type": "string"},
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {"type": "integer"},
+                    "topic": {"type": "string"},
+                    "attr": {"type": "string"},
+                },
+                "required": ["id", "topic", "attr"],
+                "additionalProperties": False,
             },
-            "required": ["id", "topic", "attr"],
-            "additionalProperties": False,
-        },
-    }},
+        }
+    },
     "required": ["items"],
     "additionalProperties": False,
 }
@@ -71,23 +72,29 @@ items覆盖每个输入id且各一次；topic是上层浏览主题，attr是归�
 
 
 def attribute_hierarchy_prompt(attributes: list[dict]) -> str:
-    return ATTRIBUTE_HIERARCHY_RULES + "\n属性：\n" + json.dumps(attributes, ensure_ascii=False, separators=(",", ":"))
+    return (
+        ATTRIBUTE_HIERARCHY_RULES
+        + "\n属性：\n"
+        + json.dumps(attributes, ensure_ascii=False, separators=(",", ":"))
+    )
 
 
 PREFERENCE_ATTRIBUTE_SCHEMA = {
     "type": "object",
-    "properties": {"items": {
-        "type": "array",
+    "properties": {
         "items": {
-            "type": "object",
-            "properties": {
-                "id": {"type": "string"},
-                "attrs": {"type": "array", "items": {"type": "string"}},
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {"type": "string"},
+                    "attrs": {"type": "array", "items": {"type": "string"}},
+                },
+                "required": ["id", "attrs"],
+                "additionalProperties": False,
             },
-            "required": ["id", "attrs"],
-            "additionalProperties": False,
-        },
-    }},
+        }
+    },
     "required": ["items"],
     "additionalProperties": False,
 }
@@ -205,7 +212,11 @@ def batch_summary_prompt(tasks: list[dict]) -> str:
 
 def classify_prompt(records: list[dict], dimensions: tuple[int, ...]) -> str:
     if dimensions == (8,):
-        return PREFERENCE_ATTRIBUTE_RULES + "\n记忆：\n" + json.dumps(records, ensure_ascii=False, separators=(",", ":"))
+        return (
+            PREFERENCE_ATTRIBUTE_RULES
+            + "\n记忆：\n"
+            + json.dumps(records, ensure_ascii=False, separators=(",", ":"))
+        )
     definitions = "\n".join(f"{dim}: {DIMENSIONS[dim]}" for dim in dimensions)
     return (
         CLASSIFY_RULES
@@ -217,7 +228,12 @@ def classify_prompt(records: list[dict], dimensions: tuple[int, ...]) -> str:
 
 
 def summarize_prompt(
-    dim: int, attrs: list[str], records: list[dict], *, reduced: bool = False, peer: str | None = None,
+    dim: int,
+    attrs: list[str],
+    records: list[dict],
+    *,
+    reduced: bool = False,
+    peer: str | None = None,
 ) -> str:
     extra = "\n本轮输入是分批归纳的facts；合并时保留原source_ids，不用分批编号替代来源。\n" if reduced else ""
     if peer is not None:

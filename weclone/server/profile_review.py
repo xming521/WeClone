@@ -88,25 +88,42 @@ class ReviewStore:
                 for item in items:
                     node_id = str(uuid4())
                     attribute = "attr" in item
-                    db.execute("INSERT INTO nodes VALUES (?,?,?,?,?)", (
-                        node_id, parent_id, "attribute" if attribute else "topic", item.get("attr", item.get("name")), dim,
-                    ))
+                    db.execute(
+                        "INSERT INTO nodes VALUES (?,?,?,?,?)",
+                        (
+                            node_id,
+                            parent_id,
+                            "attribute" if attribute else "topic",
+                            item.get("attr", item.get("name")),
+                            dim,
+                        ),
+                    )
                     if attribute:
                         for index in item["fact_indices"]:
                             if index in seen:
                                 raise ValueError("Duplicate fact reference in input hierarchy")
                             seen.add(index)
                             fact = data["facts"][index]
-                            db.execute("INSERT INTO facts VALUES (?,?,?,?,?,?,1)", (
-                                str(uuid4()), node_id, fact["value"], encode(fact), "extracted", "pending",
-                            ))
+                            db.execute(
+                                "INSERT INTO facts VALUES (?,?,?,?,?,?,1)",
+                                (
+                                    str(uuid4()),
+                                    node_id,
+                                    fact["value"],
+                                    encode(fact),
+                                    "extracted",
+                                    "pending",
+                                ),
+                            )
                     else:
                         add(item["items"], node_id, dim)
 
             for dimension in data["dimensions"]:
                 dim = dimension["dim"]
                 node_id = f"dimension:{dim}"
-                db.execute("INSERT INTO nodes VALUES (?,NULL,'dimension',?,?)", (node_id, dimension["name"], dim))
+                db.execute(
+                    "INSERT INTO nodes VALUES (?,NULL,'dimension',?,?)", (node_id, dimension["name"], dim)
+                )
                 add(dimension["groups"], node_id, dim)
             if seen != set(range(len(data["facts"]))):
                 raise ValueError("Input hierarchy must reference every fact exactly once")
@@ -124,32 +141,65 @@ class ReviewStore:
             db.close()
 
     def fact(self, db, fact_id):
-        row = db.execute("""SELECT f.*, n.name AS attr, n.dim, n.parent_id AS group_id
-                            FROM facts f JOIN nodes n ON f.node_id=n.id WHERE f.id=?""", (fact_id,)).fetchone()
+        row = db.execute(
+            """SELECT f.*, n.name AS attr, n.dim, n.parent_id AS group_id
+                            FROM facts f JOIN nodes n ON f.node_id=n.id WHERE f.id=?""",
+            (fact_id,),
+        ).fetchone()
         if row is None:
             raise HTTPException(404, "画像记录不存在")
         original = json.loads(row["original"])
         return {
-            **original, **{key: row[key] for key in ("id", "node_id", "value", "attr", "dim", "group_id", "origin", "status", "version")},
-            "original": original, "source_ids": original.get("source_ids", []),
+            **original,
+            **{
+                key: row[key]
+                for key in (
+                    "id",
+                    "node_id",
+                    "value",
+                    "attr",
+                    "dim",
+                    "group_id",
+                    "origin",
+                    "status",
+                    "version",
+                )
+            },
+            "original": original,
+            "source_ids": original.get("source_ids", []),
         }
 
     def record(self, db, fact_id, action, before):
         after = self.fact(db, fact_id)
-        db.execute("INSERT INTO history(fact_id,at,action,before_json,after_json) VALUES (?,?,?,?,?)", (
-            fact_id, datetime.now(timezone.utc).isoformat(), action, encode(before) if before else None, encode(after),
-        ))
+        db.execute(
+            "INSERT INTO history(fact_id,at,action,before_json,after_json) VALUES (?,?,?,?,?)",
+            (
+                fact_id,
+                datetime.now(timezone.utc).isoformat(),
+                action,
+                encode(before) if before else None,
+                encode(after),
+            ),
+        )
         return after
 
     def attribute(self, db, request):
-        group = db.execute("SELECT * FROM nodes WHERE id=? AND kind IN ('dimension','topic')", (request.group_id,)).fetchone()
+        group = db.execute(
+            "SELECT * FROM nodes WHERE id=? AND kind IN ('dimension','topic')", (request.group_id,)
+        ).fetchone()
         if group is None:
             raise HTTPException(422, "请选择已有维度或主题")
-        row = db.execute("SELECT id FROM nodes WHERE parent_id=? AND kind='attribute' AND name=?", (request.group_id, request.attr)).fetchone()
+        row = db.execute(
+            "SELECT id FROM nodes WHERE parent_id=? AND kind='attribute' AND name=?",
+            (request.group_id, request.attr),
+        ).fetchone()
         if row:
             return row["id"]
         node_id = str(uuid4())
-        db.execute("INSERT INTO nodes VALUES (?,?,'attribute',?,?)", (node_id, request.group_id, request.attr, group["dim"]))
+        db.execute(
+            "INSERT INTO nodes VALUES (?,?,'attribute',?,?)",
+            (node_id, request.group_id, request.attr, group["dim"]),
+        )
         return node_id
 
     def create(self, request):
@@ -158,9 +208,17 @@ class ReviewStore:
             node_id = self.attribute(db, request)
             fact_id = str(uuid4())
             original = {"value": request.value, "attr": request.attr, "source_ids": []}
-            db.execute("INSERT INTO facts VALUES (?,?,?,?,?,?,1)", (
-                fact_id, node_id, request.value, encode(original), "manual", "approved" if request.approve else "pending",
-            ))
+            db.execute(
+                "INSERT INTO facts VALUES (?,?,?,?,?,?,1)",
+                (
+                    fact_id,
+                    node_id,
+                    request.value,
+                    encode(original),
+                    "manual",
+                    "approved" if request.approve else "pending",
+                ),
+            )
             return self.record(db, fact_id, "create", None)
 
     def edit(self, fact_id, request):
@@ -174,9 +232,15 @@ class ReviewStore:
             if not changed and status == before["status"]:
                 return before
             node_id = self.attribute(db, request)
-            db.execute("UPDATE facts SET node_id=?,value=?,status=?,version=version+1 WHERE id=?", (
-                node_id, request.value, status, fact_id,
-            ))
+            db.execute(
+                "UPDATE facts SET node_id=?,value=?,status=?,version=version+1 WHERE id=?",
+                (
+                    node_id,
+                    request.value,
+                    status,
+                    fact_id,
+                ),
+            )
             return self.record(db, fact_id, "edit", before)
 
     def review(self, request):
@@ -189,16 +253,24 @@ class ReviewStore:
                 raise HTTPException(409, "记录已被修改，整批操作未保存，请刷新后重试")
             for fact in before:
                 if fact["status"] != request.status:
-                    db.execute("UPDATE facts SET status=?,version=version+1 WHERE id=?", (request.status, fact["id"]))
+                    db.execute(
+                        "UPDATE facts SET status=?,version=version+1 WHERE id=?", (request.status, fact["id"])
+                    )
                     self.record(db, fact["id"], "review", fact)
             return {"updated": len(before)}
 
     def history(self, fact_id):
         with self.connect() as db:
             self.fact(db, fact_id)
-            return [{"at": row["at"], "action": row["action"], "before": json.loads(row["before_json"]) if row["before_json"] else None,
-                     "after": json.loads(row["after_json"])} for row in db.execute(
-                         "SELECT * FROM history WHERE fact_id=? ORDER BY seq DESC", (fact_id,))]
+            return [
+                {
+                    "at": row["at"],
+                    "action": row["action"],
+                    "before": json.loads(row["before_json"]) if row["before_json"] else None,
+                    "after": json.loads(row["after_json"]),
+                }
+                for row in db.execute("SELECT * FROM history WHERE fact_id=? ORDER BY seq DESC", (fact_id,))
+            ]
 
     def profile(self, approved_only=False):
         with self.connect() as db:
@@ -206,8 +278,14 @@ class ReviewStore:
             snapshot = db.execute("SELECT * FROM snapshot").fetchone()
             source_data = json.loads(snapshot["data"])
             nodes = [dict(row) for row in db.execute("SELECT * FROM nodes ORDER BY rowid")]
-            facts = [self.fact(db, row["id"]) for row in db.execute(
-                "SELECT id FROM facts" + (" WHERE status='approved'" if approved_only else "") + " ORDER BY rowid")]
+            facts = [
+                self.fact(db, row["id"])
+                for row in db.execute(
+                    "SELECT id FROM facts"
+                    + (" WHERE status='approved'" if approved_only else "")
+                    + " ORDER BY rowid"
+                )
+            ]
             indices = {}
             for index, fact in enumerate(facts):
                 indices.setdefault(fact["node_id"], []).append(index)
@@ -219,7 +297,9 @@ class ReviewStore:
                 if node["kind"] == "attribute":
                     refs = indices.get(node["id"], [])
                     return {"id": node["id"], "attr": node["name"], "fact_indices": refs} if refs else None
-                items = [result for child in children.get(node["id"], []) if (result := expand(child)) is not None]
+                items = [
+                    result for child in children.get(node["id"], []) if (result := expand(child)) is not None
+                ]
                 if approved_only and not items:
                     return None
                 return {"id": node["id"], "name": node["name"], "items": items}
@@ -238,7 +318,10 @@ class ReviewStore:
             used = {sid for fact in facts for sid in fact["source_ids"]}
             sources = {sid: source_data["sources"][sid] for sid in used if sid in source_data["sources"]}
             if approved_only:
-                facts = [{key: fact[key] for key in ("id", "dim", "attr", "value", "source_ids", "origin")} for fact in facts]
+                facts = [
+                    {key: fact[key] for key in ("id", "dim", "attr", "value", "source_ids", "origin")}
+                    for fact in facts
+                ]
             result = {"dimensions": dimensions, "facts": facts, "sources": sources}
             if not approved_only:
                 result["locations"] = [node for node in nodes if node["kind"] != "attribute"]
@@ -246,10 +329,17 @@ class ReviewStore:
             return result
 
 
-def create_app(database: Path | None = None, source: Path | None = None, static_dir: Path | None = None,
-               *, inference_router: APIRouter | None = None):
+def create_app(
+    database: Path | None = None,
+    source: Path | None = None,
+    static_dir: Path | None = None,
+    *,
+    inference_router: APIRouter | None = None,
+):
     directory = ROOT / "dataset/res_csv/agent/memory_organization"
-    store = ReviewStore(database or directory / "profile_review.sqlite3", source or directory / "profile_hierarchy.json")
+    store = ReviewStore(
+        database or directory / "profile_review.sqlite3", source or directory / "profile_hierarchy.json"
+    )
     app = FastAPI(title="WeClone")
     install_auth(app, store.database)
     if inference_router is not None:

@@ -271,8 +271,7 @@ def start_embedding_service(args: SimpleNamespace, base_url: str) -> subprocess.
 
     with log_path.open("ab") as log_file:
         marker = (
-            f"\n[{time.strftime('%Y-%m-%dT%H:%M:%S%z')}] "
-            f"Starting embedding service: {' '.join(command)}\n"
+            f"\n[{time.strftime('%Y-%m-%dT%H:%M:%S%z')}] Starting embedding service: {' '.join(command)}\n"
         )
         log_file.write(marker.encode("utf-8"))
         log_file.flush()
@@ -314,8 +313,7 @@ def wait_for_embedding_service(
         if process.poll() is not None:
             recent_log = tail_text(log_path)
             raise RuntimeError(
-                "Embedding service exited before becoming ready. "
-                f"log_path={log_path}\n{recent_log}"
+                f"Embedding service exited before becoming ready. log_path={log_path}\n{recent_log}"
             )
 
         try:
@@ -342,8 +340,7 @@ def ensure_embedding_service(
     except Exception as health_error:
         if not args.auto_start_embedding_service:
             raise RuntimeError(
-                f"Embedding service is not reachable at {health_url}. "
-                "Start it manually or enable auto start."
+                f"Embedding service is not reachable at {health_url}. Start it manually or enable auto start."
             ) from health_error
 
         if not is_local_base_url(base_url):
@@ -613,9 +610,7 @@ def build_candidate_edges(
             selected_keys.add(key)
 
     selected_edges = [
-        edge
-        for edge in raw_edges
-        if tuple(sorted((edge["left_id"], edge["right_id"]))) in selected_keys
+        edge for edge in raw_edges if tuple(sorted((edge["left_id"], edge["right_id"]))) in selected_keys
     ]
     return sorted(
         selected_edges,
@@ -660,20 +655,13 @@ def refresh_group_fields(
     supporting_edges = group.get("supporting_edges", [])
 
     group["size"] = len(member_ids)
-    group["top_tags"] = [
-        {"tag": tag, "count": count}
-        for tag, count in group_tags.most_common(10)
-    ]
+    group["top_tags"] = [{"tag": tag, "count": count} for tag, count in group_tags.most_common(10)]
     group["max_similarity"] = max(
         (edge["similarity"] for edge in supporting_edges),
         default=None,
     )
     group["edge_reasons"] = sorted(
-        {
-            reason
-            for edge in supporting_edges
-            for reason in edge.get("reasons", [])
-        }
+        {reason for edge in supporting_edges for reason in edge.get("reasons", [])}
     )
     group["members"] = [asdict(member) for member in members]
 
@@ -727,9 +715,13 @@ def absorb_singletons_into_groups(
         )
         current = best_by_singleton.get(singleton_id)
         current_score = (
-            float(current[1].get("similarity") or 0.0),
-            float(current[1].get("tag_overlap") or 0.0),
-        ) if current else (-1.0, -1.0)
+            (
+                float(current[1].get("similarity") or 0.0),
+                float(current[1].get("tag_overlap") or 0.0),
+            )
+            if current
+            else (-1.0, -1.0)
+        )
         if next_score > current_score:
             best_by_singleton[singleton_id] = (group_id, edge, neighbor_id)
 
@@ -849,17 +841,10 @@ def build_candidate_groups(
                 "group_key": group_key_for(members[0]),
                 "size": len(member_ids),
                 "memory_ids": member_ids,
-                "top_tags": [
-                    {"tag": tag, "count": count}
-                    for tag, count in group_tags.most_common(10)
-                ],
+                "top_tags": [{"tag": tag, "count": count} for tag, count in group_tags.most_common(10)],
                 "max_similarity": max((edge["similarity"] for edge in supporting_edges), default=None),
                 "edge_reasons": sorted(
-                    {
-                        reason
-                        for edge in supporting_edges
-                        for reason in edge.get("reasons", [])
-                    }
+                    {reason for edge in supporting_edges for reason in edge.get("reasons", [])}
                 ),
                 "members": [asdict(member) for member in members],
                 "supporting_edges": supporting_edges,
@@ -888,10 +873,7 @@ def summarize_records(records: list[MemoryRecord]) -> dict[str, Any]:
         "total": len(records),
         "by_prefilter_status": dict(sorted(by_status.items())),
         "by_type": dict(sorted(by_type.items())),
-        "top_tags": [
-            {"tag": tag, "count": count}
-            for tag, count in by_tag.most_common(20)
-        ],
+        "top_tags": [{"tag": tag, "count": count} for tag, count in by_tag.most_common(20)],
         "prefilter_reason_counts": dict(reason_counts.most_common()),
     }
 
@@ -921,9 +903,13 @@ def run(
     discard_records = [record for record in records if record.prefilter_status == "discard"]
 
     base_url = base_url or service_base_url(args)
-    health = health if health is not None else get_json(
-        f"{base_url.rstrip('/')}/health",
-        timeout=args.request_timeout,
+    health = (
+        health
+        if health is not None
+        else get_json(
+            f"{base_url.rstrip('/')}/health",
+            timeout=args.request_timeout,
+        )
     )
     embeddings = embed_texts(
         [record.embedding_text for record in candidate_records],

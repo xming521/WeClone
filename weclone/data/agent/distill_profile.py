@@ -1,8 +1,8 @@
 import json
-from datetime import datetime, timedelta, timezone
 import threading
 import time
 from dataclasses import fields, is_dataclass
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, Iterable
@@ -127,7 +127,8 @@ def resolve_llm_args(args: SimpleNamespace) -> SimpleNamespace:
     args.batch_size = required_config_int(codex_config, "batch_size", args.config_path)
     args.max_tokens = (
         required_config_int(codex_config, "max_tokens", args.config_path)
-        if codex_config.get("max_tokens") is not None else None
+        if codex_config.get("max_tokens") is not None
+        else None
     )
     args.timeout = required_config_int(codex_config, "timeout", args.config_path)
     for name in ("max_samples_per_window", "max_content_chars"):
@@ -175,7 +176,9 @@ def iter_chat_files(input_dir: Path) -> Iterable[Path]:
 
 
 def confirm_distillation(args: SimpleNamespace, *, task: str, file_count: int) -> bool:
-    click.echo(f"即将执行{task}蒸馏：输入 {args.input_dir}（{file_count} 个聊天文件），输出 {args.output_dir}。")
+    click.echo(
+        f"即将执行{task}蒸馏：输入 {args.input_dir}（{file_count} 个聊天文件），输出 {args.output_dir}。"
+    )
     click.echo(f"模型后端：{args.llm_provider}。输入目录中的聊天样本将交给该模型处理。")
     click.echo("聊天内容可能包含身份、联系方式和私密对话；模型服务可能记录或留存这些内容，存在隐私泄露风险。")
     if args.overwrite:
@@ -371,11 +374,7 @@ def build_prompt(
 def response_payload(response: Any) -> dict[str, Any]:
     if not is_dataclass(response):
         return {"text": str(response)}
-    return {
-        field.name: getattr(response, field.name)
-        for field in fields(response)
-        if field.name != "raw"
-    }
+    return {field.name: getattr(response, field.name) for field in fields(response) if field.name != "raw"}
 
 
 def process_file(
@@ -445,13 +444,24 @@ def process_file(
         pending_samples.append(ChatSample(source_index, sample_id, item, include_current_state))
 
     windows = group_samples(
-        pending_samples, max_samples=max_samples_per_window, max_content_chars=max_content_chars,
+        pending_samples,
+        max_samples=max_samples_per_window,
+        max_content_chars=max_content_chars,
     )
     request_rows = [
-        (window, make_window_request(
-            window, task="state", source_path=source_path, target_role=target_role,
-            provider=provider, model=model, effort=effort, max_tokens=max_tokens,
-        ))
+        (
+            window,
+            make_window_request(
+                window,
+                task="state",
+                source_path=source_path,
+                target_role=target_role,
+                provider=provider,
+                model=model,
+                effort=effort,
+                max_tokens=max_tokens,
+            ),
+        )
         for window in windows
     ]
     if dry_run:
@@ -506,9 +516,15 @@ def process_file(
                         "include_current_state": sample.include_current_state,
                         "current_state_window_days": 14,
                         "latest_sample_time": latest_time.isoformat() if latest_time else "",
-                        "current_state_since": current_state_cutoff_time.isoformat() if current_state_cutoff_time else "",
+                        "current_state_since": current_state_cutoff_time.isoformat()
+                        if current_state_cutoff_time
+                        else "",
                         "result": outcome.results.get(sample_id),
-                        "response": {"ok": not outcome.error, "error": outcome.error, "window_key": window_key},
+                        "response": {
+                            "ok": not outcome.error,
+                            "error": outcome.error,
+                            "window_key": window_key,
+                        },
                     }
                     if not outcome.error:
                         writeback_changed = apply_payload_to_item(item, payload) or writeback_changed
@@ -536,8 +552,9 @@ def process_file(
     return done_count, call_count
 
 
-def main(*, input_dir: Path | None = None, output_dir: Path | None = None,
-         config_path: Path | None = None) -> None:
+def main(
+    *, input_dir: Path | None = None, output_dir: Path | None = None, config_path: Path | None = None
+) -> None:
     args = default_args()
     if input_dir is not None:
         args.input_dir = input_dir

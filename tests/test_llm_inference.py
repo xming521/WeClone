@@ -2,8 +2,8 @@ import json
 import sys
 import threading
 import time
-from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 from unittest.mock import Mock
 
 import httpx

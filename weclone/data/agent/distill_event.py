@@ -5,14 +5,16 @@ from typing import Any
 from tqdm import tqdm
 
 from weclone.data.agent.distill_profile import (
+    allow_current_state,
     atomic_save_any_json,
     atomic_save_json,
     batched,
     chat_items,
-    allow_current_state,
     confirm_distillation,
     current_state_time_window,
-    default_args as state_default_args,
+)
+from weclone.data.agent.distill_profile import default_args as state_default_args
+from weclone.data.agent.distill_profile import (
     iter_chat_files,
     load_json,
     load_state,
@@ -153,13 +155,24 @@ def process_file(
         pending_samples.append(ChatSample(source_index, sample_id, item, include_current_state))
 
     windows = group_samples(
-        pending_samples, max_samples=max_samples_per_window, max_content_chars=max_content_chars,
+        pending_samples,
+        max_samples=max_samples_per_window,
+        max_content_chars=max_content_chars,
     )
     request_rows = [
-        (window, make_window_request(
-            window, task="event", source_path=source_path, target_role=target_role,
-            provider=provider, model=model, effort=effort, max_tokens=max_tokens,
-        ))
+        (
+            window,
+            make_window_request(
+                window,
+                task="event",
+                source_path=source_path,
+                target_role=target_role,
+                provider=provider,
+                model=model,
+                effort=effort,
+                max_tokens=max_tokens,
+            ),
+        )
         for window in windows
     ]
     if dry_run:
@@ -210,7 +223,11 @@ def process_file(
                         "role_mapping": {"A": other_role(target_role), "B": target_role},
                         "writeback_field": EVENT_WRITEBACK_FIELD,
                         "result": outcome.results.get(sample_id),
-                        "response": {"ok": not outcome.error, "error": outcome.error, "window_key": window_key},
+                        "response": {
+                            "ok": not outcome.error,
+                            "error": outcome.error,
+                            "window_key": window_key,
+                        },
                     }
                     if not outcome.error:
                         writeback_changed = apply_payload_to_item(item, payload) or writeback_changed
@@ -238,8 +255,9 @@ def process_file(
     return done_count, call_count
 
 
-def main(*, input_dir: Path | None = None, output_dir: Path | None = None,
-         config_path: Path | None = None) -> None:
+def main(
+    *, input_dir: Path | None = None, output_dir: Path | None = None, config_path: Path | None = None
+) -> None:
     args = default_args()
     if input_dir is not None:
         args.input_dir = input_dir

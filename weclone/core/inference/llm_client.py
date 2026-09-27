@@ -19,11 +19,11 @@ from pydantic import BaseModel
 
 from ._common import (
     API_TIMEOUT_SECONDS,
-    OPENAI_API_MAX_RETRIES,
-    OPENAI_API_BASE_DELAY,
-    OPENAI_API_MAX_DELAY,
     OPENAI_API_BACKOFF_FACTOR,
+    OPENAI_API_BASE_DELAY,
     OPENAI_API_JITTER,
+    OPENAI_API_MAX_DELAY,
+    OPENAI_API_MAX_RETRIES,
     calculate_retry_delay,
     logger,
     openrouter_proxy_url,
@@ -246,13 +246,22 @@ def _maybe_parse_response_json(request: LLMRequest, text: str | None) -> ParsedJ
 
 def _classify_error(text: str) -> str:
     lowered = (text or "").lower().replace("_", " ").replace("-", " ")
-    if any(key in lowered for key in (
-        "overload", "rate limit", "rate_limit", "too many requests", "high demand",
-        "server busy", "容量不足",
-    )) or re.search(
+    if any(
+        key in lowered
+        for key in (
+            "overload",
+            "rate limit",
+            "rate_limit",
+            "too many requests",
+            "high demand",
+            "server busy",
+            "容量不足",
+        )
+    ) or re.search(
         r"\b(?:429|503)\b|"
         r"\b(?:insufficient|not enough|at|exceeded|exhausted)\s+(?:model\s+|server\s+)?capacity\b|"
-        r"\bcapacity[ _-]*(?:exceeded|exhausted|unavailable|limit)", lowered,
+        r"\bcapacity[ _-]*(?:exceeded|exhausted|unavailable|limit)",
+        lowered,
     ):
         return "overload/rate_limit"
     if any(key in lowered for key in ("usage limit", "quota", "exceeded", "out of credit", "insufficient")):
@@ -658,7 +667,8 @@ class CodexExecClient(BaseBatchMixin):
         config_file = Path(config_path) if config_path else RUNTIME_ROOT / "settings.jsonc"
         pacing = (
             pyjson5.loads(config_file.read_text(encoding="utf-8")).get("codex_exec_args", {})
-            if config_file.exists() else {}
+            if config_file.exists()
+            else {}
         )
         if request_interval_seconds is None:
             request_interval_seconds = float(pacing.get("request_interval_seconds", 1.0))
@@ -689,7 +699,11 @@ class CodexExecClient(BaseBatchMixin):
             if self._mcp_overrides is None:
                 result = subprocess.run(
                     [self.command, "mcp", "list", "--json"],
-                    cwd=cwd, capture_output=True, text=True, check=True, timeout=self.timeout,
+                    cwd=cwd,
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                    timeout=self.timeout,
                 )
                 entries = ", ".join(
                     f"{json.dumps(server['name'], ensure_ascii=False)} = {{ enabled = false }}"
@@ -763,10 +777,25 @@ class CodexExecClient(BaseBatchMixin):
             "features.code_mode_host": True,
         }
         for feature in (
-            "memories", "multi_agent", "recommended_plugins", "plugins", "remote_plugin", "apps",
-            "shell_tool", "unified_exec", "goals", "sleep_tool", "image_generation", "view_image",
-            "computer_use", "browser_use", "browser_use_external", "in_app_browser", "skill_search",
-            "tool_suggest", "code_mode",
+            "memories",
+            "multi_agent",
+            "recommended_plugins",
+            "plugins",
+            "remote_plugin",
+            "apps",
+            "shell_tool",
+            "unified_exec",
+            "goals",
+            "sleep_tool",
+            "image_generation",
+            "view_image",
+            "computer_use",
+            "browser_use",
+            "browser_use_external",
+            "in_app_browser",
+            "skill_search",
+            "tool_suggest",
+            "code_mode",
         ):
             overrides[f"features.{feature}"] = False
         for key, value in overrides.items():
@@ -867,9 +896,10 @@ class CodexExecClient(BaseBatchMixin):
                     else:
                         proc.kill()
                     stdout, stderr = proc.communicate()
-                    if isinstance(exc, subprocess.TimeoutExpired) and _classify_error(
-                        _codex_error_text(stdout, stderr)
-                    ) == "overload/rate_limit":
+                    if (
+                        isinstance(exc, subprocess.TimeoutExpired)
+                        and _classify_error(_codex_error_text(stdout, stderr)) == "overload/rate_limit"
+                    ):
                         self._cool_down()
                 call.finish_attempt(
                     1, status="timeout" if isinstance(exc, subprocess.TimeoutExpired) else "failed", error=exc
