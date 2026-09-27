@@ -162,13 +162,13 @@ weclone-cli webchat-demo
 ### Inference Using API
 
 ```bash
-weclone-cli server
+weclone-cli server --inference --port 8005
 ```
 
 ### Test with Common Chat Questions
 Does not include questions asking for personal information, only daily conversation. Test results are in test_result-my.txt.
 ```bash
-weclone-cli server
+weclone-cli server --inference --port 8005
 weclone-cli test-model
 ```
 
@@ -185,7 +185,7 @@ weclone-cli test-model
 Usage steps:
 1. Deploy AstrBot
 2. Deploy messaging platforms like Discord, Telegram, Slack in AstrBot
-3. Execute `weclone-cli server` to start the API service
+3. Execute `weclone-cli server --inference --port 8005` to start the API service
 4. Add a new service provider in AstrBot, select OpenAI type, fill in the API Base URL according to AstrBot's deployment method (e.g., for docker deployment it might be http://172.17.0.1:8005/v1), fill in the model as gpt-3.5-turbo, and enter any API Key
 5. Tool calling is not supported after fine-tuning, please turn off the default tools first by sending the command: `/tool off_all` on the messaging platform, otherwise the fine-tuned effect won't be visible.
 6. Set the system prompt in AstrBot according to the default_system used during fine-tuning.
@@ -201,7 +201,7 @@ Usage steps:
 
 1. [Deploy LangBot](https://github.com/RockChinQ/LangBot/blob/master/README_EN.md#-getting-started)
 2. Add a bot (Discord, Telegram, Slack, Lark e.g.) in LangBot
-3. Execute `weclone-cli server` to start the WeClone API service
+3. Execute `weclone-cli server --inference --port 8005` to start the WeClone API service
 4. Add a new model in the model page, name it `gpt-3.5-turbo`, select OpenAI as the provider, fill in the request URL as WeClone's address. For detailed connection methods, refer to the [documentation](https://docs.langbot.app/en/workshop/network-details.html), and enter any API Key.
 
 <img width="400px" alt="image" src="https://github.com/user-attachments/assets/835853ab-6ddc-459e-ae21-b04c38a85b5b" />

@@ -35,7 +35,7 @@ def _check_api_server() -> None:
     except httpx.HTTPError:
         logger.error(
             f"Cannot connect to the API server at {client.base_url}. "
-            "Please start the server first by running: weclone-cli server"
+            "Please start the server first by running: weclone-cli server --inference --port 8005"
         )
         sys.exit(1)
 

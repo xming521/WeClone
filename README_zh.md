@@ -159,13 +159,13 @@ weclone-cli webchat-demo
 ### 使用接口进行推理
 
 ```bash
-weclone-cli server
+weclone-cli server --inference --port 8005
 ```
 
 ### 使用常见聊天问题测试
 不包含询问个人信息的问题，仅有日常聊天。测试结果在test_result-my.txt。
 ```bash
-weclone-cli server
+weclone-cli server --inference --port 8005
 weclone-cli test-model
 ```
 
@@ -183,7 +183,7 @@ weclone-cli test-model
 使用步骤：
 1. 部署 AstrBot
 2. 在 AstrBot 中部署消息平台
-3. 执行 `weclone-cli server` 启动api服务
+3. 执行 `weclone-cli server --inference --port 8005` 启动api服务
 4. 在 AstrBot 中新增服务提供商，类型选择OpenAI，API Base URL 根据AstrBot部署方式填写（例如docker部署可能为http://172.17.0.1:8005/v1） ，模型填写gpt-3.5-turbo,API Key随意填写一个
 5. 微调后不支持工具调用，请先关掉默认的工具，消息平台发送指令： `/tool off_all`，否则会没有微调后的效果。 
 6. 根据微调时使用的default_system，在 AstrBot 中设置系统提示词。
@@ -199,7 +199,7 @@ weclone-cli test-model
 
 
 1. [部署 LangBot](https://github.com/RockChinQ/LangBot#-%E5%BC%80%E5%A7%8B%E4%BD%BF%E7%94%A8)
-2. 执行 `weclone-cli server` 启动 WeClone API 服务
+2. 执行 `weclone-cli server --inference --port 8005` 启动 WeClone API 服务
 3. 在 LangBot 中添加一个机器人
 4. 在模型页添加新模型，名称`gpt-3.5-turbo`，供应商选择 OpenAI，填写 请求 URL 为 WeClone 的地址，详细连接方式可以参考[文档](https://docs.langbot.app/zh/workshop/network-details.html)，API Key 任意填写。
 
