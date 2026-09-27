@@ -3,9 +3,9 @@ import copy
 import json
 import os
 import re
-from importlib.util import find_spec
 from collections import defaultdict
 from datetime import datetime, timezone
+from importlib.util import find_spec
 from pathlib import Path
 from typing import Any
 
@@ -495,7 +495,9 @@ def build_stage2_outputs(
                     "very_short_char_len_lt": VERY_SHORT_CHAR_LEN_THRESHOLD,
                     "very_short_function_ratio_gte": VERY_SHORT_FUNCTION_RATIO_THRESHOLD,
                     "very_short_low_value_requires_no_useful_anchor": True,
-                } if ltp is not None else {"char_len_lt": 10},
+                }
+                if ltp is not None
+                else {"char_len_lt": 10},
                 "total_written": total_written,
                 "groups": manifest,
             },
