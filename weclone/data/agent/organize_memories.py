@@ -29,7 +29,6 @@ from weclone.prompts.memory_organization import (
     summarize_prompt,
 )
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 
