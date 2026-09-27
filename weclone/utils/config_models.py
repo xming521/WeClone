@@ -113,7 +113,9 @@ class AgentDistillArgs(BaseConfigModel):
     model: Optional[str] = None
     effort: Optional[str] = None
     batch_size: int = Field(10, ge=1, description="Maximum concurrent distillation requests")
-    max_tokens: Optional[int] = Field(None, ge=1, description="Maximum output tokens per distillation request")
+    max_tokens: Optional[int] = Field(
+        None, ge=1, description="Maximum output tokens per distillation request"
+    )
     timeout: int = Field(120, ge=1, description="Timeout in seconds for distillation requests")
     command: str = Field("codex", description="Codex CLI command")
     sandbox: str = Field("read-only", description="Codex sandbox mode")

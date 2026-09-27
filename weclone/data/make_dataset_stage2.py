@@ -326,7 +326,8 @@ def _stage2_output_files_to_clear(
             previous_files.add(filename)
 
     unmanaged_files = {
-        path.name for path in output_dir.glob("*.json")
+        path.name
+        for path in output_dir.glob("*.json")
         if path.name not in previous_files and path != manifest_path
     }
     if unmanaged_files:
@@ -362,7 +363,11 @@ def build_stage2_outputs(
 ) -> list[dict[str, Any]]:
     input_path = Path(input_path)
     output_dir = Path(output_dir)
-    if not manifest_name.endswith(".json") or Path(manifest_name).name != manifest_name or "\\" in manifest_name:
+    if (
+        not manifest_name.endswith(".json")
+        or Path(manifest_name).name != manifest_name
+        or "\\" in manifest_name
+    ):
         raise ValueError(f"Manifest name must be a JSON filename: {manifest_name}")
     manifest_path = output_dir / manifest_name
     ltp_model_path = Path(ltp_model_path)
