@@ -1,5 +1,5 @@
 {
-    "version": "0.3.01",
+    "version": "0.4.0",
     "common_args": {
         "model_name_or_path": "./models/Qwen2.5-7B-Instruct",
         "adapter_name_or_path": "./model_output", //同时做为train_sft_args的output_dir
@@ -13,6 +13,28 @@
     "cli_args": {
         "full_log": false,
         "log_level": "INFO"
+    },
+    "codex_exec_args": {
+        // codex exec 后端配置；API 后端仍读取 make_dataset_args
+        "model": "gpt-6-sol", // 理想抽取效果 建议智能水平不低于gpt-6-sol medium 
+        "effort": "medium",
+        "batch_size": 30,
+        "request_interval_seconds": 0.5,
+        "capacity_cooldown_seconds": 10.0,
+        "timeout": 300,
+        "command": "codex",
+        "sandbox": "read-only"
+    },
+    "agent_distill_args": {
+        // false：复用抽取断点；true：重新抽取
+        "overwrite": false,
+        // state/event distill 使用的 LLM 后端：codex_exec 或 api
+        "llm_provider": "codex_exec",
+        // 是否执行 LLM 画像归并；false 时仍可分组，但跳过 prepare/run/apply
+        "merge_enabled": false,
+        // 每窗同时满足条数和正文字符上限；正文不计 ID、时间、角色标签
+        "max_samples_per_window": 8,
+        "max_content_chars": 400
     },
     "make_dataset_args": {
         //数据处理配置
@@ -89,10 +111,20 @@
         "max_length": 256,
         "top_p": 0.65
     },
+    "embedding_service_args": {
+        "model_name_or_path": "./models/Qwen3-Embedding-4B",
+        "device": "cuda:0",
+        "host": "127.0.0.1",
+        "port": 8097,
+        "max_length": 2048,
+        "min_retry_max_length": 512,
+        "request_timeout": 120
+    },
     "vllm_args": {
         "gpu_memory_utilization": 0.9,
+        // "dtype": "float16", // For GPUs with compute capability < 8.0 (e.g., Tesla T4, V100) that don't support bfloat16
         // "data_parallel_size": 2,
-        // "quantization": "bitsandbytes", 
+        // "quantization": "bitsandbytes",
         // "load_format": "bitsandbytes"
     },
     "test_model_args": {

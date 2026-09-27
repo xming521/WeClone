@@ -34,6 +34,20 @@
 - 🔗 绑定到Discord, Telegram, Slack, Feishu等，实现自己的数字分身
 - 🛡️ 隐私信息过滤，本地化微调部署，数据安全可控
 
+
+---
+
+### WeClone × Infistar.cc 无限星河｜全模型 API · 为 AI 数字分身持续注入智能
+
+感谢 Infistar.cc 无限星河 赞助本项目！<br>
+⚡ 稳定高效的模型服务：价格低至官方渠道 1 折，模型倍率公开透明，多节点冗余保障，降低限流、429 与服务中断的影响；<br>
+🧠 主流模型一站式接入：一个 API Key 即可调用 Claude、ChatGPT、Gemini、Kimi、GLM、DeepSeek 等模型；<br>
+👤 助力数字分身生态扩展：适用于对话效果测试、人格提示词优化、内容生成及机器人能力扩展，为 WeClone 数字分身提供更多模型选择；<br>
+🎁 WeClone 用户专属福利：通过 [专属推广链接](https://www.infistar.cc/register?aff=RYD228HX&ref_source=link) 注册即可领取 5 美元等值测试额度 / 首充专属优惠，快速体验多模型 API 服务！
+
+---
+
+
 ## 📋特性与说明
 
 ### 数据源平台适配
@@ -159,13 +173,13 @@ weclone-cli webchat-demo
 ### 使用接口进行推理
 
 ```bash
-weclone-cli server
+weclone-cli server --inference --port 8005
 ```
 
 ### 使用常见聊天问题测试
 不包含询问个人信息的问题，仅有日常聊天。测试结果在test_result-my.txt。
 ```bash
-weclone-cli server
+weclone-cli server --inference --port 8005
 weclone-cli test-model
 ```
 
@@ -183,7 +197,7 @@ weclone-cli test-model
 使用步骤：
 1. 部署 AstrBot
 2. 在 AstrBot 中部署消息平台
-3. 执行 `weclone-cli server` 启动api服务
+3. 执行 `weclone-cli server --inference --port 8005` 启动api服务
 4. 在 AstrBot 中新增服务提供商，类型选择OpenAI，API Base URL 根据AstrBot部署方式填写（例如docker部署可能为http://172.17.0.1:8005/v1） ，模型填写gpt-3.5-turbo,API Key随意填写一个
 5. 微调后不支持工具调用，请先关掉默认的工具，消息平台发送指令： `/tool off_all`，否则会没有微调后的效果。 
 6. 根据微调时使用的default_system，在 AstrBot 中设置系统提示词。
@@ -199,7 +213,7 @@ weclone-cli test-model
 
 
 1. [部署 LangBot](https://github.com/RockChinQ/LangBot#-%E5%BC%80%E5%A7%8B%E4%BD%BF%E7%94%A8)
-2. 执行 `weclone-cli server` 启动 WeClone API 服务
+2. 执行 `weclone-cli server --inference --port 8005` 启动 WeClone API 服务
 3. 在 LangBot 中添加一个机器人
 4. 在模型页添加新模型，名称`gpt-3.5-turbo`，供应商选择 OpenAI，填写 请求 URL 为 WeClone 的地址，详细连接方式可以参考[文档](https://docs.langbot.app/zh/workshop/network-details.html)，API Key 任意填写。
 

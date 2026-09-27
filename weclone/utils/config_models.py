@@ -96,6 +96,31 @@ class CliArgs(BaseModel):
     log_level: str = Field("INFO", description="DEBUG, INFO, WARNING, ERROR, CRITICAL")
 
 
+class CodexExecArgs(BaseConfigModel):
+    model: Optional[str] = None
+    effort: Optional[str] = None
+    batch_size: Optional[int] = None
+    max_tokens: Optional[int] = None
+    timeout: Optional[int] = None
+    command: Optional[str] = None
+    sandbox: Optional[str] = None
+    request_interval_seconds: float = Field(1.0, ge=0)
+    capacity_cooldown_seconds: float = Field(10.0, ge=0)
+
+
+class AgentDistillArgs(BaseConfigModel):
+    llm_provider: str = Field("codex_exec", description="LLM backend for agent distill: codex_exec or api")
+    model: Optional[str] = None
+    effort: Optional[str] = None
+    batch_size: int = Field(10, ge=1, description="Maximum concurrent distillation requests")
+    max_tokens: Optional[int] = Field(
+        None, ge=1, description="Maximum output tokens per distillation request"
+    )
+    timeout: int = Field(120, ge=1, description="Timeout in seconds for distillation requests")
+    command: str = Field("codex", description="Codex CLI command")
+    sandbox: str = Field("read-only", description="Codex sandbox mode")
+
+
 class LLMCleanConfig(BaseConfigModel):
     accept_score: int = Field(
         2,
@@ -256,8 +281,32 @@ class InferArgs(BaseConfigModel):
     max_length: int = Field(..., description="Maximum generation length")
 
 
+class EmbeddingServiceArgs(BaseConfigModel):
+    model_name_or_path: str = Field(
+        "./models/Qwen3-Embedding-4B",
+        description="Default local embedding model path or Hugging Face model id",
+    )
+    device: str = Field("cuda:0", description="Device used by the local embedding service")
+    host: str = Field("127.0.0.1", description="Local embedding service host")
+    port: int = Field(8097, description="Local embedding service port")
+    max_length: int = Field(4096, description="Maximum token length for embedding inputs")
+    min_retry_max_length: int = Field(
+        512,
+        description="Minimum token length when retrying after CUDA OOM",
+    )
+    request_timeout: float = Field(120.0, description="HTTP client timeout for embedding requests")
+
+
 class VllmArgs(BaseConfigModel):
     gpu_memory_utilization: float = Field(default=0.9, description="vllm GPU memory utilization")
+    dtype: Optional[Literal["auto", "float16", "bfloat16", "float32", "half", "bf16"]] = Field(
+        default=None,
+        description=(
+            "Data type for vLLM inference. Use 'float16' (or its alias 'half') for GPUs with "
+            "compute capability < 8.0 (e.g. Tesla T4, V100) that do not support bfloat16. "
+            "Allowed values: 'auto', 'float16', 'bfloat16', 'float32', 'half', 'bf16'."
+        ),
+    )
     quantization: Optional[str] = Field(
         default=None, description="Quantization method for vLLM, e.g. 'awq', 'gptq'"
     )
@@ -284,10 +333,13 @@ class WcConfig(BaseModel):
     version: str = Field(..., description="Configuration file version")
     common_args: CommonArgs = Field(..., description="Common parameters")
     cli_args: CliArgs = Field(..., description="Command line arguments")
+    codex_exec_args: Optional[CodexExecArgs] = None
+    agent_distill_args: Optional[AgentDistillArgs] = None
     make_dataset_args: MakeDatasetArgs = Field(..., description="Dataset processing parameters")
     train_sft_args: TrainSftArgs = Field(..., description="SFT fine-tuning parameters")
     train_pt_args: Optional[TrainPtArgs] = Field(None, description="PT continued pre-training parameters")
     infer_args: InferArgs = Field(..., description="Inference parameters")
+    embedding_service_args: EmbeddingServiceArgs = Field(default_factory=EmbeddingServiceArgs)
     vllm_args: VllmArgs = Field(VllmArgs())
     test_model_args: TestModelArgs = Field(TestModelArgs())
 

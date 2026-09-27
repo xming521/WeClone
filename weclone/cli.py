@@ -93,6 +93,8 @@ def cli(ctx, config_path):
         logger.info(f"Config file path set to: {config_path}")
 
     _check_project_root()
+    if ctx.invoked_subcommand in {"server", "server-reset-password"}:
+        return
     _check_versions()
     global cli_config
     cli_config = cast(CliArgs, load_config(arg_type="cli_args"))
@@ -109,6 +111,32 @@ def qa_generator():
 
     processor = DataProcessor()
     processor.main()
+
+
+@cli.command("distill-profile", help="Extract profile memories from chat samples.")
+@click.option("--input-dir", type=click.Path(path_type=Path, file_okay=False))
+@click.option("--output-dir", type=click.Path(path_type=Path, file_okay=False))
+@click.pass_context
+def distill_profile(ctx: click.Context, input_dir: Path | None, output_dir: Path | None):
+    from weclone.data.agent import distill_profile as extractor
+
+    config_path = ctx.parent.params.get("config_path") if ctx.parent else None
+    extractor.main(
+        input_dir=input_dir, output_dir=output_dir, config_path=Path(config_path) if config_path else None
+    )
+
+
+@cli.command("distill-event", help="Extract event memories from chat samples.")
+@click.option("--input-dir", type=click.Path(path_type=Path, file_okay=False))
+@click.option("--output-dir", type=click.Path(path_type=Path, file_okay=False))
+@click.pass_context
+def distill_event(ctx: click.Context, input_dir: Path | None, output_dir: Path | None):
+    from weclone.data.agent import distill_event as extractor
+
+    config_path = ctx.parent.params.get("config_path") if ctx.parent else None
+    extractor.main(
+        input_dir=input_dir, output_dir=output_dir, config_path=Path(config_path) if config_path else None
+    )
 
 
 @cli.command("train-sft", help="Fine-tune the model using prepared datasets.")
@@ -156,13 +184,47 @@ def test_model():
     test_main()
 
 
-@cli.command("server", help="Start API service providing model inference interface.")
-@apply_common_decorators()
-def server():
-    """Start API service providing model inference interface."""
-    from weclone.server.api_service import main as server_main
+@cli.command(
+    "server-reset-password", help="Generate a new web password and invalidate existing web sessions."
+)
+@click.option("--database", type=click.Path(path_type=Path, dir_okay=False))
+def server_reset_password(database: Path | None):
+    from weclone.server.auth import DEFAULT_DATABASE, AuthStore
 
-    server_main()
+    AuthStore(database or DEFAULT_DATABASE, reset=True)
+
+
+@cli.command("server", help="Start the WeClone server, optionally with model inference.")
+@click.option("--host", default="127.0.0.1", show_default=True)
+@click.option("--port", type=click.IntRange(1, 65535), default=5175, envvar="API_PORT", show_default=True)
+@click.option("--database", type=click.Path(path_type=Path, dir_okay=False))
+@click.option("--source", type=click.Path(path_type=Path, dir_okay=False))
+@click.option(
+    "--inference", is_flag=True, help="Load the configured model and enable /v1 inference endpoints."
+)
+@clear_argv
+def server(host: str, port: int, database: Path | None, source: Path | None, inference: bool):
+    from weclone.server.app import serve
+
+    serve(host=host, port=port, database=database, source=source, inference=inference)
+
+
+@cli.command(
+    "organize-memories",
+    help="Classify, group, and summarize extracted memories.",
+    context_settings={"ignore_unknown_options": True, "allow_extra_args": True},
+    add_help_option=False,
+)
+@click.pass_context
+def organize_memories(ctx: click.Context):
+    """Pass stage and embedding options to the memory organization CLI."""
+    from weclone.data.agent import organize_memories as organizer
+
+    argv = list(ctx.args)
+    config_path = ctx.parent.params.get("config_path") if ctx.parent else None
+    if config_path and not any(arg == "--config-path" or arg.startswith("--config-path=") for arg in argv):
+        argv.extend(("--config-path", config_path))
+    organizer.main(argv)
 
 
 @cli.command("version", help="Show WeClone version information.")
