@@ -5,20 +5,10 @@ import * as Tooltip from '@radix-ui/react-tooltip';
 import { buildModel, collectFacts, filterProfile, retainedSelection } from './data';
 import type { ProfileFact, ProfileInput, ReviewStatus, ReviewView } from './data';
 import { useGraphStore } from './store';
+import { api } from './Auth';
 
 export const STATUS: Record<ReviewView, string> = { all: '全部', pending: '待审核', approved: '已通过', rejected: '已拒绝' };
 const VIEW_ICONS = { all: Layers3, pending: FileClock, approved: BadgeCheck, rejected: CircleX };
-
-async function api<T>(path: string, body?: unknown, method = 'POST'): Promise<T> {
-  const response = await fetch(`/api/${path}`, body === undefined ? { cache: 'no-store' } : {
-    method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
-  });
-  if (!response.ok) {
-    const data = await response.json().catch(() => null);
-    throw new Error(typeof data?.detail === 'string' ? data.detail : `请求失败：HTTP ${response.status}`);
-  }
-  return response.json() as Promise<T>;
-}
 
 interface Editor {
   fact: ProfileFact | null;

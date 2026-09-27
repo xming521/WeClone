@@ -93,7 +93,7 @@ def cli(ctx, config_path):
         logger.info(f"Config file path set to: {config_path}")
 
     _check_project_root()
-    if ctx.invoked_subcommand == "server":
+    if ctx.invoked_subcommand in {"server", "server-reset-password"}:
         return
     _check_versions()
     global cli_config
@@ -180,6 +180,14 @@ def test_model():
     from weclone.eval.test_model import main as test_main
 
     test_main()
+
+
+@cli.command("server-reset-password", help="Generate a new web password and invalidate existing web sessions.")
+@click.option("--database", type=click.Path(path_type=Path, dir_okay=False))
+def server_reset_password(database: Path | None):
+    from weclone.server.auth import AuthStore, DEFAULT_DATABASE
+
+    AuthStore(database or DEFAULT_DATABASE, reset=True)
 
 
 @cli.command("server", help="Start the WeClone server, optionally with model inference.")

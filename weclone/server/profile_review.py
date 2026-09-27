@@ -14,6 +14,8 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from weclone.server.auth import install_auth
+
 Status = Literal["pending", "approved", "rejected"]
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -249,15 +251,9 @@ def create_app(database: Path | None = None, source: Path | None = None, static_
     directory = ROOT / "dataset/res_csv/agent/memory_organization"
     store = ReviewStore(database or directory / "profile_review.sqlite3", source or directory / "profile_hierarchy.json")
     app = FastAPI(title="WeClone")
+    install_auth(app, store.database)
     if inference_router is not None:
         app.include_router(inference_router)
-
-    @app.middleware("http")
-    async def no_cache(request, call_next):
-        response = await call_next(request)
-        if request.url.path.startswith("/api/"):
-            response.headers["Cache-Control"] = "no-store"
-        return response
 
     @app.get("/api/profile")
     def profile():

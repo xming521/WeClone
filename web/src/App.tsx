@@ -11,6 +11,7 @@ import { DIMENSION_COLORS, ancestors } from './data';
 import type { ProfileModel, ProfileNode, ReviewView } from './data';
 import { ReviewActions, ReviewBar, ReviewOverlays, ReviewPanel, ReviewProvider, useReview } from './Review';
 import { levelIsExpanded, useGraphStore } from './store';
+import { AuthGate, LogoutButton } from './Auth';
 
 const DIMENSION_ICONS = { 1: Fingerprint, 3: Target, 4: Layers3, 5: Compass, 8: Heart };
 
@@ -184,7 +185,7 @@ function Atlas({ model, view }: { model: ProfileModel; view: ReviewView }) {
               {!leftOpen && <button className="sidebar-open" type="button" aria-label="展开左栏" onClick={() => { setLeftTouched(true); setLeftOpen(true); }}><Menu size={17} /><span>画像维度</span></button>}
               <div className="topbar-heading"><span className="topbar-dot" /> 画像地图 <span className="topbar-divider">/</span> <strong>{active?.name ?? '五维总览'}</strong></div>
             </div>
-            <div className="topbar-actions"><SearchBox model={model} /><ReviewActions /></div>
+            <div className="topbar-actions"><SearchBox model={model} /><ReviewActions /><LogoutButton /></div>
           </div>
           <ReviewBar />
           {!model.facts.length && <div className="graph-empty">当前视图没有画像记录</div>}
@@ -219,9 +220,13 @@ function Atlas({ model, view }: { model: ProfileModel; view: ReviewView }) {
   );
 }
 
-export default function App() {
+function ProfileApp() {
   const review = useReview();
   if (!review.model && review.error) return <div className="load-state"><span>✳</span><h1>画像地图暂时无法打开</h1><p>{review.error}</p><button onClick={() => void review.refresh().catch((reason: Error) => review.setError(reason.message))}>重试</button></div>;
   if (!review.model) return <div className="load-state"><span className="loading-mark">✳</span><h1>正在展开画像地图</h1></div>;
   return <ReviewProvider review={review}><Atlas model={review.model} view={review.view} /></ReviewProvider>;
+}
+
+export default function App() {
+  return <AuthGate><ProfileApp /></AuthGate>;
 }

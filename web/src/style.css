@@ -13,6 +13,19 @@ button, input { font: inherit; }
 button { cursor: pointer; }
 button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid #008f85; outline-offset: 3px; }
 
+.auth-page { min-height: 100dvh; display: grid; place-items: center; padding: 24px; }
+.auth-card { width: min(100%, 390px); padding: 32px; border: 1px solid #e2e8e2; border-radius: 20px; background: #fffefa; box-shadow: 0 16px 50px #183b370a; }
+.auth-brand { font-weight: 700; }
+.auth-card h1 { font-size: 24px; margin: 24px 0 12px; }
+.auth-card p, .auth-card small { color: #64766e; line-height: 1.7; }
+.auth-card label { display: block; margin: 24px 0 8px; font-size: 13px; }
+.auth-card input { width: 100%; padding: 12px; border: 1px solid #cdd9d2; border-radius: 9px; background: #fff; }
+.auth-card button { width: 100%; margin: 18px 0; padding: 12px; border: 0; border-radius: 9px; background: #183b37; color: white; }
+.auth-card button:disabled { opacity: .55; cursor: default; }
+.auth-card small { display: block; font-size: 12px; }
+.auth-card .auth-error { color: #a33434; font-size: 13px; }
+.logout-button { display: grid; place-items: center; flex-shrink: 0; width: 34px; height: 34px; border: 1px solid #dde5de; border-radius: 9px; color: #485956; background: #fffefa; }
+
 .app-shell {
   --left-panel-width: 292px;
   --detail-panel-width: 364px;

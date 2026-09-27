@@ -7,7 +7,7 @@ from weclone.server.profile_review import create_app
 
 
 @pytest.fixture
-def setup(tmp_path):
+def setup(tmp_path, capsys):
     data = {
         "dimensions": [{"dim": 8, "name": "兴趣", "groups": [
             {"name": "运动", "items": [{"attr": "运动偏好", "fact_indices": [0, 1]}]},
@@ -26,6 +26,9 @@ def setup(tmp_path):
     source.write_text(json.dumps(data), encoding="utf-8")
     database = tmp_path / "review.sqlite3"
     client = TestClient(create_app(database, source, tmp_path / "no-static"))
+    password = capsys.readouterr().out.strip().split("：")[-1]
+    client.headers["X-WeClone-Request"] = "1"
+    assert client.post("/api/auth/login", json={"password": password}).status_code == 200
     return client, database, source
 
 
@@ -65,6 +68,7 @@ def test_individual_approval_export_and_snapshot_persistence(setup):
     assert source.read_bytes() == original
     source.unlink()  # Subsequent startup must use the persisted snapshot.
     restarted = TestClient(create_app(database, source))
+    restarted.cookies.update(client.cookies)
     assert facts(restarted) == facts(client)
 
 
@@ -140,7 +144,7 @@ def test_validation_and_reversing_decision(setup):
     assert len(facts(client)) == 3
 
 
-def test_invalid_snapshot_import_rolls_back(tmp_path):
+def test_invalid_snapshot_import_rolls_back(tmp_path, capsys):
     source = tmp_path / "source.json"
     database = tmp_path / "review.sqlite3"
     data = {"dimensions": [{"dim": 8, "name": "兴趣", "groups": []}], "facts": [{"value": "未挂载"}], "sources": {}}
@@ -150,4 +154,7 @@ def test_invalid_snapshot_import_rolls_back(tmp_path):
     data["facts"] = []
     source.write_text(json.dumps(data))
     client = TestClient(create_app(database, source))
+    password = capsys.readouterr().out.strip().split("：")[-1]
+    assert client.post("/api/auth/login", json={"password": password},
+                       headers={"X-WeClone-Request": "1"}).status_code == 200
     assert facts(client) == []

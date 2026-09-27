@@ -33,7 +33,28 @@ def test_server_cli_routes_options_without_loading_model_config(monkeypatch, opt
     assert "inference-server" not in module.cli.commands
 
 
-def test_unified_routes_lifespan_auth_and_streaming(tmp_path, monkeypatch):
+def test_reset_web_password_cli(tmp_path, monkeypatch):
+    from weclone.server.auth import AuthStore
+
+    module = importlib.import_module("weclone.cli")
+    monkeypatch.setattr(module, "_check_project_root", lambda: None)
+    monkeypatch.setattr(module, "load_config", Mock(side_effect=AssertionError("No model config needed")))
+    database = tmp_path / "review.sqlite3"
+    runner = CliRunner()
+    first = runner.invoke(module.cli, ["server-reset-password", "--database", str(database)])
+    assert first.exit_code == 0, first.output
+    assert first.output.count("WeClone 网页访问密码") == 1
+    password = first.output.strip().split("：")[-1]
+    store = AuthStore(database)
+    token, _ = store.login(password)
+    second = runner.invoke(module.cli, ["server-reset-password", "--database", str(database)])
+    assert second.exit_code == 0, second.output
+    assert second.output != first.output
+    assert store.expiry(token) is None
+    assert store.login(second.output.strip().split("：")[-1])
+
+
+def test_unified_routes_lifespan_auth_and_streaming(tmp_path, monkeypatch, capsys):
     events = []
 
     @asynccontextmanager
@@ -66,11 +87,17 @@ def test_unified_routes_lifespan_auth_and_streaming(tmp_path, monkeypatch):
     (static / "index.html").write_text("<h1>WeClone</h1>")
     options = {"database": tmp_path / "review.db", "source": source, "static_dir": static}
     with TestClient(app.create_app(**options)) as client:
+        password = capsys.readouterr().out.strip().split("：")[-1]
+        assert client.get("/api/profile").status_code == 401
+        assert client.post("/api/auth/login", json={"password": password},
+                           headers={"X-WeClone-Request": "1"}).status_code == 200
         assert client.get("/").text == "<h1>WeClone</h1>"
         assert client.get("/api/profile").json()["facts"] == []
         assert client.get("/v1/models").status_code == 404
+        cookies = dict(client.cookies)
     factory.assert_not_called()
     with TestClient(app.create_app(**options, inference=True)) as client:
+        client.cookies.update(cookies)
         assert events == ["start"]
         assert client.get("/").status_code == 200
         assert client.get("/api/profile").status_code == 200
