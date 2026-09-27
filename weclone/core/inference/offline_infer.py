@@ -1,5 +1,4 @@
-import re
-from typing import List, Optional, cast
+from typing import Any, List, Optional
 
 import torch
 from llamafactory.data import get_template_and_fix_tokenizer
@@ -27,22 +26,22 @@ def _make_guided_decoding_params(json_schema: dict, disable_any_whitespace: bool
     return _STRUCTURED_OUTPUTS_PARAMS(json=json_schema, disable_any_whitespace=disable_any_whitespace)  # type: ignore[misc]
 
 
-from weclone.utils.config import load_config
-from weclone.utils.config_models import VllmArgs
-from weclone.utils.log import logger
+from ._common import extract_json_from_text, logger
 
 # from vllm.entrypoints.openai.tool_parsers import xLAMToolParser
 
 # NOTE: the V1 LLM engine writing style was used.
 
 
-def extract_json_from_text(text: str) -> str:
-    """Extract JSON content from text, supporting JSON blocks in markdown format."""
-    json_pattern = r"```json\s*(.*?)\s*```"
-    match = re.search(json_pattern, text, re.DOTALL)
-    if match:
-        return match.group(1).strip()
-    return text.strip()
+def _load_weclone_vllm_overrides() -> dict[str, Any]:
+    """Load WeClone-specific engine overrides when running inside WeClone."""
+    try:
+        from weclone.utils.config import load_config
+    except ModuleNotFoundError:
+        return {}
+
+    config = load_config("vllm")
+    return {key: value for key, value in config.model_dump().items() if value is not None}
 
 
 def parse_guided_decoding_results(
@@ -122,7 +121,7 @@ def vllm_infer(
     if pipeline_parallel_size > get_device_count():
         raise ValueError("Pipeline parallel size should be smaller than the number of gpus.")
 
-    wc_vllm_args = cast(VllmArgs, load_config("vllm"))
+    wc_vllm_dict = _load_weclone_vllm_overrides()
     model_args, data_args, _, generating_args = get_infer_args(
         {
             "model_name_or_path": model_name_or_path,
@@ -191,7 +190,6 @@ def vllm_infer(
     if template_obj.mm_plugin.__class__.__name__ != "BasePlugin":
         engine_args["limit_mm_per_prompt"] = {"image": 4, "video": 2, "audio": 2}
 
-    wc_vllm_dict = {k: v for k, v in wc_vllm_args.model_dump().items() if v is not None}
     engine_args.update(wc_vllm_dict)
 
     if isinstance(model_args.vllm_config, dict):
