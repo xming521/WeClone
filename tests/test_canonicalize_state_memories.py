@@ -10,6 +10,13 @@ from weclone.core.inference import llm_client
 from weclone.data.agent import canonicalize_state_memories as canonicalize
 
 
+@pytest.fixture(autouse=True)
+def isolated_default_config(tmp_path, monkeypatch):
+    config = tmp_path / "default_settings.jsonc"
+    config.write_text('{"agent_distill_args": {"merge_enabled": true}}', encoding="utf-8")
+    monkeypatch.setattr(canonicalize, "DEFAULT_CONFIG_PATH", config)
+
+
 def write_grouping(directory, name="person"):
     records = [
         {
