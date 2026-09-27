@@ -3,6 +3,7 @@ import copy
 import json
 import os
 import re
+from importlib.util import find_spec
 from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -219,6 +220,10 @@ def _resolve_ltp_map_location(device: str, physical_gpu: str) -> str:
 
 
 def _load_ltp(model_path: Path, device: str, physical_gpu: str):
+    if find_spec("ltp") is None:
+        logger.info("LTP is not installed; filtering episodes with fewer than 10 non-whitespace characters")
+        return None
+
     if not model_path.exists():
         raise FileNotFoundError(f"LTP model path does not exist: {model_path}")
 
@@ -239,6 +244,19 @@ def _filter_low_information_items(
     filtered_count = 0
 
     texts = [_episode_text(item) for item in items]
+    if ltp is None:
+        for item, text in zip(items, texts):
+            char_len = _char_len_without_spaces(text)
+            if char_len < 10:
+                filtered_count += 1
+                reason_counts["empty_content" if char_len == 0 else "short_char_len"] += 1
+            else:
+                kept_items.append(item)
+        return kept_items, {
+            "filtered_count": filtered_count,
+            "reason_counts": dict(sorted(reason_counts.items())),
+        }
+
     for start in range(0, len(items), batch_size):
         batch_items = items[start : start + batch_size]
         batch_texts = texts[start : start + batch_size]
@@ -458,6 +476,7 @@ def build_stage2_outputs(
             {
                 "input_path": str(input_path),
                 "output_dir": str(output_dir),
+                "filter_method": "ltp" if ltp is not None else "length",
                 "ltp_model_path": str(ltp_model_path),
                 "ltp_batch_size": ltp_batch_size,
                 "ltp_device": ltp_device,
@@ -476,7 +495,7 @@ def build_stage2_outputs(
                     "very_short_char_len_lt": VERY_SHORT_CHAR_LEN_THRESHOLD,
                     "very_short_function_ratio_gte": VERY_SHORT_FUNCTION_RATIO_THRESHOLD,
                     "very_short_low_value_requires_no_useful_anchor": True,
-                },
+                } if ltp is not None else {"char_len_lt": 10},
                 "total_written": total_written,
                 "groups": manifest,
             },
