@@ -293,43 +293,51 @@ def load_codex_exec_config(config_path: Path) -> dict[str, Any]:
     return codex_config
 
 
+def load_agent_distill_config(config_path: Path) -> dict[str, Any]:
+    config_data = pyjson5.loads(config_path.read_text(encoding="utf-8"))
+    config = config_data.get("agent_distill_args", {})
+    if not isinstance(config, dict):
+        raise ValueError(f"agent_distill_args must be an object in {config_path}")
+    return config
+
+
 def required_config_value(config: dict[str, Any], key: str, config_path: Path) -> Any:
     value = config.get(key)
     if value is None or value == "":
-        raise ValueError(f"codex_exec_args.{key} is required in {config_path}")
+        raise ValueError(f"agent_distill_args.{key} is required in {config_path}")
     return value
 
 
 def required_config_str(config: dict[str, Any], key: str, config_path: Path) -> str:
     text = str(required_config_value(config, key, config_path)).strip()
     if not text:
-        raise ValueError(f"codex_exec_args.{key} is required in {config_path}")
+        raise ValueError(f"agent_distill_args.{key} is required in {config_path}")
     return text
 
 
 def required_config_int(config: dict[str, Any], key: str, config_path: Path) -> int:
     value = int(required_config_value(config, key, config_path))
     if value < 1:
-        raise ValueError(f"codex_exec_args.{key} must be >= 1 in {config_path}")
+        raise ValueError(f"agent_distill_args.{key} must be >= 1 in {config_path}")
     return value
 
 
 def resolve_llm_args(args: SimpleNamespace) -> SimpleNamespace:
-    args.llm_provider = args.llm_provider or "codex_exec"
+    distill_config = load_agent_distill_config(args.config_path)
+    args.llm_provider = args.llm_provider or distill_config.get("llm_provider") or "codex_exec"
+    legacy_codex = load_codex_exec_config(args.config_path) if args.llm_provider == "codex_exec" else {}
+    shared_config = {**legacy_codex, **distill_config}
+    args.batch_size = args.batch_size or int(shared_config.get("batch_size", 10))
+    if args.max_tokens is None:
+        max_tokens = shared_config.get("max_tokens")
+        args.max_tokens = None if max_tokens is None else int(max_tokens)
+    args.timeout = args.timeout or int(shared_config.get("timeout", 120))
     if args.llm_provider != "codex_exec":
-        args.batch_size = args.batch_size or 1
-        args.max_tokens = args.max_tokens or 4096
-        args.timeout = args.timeout or 120
         return args
-    codex_config = load_codex_exec_config(args.config_path)
-    args.model = args.model or required_config_str(codex_config, "model", args.config_path)
-    args.effort = args.effort or required_config_str(codex_config, "effort", args.config_path)
-    args.batch_size = args.batch_size or required_config_int(codex_config, "batch_size", args.config_path)
-    if args.max_tokens is None and codex_config.get("max_tokens") is not None:
-        args.max_tokens = required_config_int(codex_config, "max_tokens", args.config_path)
-    args.timeout = args.timeout or required_config_int(codex_config, "timeout", args.config_path)
-    args.codex_command = args.codex_command or required_config_str(codex_config, "command", args.config_path)
-    args.codex_sandbox = args.codex_sandbox or required_config_str(codex_config, "sandbox", args.config_path)
+    args.model = args.model or required_config_str(shared_config, "model", args.config_path)
+    args.effort = args.effort or required_config_str(shared_config, "effort", args.config_path)
+    args.codex_command = args.codex_command or required_config_str(shared_config, "command", args.config_path)
+    args.codex_sandbox = args.codex_sandbox or required_config_str(shared_config, "sandbox", args.config_path)
     return args
 
 

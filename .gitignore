@@ -24,6 +24,8 @@ __pycache__/
 build/
 develop-eggs/
 dist/
+!weclone/web/dist/
+!weclone/web/dist/**
 downloads/
 eggs/
 .eggs/

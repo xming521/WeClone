@@ -18,6 +18,7 @@ from weclone.server.auth import install_auth
 
 Status = Literal["pending", "approved", "rejected"]
 ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_STATIC_DIR = Path(__file__).resolve().parents[1] / "web" / "dist"
 
 
 def encode(value):
@@ -374,7 +375,7 @@ def create_app(
     def unknown_api(path: str):
         raise HTTPException(404, "接口不存在")
 
-    static_dir = static_dir or ROOT / "web/dist"
+    static_dir = static_dir or DEFAULT_STATIC_DIR
     if static_dir.is_dir():
         app.mount("/", StaticFiles(directory=static_dir, html=True), name="web")
     return app

@@ -62,8 +62,8 @@ def merge_response():
 @pytest.fixture
 def backend(tmp_path, monkeypatch):
     config = tmp_path / "config.jsonc"
-    config.write_text(json.dumps({"codex_exec_args": {
-        "model": "test-model", "effort": "high", "batch_size": 3,
+    config.write_text(json.dumps({"agent_distill_args": {
+        "llm_provider": "codex_exec", "model": "test-model", "effort": "high", "batch_size": 3,
         "timeout": 120, "command": "test-command", "sandbox": "read-only",
     }}))
     client = Mock()

@@ -3,7 +3,12 @@ import json
 import pytest
 from fastapi.testclient import TestClient
 
-from weclone.server.profile_review import create_app
+from weclone.server.profile_review import DEFAULT_STATIC_DIR, create_app
+
+
+def test_bundled_frontend_assets_exist():
+    assert (DEFAULT_STATIC_DIR / "index.html").is_file()
+    assert any((DEFAULT_STATIC_DIR / "assets").iterdir())
 
 
 @pytest.fixture

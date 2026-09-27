@@ -292,13 +292,49 @@ def _chat_with_filename(chat_with: str, used_filenames: set[str]) -> str:
         suffix += 1
 
 
-def _clear_existing_stage2_outputs(output_dir: Path, input_path: Path) -> None:
-    if not output_dir.exists():
-        return
+def _stage2_output_files_to_clear(
+    output_dir: Path,
+    input_path: Path,
+    manifest_path: Path,
+) -> list[Path]:
     if output_dir.resolve() == input_path.parent.resolve():
         raise ValueError(f"Refusing to clear output dir because it is the input file directory: {output_dir}")
-    for path in output_dir.glob("*.json"):
-        path.unlink()
+    if not output_dir.exists():
+        return []
+
+    previous_files: set[str] = set()
+    if manifest_path.exists():
+        with manifest_path.open(encoding="utf-8") as f:
+            previous_manifest = json.load(f)
+        if (
+            not isinstance(previous_manifest, dict)
+            or not isinstance(previous_manifest.get("input_path"), str)
+            or not isinstance(previous_manifest.get("groups"), list)
+        ):
+            raise ValueError(f"Not a Stage2 manifest: {manifest_path}")
+        for group in previous_manifest["groups"]:
+            filename = group.get("file_name") if isinstance(group, dict) else None
+            if (
+                not isinstance(filename, str)
+                or not filename.endswith(".json")
+                or Path(filename).name != filename
+                or "\\" in filename
+                or filename == manifest_path.name
+                or filename in previous_files
+            ):
+                raise ValueError(f"Invalid Stage2 output filename in {manifest_path}: {filename!r}")
+            previous_files.add(filename)
+
+    unmanaged_files = {
+        path.name for path in output_dir.glob("*.json")
+        if path.name not in previous_files and path != manifest_path
+    }
+    if unmanaged_files:
+        raise ValueError(
+            f"Refusing to clear {output_dir}: JSON files not listed in Stage2 manifest: "
+            f"{sorted(unmanaged_files)}"
+        )
+    return [output_dir / filename for filename in sorted(previous_files) if (output_dir / filename).exists()]
 
 
 def _chat_with_id(chat_with_index: int) -> str:
@@ -326,6 +362,8 @@ def build_stage2_outputs(
 ) -> list[dict[str, Any]]:
     input_path = Path(input_path)
     output_dir = Path(output_dir)
+    if not manifest_name.endswith(".json") or Path(manifest_name).name != manifest_name or "\\" in manifest_name:
+        raise ValueError(f"Manifest name must be a JSON filename: {manifest_name}")
     manifest_path = output_dir / manifest_name
     ltp_model_path = Path(ltp_model_path)
 
@@ -360,12 +398,18 @@ def build_stage2_outputs(
 
         grouped[chat_with].append((original_index, item))
 
+    used_filenames: set[str] = set()
+    output_filenames = [_chat_with_filename(chat_with, used_filenames) for chat_with in chat_with_order]
+    if manifest_name in used_filenames:
+        raise ValueError(f"Manifest name conflicts with a Stage2 output file: {manifest_name}")
+
+    previous_output_files = _stage2_output_files_to_clear(output_dir, input_path, manifest_path)
+    ltp = _load_ltp(ltp_model_path, ltp_device, ltp_physical_gpu)
+    for path in previous_output_files:
+        path.unlink()
     output_dir.mkdir(parents=True, exist_ok=True)
-    _clear_existing_stage2_outputs(output_dir, input_path)
     manifest: list[dict[str, Any]] = []
     total_written = 0
-    used_filenames: set[str] = set()
-    ltp = _load_ltp(ltp_model_path, ltp_device, ltp_physical_gpu)
     total_filtered_low_information_count = 0
     total_reason_counts: dict[str, int] = defaultdict(int)
 
@@ -384,7 +428,7 @@ def build_stage2_outputs(
         for reason, count in filter_stats["reason_counts"].items():
             total_reason_counts[reason] += count
 
-        output_filename = _chat_with_filename(chat_with, used_filenames)
+        output_filename = output_filenames[chat_with_index]
         output_path = output_dir / output_filename
         with output_path.open("w", encoding="utf-8") as f:
             json.dump(kept_items, f, ensure_ascii=False, indent=4)

@@ -227,7 +227,9 @@ def resolve_context_window(args: argparse.Namespace) -> int:
         "llm_provider"
     )
     if provider == "codex_exec":
-        config = distill_profile.load_codex_exec_config(args.config_path)
+        config = distill_profile.load_agent_distill_config(args.config_path)
+        if not config.get("model"):
+            config = {**distill_profile.load_codex_exec_config(args.config_path), **config}
         command = config.get("command", "codex")
         effective_config = asyncio.run(codex_config(command))
         catalog = json.loads(

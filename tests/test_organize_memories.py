@@ -282,8 +282,9 @@ def test_preference_attributes_reject_invalid_fields_and_references(items):
 @pytest.mark.parametrize("configured, expected", [(None, 95000), (160000, 152000)])
 def test_context_window_uses_codex_effective_window_not_model_maximum(tmp_path, monkeypatch, configured, expected):
     config = tmp_path / "settings.jsonc"
-    config.write_text(json.dumps({"agent_distill_args": {"llm_provider": "codex_exec"},
-                                  "codex_exec_args": {"model": "test-model"}}))
+    config.write_text(json.dumps({"agent_distill_args": {
+        "llm_provider": "codex_exec", "model": "test-model", "command": "codex"
+    }}))
     catalog = {"models": [
         {"slug": "other-model", "max_context_window": 1000000},
         {"slug": "test-model", "context_window": 100000, "max_context_window": 200000,
@@ -307,8 +308,9 @@ def test_context_window_uses_codex_effective_window_not_model_maximum(tmp_path, 
 
 def test_unknown_model_requires_explicit_context_window(tmp_path, monkeypatch):
     config = tmp_path / "settings.jsonc"
-    config.write_text(json.dumps({"agent_distill_args": {"llm_provider": "codex_exec"},
-                                  "codex_exec_args": {"model": "unknown-model"}}))
+    config.write_text(json.dumps({"agent_distill_args": {
+        "llm_provider": "codex_exec", "model": "unknown-model", "command": "codex"
+    }}))
     async def effective_config(command):
         return {}
 
@@ -598,8 +600,8 @@ def test_llm_resume_ignores_configuration_changes(tmp_path, monkeypatch, change)
 
     config = tmp_path / "settings.jsonc"
     settings = {
-        "agent_distill_args": {"llm_provider": "codex_exec", "overwrite": False},
-        "codex_exec_args": {
+        "agent_distill_args": {
+            "llm_provider": "codex_exec", "overwrite": False,
             "model": "model-a", "effort": "low", "batch_size": 2, "max_tokens": 200,
             "timeout": 10, "command": "codex", "sandbox": "read-only",
         },
@@ -635,9 +637,9 @@ def test_llm_resume_ignores_configuration_changes(tmp_path, monkeypatch, change)
     if change == "extraction":
         settings["agent_distill_args"].update(max_samples_per_window=16, max_content_chars=800)
     elif change == "execution":
-        settings["codex_exec_args"].update(batch_size=7, timeout=30)
+        settings["agent_distill_args"].update(batch_size=7, timeout=30)
     elif change == "model":
-        settings["codex_exec_args"].update(model="model-b", effort="high", max_tokens=400)
+        settings["agent_distill_args"].update(model="model-b", effort="high", max_tokens=400)
     elif change == "overwrite":
         settings["agent_distill_args"]["overwrite"] = True
     config.write_text("// edited configuration\n" + json.dumps(settings, indent=2))

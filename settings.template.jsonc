@@ -14,14 +14,25 @@
         "full_log": false,
         "log_level": "INFO"
     },
+    "codex_exec_args": {
+        // codex exec 后端配置；API 后端仍读取 make_dataset_args
+        "model": "gpt-6-sol", // 理想抽取效果 建议智能水平不低于gpt-6-sol medium 
+        "effort": "medium",
+        "batch_size": 30,
+        "request_interval_seconds": 0.5,
+        "capacity_cooldown_seconds": 10.0,
+        "timeout": 300,
+        "command": "codex",
+        "sandbox": "read-only"
+    },
     "agent_distill_args": {
         // false：复用抽取断点；true：重新抽取
         "overwrite": false,
         // state/event distill 使用的 LLM 后端：codex_exec 或 api
         "llm_provider": "codex_exec",
         // 是否执行 LLM 画像归并；false 时仍可分组，但跳过 prepare/run/apply
-        "merge_enabled": true,
-        // 每窗同时满足条数和正文字符上限；正文不计 ID、时间、角色标签；超长单条完整单独发送
+        "merge_enabled": false,
+        // 每窗同时满足条数和正文字符上限；正文不计 ID、时间、角色标签
         "max_samples_per_window": 8,
         "max_content_chars": 400
     },

@@ -248,8 +248,8 @@ def test_existing_input_memories_are_written_to_separate_output(tmp_path, task, 
 @pytest.mark.parametrize("max_tokens", [None, 4096])
 def test_window_config_preserves_model_concurrency_and_optional_token_limit(tmp_path, max_tokens):
     config = {
-        "agent_distill_args": {"llm_provider": "codex_exec"},
-        "codex_exec_args": {
+        "agent_distill_args": {
+            "llm_provider": "codex_exec",
             "model": "configured-model",
             "effort": "low",
             "command": "codex",

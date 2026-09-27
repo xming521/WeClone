@@ -17,6 +17,10 @@ dependencies = [
   "loguru>=0.7.3",
   "langchain",
   "openai==1.87.0",
+  "fastapi",
+  "uvicorn",
+  "tiktoken",
+  "tokenizers",
   "pip",
 ]
 
@@ -98,6 +102,9 @@ explicit = true
 where = ["."]                      
 include = ["weclone*"]             
 exclude = ["*tests*", "*archive*"]
+
+[tool.setuptools.package-data]
+"weclone.web" = ["dist/*", "dist/assets/*"]
 
 [tool.pyright]
 typeCheckingMode = "basic"

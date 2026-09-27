@@ -28,6 +28,9 @@ DEFAULT_CONFIG_PATH = Path("settings.jsonc")
 DEFAULT_TARGET_ROLE = "assistant"
 DEFAULT_PROVIDER = "codex_exec"
 DEFAULT_OVERWRITE = True
+DEFAULT_BATCH_SIZE = 10
+DEFAULT_MAX_TOKENS = None
+DEFAULT_TIMEOUT = 120
 STATE_WRITEBACK_FIELD = "state_memories"
 
 DEFAULT_LIMIT_FILES = None
@@ -96,24 +99,72 @@ def normalize_llm_provider(provider: Any) -> str:
     raise ValueError(f"unknown agent_distill_args.llm_provider: {provider}")
 
 
-def required_config_value(config: dict[str, Any], key: str, config_path: Path) -> Any:
+def required_config_value(
+    config: dict[str, Any],
+    key: str,
+    config_path: Path,
+    *,
+    section: str = "agent_distill_args",
+) -> Any:
     value = config.get(key)
     if value is None or value == "":
-        raise ValueError(f"codex_exec_args.{key} is required in {config_path}")
+        raise ValueError(f"{section}.{key} is required in {config_path}")
     return value
 
 
-def required_config_str(config: dict[str, Any], key: str, config_path: Path) -> str:
-    text = str(required_config_value(config, key, config_path)).strip()
+def required_config_str(
+    config: dict[str, Any],
+    key: str,
+    config_path: Path,
+    *,
+    section: str = "agent_distill_args",
+) -> str:
+    text = str(required_config_value(config, key, config_path, section=section)).strip()
     if not text:
-        raise ValueError(f"codex_exec_args.{key} is required in {config_path}")
+        raise ValueError(f"{section}.{key} is required in {config_path}")
     return text
 
 
-def required_config_int(config: dict[str, Any], key: str, config_path: Path) -> int:
-    value = int(required_config_value(config, key, config_path))
+def required_config_int(
+    config: dict[str, Any],
+    key: str,
+    config_path: Path,
+    *,
+    section: str = "agent_distill_args",
+) -> int:
+    value = int(required_config_value(config, key, config_path, section=section))
     if value < 1:
-        raise ValueError(f"codex_exec_args.{key} must be >= 1 in {config_path}")
+        raise ValueError(f"{section}.{key} must be >= 1 in {config_path}")
+    return value
+
+
+def positive_config_int(
+    config: dict[str, Any],
+    key: str,
+    default: int,
+    *,
+    section: str,
+    config_path: Path,
+) -> int:
+    value = config.get(key, default)
+    if type(value) is not int or value < 1:
+        raise ValueError(f"{section}.{key} must be a positive integer in {config_path}")
+    return value
+
+
+def optional_positive_config_int(
+    config: dict[str, Any],
+    key: str,
+    default: int | None,
+    *,
+    section: str,
+    config_path: Path,
+) -> int | None:
+    value = config.get(key, default)
+    if value is None:
+        return None
+    if type(value) is not int or value < 1:
+        raise ValueError(f"{section}.{key} must be a positive integer or null in {config_path}")
     return value
 
 
@@ -123,24 +174,45 @@ def resolve_llm_args(args: SimpleNamespace) -> SimpleNamespace:
     if type(args.overwrite) is not bool:
         raise ValueError("agent_distill_args.overwrite must be a boolean")
     args.llm_provider = normalize_llm_provider(args.llm_provider or distill_config.get("llm_provider"))
-    codex_config = load_codex_exec_config(args.config_path)
-    args.batch_size = required_config_int(codex_config, "batch_size", args.config_path)
-    args.max_tokens = (
-        required_config_int(codex_config, "max_tokens", args.config_path)
-        if codex_config.get("max_tokens") is not None
-        else None
-    )
-    args.timeout = required_config_int(codex_config, "timeout", args.config_path)
     for name in ("max_samples_per_window", "max_content_chars"):
         value = distill_config.get(name, getattr(args, name))
         if type(value) is not int or value < 1:
             raise ValueError(f"agent_distill_args.{name} must be a positive integer")
         setattr(args, name, value)
 
+    legacy_codex_config = (
+        load_codex_exec_config(args.config_path) if args.llm_provider == "codex_exec" else {}
+    )
+    args.batch_size = positive_config_int(
+        distill_config,
+        "batch_size",
+        legacy_codex_config.get("batch_size", DEFAULT_BATCH_SIZE),
+        section="agent_distill_args",
+        config_path=args.config_path,
+    )
+    args.max_tokens = optional_positive_config_int(
+        distill_config,
+        "max_tokens",
+        legacy_codex_config.get("max_tokens", DEFAULT_MAX_TOKENS),
+        section="agent_distill_args",
+        config_path=args.config_path,
+    )
+    args.timeout = positive_config_int(
+        distill_config,
+        "timeout",
+        legacy_codex_config.get("timeout", DEFAULT_TIMEOUT),
+        section="agent_distill_args",
+        config_path=args.config_path,
+    )
+
     if args.llm_provider != "codex_exec":
         args.model = None
+        args.effort = None
+        args.codex_command = None
+        args.codex_sandbox = None
         return args
 
+    codex_config = {**legacy_codex_config, **distill_config}
     args.model = required_config_str(codex_config, "model", args.config_path)
     args.effort = required_config_str(codex_config, "effort", args.config_path)
     args.codex_command = required_config_str(codex_config, "command", args.config_path)

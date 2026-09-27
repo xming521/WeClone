@@ -1,5 +1,6 @@
 import importlib
 import json
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -8,6 +9,48 @@ from click.testing import CliRunner
 
 from weclone.core.inference import llm_client
 from weclone.data.agent import distill_event, distill_profile
+
+
+def test_template_preserves_codex_distill_settings():
+    config = distill_profile.load_codex_exec_config(Path("settings.template.jsonc"))
+    required = {
+        "model", "effort", "batch_size", "timeout", "command", "sandbox",
+        "request_interval_seconds", "capacity_cooldown_seconds",
+    }
+    assert required <= config.keys()
+    assert all(config[key] not in (None, "") for key in required)
+    assert (config["request_interval_seconds"], config["capacity_cooldown_seconds"]) == (0.5, 10.0)
+    assert "max_tokens" not in config
+    args = distill_profile.default_args()
+    args.config_path = Path("settings.template.jsonc")
+    resolved = distill_profile.resolve_llm_args(args)
+    assert (resolved.batch_size, resolved.max_tokens, resolved.timeout) == (50, None, 300)
+
+
+def test_api_provider_does_not_require_codex_exec_settings(tmp_path):
+    config_path = tmp_path / "settings.jsonc"
+    config_path.write_text(
+        json.dumps(
+            {
+                "agent_distill_args": {
+                    "llm_provider": "api",
+                    "batch_size": 3,
+                    "max_tokens": 2048,
+                    "timeout": 45,
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    args = distill_profile.default_args()
+    args.config_path = config_path
+
+    resolved = distill_profile.resolve_llm_args(args)
+
+    assert resolved.llm_provider == "api"
+    assert (resolved.batch_size, resolved.max_tokens, resolved.timeout) == (3, 2048, 45)
+    assert resolved.model is None
+    assert resolved.codex_command is None
 
 
 @pytest.mark.parametrize(
