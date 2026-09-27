@@ -1,6 +1,5 @@
 import json
 from datetime import datetime, timedelta, timezone
-from pickle import TRUE
 import threading
 import time
 from dataclasses import fields, is_dataclass
@@ -8,9 +7,17 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, Iterable
 
+import click
 import pyjson5
 from tqdm import tqdm
 
+from weclone.data.agent.distill_windows import (
+    ChatSample,
+    generate_window_batch,
+    group_samples,
+    make_window_request,
+    render_sample,
+)
 from weclone.prompts.chat_distill import build_state_extract_prompt
 from weclone.utils.log import logger
 
@@ -21,6 +28,7 @@ DEFAULT_CONFIG_PATH = Path("settings.jsonc")
 DEFAULT_TARGET_ROLE = "assistant"
 DEFAULT_PROVIDER = "codex_exec"
 DEFAULT_OVERWRITE = True
+STATE_WRITEBACK_FIELD = "state_memories"
 
 DEFAULT_LIMIT_FILES = None
 DEFAULT_LIMIT_RECORDS = None
@@ -38,6 +46,8 @@ def default_args() -> SimpleNamespace:
         model=None,
         effort=None,
         batch_size=None,
+        max_samples_per_window=8,
+        max_content_chars=400,
         codex_command=None,
         codex_sandbox=None,
         max_tokens=None,
@@ -109,11 +119,22 @@ def required_config_int(config: dict[str, Any], key: str, config_path: Path) -> 
 
 def resolve_llm_args(args: SimpleNamespace) -> SimpleNamespace:
     distill_config = load_agent_distill_config(args.config_path)
+    args.overwrite = distill_config.get("overwrite", args.overwrite)
+    if type(args.overwrite) is not bool:
+        raise ValueError("agent_distill_args.overwrite must be a boolean")
     args.llm_provider = normalize_llm_provider(args.llm_provider or distill_config.get("llm_provider"))
     codex_config = load_codex_exec_config(args.config_path)
     args.batch_size = required_config_int(codex_config, "batch_size", args.config_path)
-    args.max_tokens = required_config_int(codex_config, "max_tokens", args.config_path)
+    args.max_tokens = (
+        required_config_int(codex_config, "max_tokens", args.config_path)
+        if codex_config.get("max_tokens") is not None else None
+    )
     args.timeout = required_config_int(codex_config, "timeout", args.config_path)
+    for name in ("max_samples_per_window", "max_content_chars"):
+        value = distill_config.get(name, getattr(args, name))
+        if type(value) is not int or value < 1:
+            raise ValueError(f"agent_distill_args.{name} must be a positive integer")
+        setattr(args, name, value)
 
     if args.llm_provider != "codex_exec":
         args.model = None
@@ -151,6 +172,19 @@ def iter_chat_files(input_dir: Path) -> Iterable[Path]:
         if "manifest" in path.name:
             continue
         yield path
+
+
+def confirm_distillation(args: SimpleNamespace, *, task: str, file_count: int) -> bool:
+    click.echo(f"即将执行{task}蒸馏：输入 {args.input_dir}（{file_count} 个聊天文件），输出 {args.output_dir}。")
+    click.echo(f"模型后端：{args.llm_provider}。输入目录中的聊天样本将交给该模型处理。")
+    click.echo("聊天内容可能包含身份、联系方式和私密对话；模型服务可能记录或留存这些内容，存在隐私泄露风险。")
+    if args.overwrite:
+        click.echo("当前配置 overwrite=true，将重新抽取并更新同名结果和断点。")
+    click.echo("请确认你有权处理这些聊天记录，并同意将聊天内容发送给该模型服务。")
+    try:
+        return click.confirm("继续执行？", default=False)
+    except click.Abort:
+        return False
 
 
 def batched(items: list[Any], batch_size: int) -> Iterable[list[Any]]:
@@ -192,7 +226,11 @@ def allow_current_state(item: dict[str, Any], cutoff_time: datetime | None) -> b
 
 
 def default_state_path(output_dir: Path) -> Path:
-    return output_dir / "distill_state.json"
+    return output_dir / "distill_state_checkpoint.json"
+
+
+def output_path_for(output_dir: Path, source_path: Path) -> Path:
+    return output_dir / "state_people" / source_path.name
 
 
 def new_state(input_dir: Path, output_dir: Path) -> dict[str, Any]:
@@ -288,9 +326,9 @@ def apply_payload_to_item(item: dict[str, Any], payload: dict[str, Any]) -> bool
     memories = memories_from_payload(payload)
     if memories is None:
         return False
-    if item.get("state_memories") == memories:
+    if item.get(STATE_WRITEBACK_FIELD) == memories:
         return False
-    item["state_memories"] = memories
+    item[STATE_WRITEBACK_FIELD] = memories
     return True
 
 
@@ -315,20 +353,7 @@ def other_role(target_role: str) -> str:
 
 
 def render_chat(item: dict[str, Any], *, target_role: str, sample_id: str) -> str:
-    lines = ["messages:"]
-
-    for message_index, message in enumerate(item.get("messages", [])):
-        if not isinstance(message, dict):
-            continue
-        role = str(message.get("role", "")).strip()
-        label = role_label(role, target_role)
-        if label is None:
-            continue
-        content = str(message.get("content", "")).replace("\r\n", "\n").strip()
-        if not content:
-            continue
-        lines.append(f"[{message_index}] {label}：{content}")
-    return "\n".join(lines)
+    return render_sample(item, sample_id=sample_id, target_role=target_role, include_time=False)
 
 
 def build_prompt(
@@ -353,29 +378,6 @@ def response_payload(response: Any) -> dict[str, Any]:
     }
 
 
-def run_dry_preview(
-    source_path: Path,
-    item: dict[str, Any],
-    *,
-    target_role: str,
-    sample_id: str,
-    include_current_state: bool,
-) -> None:
-    rendered_chat = render_chat(item, target_role=target_role, sample_id=sample_id)
-    prompt = build_state_extract_prompt(include_current_state=include_current_state).replace(
-        "{{CHAT_JSON}}",
-        rendered_chat,
-    )
-    preview = rendered_chat[:2000]
-    suffix = "" if len(rendered_chat) <= len(preview) else "\n...<truncated>"
-    logger.info(
-        f"Dry run: {source_path.name} sample_id={sample_id}, "
-        f"chat_chars={len(rendered_chat)}, prompt_chars={len(prompt)}, "
-        f"include_current_state={include_current_state}"
-    )
-    print(preview + suffix)
-
-
 def process_file(
     source_path: Path,
     *,
@@ -385,7 +387,7 @@ def process_file(
     model: str | None,
     effort: str | None,
     client: Any,
-    max_tokens: int,
+    max_tokens: int | None,
     batch_size: int,
     limit_records: int | None,
     overwrite: bool,
@@ -394,8 +396,11 @@ def process_file(
     state_path: Path,
     indent: int,
     progress_factory: Any = tqdm,
+    max_samples_per_window: int = 8,
+    max_content_chars: int = 400,
 ) -> tuple[int, int]:
     source_data = load_json(source_path)
+    output_path = output_path_for(output_dir, source_path)
     all_items = chat_items(source_data)
     latest_time, current_state_cutoff_time = current_state_time_window(all_items)
     items = all_items
@@ -408,7 +413,7 @@ def process_file(
     entries = state.setdefault("entries", {})
     done_count = 0
     call_count = 0
-    request_rows = []
+    pending_samples = []
     skipped_count = 0
     writeback_changed = False
 
@@ -430,55 +435,42 @@ def process_file(
             skipped_count += 1
             continue
 
-        if not overwrite and isinstance(item.get("state_memories"), list):
+        if not overwrite and isinstance(item.get(STATE_WRITEBACK_FIELD), list):
             record["status"] = "done"
             record["done_reason"] = "input_writeback"
             record["updated_at"] = now_ts()
             skipped_count += 1
             continue
 
-        if dry_run:
-            run_dry_preview(
-                source_path,
-                item,
-                target_role=target_role,
-                sample_id=sample_id,
-                include_current_state=include_current_state,
-            )
-            return 1, 0
+        pending_samples.append(ChatSample(source_index, sample_id, item, include_current_state))
 
-        from weclone.core.inference.llm_client import LLMRequest
-
-        prompt = build_prompt(
-            item,
-            target_role=target_role,
-            sample_id=sample_id,
-            include_current_state=include_current_state,
-        )
-        request = LLMRequest.from_prompt(
-            prompt,
-            provider=provider,
-            model=model,
-            effort=effort,
-            max_tokens=max_tokens,
-            json_mode=True,
-            metadata={
-                "source_file": str(source_path),
-                "source_index": source_index,
-                "sample_id": sample_id,
-                "include_current_state": include_current_state,
-            },
-        )
-        request_rows.append((key, source_index, item, sample_id, include_current_state, request))
+    windows = group_samples(
+        pending_samples, max_samples=max_samples_per_window, max_content_chars=max_content_chars,
+    )
+    request_rows = [
+        (window, make_window_request(
+            window, task="state", source_path=source_path, target_role=target_role,
+            provider=provider, model=model, effort=effort, max_tokens=max_tokens,
+        ))
+        for window in windows
+    ]
+    if dry_run:
+        if request_rows:
+            window, request = request_rows[0]
+            logger.info(f"Dry run: {source_path.name}, samples={[s.sample_id for s in window]}")
+            print(request.messages[0]["content"])
+            return len(window), 0
+        return 0, 0
 
     log(
-        f"{source_path.name}: total={len(items)} pending={len(request_rows)} "
+        f"{source_path.name}: total={len(items)} pending={len(pending_samples)} windows={len(request_rows)} "
         f"skipped={skipped_count} batch_size={batch_size} "
         f"latest_time={latest_time.isoformat() if latest_time else ''} "
-        f"current_state_since={current_state_cutoff_time.isoformat() if current_state_cutoff_time else ''}"
+        f"current_state_since={current_state_cutoff_time.isoformat() if current_state_cutoff_time else ''} "
+        f"output={output_path}"
     )
-    if writeback_changed and not dry_run:
-        atomic_save_any_json(source_path, source_data, indent=indent)
+    if not dry_run and (writeback_changed or (skipped_count and not output_path.exists())):
+        atomic_save_any_json(output_path, source_data, indent=indent)
         writeback_changed = False
     if not dry_run:
         atomic_save_json(state_path, state, indent=indent)
@@ -491,53 +483,47 @@ def process_file(
     )
     try:
         for batch in batched(request_rows, batch_size):
-            responses = client.generate_batch(row[5] for row in batch)
-            call_count += len(batch)
-
-            for key, source_index, item, sample_id, include_current_state, _request in batch:
-                record = entries[key]
-                response = responses.pop(0) if responses else None
-                if response is None:
-                    record["status"] = "failed"
-                    record["last_error"] = "missing response"
-                    record["updated_at"] = now_ts()
-                    continue
-
-                payload = {
-                    "source_file": str(source_path),
-                    "source_index": source_index,
-                    "sample_id": sample_id,
-                    "sample_time": item.get("time", ""),
-                    "chat_with": item.get("chat_with", ""),
-                    "target_role": target_role,
-                    "role_mapping": {"A": other_role(target_role), "B": target_role},
-                    "include_current_state": include_current_state,
-                    "current_state_window_days": 14,
-                    "latest_sample_time": latest_time.isoformat() if latest_time else "",
-                    "current_state_since": current_state_cutoff_time.isoformat() if current_state_cutoff_time else "",
-                    "result": response.parsed_json,
-                    "response": response_payload(response),
+            outcomes = generate_window_batch(client, batch, task="state")
+            for outcome in outcomes:
+                call_count += len(outcome.attempts)
+                window_key = f"{source_path}::" + ",".join(str(s.source_index) for s in outcome.samples)
+                state.setdefault("windows", {})[window_key] = {
+                    "sample_ids": [s.sample_id for s in outcome.samples],
+                    "attempts": [response_payload(response) for response in outcome.attempts],
+                    "last_error": outcome.error,
                 }
-                payload = filter_current_state_payload(
-                    payload,
-                    include_current_state=include_current_state,
-                )
-                if response.ok:
-                    writeback_changed = apply_payload_to_item(item, payload) or writeback_changed
-                record["status"] = "done" if response.ok else "failed"
-                record["payload"] = payload
-                record["response_ok"] = response.ok
-                record["last_error"] = response.error or ""
-                record["updated_at"] = now_ts()
-                done_count += 1
+                for sample in outcome.samples:
+                    item, sample_id = sample.item, sample.sample_id
+                    record = entries[state_key(source_path, sample_id)]
+                    payload = {
+                        "source_file": str(source_path),
+                        "source_index": sample.source_index,
+                        "sample_id": sample_id,
+                        "sample_time": item.get("time", ""),
+                        "chat_with": item.get("chat_with", ""),
+                        "target_role": target_role,
+                        "role_mapping": {"A": other_role(target_role), "B": target_role},
+                        "include_current_state": sample.include_current_state,
+                        "current_state_window_days": 14,
+                        "latest_sample_time": latest_time.isoformat() if latest_time else "",
+                        "current_state_since": current_state_cutoff_time.isoformat() if current_state_cutoff_time else "",
+                        "result": outcome.results.get(sample_id),
+                        "response": {"ok": not outcome.error, "error": outcome.error, "window_key": window_key},
+                    }
+                    if not outcome.error:
+                        writeback_changed = apply_payload_to_item(item, payload) or writeback_changed
+                    record["status"] = "failed" if outcome.error else "done"
+                    record["payload"] = payload
+                    record["response_ok"] = not outcome.error
+                    record["last_error"] = outcome.error
+                    record["updated_at"] = now_ts()
+                    done_count += 1
+                if outcome.error:
+                    logger.warning(f"LLM window failed for {source_path.name}: {outcome.error}")
+                progress.update(len(outcome.samples))
 
-                if not response.ok:
-                    logger.warning(f"LLM failed for {source_path.name} sample_id={sample_id}: {response.error}")
-                    log(f"{source_path.name}: sample_id={sample_id} FAILED {str(response.error)[:160]}")
-
-            progress.update(len(batch))
             if writeback_changed:
-                atomic_save_any_json(source_path, source_data, indent=indent)
+                atomic_save_any_json(output_path, source_data, indent=indent)
                 writeback_changed = False
             atomic_save_json(state_path, state, indent=indent)
             log(f"{source_path.name}: wrote={done_count} calls={call_count}")
@@ -545,13 +531,21 @@ def process_file(
         progress.close()
 
     if writeback_changed and not dry_run:
-        atomic_save_any_json(source_path, source_data, indent=indent)
+        atomic_save_any_json(output_path, source_data, indent=indent)
 
     return done_count, call_count
 
 
-def main() -> None:
-    args = resolve_llm_args(default_args())
+def main(*, input_dir: Path | None = None, output_dir: Path | None = None,
+         config_path: Path | None = None) -> None:
+    args = default_args()
+    if input_dir is not None:
+        args.input_dir = input_dir
+    if output_dir is not None:
+        args.output_dir = output_dir
+    if config_path is not None:
+        args.config_path = config_path
+    args = resolve_llm_args(args)
     request_model = args.model if args.llm_provider == "codex_exec" else None
     request_effort = args.effort if args.llm_provider == "codex_exec" else None
     source_files = list(iter_chat_files(args.input_dir))
@@ -560,6 +554,8 @@ def main() -> None:
 
     if not source_files:
         raise FileNotFoundError(f"No chat JSON files found in {args.input_dir}")
+    if not confirm_distillation(args, task="用户画像", file_count=len(source_files)):
+        raise SystemExit("已取消蒸馏；未写入结果或调用模型。")
 
     state_path = Path(args.state_path) if args.state_path else default_state_path(args.output_dir)
     state = load_state(
@@ -572,11 +568,16 @@ def main() -> None:
     state["model"] = request_model
     state["effort"] = request_effort
     state["batch_size"] = args.batch_size
+    state["max_samples_per_window"] = args.max_samples_per_window
+    state["max_content_chars"] = args.max_content_chars
+    state["writeback_field"] = STATE_WRITEBACK_FIELD
+    state["output_subdir"] = "state_people"
     state["updated_at"] = now_ts()
 
     log(f"输入目录: {args.input_dir}  文件数: {len(source_files)}")
     log(f"输出目录: {args.output_dir}")
     log(f"断点文件: {state_path}")
+    log(f"画像字段: {STATE_WRITEBACK_FIELD}")
     log(
         f"provider={args.llm_provider} model={request_model} "
         f"effort={request_effort} batch_size={args.batch_size} dry_run={args.dry_run}"
@@ -613,6 +614,8 @@ def main() -> None:
                 client=client,
                 max_tokens=args.max_tokens,
                 batch_size=args.batch_size,
+                max_samples_per_window=args.max_samples_per_window,
+                max_content_chars=args.max_content_chars,
                 limit_records=args.limit_records,
                 overwrite=args.overwrite,
                 dry_run=args.dry_run,
