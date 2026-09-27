@@ -8,6 +8,7 @@ DIMENSIONS = {
     5: "重要计划与承诺：B需要跟进的关键计划或明确承诺，其履行、变更会显著影响目标推进、资源安排或他人事务；必须要保证重要性，不因出现计划措辞、具体日期或日常待办就入选。排除普通行程、例行加班和泛泛观望，除非有上述实质影响。完成、延期和取消关联对应事项，区分意向与兑现。",
     6: "社会关系网络：具体人物与B之间的关系、互动模式或关系变化。",
     7: "个人外部世界：提取与B生活有关的场所、人物与组织、设施资源、制度规则、信息与宏观环境的具体事实。正文须明确给出环境对象及其属性、关系、运行条件或状态变化；仅有话题提及、个人评价，未给出具体环境事实时不收录。B自身状况、主观倾向或活动过程不单独整理；其中明确建立或改变的外部环境事实可以提取。",
+    8: "兴趣与偏好：B对具体对象、活动、方式或相处体验的喜恶、兴趣和选择倾向。保留偏好对象、方向及适用条件；不将一次行为或评价推广为长期偏好，不将他人的偏好归给B。输入中的peer是来源聊天对方编号，仅正文明确指向聊天对方时用于标识偏好对象。",
 }
 
 CLASSIFY_SCHEMA = {
@@ -40,6 +41,65 @@ CLASSIFY_SCHEMA = {
     "additionalProperties": False,
 }
 
+ATTRIBUTE_HIERARCHY_SCHEMA = {
+    "type": "object",
+    "properties": {"items": {
+        "type": "array",
+        "items": {
+            "type": "object",
+            "properties": {
+                "id": {"type": "integer"},
+                "topic": {"type": "string"},
+                "attr": {"type": "string"},
+            },
+            "required": ["id", "topic", "attr"],
+            "additionalProperties": False,
+        },
+    }},
+    "required": ["items"],
+    "additionalProperties": False,
+}
+
+ATTRIBUTE_HIERARCHY_RULES = """将人物身份画像的属性名整理为上层主题和归一属性名。
+输入id是属性编号，attr是原属性名，不包含具体事实。
+根据属性描述的生活领域生成简洁中文主题，不预设类别列表；相关属性可归入同一主题，只有含义等价的属性才统一名称。
+保留属性名中的对象、阶段和范围区别；含义不明确时保留原名，不推测取值。例如“本科专业”和“研究方向”可属于同一主题，但不能合并。
+每个属性只归入一个最直接的主题，同一个归一属性名使用同一个主题。
+只输出JSON对象：{"items":[{"id":1,"topic":"主题名","attr":"归一属性名"}]}。
+items覆盖每个输入id且各一次；topic是上层浏览主题，attr是归一后的属性名。
+"""
+
+
+def attribute_hierarchy_prompt(attributes: list[dict]) -> str:
+    return ATTRIBUTE_HIERARCHY_RULES + "\n属性：\n" + json.dumps(attributes, ensure_ascii=False, separators=(",", ":"))
+
+
+PREFERENCE_ATTRIBUTE_SCHEMA = {
+    "type": "object",
+    "properties": {"items": {
+        "type": "array",
+        "items": {
+            "type": "object",
+            "properties": {
+                "id": {"type": "string"},
+                "attrs": {"type": "array", "items": {"type": "string"}},
+            },
+            "required": ["id", "attrs"],
+            "additionalProperties": False,
+        },
+    }},
+    "required": ["items"],
+    "additionalProperties": False,
+}
+
+PREFERENCE_ATTRIBUTE_RULES = """为人物B的每条偏好画像生成简洁中文属性名，用于后续分组归并。
+输入id是记忆编号，content是正文；peer是来源聊天对方编号，仅正文明确指向对方时用于识别对象。
+属性名描述偏好的信息类别，具体对象、喜恶方向及条件留在正文；换成该类别的其他取值时属性名应保持不变。例如喜欢或不喜欢甜食均可使用“口味偏好”。按含义统一同义属性名，不预设类别列表。
+只提取正文支持的B的偏好属性，不把他人偏好或明确的玩笑当作B的偏好。
+只输出JSON对象：{"items":[{"id":"输入编号","attrs":["属性名"]}]}。
+items覆盖每个输入id且各一次；attrs是该条记忆涉及的不重复属性名列表，无可用偏好时为空。
+"""
+
 CLASSIFY_RULES = """你负责将已有人物B的画像和事件记忆分类到本次给定的维度，并为每条记忆提出中文属性名。
 目标是保留对当前维度的人物建模有实际作用的信息，不追求覆盖全部输入；普通操作和零散细节若不影响对B的个人特征、现实条件或重要事项的理解，则不收录。
 输入是已抽取记忆，id是记忆编号，content是正文；可选的event_time是原抽取的事件时间，status是计划或目标状态。
@@ -70,6 +130,7 @@ DIMENSION_TIME_RULES = {
     5: "依据具体目标、对象和时间关系识别同一事项，将其计划、准备和进展合并，保留最新进展及必要变更，包括完成、延期和取消。不同对象或不同轮次的事项分别保留。",
     6: "peer是本次全部来源记忆的聊天对方编号，不代表正文中的所有人物。value中的关系对象须明确：正文指向聊天对方时写peer编号，第三人保留姓名或关系称谓；指向不明时保留不确定性，不归到peer名下。同一关系对象的关系状态取最新，有意义的互动经历与关系变化保留其时间；不同人物分别整理，不用一次互动覆盖整段关系，也不将历史互动写成持续现状。",
     7: "同一环境或外部条件保留最新状态，不同场景分别保留。临时地点、故障或限制保留适用时间，不因它是最后一条记录就视为持续现状。",
+    8: "同一对象、方向和适用条件下的同义偏好合并，不同对象或条件分别保留。偏好明确改变时保留变化前后及时间，不因旧偏好未再提及就删除；相反表述无法确定先后或适用条件时保留冲突，不按出现次数选取。针对具体人物的偏好保留对象，不推广为对所有人的偏好。",
 }
 
 SUMMARIZE_RULES = (
@@ -143,6 +204,8 @@ def batch_summary_prompt(tasks: list[dict]) -> str:
 
 
 def classify_prompt(records: list[dict], dimensions: tuple[int, ...]) -> str:
+    if dimensions == (8,):
+        return PREFERENCE_ATTRIBUTE_RULES + "\n记忆：\n" + json.dumps(records, ensure_ascii=False, separators=(",", ":"))
     definitions = "\n".join(f"{dim}: {DIMENSIONS[dim]}" for dim in dimensions)
     return (
         CLASSIFY_RULES
