@@ -1,6 +1,6 @@
 [project]
 name = "WeClone"
-version = "0.3.03"
+version = "0.4.0"
 description = "One-stop solution for creating your digital avatar from chat history"
 authors = [{ name = "xming521" }]
 readme = "README.md"
@@ -22,7 +22,7 @@ dependencies = [
 
 [tool.weclone]
 # Configuration file version number. This number should be incremented when the configuration file structure or important default values change.
-config_version = "0.3.03"
+config_version = "0.4.0"
 
 config_changelog = """
 [0.3.00] - 2025-06-30 - Support TG chat logs, add language parameter, add log level parameter.
@@ -98,10 +98,6 @@ explicit = true
 where = ["."]                      
 include = ["weclone*"]             
 exclude = ["*tests*", "*archive*"]
-
-[tool.setuptools.package-data]
-weclone = ["resources/tokenizers/deepseek_v3/*.json"]
-
 
 [tool.pyright]
 typeCheckingMode = "basic"

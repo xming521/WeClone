@@ -8,13 +8,15 @@ from pathlib import Path
 from typing import Any, Iterable
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-PACKAGE_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_TOKENIZER_FILE = PACKAGE_ROOT / "resources" / "tokenizers" / "deepseek_v3" / "tokenizer.json"
 TOKENIZER_FILE_ENV = "WECLONE_TOKENIZER_FILE"
 
 
 def resolve_tokenizer_file(tokenizer_file: str | Path | None = None) -> Path:
-    raw_path = tokenizer_file or os.environ.get(TOKENIZER_FILE_ENV) or DEFAULT_TOKENIZER_FILE
+    raw_path = tokenizer_file or os.environ.get(TOKENIZER_FILE_ENV)
+    if not raw_path:
+        raise FileNotFoundError(
+            f"Tokenizer file not specified. Pass --tokenizer-file or set {TOKENIZER_FILE_ENV}."
+        )
     path = Path(raw_path).expanduser()
     if not path.is_absolute():
         path = REPO_ROOT / path
@@ -67,7 +69,7 @@ def parse_args() -> argparse.Namespace:
         "--tokenizer-file",
         type=Path,
         default=None,
-        help=f"tokenizer.json path. Defaults to {DEFAULT_TOKENIZER_FILE}.",
+        help=f"tokenizer.json path; can also set {TOKENIZER_FILE_ENV}.",
     )
     parser.add_argument("--show-ids", action="store_true", help="Print token ids after the count.")
     return parser.parse_args()
