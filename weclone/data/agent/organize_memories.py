@@ -30,6 +30,9 @@ from weclone.prompts.memory_organization import (
 )
 
 
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+
+
 def digest(value: Any) -> str:
     return hashlib.sha256(json.dumps(value, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
 
@@ -194,7 +197,7 @@ async def codex_config(command: str) -> dict:
                 "id": 2,
                 "method": "config/read",
                 "params": {
-                    "cwd": str(Path(__file__).resolve().parents[3]),
+                    "cwd": str(PROJECT_ROOT),
                     "includeLayers": False,
                 },
             },
