@@ -290,6 +290,14 @@ class EmbeddingServiceArgs(BaseConfigModel):
 
 class VllmArgs(BaseConfigModel):
     gpu_memory_utilization: float = Field(default=0.9, description="vllm GPU memory utilization")
+    dtype: Optional[Literal["auto", "float16", "bfloat16", "float32", "half", "bf16"]] = Field(
+        default=None,
+        description=(
+            "Data type for vLLM inference. Use 'float16' (or its alias 'half') for GPUs with "
+            "compute capability < 8.0 (e.g. Tesla T4, V100) that do not support bfloat16. "
+            "Allowed values: 'auto', 'float16', 'bfloat16', 'float32', 'half', 'bf16'."
+        ),
+    )
     quantization: Optional[str] = Field(
         default=None, description="Quantization method for vLLM, e.g. 'awq', 'gptq'"
     )
