@@ -166,8 +166,10 @@ class RetryConfig:
         self.max_delay = max_delay
         self.backoff_factor = backoff_factor
         self.jitter = jitter
-        self.retry_on_status = retry_on_status or [429, 500, 502, 503, 504]
-        self.retry_on_exceptions = retry_on_exceptions or [ConnectionError, TimeoutError]
+        self.retry_on_status = [429, 500, 502, 503, 504] if retry_on_status is None else retry_on_status
+        self.retry_on_exceptions = (
+            [ConnectionError, TimeoutError] if retry_on_exceptions is None else retry_on_exceptions
+        )
 
     def apply_to_function(self, func: Callable) -> Callable:
         """将重试配置应用到函数上"""
