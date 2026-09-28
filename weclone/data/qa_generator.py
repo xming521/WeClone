@@ -152,7 +152,7 @@ class DataProcessor:
         self._execute_length_cdf_script()
 
         logger.success(
-            f"Chat record processing successful, obtained {len(qa_res)} data entries in total, saved to ./dataset/res_csv/sft/sft-my.json"
+            f"Chat record processing successful, obtained {len(qa_res)} data entries in total, saved to {output_path}"
         )
 
     def pre_parse_chat_dataset(self):
@@ -758,7 +758,16 @@ class DataProcessor:
             }
             processed_qa_res.append(item_dict)
 
-        output_path = "./dataset/res_csv/sft/sft-my.json"
+        dataset_info_path = os.path.join(self.c.dataset_dir, "dataset_info.json")
+        with open(dataset_info_path, "r", encoding="utf-8") as f:
+            dataset_info = json.load(f)
+
+        dataset_entry = dataset_info.get(self.c.dataset) if isinstance(dataset_info, dict) else None
+        file_name = dataset_entry.get("file_name") if isinstance(dataset_entry, dict) else None
+        if not isinstance(file_name, str) or not file_name:
+            raise ValueError(f"Dataset '{self.c.dataset}' must define file_name in {dataset_info_path}")
+
+        output_path = os.path.join(self.c.dataset_dir, file_name)
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
         with open(output_path, "w", encoding="utf-8") as f:
             json.dump(processed_qa_res, f, ensure_ascii=False, indent=4)
