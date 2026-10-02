@@ -41,7 +41,7 @@ class ProfileSourceChecks(unittest.TestCase):
             "messages": [
                 {"role": "system", "content": "not a chat message"},
                 {"role": "user", "content": "先说原因吗？", "time": "2026-10-01T20:14:01"},
-                {"role": "assistant", "content": "先看结论。\n再说理由。<script>text only</script>"},
+                {"role": "assistant", "content": "先看结论。\n\r\n再说理由。<script>text only</script>"},
             ],
             "state_memories": [{"content": "喜欢先看结论", "confidence": 4, "importance": 3}],
             "event_memories": {"surface_events": [{"surface_event": "讨论表达方式"}]},
@@ -96,11 +96,15 @@ class ProfileSourceChecks(unittest.TestCase):
             self.assertEqual(response.status_code, 200, response.text)
             self.assertEqual(response.headers["cache-control"], "no-store")
             data = response.json()
-            self.assertEqual(len(data["messages"]), 2)
+            self.assertEqual(len(data["messages"]), 3)
             self.assertEqual(data["messages"][0]["speaker"], "合成联系人")
             self.assertEqual(data["messages"][1]["speaker"], "本人")
             self.assertIsNone(data["messages"][1]["time"])
-            self.assertEqual(data["messages"][1]["content"], sample["messages"][2]["content"])
+            self.assertEqual(data["messages"][1]["content"], "先看结论。")
+            self.assertEqual(data["messages"][2]["content"], "再说理由。<script>text only</script>")
+            self.assertEqual(data["messages"][2]["speaker"], "本人")
+            self.assertEqual(data["messages"][2]["role"], "assistant")
+            self.assertEqual(len({message["id"] for message in data["messages"]}), 3)
             self.assertNotIn(str(chat_path), response.text)
             self.assertEqual(client.get("/api/sources/ES:2/chat").status_code, 200)
             self.assertEqual(client.get("/api/sources/legacy/chat").status_code, 404)

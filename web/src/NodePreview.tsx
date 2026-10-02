@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react';
-import { ancestors, DIMENSION_COLORS, type ProfileModel, type ProfileNode } from './data';
+import { ancestors, DIMENSION_COLORS, displayProfileText, type ProfileModel, type ProfileNode } from './data';
 
 export function NodePreview({ model, node, x, y, width, height }: {
   model: ProfileModel;
@@ -18,7 +18,7 @@ export function NodePreview({ model, node, x, y, width, height }: {
     for (const index of current.factIndices) {
       if (previews.length === 2) return;
       const fact = model.facts[index];
-      previews.push(`${fact.attr}：${fact.value}`);
+      previews.push(`${fact.attr}：${displayProfileText(fact.value)}`);
     }
     for (const id of current.childIds) {
       if (previews.length === 2) return;
@@ -28,7 +28,7 @@ export function NodePreview({ model, node, x, y, width, height }: {
   if (overview) {
     previews.push(...node.childIds.slice(0, 3).map((id) => model.nodes.get(id)!.name));
   } else if (node.kind === 'attribute') {
-    previews.push(...facts.map((fact) => fact.value));
+    previews.push(...facts.map((fact) => displayProfileText(fact.value)));
   } else {
     collect(node);
   }

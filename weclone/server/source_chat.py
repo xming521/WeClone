@@ -79,15 +79,19 @@ def source_chat(source_id: str, source: dict) -> dict:
             content = message.get("content")
             if not isinstance(content, str) or not content.strip():
                 continue
-            messages.append(
-                {
-                    "id": str(index),
-                    "role": message["role"],
-                    "speaker": "本人" if message["role"] == "assistant" else peer,
-                    "content": content,
-                    "time": message.get("time") if isinstance(message.get("time"), str) else None,
-                }
-            )
+            # Newlines separate consecutive messages merged during preprocessing.
+            for part_index, part in enumerate(content.replace("\r\n", "\n").split("\n")):
+                if not part.strip():
+                    continue
+                messages.append(
+                    {
+                        "id": f"{index}:{part_index}",
+                        "role": message["role"],
+                        "speaker": "本人" if message["role"] == "assistant" else peer,
+                        "content": part,
+                        "time": message.get("time") if isinstance(message.get("time"), str) else None,
+                    }
+                )
         if messages:
             return {
                 "source_id": source_id,

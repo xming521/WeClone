@@ -19,11 +19,11 @@ function Score({ kind, value, compact = false }: { kind: 'confidence' | 'importa
 
 export function FactScores({ fact }: { fact: ProfileFact }) {
   return <div className="fact-scores" aria-label="原始来源的平均评分，编辑画像后不会重新评分">
-    {typeof fact.support_count === 'number' && fact.support_count > 0 && <div className="score-support">{fact.support_count} 段聊天支持</div>}
     <div className="fact-score-grid">
       <Score kind="confidence" value={fact.origin === 'manual' ? undefined : fact.source_confidence_mean} />
       <Score kind="importance" value={fact.origin === 'manual' ? undefined : fact.source_importance_mean} />
     </div>
+    {typeof fact.support_count === 'number' && fact.support_count > 0 && <div className="score-support">{fact.support_count} 段聊天支持</div>}
   </div>;
 }
 
