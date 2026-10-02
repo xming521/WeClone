@@ -35,6 +35,7 @@ from weclone.data.agent.distill_windows import (
     render_sample,
 )
 from weclone.prompts.chat_distill import EVENT_EXTRACT_PROMPT
+from weclone.utils import secure_storage
 from weclone.utils.log import logger
 
 EVENT_WRITEBACK_FIELD = "event_memories"
@@ -179,7 +180,10 @@ def process_file(
         if request_rows:
             window, request = request_rows[0]
             logger.info(f"Dry run: {source_path.name}, samples={[s.sample_id for s in window]}")
-            print(request.messages[0]["content"])
+            if secure_storage.is_encrypted_mode():
+                logger.info("Encrypted mode: dry-run prompt content is not printed")
+            else:
+                print(request.messages[0]["content"])
             return len(window), 0
         return 0, 0
 
@@ -187,7 +191,7 @@ def process_file(
         f"{source_path.name}: total={len(items)} pending={len(pending_samples)} windows={len(request_rows)} "
         f"skipped={skipped_count} batch_size={batch_size} output={output_path}"
     )
-    if not dry_run and (writeback_changed or (skipped_count and not output_path.exists())):
+    if not dry_run and (writeback_changed or (skipped_count and not secure_storage.file_exists(output_path))):
         atomic_save_any_json(output_path, source_data, indent=indent)
         writeback_changed = False
     if not dry_run:
@@ -238,7 +242,7 @@ def process_file(
                     record["updated_at"] = now_ts()
                     done_count += 1
                 if outcome.error:
-                    logger.warning(f"LLM window failed for {source_path.name}: {outcome.error}")
+                    logger.warning(f"LLM window failed for {source_path.name}; details saved in checkpoint")
                 progress.update(len(outcome.samples))
 
             if writeback_changed:
@@ -256,7 +260,11 @@ def process_file(
 
 
 def main(
-    *, input_dir: Path | None = None, output_dir: Path | None = None, config_path: Path | None = None
+    *,
+    input_dir: Path | None = None,
+    output_dir: Path | None = None,
+    config_path: Path | None = None,
+    confirmed: bool = False,
 ) -> None:
     args = default_args()
     if input_dir is not None:
@@ -265,6 +273,7 @@ def main(
         args.output_dir = output_dir
     if config_path is not None:
         args.config_path = config_path
+    secure_storage.configure(args.config_path)
     args = resolve_llm_args(args)
     request_model = args.model if args.llm_provider == "codex_exec" else None
     request_effort = args.effort if args.llm_provider == "codex_exec" else None
@@ -274,7 +283,7 @@ def main(
 
     if not source_files:
         raise FileNotFoundError(f"No chat JSON files found in {args.input_dir}")
-    if not confirm_distillation(args, task="事件记忆", file_count=len(source_files)):
+    if not confirmed and not confirm_distillation(args, task="事件记忆", file_count=len(source_files)):
         raise SystemExit("已取消蒸馏；未写入结果或调用模型。")
 
     state_path = Path(args.state_path) if args.state_path else default_event_state_path(args.output_dir)

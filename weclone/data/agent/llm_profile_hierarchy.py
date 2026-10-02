@@ -10,6 +10,7 @@ from weclone.core.inference.llm_client import LLMRequest
 from weclone.data.agent.organize_memories import LLMTasks, save
 from weclone.prompts.memory_organization import DIMENSIONS
 from weclone.prompts.profile_hierarchy import SCHEMA, prompt
+from weclone.utils import secure_storage
 
 
 def validate(payload, rows):
@@ -46,7 +47,7 @@ def validate(payload, rows):
     return payload
 
 
-def main():
+def main(argv: list[str] | None = None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input-path", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path)
@@ -55,11 +56,12 @@ def main():
     parser.add_argument("--max-context-tokens", type=int)
     parser.add_argument("--token-encoding", default="o200k_base")
     parser.add_argument("--tokenizer-file", type=Path)
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
+    secure_storage.configure(args.config_path)
     if args.output_dir is None:
         args.output_dir = Path("dataset/res_csv/agent/memory_organization")
     args.output_dir.mkdir(parents=True, exist_ok=True)
-    data = json.loads(args.input_path.read_text())
+    data = secure_storage.read_json(args.input_path)
     dims = (1, 3, 4, 5, 8)
     facts = [f for f in data["facts"] if f["dim"] in dims]
     attributes = {
@@ -180,7 +182,9 @@ def main():
         args.output_dir / "profile_hierarchy.json",
         {
             "input_path": str(args.input_path.resolve()),
-            "input_sha256": hashlib.sha256(args.input_path.read_bytes()).hexdigest(),
+            "input_sha256": hashlib.sha256(
+                secure_storage.resolve_path(args.input_path).read_bytes()
+            ).hexdigest(),
             "dimensions": dimensions,
             "facts": facts,
             "sources": {sid: data["sources"][sid] for sid in sorted(used)},

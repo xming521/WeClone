@@ -146,6 +146,58 @@ weclone-cli make-dataset
 ```
 数据处理更多参数说明：[数据预处理](https://docs.weclone.love/zh/docs/deploy/data_preprocessing.html#%E7%9B%B8%E5%85%B3%E5%8F%82%E6%95%B0)
 
+### 一键生成用户画像
+
+在项目根目录执行：
+```bash
+weclone-cli build-profile
+```
+执行时选择“仅抽取画像”（默认）或“同时抽取画像与事件”。画像与事件的抽取结果可能存在信息重叠；Token 预算有限时，建议仅抽取画像。也可以直接指定：
+```bash
+weclone-cli build-profile --profile-only
+weclone-cli build-profile --with-events
+```
+流水线依次完成数据准备（含按聊天对象拆分）、画像抽取、可选的事件抽取、记忆整理和画像层级生成，跳过训练用的 `cutoff_len` 统计。开始处理数据前沿用现有的模型调用确认，一次确认覆盖本次选定的抽取阶段。
+
+每次默认在 `dataset/res_csv/agent/profile_runs/<时间戳>/` 新建结果目录，数据准备的中间数据集保存在其中的 `sft/`，最终画像位于其中的 `profile_hierarchy/profile_hierarchy.json.enc`（明文模式为 `.json`），完成时会打印文件路径。可以用 `--output-dir <新目录>` 指定结果目录；各阶段使用同一份 `settings.jsonc`，也支持全局 `--config-path`。输入 token 上限默认读取 Codex 配置及内置模型信息，不联网刷新模型列表；API 模型或无法自动读取时，用 `--max-context-tokens <上限>` 指定。多版本 Codex 共存时，可通过 `codex_exec_args.command` 指定支持当前模型的可执行文件绝对路径。去重归并阶段不在本流水线中。
+
+### 聊天数据存储模式与共用密码
+
+在 `settings.jsonc` 中设置：
+```json
+"security_args": {
+    "storage_mode": "encrypted"
+}
+```
+`storage_mode` 可选 `encrypted`（安全模式）或 `plaintext`（明文模式）；新模板默认安全模式。程序自动在项目的 `.weclone/` 目录保存模式、密码保护的数据密钥和加密导入副本，该目录不纳入 Git，也不要当作缓存删除。临时目录由系统自动选择，无需配置 `/dev/shm`；第三方工具所需的明文临时文件在正常完成或发生异常后删除，正式产物仍加密保存。旧配置未声明此配置项时保留明文行为。
+
+首次运行安全模式任务会要求设置共用密码，不限制长度，只需非空；也可以提前初始化：
+```bash
+weclone-cli security-init
+weclone-cli make-dataset
+weclone-cli build-profile --profile-only
+```
+每个独立任务启动时解锁一次，同一流水线及其子进程复用这次授权。密码不会保存到配置、命令行参数或环境变量。原始 CSV、联系人文件和附件保持不变，导入时另外创建加密副本；SFT 数据、抽取结果、断点、任务、embedding 缓存、审核数据库和个人训练产物通过统一存储层加密。密文统一追加 `.enc` 后缀，例如 `chat.json.enc`、`chat.csv.enc`、`review.sqlite3.enc`；配置和 `dataset_info.json` 等普通 JSON 保留原名。存储层自动解析密文路径，未加 `.enc` 的旧密文不再支持，需要从原始聊天重新生成。第三方工具临时解密后的文件恢复原扩展名，手动解密命令使用指定的明文输出文件名。配置中的 `make_dataset_args.csv_folder` 可指定 CSV 输入目录，默认 `./dataset/csv`。原始明文文件和手动导出的明文文件仍需由用户保管。
+
+安全模式下，写入磁盘的请求审计只记录模型、状态、耗时和 Token 用量，不记录聊天正文、提示词或回复，普通文件日志也省略消息正文。终端日志在两种模式下均显示原文，方便排查警告和错误。Codex 的会话、日志和状态文件限制在临时目录中并在结束后清理，关闭正文遥测导出。明文模式的请求审计保留完整请求、回复和错误详情，方便调试；审计中的 API Key、密码等凭据字段仍会遮盖。流水线输出各阶段的开始、完成、耗时及失败类型。已有的历史明文日志不会自动转换或删除。
+
+网页首次访问可设置同一个密码。登录有效期固定为 2 小时，不随刷新延长；退出、到期或加密模式服务重启后需要重新登录。后台已授权的抽取或训练任务不因网页会话到期而中断。个人推理模型在授权请求后才加载。审核 SQLite 在内存中运行，磁盘保存加密快照，不产生含正文的明文 journal/WAL。
+
+手动导出明文及修改密码：
+```bash
+weclone-cli decrypt --input <加密文件> --output <新的明文文件>
+weclone-cli security-change-password
+weclone-cli server-reset-password
+```
+解密命令不覆盖已有文件、不向终端打印正文。正常改密需要旧密码并保留数据。忘记密码或更换存储模式时，重置会生成新的数据代次并作废旧会话；必须从原始聊天重新处理全部数据，没有密码恢复后门。旧文件保留，不会自动删除或转换。安全模式拒绝读取旧明文内部产物或覆盖旧明文结果，请为重新生成的数据配置新的输出目录。
+
+训练等需要文件路径的组件使用系统临时目录，处理结束后清理，产物加密保存。目前适配主项目单进程入口，分布式适配暂缓。外部实验脚本需接入统一存储接口。
+
+合成数据完整性验证脚本位于 `scripts/check_secure_storage.py`，不会读取用户聊天或修改真实安全状态：
+```bash
+python scripts/check_secure_storage.py
+```
+
 ## 配置参数并微调模型
 
 - (可选)修改 `settings.jsonc` 的 `model_name_or_path` 、`template`、 `lora_target`选择本地下载好的其他模型。  

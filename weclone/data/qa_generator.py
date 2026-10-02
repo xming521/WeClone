@@ -1,8 +1,9 @@
 import json
 import os
 import re
-import subprocess  # nosec
 import sys
+from io import BytesIO
+from pathlib import Path
 from typing import List, Union, cast
 
 os.environ.setdefault("VLLM_WORKER_MULTIPROC_METHOD", "spawn")
@@ -23,6 +24,7 @@ from weclone.data.models import (
 )
 from weclone.data.strategies import TimeWindowStrategy
 from weclone.data.utils import ImageToTextProcessor, check_image_file_exists
+from weclone.utils import secure_storage
 from weclone.utils.config import load_config
 from weclone.utils.config_models import DataModality, LanguageType, PlatformType, WCMakeDatasetConfig
 from weclone.utils.log import logger
@@ -31,7 +33,8 @@ from weclone.utils.log import logger
 class DataProcessor:
     def __init__(self):
         self.config = cast(WCMakeDatasetConfig, load_config(arg_type="make_dataset"))
-        self.csv_folder = "./dataset/csv"
+        self.csv_folder = getattr(self.config, "csv_folder", "./dataset/csv")
+        self._parsed_csv_files: list[str] | None = None
         self.system_prompt = self.config.default_system
         self.enable_clean = self.config.clean_dataset.enable_clean
 
@@ -118,7 +121,34 @@ class DataProcessor:
         self.relations: dict[str, str] = {}
         self.partner_remarks: dict[str, str] = {}
 
-    def main(self):
+    def main(
+        self,
+        *,
+        dataset_output_dir: Path | None = None,
+        stage2_output_dir: Path | None = None,
+        strict_stage2: bool = False,
+        calculate_cutoff_len: bool = True,
+    ):
+        secure_storage.ensure_unlocked()
+        if dataset_output_dir is not None:
+            source_info = Path(self.c.dataset_dir) / "dataset_info.json"
+            with source_info.open(encoding="utf-8") as source:
+                dataset_info = json.load(source)
+            entry = dataset_info.get(self.c.dataset) if isinstance(dataset_info, dict) else None
+            file_name = entry.get("file_name") if isinstance(entry, dict) else None
+            if not isinstance(file_name, str) or not file_name:
+                raise ValueError(f"Dataset '{self.c.dataset}' must define file_name in {source_info}")
+            dataset_output_dir.mkdir(parents=True, exist_ok=True)
+            # Only the selected dataset's schema is needed in this run. Keep its
+            # data file inside the new directory even if the source path is absolute.
+            with (dataset_output_dir / "dataset_info.json").open("x", encoding="utf-8") as output:
+                json.dump(
+                    {self.c.dataset: {**entry, "file_name": Path(file_name).name}},
+                    output,
+                    ensure_ascii=False,
+                    indent=2,
+                )
+            self.c.dataset_dir = str(dataset_output_dir)
         self.pre_parse_chat_dataset()
 
         if not os.path.exists(self.csv_folder) or not os.listdir(self.csv_folder):
@@ -148,8 +178,9 @@ class DataProcessor:
             self.clean_strategy.judge(qa_res)  # type: ignore
 
         output_path = self.save_result(qa_res)
-        self._execute_stage2_script(output_path)
-        self._execute_length_cdf_script()
+        self._execute_stage2_script(output_path, output_dir=stage2_output_dir, strict=strict_stage2)
+        if calculate_cutoff_len:
+            self._execute_length_cdf_script()
 
         logger.success(
             f"Chat record processing successful, obtained {len(qa_res)} data entries in total, saved to {output_path}"
@@ -157,79 +188,77 @@ class DataProcessor:
 
     def pre_parse_chat_dataset(self):
         if self.c.platform == PlatformType.TELEGRAM:
-            process_telegram_dataset(self.config)
+            self._parsed_csv_files = process_telegram_dataset(self.config)
 
     def _execute_length_cdf_script(self):
         """Execute the length_cdf.py script to calculate cutoff_len."""
         try:
-            python_executable = sys.executable
             script_path = os.path.join("weclone", "utils", "length_cdf.py")
 
             command_parts = [
-                python_executable,
-                script_path,
-                f'--model_name_or_path="{self.c.model_name_or_path}"',
-                f'--dataset="{self.c.dataset}"',
-                f'--dataset_dir="{self.c.dataset_dir}"',
-                f'--template="{self.c.template}"',
+                f"--model_name_or_path={self.c.model_name_or_path}",
+                f"--dataset={self.c.dataset}",
+                f"--dataset_dir={self.c.dataset_dir}",
+                f"--template={self.c.template}",
                 "--interval=512",
             ]
 
             if hasattr(self.c, "media_dir") and self.c.media_dir:
-                command_parts.append(f'--media_dir="{self.c.media_dir}"')
+                command_parts.append(f"--media_dir={self.c.media_dir}")
             if hasattr(self.c, "image_max_pixels") and self.c.image_max_pixels:
-                command_parts.append(f'--image_max_pixels="{self.c.image_max_pixels}"')
+                command_parts.append(f"--image_max_pixels={self.c.image_max_pixels}")
 
             child_env = os.environ.copy()
             child_env["CUDA_VISIBLE_DEVICES"] = "0"
             child_env["LLAMAFACTORY_VERBOSITY"] = "ERROR"
 
-            process = subprocess.Popen(
-                command_parts,
-                env=child_env,
-                stdout=None,  # Use None to indicate using parent process's stdout (i.e., terminal)
-                stderr=None,
-                text=True,
-                bufsize=1,
-            )  # nosec
-            return_code = process.wait()
+            process = secure_storage.run_python(script_path, command_parts, env=child_env)
+            return_code = process.returncode
             if return_code != 0:
                 logger.error(
                     f"Command '{' '.join(command_parts)}' execution failed with return code {return_code}"
                 )
         except FileNotFoundError:
-            logger.error(
-                f"Command execution failed: executable '{command_parts[0]}' or script '{command_parts[1]}' not found"
-            )
+            logger.error(f"Command execution failed: script '{script_path}' not found")
         except KeyError as e:
             logger.error(f"Failed to execute length_cdf.py script: missing configuration item {str(e)}")
         except Exception as e:
+            if secure_storage.is_encrypted_mode():
+                raise
             logger.error(f"Unknown error occurred while executing length_cdf.py script: {str(e)}")
 
-    def _execute_stage2_script(self, input_path: str):
+    def _execute_stage2_script(
+        self, input_path: str, *, output_dir: Path | None = None, strict: bool = False
+    ):
         """Build second-stage datasets from the first-stage SFT JSON without modifying it."""
         try:
             from weclone.data.make_dataset_stage2 import build_stage2_outputs
 
-            build_stage2_outputs(input_path=input_path)
+            if output_dir is None:
+                build_stage2_outputs(input_path=input_path)
+            else:
+                build_stage2_outputs(input_path=input_path, output_dir=output_dir)
         except Exception as e:
+            if strict or secure_storage.is_encrypted_mode():
+                raise
             logger.error(f"Failed to execute make-dataset stage2 script: {str(e)}")
 
     def get_csv_files(self):
         """Traverse the folder to get all CSV file paths and sort by starting sequence number in filename"""
 
-        csv_files = []
-        for chat_obj_folder in os.listdir(self.csv_folder):
-            chat_obj_folder_path = os.path.join(self.csv_folder, chat_obj_folder)
-            for csvfile in os.listdir(chat_obj_folder_path):
-                if not csvfile.endswith(".csv"):
+        csv_files = list(self._parsed_csv_files) if self._parsed_csv_files is not None else []
+        if self._parsed_csv_files is None:
+            for chat_obj_folder in os.listdir(self.csv_folder):
+                chat_obj_folder_path = os.path.join(self.csv_folder, chat_obj_folder)
+                if not os.path.isdir(chat_obj_folder_path):
                     continue
-                csvfile_path = os.path.join(chat_obj_folder_path, csvfile)
-                csv_files.append(csvfile_path)
+                csv_files.extend(
+                    str(path) for path in secure_storage.iter_files(chat_obj_folder_path, "*.csv")
+                )
         pattern = re.compile(r"_(\d+)_\d+\.csv$")
 
         def extract_start(fp: str) -> int:
-            name = os.path.basename(fp)
+            name = secure_storage.logical_path(fp).name
             m = pattern.search(name)
             return int(m.group(1)) if m else 0
 
@@ -500,7 +529,7 @@ class DataProcessor:
 
             if len(combined_content) > self.c.combine_msg_max_length:
                 logger.warning(
-                    f"Combined message length exceeds {self.c.combine_msg_max_length}, will truncate: {combined_content[:50]}"
+                    f"Combined message length exceeds {self.c.combine_msg_max_length}, will truncate"
                 )
                 combined_content = combined_content[: self.c.combine_msg_max_length]
                 remaining_image_count = combined_content.count("<image>")
@@ -601,12 +630,12 @@ class DataProcessor:
     @staticmethod
     def _load_users_data(folder_path: str) -> dict:
         users_json_path = os.path.join(folder_path, "users.json")
-        if not os.path.exists(users_json_path):
+        if not secure_storage.file_exists(users_json_path):
             return {}
         try:
-            with open(users_json_path, encoding="utf-8") as f:
-                data = json.load(f)
-                return data if isinstance(data, dict) else {}
+            imported_path = secure_storage.import_file(users_json_path)
+            data = secure_storage.read_json(imported_path)
+            return data if isinstance(data, dict) else {}
         except (FileNotFoundError, json.JSONDecodeError) as e:
             logger.warning(f"Failed to load users.json from {folder_path}: {e}")
             return {}
@@ -640,7 +669,7 @@ class DataProcessor:
         if relation:
             self.relations[folder_name] = relation
             self.relations[partner_talker] = relation
-            logger.debug(f"Loaded relation for {folder_name}: {relation}")
+            logger.debug("Loaded chat relation metadata")
 
         partner_info = users_data.get(partner_talker)
         chat_with = ""
@@ -650,7 +679,7 @@ class DataProcessor:
         self.partner_remarks[folder_name] = chat_with
         self.partner_remarks[partner_talker] = chat_with
         if chat_with:
-            logger.debug(f"Loaded chat partner remark for {folder_name}: {chat_with}")
+            logger.debug("Loaded chat partner remark metadata")
 
         return partner_talker
 
@@ -660,8 +689,9 @@ class DataProcessor:
         """
         folder_path = os.path.dirname(file_path)
 
+        imported_path = secure_storage.import_file(file_path)
         df = pd.read_csv(
-            file_path,
+            BytesIO(secure_storage.read_bytes(imported_path)),
             encoding="utf-8",
             dtype={"msg": str, "src": str},
             escapechar=None,
@@ -769,8 +799,7 @@ class DataProcessor:
 
         output_path = os.path.join(self.c.dataset_dir, file_name)
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
-        with open(output_path, "w", encoding="utf-8") as f:
-            json.dump(processed_qa_res, f, ensure_ascii=False, indent=4)
+        output_path = str(secure_storage.write_json(output_path, processed_qa_res, indent=4))
         logger.success(
             f"Chat record processing successful, {len(qa_res)} entries in total, saved to {output_path}"
         )

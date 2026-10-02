@@ -13,6 +13,9 @@
 # limitations under the License.
 
 from collections import defaultdict
+from functools import wraps
+from inspect import signature
+from pathlib import Path
 
 import fire
 from llamafactory.data import get_dataset, get_template_and_fix_tokenizer
@@ -21,8 +24,28 @@ from llamafactory.model import load_tokenizer
 from tqdm import tqdm
 
 from weclone.utils.log import logger
+from weclone.utils.secure_storage import is_encrypted_mode, sensitive_runtime
 
 
+def _secure_length_input(function):
+    function_signature = signature(function)
+
+    @wraps(function)
+    def wrapper(*args, **kwargs):
+        bound = function_signature.bind(*args, **kwargs)
+        bound.apply_defaults()
+        with sensitive_runtime(
+            bound.arguments,
+            dataset_keys=("dataset_dir", "media_dir"),
+            model_keys=("model_name_or_path",),
+            output_keys=(),
+        ) as runtime:
+            return function(**runtime)
+
+    return wrapper
+
+
+@_secure_length_input
 def calculate_token_length(
     text: str,
     model_name_or_path: str = "./models/Qwen3-32B-AWQ",
@@ -38,7 +61,7 @@ def calculate_token_length(
     Returns:
         Token length of the text
     """
-    logger.info(f"Calculating text token length: {text[:50]}...")
+    logger.info("Calculating text token length")
 
     model_args, data_args, _, _, _ = get_train_args(
         {
@@ -62,6 +85,7 @@ def calculate_token_length(
     return token_length
 
 
+@_secure_length_input
 def length_cdf(
     model_name_or_path: str = "./Qwen2.5-7B-Instruct",
     dataset: str = "chat-sft",
@@ -87,7 +111,7 @@ def length_cdf(
             "template": template,
             "cutoff_len": 1_000_000,
             "preprocessing_num_workers": 16,
-            "output_dir": "dummy_dir",
+            "output_dir": str(Path(dataset_dir) / ".length-analysis") if is_encrypted_mode() else "dummy_dir",
             "media_dir": media_dir,
             "image_max_pixels": int(image_max_pixels),
             "overwrite_cache": True,

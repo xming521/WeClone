@@ -149,6 +149,48 @@ weclone-cli make-dataset
 ```
 More Parameter Details: [Data Preprocessing](https://docs.weclone.love/docs/deploy/data_preprocessing.html#related-parameters)
 
+### Generate a User Profile in One Command
+
+Run from the project root:
+```bash
+weclone-cli build-profile
+```
+Choose profile extraction only (the default) or both profile and event extraction. Events and profiles can contain overlapping information; choose profiles only when your token budget is limited. You can also select the mode directly:
+```bash
+weclone-cli build-profile --profile-only
+weclone-cli build-profile --with-events
+```
+The pipeline prepares and splits chat data, extracts profile memories and optionally events, organizes the memories, and generates the profile hierarchy, skipping the training-only `cutoff_len` analysis. The existing model-call confirmation is requested before data processing, once for all selected extraction stages.
+
+Each run creates a new directory under `dataset/res_csv/agent/profile_runs/<timestamp>/`, stores the intermediate dataset in its `sft/` subdirectory, and prints the final `profile_hierarchy/profile_hierarchy.json.enc` path (`.json` in plaintext mode). Use `--output-dir <new-directory>` to choose the result directory. All stages share `settings.jsonc` or the global `--config-path`. The input token limit comes from the Codex configuration and bundled model metadata, without refreshing the model catalog online; specify `--max-context-tokens <limit>` for API models or when automatic detection is unavailable. When multiple Codex versions are installed, set `codex_exec_args.command` to the absolute path of a binary that supports the selected model. Memory deduplication and canonicalization are excluded from this pipeline.
+
+### Chat Storage and a Shared Password
+
+Set `security_args` in `settings.jsonc`:
+```json
+"security_args": {
+    "storage_mode": "encrypted"
+}
+```
+`storage_mode` selects `encrypted` or `plaintext`; new templates default to encryption. The project-local `.weclone/` directory stores the fixed mode, password-wrapped data key, and encrypted import copies. It is excluded from Git and must not be deleted as a cache. The system selects the temporary directory automatically; `/dev/shm` configuration is unnecessary. Plaintext temporary files required by third-party tools are removed on completion or exceptions, while persisted outputs remain encrypted. Older configuration files without `security_args` retain plaintext behavior.
+
+Initialize a shared nonempty password, with no length restriction, using `weclone-cli security-init`, or at the first encrypted CLI task / first web visit. Each CLI run unlocks once; pipeline stages and child processes share that authorization. Passwords are never stored in settings, argv, or environment variables. Imports create encrypted copies without changing the original CSV, contacts, or attachments. Datasets, extraction results, checkpoints, task files, embeddings, review databases, and personal training artifacts use the shared encrypted storage layer. Ciphertext files append `.enc`, such as `chat.json.enc`, `chat.csv.enc`, and `review.sqlite3.enc`; settings and ordinary JSON metadata such as `dataset_info.json` keep their names. The storage layer resolves encrypted paths; old ciphertext without `.enc` is no longer supported and must be regenerated from the original chats. Temporary decrypted inputs restore their original extensions, and manual decryption uses the requested plaintext output filename. `make_dataset_args.csv_folder` selects the CSV input directory (default `./dataset/csv`). Original input files remain plaintext and must still be protected by their owner.
+
+In encrypted mode, request audits on disk keep model, status, duration, and token usage without chat text, prompts, or replies; ordinary file logs also omit message bodies. Terminal logs show original messages in both modes so warnings and errors remain readable. Codex session, log, and state files stay in a temporary directory that is cleaned after use, with prompt telemetry export disabled. Plaintext request audits retain full requests, replies, and error details for debugging; credential fields such as API keys and passwords are still masked in audits. Pipeline output shows stage start, completion, duration, and failure type. Existing plaintext logs are not automatically converted or deleted.
+
+Web sessions expire two hours after login, without sliding renewal. Logout, expiration, or an encrypted server restart requires login again; already authorized background training/extraction continues. Personal inference models load only after authentication. Review SQLite runs in memory and persists encrypted snapshots without plaintext journals or WAL.
+
+```bash
+weclone-cli decrypt --input <encrypted-file> --output <new-plaintext-file>
+weclone-cli security-change-password
+weclone-cli server-reset-password
+```
+Decrypt exports a new file and never prints its contents or overwrites another file. Changing a password with the old password preserves data. Resetting a forgotten password or choosing a new storage mode starts a new data generation: regenerate everything from the original chats. There is no recovery backdoor. Old files are retained; existing plaintext internal outputs are refused rather than silently converted. Use fresh output directories for regeneration.
+
+Components that require file paths use a system temporary directory, remove temporary files when finished, and persist encrypted outputs. The main project's single-process entry point is supported; distributed integration is deferred. External experiment scripts must adopt the shared storage API.
+
+Run `python scripts/check_secure_storage.py` for synthetic checks that do not read user chats or change the real security state.
+
 ## Configure Parameters and Fine-tune Model
 
 - (Optional) Modify `model_name_or_path`, `template`, `lora_target` in `settings.jsonc` to select other locally downloaded models.   

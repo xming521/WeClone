@@ -1,6 +1,5 @@
 import argparse
 import copy
-import json
 import os
 import re
 from collections import defaultdict
@@ -9,6 +8,7 @@ from importlib.util import find_spec
 from pathlib import Path
 from typing import Any
 
+from weclone.utils import secure_storage
 from weclone.utils.log import logger
 
 DEFAULT_INPUT_PATH = Path("dataset/res_csv/sft/sft-my.json")
@@ -321,9 +321,8 @@ def _stage2_output_files_to_clear(
         return []
 
     previous_files: set[str] = set()
-    if manifest_path.exists():
-        with manifest_path.open(encoding="utf-8") as f:
-            previous_manifest = json.load(f)
+    if secure_storage.file_exists(manifest_path):
+        previous_manifest = secure_storage.read_json(manifest_path)
         if (
             not isinstance(previous_manifest, dict)
             or not isinstance(previous_manifest.get("input_path"), str)
@@ -332,28 +331,34 @@ def _stage2_output_files_to_clear(
             raise ValueError(f"Not a Stage2 manifest: {manifest_path}")
         for group in previous_manifest["groups"]:
             filename = group.get("file_name") if isinstance(group, dict) else None
+            logical_name = secure_storage.logical_path(filename).name if isinstance(filename, str) else ""
             if (
                 not isinstance(filename, str)
-                or not filename.endswith(".json")
+                or not logical_name.endswith(".json")
                 or Path(filename).name != filename
                 or "\\" in filename
-                or filename == manifest_path.name
-                or filename in previous_files
+                or logical_name == secure_storage.logical_path(manifest_path).name
+                or logical_name in previous_files
             ):
                 raise ValueError(f"Invalid Stage2 output filename in {manifest_path}: {filename!r}")
-            previous_files.add(filename)
+            previous_files.add(logical_name)
 
     unmanaged_files = {
         path.name
-        for path in output_dir.glob("*.json")
-        if path.name not in previous_files and path != manifest_path
+        for path in secure_storage.iter_files(output_dir)
+        if secure_storage.logical_path(path).name not in previous_files
+        and secure_storage.logical_path(path) != secure_storage.logical_path(manifest_path)
     }
     if unmanaged_files:
         raise ValueError(
             f"Refusing to clear {output_dir}: JSON files not listed in Stage2 manifest: "
             f"{sorted(unmanaged_files)}"
         )
-    return [output_dir / filename for filename in sorted(previous_files) if (output_dir / filename).exists()]
+    return [
+        secure_storage.resolve_path(output_dir / filename)
+        for filename in sorted(previous_files)
+        if secure_storage.file_exists(output_dir / filename)
+    ]
 
 
 def _chat_with_id(chat_with_index: int) -> str:
@@ -390,8 +395,7 @@ def build_stage2_outputs(
     manifest_path = output_dir / manifest_name
     ltp_model_path = Path(ltp_model_path)
 
-    with input_path.open(encoding="utf-8") as f:
-        data = json.load(f)
+    data = secure_storage.read_json(input_path)
 
     if not isinstance(data, list):
         raise ValueError(f"Stage2 input must be a JSON list: {input_path}")
@@ -422,7 +426,11 @@ def build_stage2_outputs(
         grouped[chat_with].append((original_index, item))
 
     used_filenames: set[str] = set()
-    output_filenames = [_chat_with_filename(chat_with, used_filenames) for chat_with in chat_with_order]
+    if secure_storage.is_encrypted_mode():
+        output_filenames = [f"{_chat_with_id(index)}.json" for index in range(len(chat_with_order))]
+        used_filenames.update(output_filenames)
+    else:
+        output_filenames = [_chat_with_filename(chat_with, used_filenames) for chat_with in chat_with_order]
     if manifest_name in used_filenames:
         raise ValueError(f"Manifest name conflicts with a Stage2 output file: {manifest_name}")
 
@@ -453,15 +461,14 @@ def build_stage2_outputs(
 
         output_filename = output_filenames[chat_with_index]
         output_path = output_dir / output_filename
-        with output_path.open("w", encoding="utf-8") as f:
-            json.dump(kept_items, f, ensure_ascii=False, indent=4)
+        output_path = secure_storage.write_json(output_path, kept_items, indent=4)
 
         total_written += len(kept_items)
         manifest.append(
             {
                 "chat_with_id": chat_with_id,
                 "chat_with": chat_with,
-                "file_name": output_filename,
+                "file_name": output_path.name,
                 "output_path": str(output_path),
                 "sample_count": len(kept_items),
                 "filtered_low_information_count": filter_stats["filtered_count"],
@@ -471,40 +478,38 @@ def build_stage2_outputs(
             }
         )
 
-    with manifest_path.open("w", encoding="utf-8") as f:
-        json.dump(
-            {
-                "input_path": str(input_path),
-                "output_dir": str(output_dir),
-                "filter_method": "ltp" if ltp is not None else "length",
-                "ltp_model_path": str(ltp_model_path),
-                "ltp_batch_size": ltp_batch_size,
-                "ltp_device": ltp_device,
-                "ltp_physical_gpu": ltp_physical_gpu,
-                "removed_system_count": removed_system_count,
-                "removed_begin_chat_message_count": removed_begin_chat_message_count,
-                "filtered_low_information_count": total_filtered_low_information_count,
-                "filter_reason_counts": dict(sorted(total_reason_counts.items())),
-                "filter_thresholds": {
-                    "char_len_lt": CHAR_LEN_THRESHOLD,
-                    "content_ratio_lt": CONTENT_RATIO_THRESHOLD,
-                    "high_value_keywords_count_eq": 0,
-                    "deictic_ratio_gt": DEICTIC_RATIO_THRESHOLD,
-                    "function_ratio_gt": FUNCTION_RATIO_THRESHOLD,
-                    "drop_condition_threshold": DROP_CONDITION_THRESHOLD,
-                    "very_short_char_len_lt": VERY_SHORT_CHAR_LEN_THRESHOLD,
-                    "very_short_function_ratio_gte": VERY_SHORT_FUNCTION_RATIO_THRESHOLD,
-                    "very_short_low_value_requires_no_useful_anchor": True,
-                }
-                if ltp is not None
-                else {"char_len_lt": 10},
-                "total_written": total_written,
-                "groups": manifest,
-            },
-            f,
-            ensure_ascii=False,
-            indent=4,
-        )
+    secure_storage.write_json(
+        manifest_path,
+        {
+            "input_path": str(input_path),
+            "output_dir": str(output_dir),
+            "filter_method": "ltp" if ltp is not None else "length",
+            "ltp_model_path": str(ltp_model_path),
+            "ltp_batch_size": ltp_batch_size,
+            "ltp_device": ltp_device,
+            "ltp_physical_gpu": ltp_physical_gpu,
+            "removed_system_count": removed_system_count,
+            "removed_begin_chat_message_count": removed_begin_chat_message_count,
+            "filtered_low_information_count": total_filtered_low_information_count,
+            "filter_reason_counts": dict(sorted(total_reason_counts.items())),
+            "filter_thresholds": {
+                "char_len_lt": CHAR_LEN_THRESHOLD,
+                "content_ratio_lt": CONTENT_RATIO_THRESHOLD,
+                "high_value_keywords_count_eq": 0,
+                "deictic_ratio_gt": DEICTIC_RATIO_THRESHOLD,
+                "function_ratio_gt": FUNCTION_RATIO_THRESHOLD,
+                "drop_condition_threshold": DROP_CONDITION_THRESHOLD,
+                "very_short_char_len_lt": VERY_SHORT_CHAR_LEN_THRESHOLD,
+                "very_short_function_ratio_gte": VERY_SHORT_FUNCTION_RATIO_THRESHOLD,
+                "very_short_low_value_requires_no_useful_anchor": True,
+            }
+            if ltp is not None
+            else {"char_len_lt": 10},
+            "total_written": total_written,
+            "groups": manifest,
+        },
+        indent=4,
+    )
 
     logger.success(
         "Stage2 dataset processing successful, "

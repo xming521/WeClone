@@ -1,10 +1,12 @@
 import json
 import os
 import re
+import shutil
 import subprocess
 import tempfile
 import time
 from concurrent.futures import CancelledError, Future, ThreadPoolExecutor
+from contextlib import contextmanager
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 from queue import Queue
@@ -16,6 +18,8 @@ import httpx
 import pyjson5
 from openai import BadRequestError, OpenAI
 from pydantic import BaseModel
+
+from weclone.utils.secure_storage import is_encrypted_mode, runtime_directory
 
 from ._common import (
     API_TIMEOUT_SECONDS,
@@ -209,7 +213,7 @@ def parse_json_from_text(text: str | None) -> ParsedJson:
     start_arr = stripped.find("[")
     starts = [pos for pos in (start_obj, start_arr) if pos >= 0]
     if not starts:
-        raise ValueError(f"no JSON object or array in response: {stripped[:200]!r}")
+        raise ValueError("no JSON object or array in response")
     start = min(starts)
     opening = stripped[start]
     closing = "}" if opening == "{" else "]"
@@ -235,7 +239,7 @@ def parse_json_from_text(text: str | None) -> ParsedJson:
             depth -= 1
             if depth == 0:
                 return json.loads(stripped[start : idx + 1])
-    raise ValueError(f"unbalanced JSON in response: {stripped[:200]!r}")
+    raise ValueError("unbalanced JSON in response")
 
 
 def _maybe_parse_response_json(request: LLMRequest, text: str | None) -> ParsedJson | None:
@@ -371,7 +375,7 @@ class BaseBatchMixin:
         return LLMResponse(
             ok=False,
             text=getattr(exc, "partial_text", None),
-            error=f"{type(exc).__name__}: {exc}",
+            error=type(exc).__name__ if is_encrypted_mode() else f"{type(exc).__name__}: {exc}",
             provider=self.provider,
             model=request.model or self.model or "",
             metadata=metadata,
@@ -411,7 +415,7 @@ class BaseBatchMixin:
                                 )
                         except Exception as exc:
                             result.ok = False
-                            result.error = f"json validation failed: {type(exc).__name__}: {exc}"
+                            result.error = f"json validation failed: {type(exc).__name__}"
                             result.metadata["error_type"] = type(exc).__name__
                 except Exception as exc:
                     result = self._error_response(request, exc)
@@ -776,6 +780,17 @@ class CodexExecClient(BaseBatchMixin):
             "web_search": "live" if self.enable_web_search else "disabled",
             "features.code_mode_host": True,
         }
+        if is_encrypted_mode():
+            overrides.update(
+                {
+                    "history.persistence": "none",
+                    "log_dir": str(output_path.parent / "codex-log"),
+                    "sqlite_home": str(output_path.parent / "codex-state"),
+                    "otel.log_user_prompt": False,
+                    "otel.exporter": "none",
+                    "otel.trace_exporter": "none",
+                }
+            )
         for feature in (
             "memories",
             "multi_agent",
@@ -823,20 +838,28 @@ class CodexExecClient(BaseBatchMixin):
             "minimal_context": True,
         }
 
-    def _generate(self, request: LLMRequest, call: LLMAuditCall) -> LLMResponse:
-        model = request.model or self.model or ""
-        prompt = messages_to_prompt(request.messages)
-        if request.stream:
-            raise ValueError("codex_exec does not support stream=True")
-        timeout = request.timeout if request.timeout is not None else self.timeout
+    @contextmanager
+    def _request_directory(self):
+        if is_encrypted_mode():
+            with runtime_directory("codex-request-") as directory:
+                yield Path(directory)
+            return
         if not self.isolated_cwd:
             self.requests_dir.mkdir(parents=True, exist_ok=True)
         with tempfile.TemporaryDirectory(
             prefix="request-",
             dir=None if self.isolated_cwd else self.requests_dir,
             ignore_cleanup_errors=True,
-        ) as tmp_dir:
-            tmp_path = Path(tmp_dir)
+        ) as directory:
+            yield Path(directory)
+
+    def _generate(self, request: LLMRequest, call: LLMAuditCall) -> LLMResponse:
+        model = request.model or self.model or ""
+        prompt = messages_to_prompt(request.messages)
+        if request.stream:
+            raise ValueError("codex_exec does not support stream=True")
+        timeout = request.timeout if request.timeout is not None else self.timeout
+        with self._request_directory() as tmp_path:
             output_path = tmp_path / "last_message.txt"
             (tmp_path / "instructions.md").write_text(
                 "You are a helpful assistant. Follow the user's instructions and answer concisely.\n",
@@ -847,6 +870,23 @@ class CodexExecClient(BaseBatchMixin):
                 schema_path = tmp_path / "output_schema.json"
                 schema_path.write_text(json.dumps(request.json_schema, ensure_ascii=False), encoding="utf-8")
             run_cwd = tmp_path if self.isolated_cwd else self.cwd
+            process_env = None
+            if is_encrypted_mode():
+                # Codex may create local caches and logs even in ephemeral mode.
+                # Isolate its whole writable home, preserving only login and config.
+                process_env = dict(os.environ)
+                runtime_home = tmp_path / "codex-home"
+                runtime_home.mkdir(mode=0o700)
+                source_home = Path(os.environ.get("CODEX_HOME", Path.home() / ".codex"))
+                for name in ("auth.json", "config.toml"):
+                    source_file = source_home / name
+                    if source_file.is_file():
+                        shutil.copyfile(source_file, runtime_home / name)
+                        (runtime_home / name).chmod(0o600)
+                process_env["CODEX_HOME"] = str(runtime_home)
+                process_env["TMPDIR"] = str(tmp_path)
+                process_env["TMP"] = str(tmp_path)
+                process_env["TEMP"] = str(tmp_path)
             cmd = self._build_command(request, output_path=output_path, schema_path=schema_path, cwd=run_cwd)
             call.start_attempt(
                 1,
@@ -869,6 +909,7 @@ class CodexExecClient(BaseBatchMixin):
                     stderr=subprocess.PIPE,
                     text=True,
                     start_new_session=os.name == "posix",
+                    env=process_env,
                 )
                 started = time.monotonic()
                 pending_input = prompt
@@ -945,7 +986,9 @@ class CodexExecClient(BaseBatchMixin):
         error = None
         if proc.returncode != 0:
             detail = f"{stderr} || {output_text or stdout[:400]}"
-            error = f"returncode={proc.returncode}[{_classify_error(detail)}]: {detail[:400]}"
+            error = f"returncode={proc.returncode}[{_classify_error(detail)}]"
+            if not is_encrypted_mode():
+                error += f": {detail[:400]}"
             metadata["error_type"] = "CodexExecError"
         elif not text:
             error = "empty response"

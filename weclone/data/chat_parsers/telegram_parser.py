@@ -1,14 +1,15 @@
 import csv
-import json
+import hashlib
 import os
-import shutil
 import sys
 from datetime import datetime
+from io import StringIO
 from typing import Dict, List
 
 from pandas import Timestamp
 
 from weclone.data.models import ChatMessage
+from weclone.utils import secure_storage
 from weclone.utils.config_models import DataModality, WCMakeDatasetConfig
 from weclone.utils.log import logger
 
@@ -193,7 +194,7 @@ class TelegramChatParser:
         for msg in chat_messages:
             msg.room_name = chat_name
 
-        logger.info(f"Chat '{chat_name}' parsing completed, {len(chat_messages)} messages in total")
+        logger.info(f"Chat parsing completed, {len(chat_messages)} messages in total")
         return chat_messages
 
     def to_csv(self, chat_messages: List[ChatMessage], output_file: str):
@@ -226,25 +227,26 @@ class TelegramChatParser:
 
         os.makedirs(os.path.dirname(output_file), exist_ok=True)
 
-        with open(output_file, "w", encoding="utf-8", newline="") as csvfile:
-            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-            writer.writeheader()
+        csvfile = StringIO(newline="")
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writeheader()
 
-            for msg in chat_messages:
-                writer.writerow(
-                    {
-                        "id": msg.id,
-                        "MsgSvrID": msg.MsgSvrID,
-                        "type_name": msg.type_name,
-                        "is_sender": msg.is_sender,
-                        "talker": msg.talker,
-                        "room_name": msg.room_name,
-                        "msg": msg.msg,
-                        "src": msg.src,
-                        "CreateTime": msg.CreateTime,
-                        "is_forward": msg.is_forward,
-                    }
-                )
+        for msg in chat_messages:
+            writer.writerow(
+                {
+                    "id": msg.id,
+                    "MsgSvrID": msg.MsgSvrID,
+                    "type_name": msg.type_name,
+                    "is_sender": msg.is_sender,
+                    "talker": msg.talker,
+                    "room_name": msg.room_name,
+                    "msg": msg.msg,
+                    "src": msg.src,
+                    "CreateTime": msg.CreateTime,
+                    "is_forward": msg.is_forward,
+                }
+            )
+        output_file = str(secure_storage.write_text(output_file, csvfile.getvalue()))
 
         logger.info(f"CSV file saved: {output_file}")
 
@@ -276,13 +278,14 @@ class TelegramChatParser:
 
                 target_path = os.path.join(target_dir, filename)
 
-                shutil.copy2(normalized_src, target_path)
+                imported_path = secure_storage.import_file(normalized_src)
+                secure_storage.write_bytes(target_path, secure_storage.read_bytes(imported_path))
                 copied_count += 1
 
         logger.info(f"Image copying completed: successful {copied_count}, skipped {skipped_count}")
 
 
-def process_telegram_dataset(config: WCMakeDatasetConfig) -> None:
+def process_telegram_dataset(config: WCMakeDatasetConfig) -> list[str]:
     """
     Process Telegram dataset, traverse all folders under dataset/telegram
     Create corresponding folders for each telegram folder under dataset/csv
@@ -293,24 +296,17 @@ def process_telegram_dataset(config: WCMakeDatasetConfig) -> None:
         Dataset configuration, contains telegram_args.my_id for determining sender
     """
     telegram_dir = "dataset/telegram"
-    csv_output_dir = "dataset/csv"
+    csv_output_dir = getattr(config, "csv_folder", "dataset/csv")
 
     if not os.path.exists(telegram_dir):
         logger.error(f"Telegram data directory does not exist: {telegram_dir}")
-        return
+        return []
 
     if not config.telegram_args or not config.telegram_args.my_id:
         logger.error("Telegram configuration missing, cannot process Telegram dataset")
         sys.exit(1)
 
-    if os.path.exists(csv_output_dir):
-        for item in os.listdir(csv_output_dir):
-            item_path = os.path.join(csv_output_dir, item)
-            if os.path.isdir(item_path):
-                shutil.rmtree(item_path)
-            else:
-                os.remove(item_path)
-
+    generated_csv_files: list[str] = []
     for folder_name in os.listdir(telegram_dir):
         folder_path = os.path.join(telegram_dir, folder_name)
         if not os.path.isdir(folder_path):
@@ -318,8 +314,8 @@ def process_telegram_dataset(config: WCMakeDatasetConfig) -> None:
 
         json_path = os.path.join(folder_path, "result.json")
 
-        with open(json_path, "r", encoding="utf-8") as file:
-            jdata = json.load(file)
+        imported_path = secure_storage.import_file(json_path)
+        jdata = secure_storage.read_json(imported_path)
 
         chat_name = jdata.get("name", "unknown")
         chat_type = jdata.get("type", "unknown")
@@ -329,7 +325,12 @@ def process_telegram_dataset(config: WCMakeDatasetConfig) -> None:
         safe_type = "".join(c for c in str(chat_type) if c.isalnum() or c in "._-")
         safe_id = "".join(c for c in str(chat_id) if c.isalnum() or c in "._-")
 
-        csv_folder_name = f"{safe_name}-{safe_type}-{safe_id}"
+        if secure_storage.is_encrypted_mode():
+            # Stable opaque IDs avoid disclosing contact names in directory listings.
+            folder_id = hashlib.sha256(os.path.abspath(folder_path).encode("utf-8")).hexdigest()[:24]
+            csv_folder_name = f"telegram_{folder_id}"
+        else:
+            csv_folder_name = f"{safe_name}-{safe_type}-{safe_id}"
         csv_folder_path = os.path.join(csv_output_dir, csv_folder_name)
 
         parser = TelegramChatParser(config=config)
@@ -338,6 +339,9 @@ def process_telegram_dataset(config: WCMakeDatasetConfig) -> None:
         if messages:
             csv_file_path = os.path.join(csv_folder_path, f"{csv_folder_name}.csv")
             parser.to_csv(messages, csv_file_path)
+            generated_csv_files.append(csv_file_path)
             parser.copy_received_images(messages, folder_path)
         else:
             logger.warning(f"Folder '{folder_name}' has no valid messages")
+
+    return generated_csv_files

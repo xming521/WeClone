@@ -6,6 +6,7 @@ from pathlib import Path
 from openai import APIConnectionError
 
 from weclone.core.inference import OpenAICompatibleClient, RetryPolicy
+from weclone.utils import secure_storage
 from weclone.utils.config_models import WCMakeDatasetConfig
 from weclone.utils.log import logger
 
@@ -15,21 +16,25 @@ def check_image_file_exists(file_path: str) -> str | bool:
         normalized_path = os.path.normpath(file_path).replace("\\", "/")
 
         filename_with_ext = os.path.basename(normalized_path)
-        filename_without_ext = Path(filename_with_ext).stem
+        filename_without_ext = secure_storage.logical_path(filename_with_ext).stem
 
         # 使用 glob 查找精确匹配该文件名的文件（不论扩展名）
         images_dir = Path("dataset") / "media" / "images"
-        matching_files = list(images_dir.glob(f"{filename_without_ext}.*"))
+        matching_files = list(secure_storage.iter_files(images_dir, f"{filename_without_ext}.*"))
 
         if len(matching_files) > 0:
             # 获取相对于dataset/media的路径，只保留images/文件名
             full_path = matching_files[0]
+            if secure_storage.is_encrypted_mode():
+                return str(secure_storage.import_file(full_path).resolve())
             relative_path = full_path.relative_to(Path("dataset") / "media")
             return str(relative_path)
         else:
             return False
 
     except Exception as e:
+        if secure_storage.is_encrypted_mode():
+            raise
         logger.error(f"检查图片文件时出错: {file_path}, 错误: {e}")
         return False
 
@@ -102,15 +107,17 @@ class ImageToTextProcessor:
     def _encode_image_to_base64(self, image_path: str) -> str:
         """将图片编码为base64"""
         try:
-            with open(image_path, "rb") as image_file:
-                return base64.b64encode(image_file.read()).decode("utf-8")
+            imported_path = secure_storage.import_file(image_path)
+            return base64.b64encode(secure_storage.read_bytes(imported_path)).decode("utf-8")
         except Exception as e:
+            if secure_storage.is_encrypted_mode():
+                raise
             logger.error(f"编码图片失败 {image_path}: {e}")
             return ""
 
     def _get_image_format(self, image_path: str) -> str:
         """获取图片格式"""
-        suffix = Path(image_path).suffix.lower().replace(".", "")
+        suffix = secure_storage.logical_path(image_path).suffix.lower().replace(".", "")
         if suffix == "jpg":
             return "jpeg"
         return suffix
@@ -165,7 +172,7 @@ class ImageToTextProcessor:
 
     def describe_image(self, image_path: str) -> str:
         """公开方法，用于描述单张图片内容"""
-        if not os.path.exists(image_path):
+        if not secure_storage.file_exists(image_path):
             logger.warning(f"图片文件不存在: {image_path}")
             return "[图片文件不存在]"
 

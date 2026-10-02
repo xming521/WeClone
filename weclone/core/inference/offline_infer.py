@@ -1,3 +1,5 @@
+from functools import wraps
+from inspect import signature
 from typing import Any, List, Optional
 
 import torch
@@ -10,6 +12,8 @@ from pydantic import BaseModel
 from vllm import LLM, SamplingParams
 from vllm.lora.request import LoRARequest
 from vllm.outputs import RequestOutput
+
+from weclone.utils.secure_storage import sensitive_runtime
 
 try:
     from vllm.sampling_params import GuidedDecodingParams as _GuidedDecodingParams  # type: ignore[attr-defined]
@@ -71,21 +75,32 @@ def parse_guided_decoding_results(
             parsed_result = guided_decoding_class.model_validate_json(json_text)
             parsed_results.append(parsed_result)
         except Exception as e:
-            if isinstance(result, RequestOutput):
-                log_text = result.outputs[0].text[:100] + "..."
-            elif isinstance(result, ChatCompletion):
-                log_text = result.choices[0].message.content[:100] + "..."
-            else:
-                log_text = str(result)[:100] + "..."
-            logger.warning(
-                f"Failed to parse JSON from result at sequence index {idx}: {log_text}, error: {e}"
-            )
+            logger.warning(f"Failed to parse JSON from result at sequence index {idx}: {type(e).__name__}")
             failed_indexs.append(idx)
             parsed_results.append(None)
 
     return parsed_results, failed_indexs
 
 
+def _secure_inference(function):
+    function_signature = signature(function)
+
+    @wraps(function)
+    def wrapper(*args, **kwargs):
+        bound = function_signature.bind(*args, **kwargs)
+        bound.apply_defaults()
+        with sensitive_runtime(
+            bound.arguments,
+            dataset_keys=(),
+            model_keys=("adapter_name_or_path", "model_name_or_path"),
+            output_keys=(),
+        ) as runtime:
+            return function(**runtime)
+
+    return wrapper
+
+
+@_secure_inference
 def vllm_infer(
     inputs: List[str],
     model_name_or_path: str,
