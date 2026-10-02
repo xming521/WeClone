@@ -15,11 +15,31 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from weclone.server.auth import install_auth
+from weclone.server.source_chat import source_chat
 from weclone.utils import secure_storage as secure
 
 Status = Literal["pending", "approved", "rejected"]
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_STATIC_DIR = Path(__file__).resolve().parents[1] / "web" / "dist"
+
+
+def review_paths(database: Path | None = None, source: Path | None = None) -> tuple[Path, Path]:
+    directory = ROOT / "dataset/res_csv/agent"
+    if source is None:
+        legacy = directory / "memory_organization"
+        # Keep an existing legacy snapshot, including when its source was removed.
+        candidates = [legacy, *sorted((directory / "profile_runs").glob("*/profile_hierarchy"), reverse=True)]
+        selected = next(
+            (
+                candidate
+                for candidate in candidates
+                if secure.file_exists(candidate / "profile_hierarchy.json")
+                or secure.file_exists(candidate / "profile_review.sqlite3")
+            ),
+            legacy,
+        )
+        source = selected / "profile_hierarchy.json"
+    return database or source.parent / "profile_review.sqlite3", source
 
 
 def encode(value):
@@ -138,6 +158,8 @@ class ReviewStore:
 
     @contextmanager
     def connect(self):
+        if not secure.file_exists(self.database) and not secure.file_exists(self.source):
+            raise FileNotFoundError(self.source)
         with secure.encrypted_sqlite(self.database) as db:
             db.row_factory = sqlite3.Row
             db.execute("PRAGMA foreign_keys=ON")
@@ -278,6 +300,14 @@ class ReviewStore:
                 for row in db.execute("SELECT * FROM history WHERE fact_id=? ORDER BY seq DESC", (fact_id,))
             ]
 
+    def chat(self, source_id):
+        with self.connect() as db:
+            data = json.loads(db.execute("SELECT data FROM snapshot WHERE id=1").fetchone()["data"])
+            source = data.get("sources", {}).get(source_id)
+        if not isinstance(source, dict):
+            raise HTTPException(404, "来源记录不存在")
+        return source_chat(source_id, source)
+
     def profile(self, approved_only=False):
         with self.connect() as db:
             db.execute("BEGIN")
@@ -342,10 +372,7 @@ def create_app(
     *,
     inference_router: APIRouter | None = None,
 ):
-    directory = ROOT / "dataset/res_csv/agent/memory_organization"
-    store = ReviewStore(
-        database or directory / "profile_review.sqlite3", source or directory / "profile_hierarchy.json"
-    )
+    store = ReviewStore(*review_paths(database, source))
     app = FastAPI(title="WeClone")
     install_auth(app, store.database)
 
@@ -373,6 +400,10 @@ def create_app(
     @app.get("/api/facts/{fact_id}/history")
     def history(fact_id: str):
         return store.history(fact_id)
+
+    @app.get("/api/sources/{source_id}/chat")
+    def chat(source_id: str):
+        return store.chat(source_id)
 
     @app.post("/api/facts", status_code=201)
     def create(request: FactWrite):

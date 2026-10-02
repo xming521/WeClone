@@ -14,12 +14,24 @@ export interface ProfileFact {
   value: string;
   source_ids: string[];
   support_count?: number;
+  source_confidence_mean?: number;
+  source_importance_mean?: number;
 }
 
 export interface ProfileSource {
   id?: string;
   sample_time?: string;
   content?: string;
+  confidence?: number;
+  importance?: number;
+}
+
+export interface SourceChat {
+  source_id: string;
+  sample_id: string;
+  chat_with: string;
+  sample_time: string | null;
+  messages: { id: string; role: 'user' | 'assistant'; speaker: string; content: string; time: string | null }[];
 }
 
 interface AttributeInput {
