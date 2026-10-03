@@ -116,15 +116,14 @@ function DetailPanel({ model, fullModel, open, onClose }: { model: ProfileModel;
   const tab = useGraphStore((state) => state.detailTab);
   const setTab = useGraphStore((state) => state.setDetailTab);
   const contentRef = useRef<HTMLDivElement>(null);
-  const selected = model.nodes.get(selectedId ?? 'root') ?? model.nodes.get('root')!;
-  const path = ancestors(model, selected.id).slice(1);
+  const selected = fullModel.nodes.get(selectedId ?? 'root') ?? fullModel.nodes.get('root')!;
+  const path = ancestors(fullModel, selected.id).slice(1);
   const color = DIMENSION_COLORS[selected.dim ?? 1];
-  const scope = fullModel.nodes.get(selected.id) ?? selected;
-  const facts = collectFacts(fullModel, scope.id);
+  const facts = collectFacts(fullModel, selected.id);
   const pending = facts.filter(fact => fact.status === 'pending').length;
   const approved = facts.filter(fact => fact.status === 'approved').length;
   const reviewed = facts.length - pending;
-  const children = selected.childIds.map((id) => model.nodes.get(id)!);
+  const children = (model.nodes.get(selected.id)?.childIds ?? []).map((id) => model.nodes.get(id)!);
   useEffect(() => { contentRef.current?.scrollTo(0, 0); }, [selected.id, tab]);
 
   return (
@@ -149,7 +148,7 @@ function DetailPanel({ model, fullModel, open, onClose }: { model: ProfileModel;
           </div>
           <div role="tabpanel" id="detail-panel-overview" aria-labelledby="detail-tab-overview" hidden={tab !== 'overview'}>
           <div className="detail-metrics">
-            <div><strong>{scope.attributeCount}</strong><span>画像属性</span></div>
+            <div><strong>{selected.attributeCount}</strong><span>画像属性</span></div>
             <div><strong>{facts.length}</strong><span>画像事实</span></div>
           </div>
 

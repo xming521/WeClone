@@ -82,6 +82,25 @@ class WebSecurityChecks(unittest.TestCase):
         secure.lock()
         return response
 
+    def test_password_length_bounds(self):
+        self.assertEqual(len(auth.Login(password="x" * 256).password), 256)
+        self.assertEqual(len(auth.Setup(password="x", confirmation="x" * 256).confirmation), 256)
+        with TestClient(create_app(**self.options)) as client:
+            client.headers.update(self.headers)
+            with (
+                patch.object(auth.AuthStore, "setup") as setup,
+                patch.object(auth.AuthStore, "login") as login,
+            ):
+                for value in ("", "x" * 257):
+                    self.assertEqual(
+                        client.post("/api/auth/login", json={"password": value}).status_code, 422
+                    )
+                    for field in ("password", "confirmation"):
+                        payload = {"password": "x", "confirmation": "x", field: value}
+                        self.assertEqual(client.post("/api/auth/setup", json=payload).status_code, 422)
+                setup.assert_not_called()
+                login.assert_not_called()
+
     def test_setup_review_encryption_restart_and_expiry(self):
         with TestClient(create_app(**self.options)) as client:
             self.assertFalse(client.get("/api/auth/status").json()["initialized"])

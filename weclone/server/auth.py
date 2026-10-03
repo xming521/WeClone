@@ -163,11 +163,11 @@ class AuthStore:
 
 
 class Login(BaseModel):
-    password: str = Field(min_length=1)
+    password: str = Field(min_length=1, max_length=256)
 
 
 class Setup(Login):
-    confirmation: str = Field(min_length=1)
+    confirmation: str = Field(min_length=1, max_length=256)
 
 
 def install_auth(app, database: Path):

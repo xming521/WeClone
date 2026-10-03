@@ -61,7 +61,10 @@ def main(argv: list[str] | None = None):
     if args.output_dir is None:
         args.output_dir = Path("dataset/res_csv/agent/memory_organization")
     args.output_dir.mkdir(parents=True, exist_ok=True)
-    data = secure_storage.read_json(args.input_path)
+    input_bytes = secure_storage.read_bytes(args.input_path)
+    input_sha256 = hashlib.sha256(input_bytes).hexdigest()
+    data = json.loads(input_bytes)
+    del input_bytes
     dims = (1, 3, 4, 5, 8)
     facts = [f for f in data["facts"] if f["dim"] in dims]
     attributes = {
@@ -182,9 +185,7 @@ def main(argv: list[str] | None = None):
         args.output_dir / "profile_hierarchy.json",
         {
             "input_path": str(args.input_path.resolve()),
-            "input_sha256": hashlib.sha256(
-                secure_storage.resolve_path(args.input_path).read_bytes()
-            ).hexdigest(),
+            "input_sha256": input_sha256,
             "dimensions": dimensions,
             "facts": facts,
             "sources": {sid: data["sources"][sid] for sid in sorted(used)},
