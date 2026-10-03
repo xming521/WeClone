@@ -23,7 +23,7 @@ class SecureStorageChecks(unittest.TestCase):
         self.root = Path(self.directory.name)
         self.config = self.root / "settings.jsonc"
         self.document = {
-            "version": "0.4.0",
+            "version": "0.4.01",
             "security_args": {
                 "storage_mode": "encrypted",
                 "state_dir": str(self.root / "state"),

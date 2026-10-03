@@ -1,5 +1,5 @@
 {
-    "version": "0.4.0",
+    "version": "0.4.01",
     "security_args": {
         // encrypted：聊天数据及衍生产物加密保存；plaintext：明文。首次初始化后固定，改变模式须重新处理全部数据。
         "storage_mode": "encrypted"
