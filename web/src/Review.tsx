@@ -1,13 +1,16 @@
-import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { createContext, useContext, useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { BadgeCheck, FileClock, CircleX, Download, Layers3, Plus } from 'lucide-react';
+import { ArrowUpRight, BadgeCheck, Check, ChevronDown, FileClock, CircleX, Download, Layers3, MessageSquare, Plus, X } from 'lucide-react';
 import * as Tooltip from '@radix-ui/react-tooltip';
-import { buildModel, collectFacts, filterProfile, retainedSelection } from './data';
+import { buildModel, collectFacts, displayProfileText, filterProfile, retainedSelection } from './data';
 import type { ProfileFact, ProfileInput, ReviewStatus, ReviewView } from './data';
 import { useGraphStore } from './store';
 import { api } from './Auth';
+import { FactScores, SourceScores } from './ProfileScores';
+import { SourceChatPanel } from './SourceChatPanel';
+import type { ChatSelection } from './SourceChatPanel';
 
-export const STATUS: Record<ReviewView, string> = { all: '全部', pending: '待审核', approved: '已通过', rejected: '已拒绝' };
+export const STATUS: Record<ReviewView, string> = { all: '全部', pending: '待审核', approved: '已采纳', rejected: '未采纳' };
 const VIEW_ICONS = { all: Layers3, pending: FileClock, approved: BadgeCheck, rejected: CircleX };
 
 interface Editor {
@@ -23,6 +26,14 @@ export function useReview() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [editor, setEditor] = useState<Editor | null>(null);
+  const [chat, setChat] = useState<ChatSelection | null>(null);
+  const detailTab = useGraphStore(state => state.detailTab);
+  const detailSelection = useGraphStore(state => state.selectedId);
+  const detailOpen = useGraphStore(state => state.detailOpen);
+  useEffect(() => { setChat(null); }, [detailTab, detailSelection, detailOpen]);
+  const chatOpener = useRef<HTMLButtonElement | null>(null);
+  function openChat(selection: ChatSelection, button: HTMLButtonElement) { chatOpener.current = button; setChat(selection); }
+  function closeChat() { setChat(null); if (chatOpener.current?.isConnected) chatOpener.current.focus(); }
   const saving = useRef(false);
   const model = useMemo(() => input ? buildModel(filterProfile(input, view)) : null, [input, view]);
   const fullModel = useMemo(() => input ? buildModel(input) : null, [input]);
@@ -99,7 +110,7 @@ export function useReview() {
     }, fact ? 'PATCH' : 'POST', true);
   }
 
-  return { input, model, fullModel, view, setView, error, setError, busy, editor, setEditor, refresh, edit, review, save };
+  return { input, model, fullModel, view, setView, error, setError, busy, editor, setEditor, refresh, edit, review, save, chat, openChat, closeChat };
 }
 
 type Review = ReturnType<typeof useReview>;
@@ -166,9 +177,49 @@ function History({ fact }: { fact: ProfileFact }) {
     {open && <div>{error || (rows?.length === 0 ? '暂无修改记录' : rows?.map((row, i) => <div className="history-row" key={i}>
       <time>{new Date(row.at).toLocaleString()}</time>
       <p>{row.action === 'review' ? '审核' : row.action === 'create' ? '新增' : '编辑'}：{row.before ? STATUS[row.before.status] : '新记录'} → {STATUS[row.after.status]}</p>
-      {row.action !== 'review' && <><p>{row.before && `修改前：${row.before.attr} · ${row.before.value}`}</p><p>保存后：{row.after.attr} · {row.after.value}</p>
+      {row.action !== 'review' && <><p>{row.before && `修改前：${row.before.attr} · ${displayProfileText(row.before.value)}`}</p><p>保存后：{row.after.attr} · {displayProfileText(row.after.value)}</p>
         {row.before?.group_id !== row.after.group_id && <p>归属位置已变更</p>}</>}
     </div>))}</div>}
+  </div>;
+}
+
+function ReviewFilter({ value, counts, onChange }: { value: ReviewView; counts: Record<ReviewView, number>; onChange: (view: ReviewView) => void }) {
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState<ReviewView>(value);
+  const root = useRef<HTMLDivElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const listId = useId();
+  const views = Object.keys(STATUS) as ReviewView[];
+  const Icon = VIEW_ICONS[value];
+  useEffect(() => {
+    if (!open) return;
+    root.current?.querySelector<HTMLButtonElement>(`[data-view="${active}"]`)?.focus();
+  }, [open, active]);
+  useEffect(() => {
+    if (!open) return;
+    const dismiss = (event: PointerEvent) => { if (!root.current?.contains(event.target as Node)) setOpen(false); };
+    document.addEventListener('pointerdown', dismiss);
+    return () => document.removeEventListener('pointerdown', dismiss);
+  }, [open]);
+  function choose(view: ReviewView) { onChange(view); setOpen(false); trigger.current?.focus(); }
+  return <div className="review-filter" ref={root} onBlur={event => {
+    if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
+  }} onKeyDown={event => {
+    if (event.key === 'Escape' && open) { event.preventDefault(); event.stopPropagation(); setOpen(false); trigger.current?.focus(); }
+  }}>
+    <button className="review-filter-trigger" ref={trigger} type="button" aria-label={`筛选审核状态：${STATUS[value]}，${counts[value]} 条`}
+      aria-haspopup="listbox" aria-expanded={open} aria-controls={open ? listId : undefined}
+      onClick={() => { setActive(value); setOpen(!open); }} onKeyDown={event => {
+        if (event.key === 'ArrowDown' || event.key === 'ArrowUp') { event.preventDefault(); setActive(value); setOpen(true); }
+      }}><Icon size={15} aria-hidden="true" /><span>{STATUS[value]}</span><span className="review-filter-count">{counts[value]}</span><ChevronDown className="review-filter-chevron" size={14} aria-hidden="true" /></button>
+    {open && <div className="review-filter-menu" id={listId} role="listbox" aria-label="审核状态">
+      {views.map((view, index) => { const OptionIcon = VIEW_ICONS[view]; return <button key={view} type="button" role="option" aria-selected={value === view}
+        tabIndex={active === view ? 0 : -1} data-view={view} onClick={() => choose(view)} onKeyDown={event => {
+          if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+          event.preventDefault();
+          setActive(views[event.key === 'Home' ? 0 : event.key === 'End' ? views.length - 1 : (index + (event.key === 'ArrowDown' ? 1 : views.length - 1)) % views.length]);
+        }}><OptionIcon size={15} aria-hidden="true" /><span className="review-filter-name">{STATUS[view]}</span><span className="review-filter-count">{counts[view]}</span><Check className="review-filter-check" size={14} aria-hidden="true" /></button>; })}
+    </div>}
   </div>;
 }
 
@@ -181,6 +232,8 @@ export function ReviewPanel() {
   const all = collectFacts(c.fullModel!, selectedId);
   const page = facts.slice(0, limit);
   const selected = page.filter((fact) => checked.has(fact.id));
+  const selectAllRef = useRef<HTMLInputElement>(null);
+  useEffect(() => { if (selectAllRef.current) selectAllRef.current.indeterminate = selected.length > 0 && selected.length < page.length; }, [selected.length, page.length]);
   useEffect(() => { setChecked(new Set()); setLimit(30); }, [selectedId, c.view]);
   const counts = { pending: 0, approved: 0, rejected: 0 };
   all.forEach((fact) => counts[fact.status]++);
@@ -189,30 +242,36 @@ export function ReviewPanel() {
     if (await c.review(selected, status)) setChecked(new Set());
   }
   return <section className="detail-section review-list">
-    <div className="section-heading"><h3>审核画像</h3><span>{facts.length} 条</span></div>
-    <div className="status-counts">待审核 {counts.pending} · 已通过 {counts.approved} · 已拒绝 {counts.rejected}</div>
+    <div className="review-list-toolbar">
+      <ReviewFilter value={c.view} counts={{ all: all.length, ...counts }} onChange={c.setView} /><span>{facts.length} 条画像</span>
+    </div>
     {!!facts.length && <div className="batch-toolbar">
-      <label><input type="checkbox" checked={page.length > 0 && selected.length === page.length} onChange={(event) => setChecked(new Set(event.target.checked ? page.map((fact) => fact.id) : []))} />选中已展示 {page.length} 条</label>
-      <button disabled={c.busy || !selected.length} onClick={() => void batch('approved')}>通过 {selected.length || ''}</button>
-      <button disabled={c.busy || !selected.length} onClick={() => void batch('rejected')}>拒绝</button>
+      <label><input ref={selectAllRef} className="review-checkbox" type="checkbox" checked={page.length > 0 && selected.length === page.length} onChange={(event) => setChecked(new Set(event.target.checked ? page.map((fact) => fact.id) : []))} />选中已展示 {page.length} 条</label>
+      <button disabled={c.busy || !selected.length} onClick={() => void batch('approved')}>采纳 {selected.length || ''}</button>
+      <button disabled={c.busy || !selected.length} onClick={() => void batch('rejected')}>不采纳</button>
     </div>}
     {!facts.length && <p className="detail-hint">当前视图没有画像记录。</p>}
     {page.map((fact) => <article className="fact-card" key={fact.id}>
-      <div className="fact-heading"><label><input aria-label={`选择 ${fact.attr}`} type="checkbox" checked={checked.has(fact.id)} onChange={(event) => {
+      <div className="fact-heading"><label><input className="review-checkbox" aria-label={`选择 ${fact.attr}`} type="checkbox" checked={checked.has(fact.id)} onChange={(event) => {
         const next = new Set(checked); if (event.target.checked) next.add(fact.id); else next.delete(fact.id); setChecked(next);
       }} /> {fact.attr}</label><span className={`status-badge ${fact.status}`}>{STATUS[fact.status]}</span></div>
-      <p>{fact.value}</p>
+      <p>{displayProfileText(fact.value)}</p>
       {fact.origin === 'manual' && <small>手动添加</small>}
+      <FactScores fact={fact} />
       <div className="fact-actions">
-        {fact.status !== 'approved' && <button disabled={c.busy} onClick={() => void c.review([fact], 'approved')}>通过</button>}
-        {fact.status !== 'rejected' && <button disabled={c.busy} onClick={() => void c.review([fact], 'rejected')}>拒绝</button>}
+        {fact.status !== 'approved' && <button className="adopt" disabled={c.busy} onClick={() => void c.review([fact], 'approved')}><Check size={14} aria-hidden="true" />采纳</button>}
+        {fact.status !== 'rejected' && <button disabled={c.busy} onClick={() => void c.review([fact], 'rejected')}><X size={14} aria-hidden="true" />不采纳</button>}
         {fact.status !== 'pending' && <button disabled={c.busy} onClick={() => void c.review([fact], 'pending')}>移回待审核</button>}
         <button disabled={c.busy} onClick={() => c.edit(fact)}>编辑</button>
       </div>
       <details className="evidence-details"><summary>{fact.origin === 'manual' ? '初始内容' : `原始抽取与 ${fact.source_ids.length} 条证据`}</summary>
         <div className="evidence-items"><div className="evidence-item"><strong>{fact.original.attr}</strong><p>{fact.original.value}</p></div>
-          {fact.source_ids.map((id) => { const source = c.input!.sources[id]; return <div className="evidence-item" key={id}>
-            <div><span>{id}</span><time>{source?.sample_time?.slice(0, 10) ?? '未标注时间'}</time></div><p>{source?.content ?? '来源正文不可用'}</p>
+          {fact.source_ids.map((id, index) => { const source = c.input!.sources[id]; const label = `来源 ${index + 1}`; return <div className="evidence-item" key={id}>
+            <div className="evidence-source-header"><span><MessageSquare size={13} aria-hidden="true" />{label}</span>
+              <button type="button" className="view-source-chat" disabled={!source} aria-label={`查看${label}的原始聊天记录`} aria-pressed={c.chat?.id === id}
+                onClick={event => c.openChat({ id, label }, event.currentTarget)}>查看原文<ArrowUpRight size={13} aria-hidden="true" /></button></div>
+            <time className="evidence-time">{source?.sample_time?.slice(0, 10) ?? '未标注时间'}</time><p>{source?.content ?? '来源正文不可用'}</p>
+            <SourceScores source={source} />
           </div>; })}
         </div>
       </details>
@@ -239,6 +298,7 @@ export function ReviewOverlays() {
     return location ? `${location.parent_id ? `${locationName(location.parent_id)} / ` : ''}${location.name}` : '';
   }
   return <>
+    {c.chat && <SourceChatPanel selection={c.chat} onClose={c.closeChat} />}
     {c.error && !editor && <div className="review-error" role="alert">{c.error}<button disabled={c.busy} onClick={() => void c.refresh().then(() => c.setError('')).catch((reason: Error) => c.setError(reason.message))}>刷新数据</button></div>}
     {editor && <dialog ref={dialogRef} className="editor-backdrop" onCancel={(event) => { event.preventDefault(); close(); }}><form className="fact-editor" role="dialog" aria-modal="true" aria-labelledby="editor-title" onSubmit={(event) => { event.preventDefault(); void c.save(false); }}>
       <h2 id="editor-title">{editor.fact ? '编辑画像' : '新增画像'}</h2>
@@ -248,14 +308,14 @@ export function ReviewOverlays() {
       </select></label>
       <label>画像内容<textarea disabled={c.busy} required rows={5} value={editor.value} onChange={(event) => c.setEditor({ ...editor, value: event.target.value })} /></label>
       {editor.fact && <details><summary>查看原始内容</summary><p>{editor.fact.original.attr} · {editor.fact.original.value}</p></details>}
-      <p className="editor-hint">保存修改后移回待审核，暂不用于分身；“保存并通过”后纳入分身画像。</p>
+      <p className="editor-hint">保存修改后移回待审核，暂不用于分身；“保存并采纳”后纳入分身画像。</p>
       {c.error && <div className="editor-error" role="alert">{c.error}<button type="button" disabled={c.busy} onClick={async () => {
         if (!window.confirm('重新载入服务器数据会放弃当前表单中的修改，继续？')) return;
         try { const input = await c.refresh(); const latest = input.facts.find((fact) => fact.id === editor.fact?.id); if (latest) c.edit(latest); c.setError(''); }
         catch (reason) { c.setError((reason as Error).message); }
       }}>重新载入记录</button></div>}
       <div className="editor-actions"><button type="button" disabled={c.busy} onClick={close}>取消</button><button disabled={c.busy}>保存</button>
-        <button className="primary" type="button" disabled={c.busy || !editor.attr.trim() || !editor.value.trim() || !editor.group_id} onClick={() => void c.save(true)}>保存并通过</button></div>
+        <button className="primary" type="button" disabled={c.busy || !editor.attr.trim() || !editor.value.trim() || !editor.group_id} onClick={() => void c.save(true)}>保存并采纳</button></div>
     </form></dialog>}
   </>;
 }

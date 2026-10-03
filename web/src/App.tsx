@@ -7,18 +7,13 @@ import {
   Menu, Minus, Move, Plus, RotateCcw, Search, Sparkles, Target, X,
 } from 'lucide-react';
 import { GraphCanvas } from './GraphCanvas';
-import { DIMENSION_COLORS, ancestors } from './data';
-import type { ProfileModel, ProfileNode, ReviewView } from './data';
+import { DIMENSION_COLORS, ancestors, collectFacts, displayProfileText } from './data';
+import type { ProfileModel, ReviewView } from './data';
 import { ReviewActions, ReviewBar, ReviewOverlays, ReviewPanel, ReviewProvider, useReview } from './Review';
 import { levelIsExpanded, useGraphStore } from './store';
 import { AuthGate, LogoutButton } from './Auth';
 
 const DIMENSION_ICONS = { 1: Fingerprint, 3: Target, 4: Layers3, 5: Compass, 8: Heart };
-
-function collectFactIndices(model: ProfileModel, node: ProfileNode): number[] {
-  if (node.kind === 'attribute') return node.factIndices;
-  return node.childIds.flatMap((id) => collectFactIndices(model, model.nodes.get(id)!));
-}
 
 function IconButton({ label, children, onClick }: { label: string; children: React.ReactNode; onClick: () => void }) {
   return (
@@ -39,7 +34,13 @@ function SearchBox({ model }: { model: ProfileModel }) {
   const reveal = useGraphStore((state) => state.reveal);
   const normalized = search.trim().toLocaleLowerCase();
   const results = useMemo(() => normalized
-    ? [...model.nodes.values()].filter((node) => node.kind !== 'root' && (node.name.toLocaleLowerCase().includes(normalized) || node.factIndices.some((index) => model.facts[index].value.toLocaleLowerCase().includes(normalized)))).slice(0, 8)
+    ? [...model.nodes.values()].filter((node) => node.kind !== 'root' && (
+      node.name.toLocaleLowerCase().includes(normalized) || node.factIndices.some((index) => {
+        const value = model.facts[index].value;
+        return value.toLocaleLowerCase().includes(normalized)
+          || displayProfileText(value).toLocaleLowerCase().includes(normalized);
+      })
+    )).slice(0, 8)
     : [], [model, normalized]);
 
   return (
@@ -109,33 +110,55 @@ function LeftPanel({ model, open, onClose, onInteract, onSelect }: { model: Prof
   );
 }
 
-function DetailPanel({ model, open, onClose }: { model: ProfileModel; open: boolean; onClose: () => void }) {
+function DetailPanel({ model, fullModel, open, onClose }: { model: ProfileModel; fullModel: ProfileModel; open: boolean; onClose: () => void }) {
   const selectedId = useGraphStore((state) => state.selectedId);
   const reveal = useGraphStore((state) => state.reveal);
-  const selected = model.nodes.get(selectedId ?? 'root') ?? model.nodes.get('root')!;
-  const path = ancestors(model, selected.id).slice(1);
+  const tab = useGraphStore((state) => state.detailTab);
+  const setTab = useGraphStore((state) => state.setDetailTab);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const selected = fullModel.nodes.get(selectedId ?? 'root') ?? fullModel.nodes.get('root')!;
+  const path = ancestors(fullModel, selected.id).slice(1);
   const color = DIMENSION_COLORS[selected.dim ?? 1];
-  const indices = collectFactIndices(model, selected);
-  const uniqueIndices = [...new Set(indices)];
-  const children = selected.childIds.map((id) => model.nodes.get(id)!);
+  const facts = collectFacts(fullModel, selected.id);
+  const pending = facts.filter(fact => fact.status === 'pending').length;
+  const approved = facts.filter(fact => fact.status === 'approved').length;
+  const reviewed = facts.length - pending;
+  const children = (model.nodes.get(selected.id)?.childIds ?? []).map((id) => model.nodes.get(id)!);
+  useEffect(() => { contentRef.current?.scrollTo(0, 0); }, [selected.id, tab]);
 
   return (
       <aside className={`detail-panel${open ? ' is-open' : ''}`} aria-hidden={!open} style={{ '--detail-accent': color } as CSSProperties}>
         <button className="detail-close" type="button" aria-label="关闭右侧栏" onClick={onClose}><X size={17} /></button>
         <div className="detail-topline"><span className="detail-kicker"><Sparkles size={14} /> 画像档案</span><span className="detail-serial">WECLONE / 2026</span></div>
-        <div className="detail-content">
-          <div className="breadcrumb">
-            {path.length ? path.map((part, index) => <span key={part.id}>{index > 0 && <ChevronRight size={12} />}{part.name}</span>) : <span>总览</span>}
+        <div className="detail-tabbar" role="tablist" aria-label="画像档案视图">
+          {(['overview', 'review'] as const).map(value => <button key={value} type="button" role="tab" id={`detail-tab-${value}`}
+            aria-selected={tab === value} aria-controls={`detail-panel-${value}`} tabIndex={tab === value ? 0 : -1}
+            onClick={() => setTab(value)} onKeyDown={event => {
+              if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+              event.preventDefault();
+              const next = event.key === 'Home' ? 'overview' : event.key === 'End' ? 'review' : value === 'overview' ? 'review' : 'overview';
+              setTab(next);
+              document.getElementById(`detail-tab-${next}`)?.focus();
+            }}>{value === 'overview' ? '总览' : <>画像审核<span className="detail-pending-count" aria-label={`${pending} 条待审核`}>{pending}</span></>}</button>)}
+        </div>
+        <div className="detail-content" ref={contentRef}>
+          <div className="detail-scope-heading">
+            {path.length > 1 && <div className="breadcrumb">{path.slice(0, -1).map((part, index) => <span key={part.id}>{index > 0 && <ChevronRight size={12} />}{part.name}</span>)}</div>}
+            <h2>{selected.kind === 'root' ? '全部画像' : selected.name}</h2>
           </div>
-          <div className="detail-title-wrap">
-            <span className="detail-symbol" aria-hidden="true">✦</span>
-            <h2>{selected.name}</h2>
-            <p>{selected.kind === 'attribute' ? '画像属性' : selected.kind === 'dimension' ? '维度概览' : selected.kind === 'root' ? '完整画像' : '主题脉络'}</p>
-          </div>
+          <div role="tabpanel" id="detail-panel-overview" aria-labelledby="detail-tab-overview" hidden={tab !== 'overview'}>
           <div className="detail-metrics">
             <div><strong>{selected.attributeCount}</strong><span>画像属性</span></div>
-            <div><strong>{uniqueIndices.length}</strong><span>画像事实</span></div>
+            <div><strong>{facts.length}</strong><span>画像事实</span></div>
           </div>
+
+          <section className="overview-review-progress" aria-label="审核进度">
+            <div><span>审核进度</span><span>{reviewed} / {facts.length}</span></div>
+            <div className="overview-progress-track" role="progressbar" aria-label="已审核画像" aria-valuemin={0} aria-valuemax={facts.length || 1} aria-valuenow={reviewed}>
+              <span style={{ width: `${facts.length ? reviewed / facts.length * 100 : 0}%` }} />
+            </div>
+            <p>待审核 {pending} · 已采纳 {approved} · 未采纳 {reviewed - approved}</p>
+          </section>
 
           {selected.kind !== 'attribute' && (
             <section className="detail-section">
@@ -148,14 +171,17 @@ function DetailPanel({ model, open, onClose }: { model: ProfileModel; open: bool
               {selected.kind === 'root' && <p className="detail-hint">选择左侧维度，逐层展开画像地图。</p>}
             </section>
           )}
-          <ReviewPanel />
+          </div>
+          <div role="tabpanel" id="detail-panel-review" aria-labelledby="detail-tab-review" hidden={tab !== 'review'}>
+            <ReviewPanel />
+          </div>
         </div>
         <div className="detail-footer"><span>PERSONAL KNOWLEDGE MAP</span><span>✳</span></div>
       </aside>
   );
 }
 
-function Atlas({ model, view }: { model: ProfileModel; view: ReviewView }) {
+function Atlas({ model, fullModel, view }: { model: ProfileModel; fullModel: ProfileModel; view: ReviewView }) {
   const graphRef = useRef<Graph | null>(null);
   const [leftOpen, setLeftOpen] = useState(true);
   const [leftTouched, setLeftTouched] = useState(false);
@@ -214,7 +240,7 @@ function Atlas({ model, view }: { model: ProfileModel; view: ReviewView }) {
           <div className="canvas-help"><Move size={15} /> 拖动节点牵动图谱 · 点击探索</div>
         </main>
         <ReviewOverlays />
-        <DetailPanel model={model} open={detailOpen} onClose={closeDetail} />
+        <DetailPanel model={model} fullModel={fullModel} open={detailOpen} onClose={closeDetail} />
       </div>
     </Tooltip.Provider>
   );
@@ -224,7 +250,7 @@ function ProfileApp() {
   const review = useReview();
   if (!review.model && review.error) return <div className="load-state"><span>✳</span><h1>画像地图暂时无法打开</h1><p>{review.error}</p><button onClick={() => void review.refresh().catch((reason: Error) => review.setError(reason.message))}>重试</button></div>;
   if (!review.model) return <div className="load-state"><span className="loading-mark">✳</span><h1>正在展开画像地图</h1></div>;
-  return <ReviewProvider review={review}><Atlas model={review.model} view={review.view} /></ReviewProvider>;
+  return <ReviewProvider review={review}><Atlas model={review.model} fullModel={review.fullModel!} view={review.view} /></ReviewProvider>;
 }
 
 export default function App() {

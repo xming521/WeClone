@@ -77,7 +77,12 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    text = args.text if args.text is not None else args.text_file.read_text(encoding="utf-8")
+    from weclone.utils.secure_storage import ensure_unlocked, is_encrypted_mode, read_text
+
+    ensure_unlocked()
+    if args.show_ids and is_encrypted_mode():
+        raise ValueError("安全模式只输出 token 数量，不能输出可还原正文的 token IDs。")
+    text = args.text if args.text is not None else read_text(args.text_file, import_plaintext=True)
     ids = encode_text(text, tokenizer_file=args.tokenizer_file)
     print(len(ids))
     if args.show_ids:

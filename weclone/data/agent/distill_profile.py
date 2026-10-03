@@ -1,4 +1,3 @@
-import json
 import threading
 import time
 from dataclasses import fields, is_dataclass
@@ -19,6 +18,7 @@ from weclone.data.agent.distill_windows import (
     render_sample,
 )
 from weclone.prompts.chat_distill import build_state_extract_prompt
+from weclone.utils import secure_storage
 from weclone.utils.log import logger
 
 DEFAULT_INPUT_DIR = Path("dataset/res_csv/agent/people")
@@ -69,7 +69,7 @@ def log(message: str) -> None:
 
 
 def load_json(path: Path) -> Any:
-    return json.loads(path.read_text(encoding="utf-8"))
+    return secure_storage.read_json(path)
 
 
 def load_codex_exec_config(config_path: Path) -> dict[str, Any]:
@@ -221,36 +221,23 @@ def resolve_llm_args(args: SimpleNamespace) -> SimpleNamespace:
 
 
 def atomic_save_json(path: Path, payload: dict[str, Any], *, indent: int) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp_path = path.with_suffix(path.suffix + ".tmp")
-    tmp_path.write_text(
-        json.dumps(payload, ensure_ascii=False, indent=indent, default=str) + "\n",
-        encoding="utf-8",
-    )
-    tmp_path.replace(path)
+    secure_storage.write_json(path, payload, indent=indent, default=str)
 
 
 def atomic_save_any_json(path: Path, payload: Any, *, indent: int) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp_path = path.with_suffix(path.suffix + ".tmp")
-    tmp_path.write_text(
-        json.dumps(payload, ensure_ascii=False, indent=indent, default=str) + "\n",
-        encoding="utf-8",
-    )
-    tmp_path.replace(path)
+    secure_storage.write_json(path, payload, indent=indent, default=str)
 
 
 def iter_chat_files(input_dir: Path) -> Iterable[Path]:
-    for path in sorted(input_dir.glob("*.json")):
+    for path in secure_storage.iter_files(input_dir):
         if "manifest" in path.name:
             continue
-        yield path
+        yield secure_storage.logical_path(path)
 
 
-def confirm_distillation(args: SimpleNamespace, *, task: str, file_count: int) -> bool:
-    click.echo(
-        f"即将执行{task}蒸馏：输入 {args.input_dir}（{file_count} 个聊天文件），输出 {args.output_dir}。"
-    )
+def confirm_distillation(args: SimpleNamespace, *, task: str, file_count: int | None) -> bool:
+    input_summary = f"{file_count} 个聊天文件" if file_count is not None else "聊天文件数将在数据准备后确定"
+    click.echo(f"即将执行{task}蒸馏：输入 {args.input_dir}（{input_summary}），输出 {args.output_dir}。")
     click.echo(f"模型后端：{args.llm_provider}。输入目录中的聊天样本将交给该模型处理。")
     click.echo("聊天内容可能包含身份、联系方式和私密对话；模型服务可能记录或留存这些内容，存在隐私泄露风险。")
     if args.overwrite:
@@ -324,9 +311,9 @@ def load_state(
     output_dir: Path,
     overwrite: bool,
 ) -> dict[str, Any]:
-    if overwrite or not state_path.exists():
+    if overwrite or not secure_storage.file_exists(state_path):
         return new_state(input_dir, output_dir)
-    state = json.loads(state_path.read_text(encoding="utf-8"))
+    state = secure_storage.read_json(state_path)
     if not isinstance(state, dict) or not isinstance(state.get("entries"), dict):
         raise ValueError(f"State must be an object with entries: {state_path}")
     state["input_dir"] = str(input_dir)
@@ -540,7 +527,10 @@ def process_file(
         if request_rows:
             window, request = request_rows[0]
             logger.info(f"Dry run: {source_path.name}, samples={[s.sample_id for s in window]}")
-            print(request.messages[0]["content"])
+            if secure_storage.is_encrypted_mode():
+                logger.info("Encrypted mode: dry-run prompt content is not printed")
+            else:
+                print(request.messages[0]["content"])
             return len(window), 0
         return 0, 0
 
@@ -551,7 +541,7 @@ def process_file(
         f"current_state_since={current_state_cutoff_time.isoformat() if current_state_cutoff_time else ''} "
         f"output={output_path}"
     )
-    if not dry_run and (writeback_changed or (skipped_count and not output_path.exists())):
+    if not dry_run and (writeback_changed or (skipped_count and not secure_storage.file_exists(output_path))):
         atomic_save_any_json(output_path, source_data, indent=indent)
         writeback_changed = False
     if not dry_run:
@@ -607,7 +597,7 @@ def process_file(
                     record["updated_at"] = now_ts()
                     done_count += 1
                 if outcome.error:
-                    logger.warning(f"LLM window failed for {source_path.name}: {outcome.error}")
+                    logger.warning(f"LLM window failed for {source_path.name}; details saved in checkpoint")
                 progress.update(len(outcome.samples))
 
             if writeback_changed:
@@ -625,7 +615,11 @@ def process_file(
 
 
 def main(
-    *, input_dir: Path | None = None, output_dir: Path | None = None, config_path: Path | None = None
+    *,
+    input_dir: Path | None = None,
+    output_dir: Path | None = None,
+    config_path: Path | None = None,
+    confirmed: bool = False,
 ) -> None:
     args = default_args()
     if input_dir is not None:
@@ -634,6 +628,7 @@ def main(
         args.output_dir = output_dir
     if config_path is not None:
         args.config_path = config_path
+    secure_storage.configure(args.config_path)
     args = resolve_llm_args(args)
     request_model = args.model if args.llm_provider == "codex_exec" else None
     request_effort = args.effort if args.llm_provider == "codex_exec" else None
@@ -643,7 +638,7 @@ def main(
 
     if not source_files:
         raise FileNotFoundError(f"No chat JSON files found in {args.input_dir}")
-    if not confirm_distillation(args, task="用户画像", file_count=len(source_files)):
+    if not confirmed and not confirm_distillation(args, task="用户画像", file_count=len(source_files)):
         raise SystemExit("已取消蒸馏；未写入结果或调用模型。")
 
     state_path = Path(args.state_path) if args.state_path else default_state_path(args.output_dir)

@@ -10,6 +10,8 @@ from threading import Lock, get_ident
 from typing import Any, Mapping
 from uuid import uuid4
 
+from weclone.utils.secure_storage import is_encrypted_mode
+
 from ._common import logger, project_root
 
 AUDIT_LOG_DIR_ENV = "LLM_AUDIT_LOG_DIR"
@@ -91,6 +93,63 @@ def _exception_payload(exc: BaseException) -> dict[str, Any]:
     return payload
 
 
+def _audit_metadata(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """Allow only operational fields; requests and provider bodies may contain chats."""
+    scalar_fields = {
+        "schema_version",
+        "timestamp",
+        "pid",
+        "thread_id",
+        "event",
+        "sequence",
+        "call_id",
+        "provider",
+        "model",
+        "attempt",
+        "status",
+        "elapsed_s",
+        "will_retry",
+        "retry_reason",
+        "retry_delay_s",
+        "provider_request_id",
+        "ok",
+        "cost_usd",
+        "finish_reason",
+        "http_status",
+        "error_type",
+        "error_category",
+        "returncode",
+        "web_search_calls",
+    }
+    record = {
+        key: value
+        for key, value in payload.items()
+        if key in scalar_fields and (value is None or isinstance(value, (str, bool, int, float)))
+    }
+    error = payload.get("error")
+    if isinstance(error, Mapping):
+        record["error"] = {
+            key: value
+            for key, value in error.items()
+            if key in {"type", "status_code", "request_id"} and isinstance(value, (str, int))
+        }
+    for key in ("result", "response", "metadata"):
+        child = payload.get(key)
+        if not isinstance(child, Mapping):
+            model_dump = getattr(child, "model_dump", None)
+            child = model_dump(mode="json") if callable(model_dump) else None
+        if isinstance(child, Mapping):
+            record[key] = _audit_metadata(child)
+    usage = payload.get("usage")
+    if isinstance(usage, Mapping):
+        record["usage"] = {
+            key: value
+            for key, value in usage.items()
+            if isinstance(value, (int, float)) and not isinstance(value, bool)
+        }
+    return record
+
+
 class LLMAuditLogger:
     """Append-only JSONL audit sink for synchronous LLM calls."""
 
@@ -134,7 +193,8 @@ class LLMAuditLogger:
             **payload,
         }
         try:
-            line = (json.dumps(_jsonable(record), ensure_ascii=False) + "\n").encode("utf-8")
+            logged_record = _audit_metadata(record) if is_encrypted_mode() else _jsonable(record)
+            line = (json.dumps(logged_record, ensure_ascii=False) + "\n").encode("utf-8")
             log_path = self.directory / f"{now:%Y-%m-%d}.jsonl"
             with _AUDIT_WRITE_LOCK:
                 self.directory.mkdir(parents=True, exist_ok=True)
@@ -158,7 +218,7 @@ class LLMAuditLogger:
         except Exception as exc:
             if self.strict:
                 raise
-            logger.warning(f"Failed to write LLM audit event: {type(exc).__name__}: {exc}")
+            logger.warning(f"Failed to write LLM audit event: {type(exc).__name__}")
 
 
 class LLMAuditCall:

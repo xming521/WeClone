@@ -93,13 +93,30 @@ def cli(ctx, config_path):
         logger.info(f"Config file path set to: {config_path}")
 
     _check_project_root()
-    if ctx.invoked_subcommand in {"server", "server-reset-password"}:
+    from weclone.utils import secure_storage as secure
+
+    secure.configure(config_path)
+    ctx.call_on_close(secure.lock)
+    if ctx.invoked_subcommand in {
+        "server",
+        "server-reset-password",
+        "security-init",
+        "security-change-password",
+        "decrypt",
+    }:
         return
     _check_versions()
     global cli_config
     cli_config = cast(CliArgs, load_config(arg_type="cli_args"))
 
     configure_log_level_from_config()
+    if ctx.invoked_subcommand not in {"version", "test-model"}:
+        try:
+            if secure.configure()["explicit"]:
+                secure.ensure_initialized()
+            secure.ensure_unlocked()
+        except secure.SecurityError as exc:
+            raise click.ClickException(str(exc)) from None
 
 
 @cli.command("make-dataset", help="Process chat history CSV files to generate Q&A pair datasets.")
@@ -137,6 +154,43 @@ def distill_event(ctx: click.Context, input_dir: Path | None, output_dir: Path |
     extractor.main(
         input_dir=input_dir, output_dir=output_dir, config_path=Path(config_path) if config_path else None
     )
+
+
+@cli.command("build-profile", help="从聊天数据依次完成数据准备、记忆抽取、整理和画像生成。")
+@click.option(
+    "--with-events/--profile-only",
+    default=None,
+    help="仅抽取画像或同时抽取画像与事件；两类结果可能存在信息重叠，Token 预算有限时建议仅抽取画像。未指定时交互选择。",
+)
+@click.option(
+    "--output-dir",
+    type=click.Path(path_type=Path, file_okay=False),
+    help="本次流水线的结果目录；默认在 dataset/res_csv/agent/profile_runs 下新建时间戳目录。",
+)
+@click.option(
+    "--max-context-tokens",
+    type=click.IntRange(min=1),
+    help="记忆整理和画像生成的输入 token 上限；默认读取 Codex 上下文长度，API 模型需要显式指定。",
+)
+@apply_common_decorators()
+def build_profile(with_events: bool | None, output_dir: Path | None, max_context_tokens: int | None):
+    from weclone.data.agent.profile_pipeline import run
+
+    click.echo("画像与事件的抽取结果可能存在信息重叠。Token 预算有限时，建议仅抽取画像。")
+    if with_events is None:
+        click.echo("1. 仅抽取画像（推荐）\n2. 同时抽取画像与事件")
+        with_events = click.prompt("请选择抽取模式", type=click.Choice(["1", "2"]), default="1") == "2"
+    config_path = Path(os.environ.get("WECLONE_CONFIG_PATH", "settings.jsonc"))
+    try:
+        result = run(
+            with_events=with_events,
+            output_dir=output_dir,
+            config_path=config_path,
+            max_context_tokens=max_context_tokens,
+        )
+    except (OSError, ValueError, RuntimeError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo(f"画像生成完成：{result}")
 
 
 @cli.command("train-sft", help="Fine-tune the model using prepared datasets.")
@@ -184,14 +238,61 @@ def test_model():
     test_main()
 
 
-@cli.command(
-    "server-reset-password", help="Generate a new web password and invalidate existing web sessions."
-)
+@cli.command("server-reset-password", help="重新设置共用密码；旧密文失效，必须从原始聊天重新生成全部数据。")
 @click.option("--database", type=click.Path(path_type=Path, dir_okay=False))
 def server_reset_password(database: Path | None):
-    from weclone.server.auth import DEFAULT_DATABASE, AuthStore
+    from weclone.utils import secure_storage as secure
 
-    AuthStore(database or DEFAULT_DATABASE, reset=True)
+    if database is not None:
+        click.echo("密码作用于当前安全配置；网页会话将在下次请求时自动失效。")
+    click.confirm("重置后旧密文无法用新密码读取，必须重新处理全部聊天数据。继续？", abort=True)
+    password = click.prompt("设置新的共用密码", hide_input=True, confirmation_prompt=True)
+    try:
+        secure.reset_password(password)
+    except secure.SecurityError as exc:
+        raise click.ClickException(str(exc)) from None
+    click.echo("密码已重置。旧文件保留；请使用新输出目录从原始聊天完整重新生成。")
+
+
+@cli.command("security-init", help="按 settings.jsonc 固定存储模式并设置网页、文件读写共用密码。")
+def security_init():
+    from weclone.utils import secure_storage as secure
+
+    if secure.is_initialized():
+        raise click.ClickException("已经初始化，不能切换模式；改密或重置请使用对应命令。")
+    try:
+        secure.ensure_initialized()
+    except secure.SecurityError as exc:
+        raise click.ClickException(str(exc)) from None
+    click.echo(f"初始化完成：{secure.configure()['storage_mode']}。密码未明文保存。")
+
+
+@cli.command("security-change-password", help="使用旧密码修改共用密码，保留已有加密数据。")
+def security_change_password():
+    from weclone.utils import secure_storage as secure
+
+    old_password = click.prompt("输入当前密码", hide_input=True)
+    new_password = click.prompt("设置新密码", hide_input=True, confirmation_prompt=True)
+    try:
+        secure.change_password(old_password, new_password)
+    except secure.SecurityError as exc:
+        raise click.ClickException(str(exc)) from None
+    click.echo("密码已修改，已有数据保留，旧网页会话失效。")
+
+
+@cli.command("decrypt", help="输入共用密码，将加密文件导出到新的明文文件。")
+@click.option(
+    "--input", "input_path", required=True, type=click.Path(path_type=Path, exists=True, dir_okay=False)
+)
+@click.option("--output", "output_path", required=True, type=click.Path(path_type=Path, dir_okay=False))
+def decrypt(input_path: Path, output_path: Path):
+    from weclone.utils import secure_storage as secure
+
+    try:
+        secure.decrypt_file(input_path, output_path)
+    except (secure.SecurityError, OSError) as exc:
+        raise click.ClickException(str(exc)) from None
+    click.echo(f"已导出明文文件：{output_path}，请妥善保管。")
 
 
 @cli.command("server", help="Start the WeClone server, optionally with model inference.")

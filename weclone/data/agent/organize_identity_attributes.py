@@ -9,6 +9,7 @@ from pathlib import Path
 
 from weclone.data.agent.organize_memories import LLMTasks, chinese_attr, load, save
 from weclone.prompts.memory_organization import attribute_hierarchy_prompt
+from weclone.utils import secure_storage
 
 
 def validate_mapping(payload: object, attributes: list[dict]) -> list[dict]:
@@ -101,6 +102,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--tokenizer-file", type=Path)
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args(argv)
+    secure_storage.configure(args.config_path)
     if args.max_context_tokens is not None and args.max_context_tokens < 1:
         parser.error("--max-context-tokens must be positive")
     if args.output_dir is None:

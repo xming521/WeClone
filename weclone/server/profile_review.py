@@ -15,10 +15,31 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from weclone.server.auth import install_auth
+from weclone.server.source_chat import source_chat
+from weclone.utils import secure_storage as secure
 
 Status = Literal["pending", "approved", "rejected"]
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_STATIC_DIR = Path(__file__).resolve().parents[1] / "web" / "dist"
+
+
+def review_paths(database: Path | None = None, source: Path | None = None) -> tuple[Path, Path]:
+    directory = ROOT / "dataset/res_csv/agent"
+    if source is None:
+        legacy = directory / "memory_organization"
+        # Keep an existing legacy snapshot, including when its source was removed.
+        candidates = [legacy, *sorted((directory / "profile_runs").glob("*/profile_hierarchy"), reverse=True)]
+        selected = next(
+            (
+                candidate
+                for candidate in candidates
+                if secure.file_exists(candidate / "profile_hierarchy.json")
+                or secure.file_exists(candidate / "profile_review.sqlite3")
+            ),
+            legacy,
+        )
+        source = selected / "profile_hierarchy.json"
+    return database or source.parent / "profile_review.sqlite3", source
 
 
 def encode(value):
@@ -59,8 +80,14 @@ class ReviewBatch(BaseModel):
 class ReviewStore:
     def __init__(self, database: Path, source: Path):
         self.database = database
-        database.parent.mkdir(parents=True, exist_ok=True)
-        with self.connect() as db:
+        self.source = source
+
+    def initialize(self, db):
+        # Sensitive sources are read only inside an authenticated request.
+        exists = db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='snapshot'").fetchone()
+        if exists and db.execute("SELECT 1 FROM snapshot").fetchone():
+            return
+        if not exists:
             db.executescript("""
                 CREATE TABLE IF NOT EXISTS snapshot (id INTEGER PRIMARY KEY CHECK(id=1), data TEXT NOT NULL, sha256 TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS nodes (
@@ -78,10 +105,9 @@ class ReviewStore:
                     at TEXT NOT NULL, action TEXT NOT NULL, before_json TEXT, after_json TEXT NOT NULL
                 );
             """)
-            db.execute("BEGIN IMMEDIATE")
-            if db.execute("SELECT 1 FROM snapshot").fetchone():
-                return
-            raw = source.read_bytes()
+        db.execute("BEGIN IMMEDIATE")
+        if not db.execute("SELECT 1 FROM snapshot").fetchone():
+            raw = secure.read_bytes(self.source)
             data = json.loads(raw)
             seen = set()
 
@@ -132,14 +158,15 @@ class ReviewStore:
 
     @contextmanager
     def connect(self):
-        db = sqlite3.connect(self.database, timeout=10)
-        db.row_factory = sqlite3.Row
-        db.execute("PRAGMA foreign_keys=ON")
-        try:
-            with db:
-                yield db
-        finally:
-            db.close()
+        if not secure.file_exists(self.database) and not secure.file_exists(self.source):
+            raise FileNotFoundError(self.source)
+        with secure.encrypted_sqlite(self.database) as db:
+            db.row_factory = sqlite3.Row
+            db.execute("PRAGMA foreign_keys=ON")
+            self.initialize(db)
+            # Initialization and the requested edit have separate transactions.
+            db.commit()
+            yield db
 
     def fact(self, db, fact_id):
         row = db.execute(
@@ -273,6 +300,14 @@ class ReviewStore:
                 for row in db.execute("SELECT * FROM history WHERE fact_id=? ORDER BY seq DESC", (fact_id,))
             ]
 
+    def chat(self, source_id):
+        with self.connect() as db:
+            data = json.loads(db.execute("SELECT data FROM snapshot WHERE id=1").fetchone()["data"])
+            source = data.get("sources", {}).get(source_id)
+        if not isinstance(source, dict):
+            raise HTTPException(404, "来源记录不存在")
+        return source_chat(source_id, source)
+
     def profile(self, approved_only=False):
         with self.connect() as db:
             db.execute("BEGIN")
@@ -337,12 +372,19 @@ def create_app(
     *,
     inference_router: APIRouter | None = None,
 ):
-    directory = ROOT / "dataset/res_csv/agent/memory_organization"
-    store = ReviewStore(
-        database or directory / "profile_review.sqlite3", source or directory / "profile_hierarchy.json"
-    )
+    store = ReviewStore(*review_paths(database, source))
     app = FastAPI(title="WeClone")
     install_auth(app, store.database)
+
+    @app.exception_handler(secure.SecurityError)
+    async def security_error(request, exc):
+        status = 401 if isinstance(exc, secure.StorageLocked) else 409
+        return JSONResponse({"detail": str(exc)}, status_code=status)
+
+    @app.exception_handler(FileNotFoundError)
+    async def missing_profile(request, exc):
+        return JSONResponse({"detail": "画像数据尚未生成，请先完成抽取和整理"}, status_code=404)
+
     if inference_router is not None:
         app.include_router(inference_router)
 
@@ -358,6 +400,10 @@ def create_app(
     @app.get("/api/facts/{fact_id}/history")
     def history(fact_id: str):
         return store.history(fact_id)
+
+    @app.get("/api/sources/{source_id}/chat")
+    def chat(source_id: str):
+        return store.chat(source_id)
 
     @app.post("/api/facts", status_code=201)
     def create(request: FactWrite):

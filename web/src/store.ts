@@ -7,6 +7,8 @@ interface GraphState {
   expandedIds: Set<string>;
   selectedId: string | null;
   detailOpen: boolean;
+  detailTab: 'overview' | 'review';
+  setDetailTab: (tab: 'overview' | 'review') => void;
   search: string;
   resetVersion: number;
   setSearch: (value: string) => void;
@@ -36,15 +38,18 @@ export const useGraphStore = create<GraphState>((set) => ({
   expandedIds: new Set(),
   selectedId: 'root',
   detailOpen: false,
+  detailTab: 'overview',
+  setDetailTab: (detailTab) => set({ detailTab }),
   search: '',
   resetVersion: 0,
   setSearch: (search) => set({ search }),
-  initialize: (model) => set({ expandedIds: defaultExpandedNodes(model), detailOpen: false }),
+  initialize: (model) => set({ expandedIds: defaultExpandedNodes(model), detailOpen: false, detailTab: 'overview' }),
   reset: (model) => set((state) => ({
     focusedDimension: null,
     expandedIds: defaultExpandedNodes(model),
     selectedId: 'root',
     detailOpen: false,
+    detailTab: 'overview',
     search: '',
     resetVersion: state.resetVersion + 1,
   })),
@@ -72,11 +77,12 @@ export const useGraphStore = create<GraphState>((set) => ({
   toggleExpanded: (model, id) => set((state) => {
     const node = model.nodes.get(id);
     if (!node) return state;
-    if (!node.childIds.length) return { selectedId: id, focusedDimension: node.dim, detailOpen: true };
+    const detailTab = node.kind === 'attribute' ? 'review' : 'overview';
+    if (!node.childIds.length) return { selectedId: id, focusedDimension: node.dim, detailOpen: true, detailTab };
     const expandedIds = new Set(state.expandedIds);
     if (expandedIds.has(id)) expandedIds.delete(id);
     else expandedIds.add(id);
-    return { expandedIds, selectedId: id, focusedDimension: node.dim, detailOpen: true };
+    return { expandedIds, selectedId: id, focusedDimension: node.dim, detailOpen: true, detailTab };
   }),
   reveal: (model, id) => set((state) => {
     const node = model.nodes.get(id);
@@ -85,6 +91,6 @@ export const useGraphStore = create<GraphState>((set) => ({
     for (const item of ancestors(model, id)) {
       if (item.childIds.length) expandedIds.add(item.id);
     }
-    return { selectedId: id, focusedDimension: node.dim, expandedIds, search: '', detailOpen: true };
+    return { selectedId: id, focusedDimension: node.dim, expandedIds, search: '', detailOpen: true, detailTab: node.kind === 'attribute' ? 'review' : 'overview' };
   }),
 }));

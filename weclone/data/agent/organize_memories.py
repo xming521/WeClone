@@ -28,6 +28,7 @@ from weclone.prompts.memory_organization import (
     classify_prompt,
     summarize_prompt,
 )
+from weclone.utils import secure_storage
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
@@ -41,7 +42,7 @@ def save(path: Path, value: Any) -> None:
 
 
 def load(path: Path) -> Any:
-    return json.loads(path.read_text(encoding="utf-8"))
+    return secure_storage.read_json(path)
 
 
 def source_statistics(source_ids: list[str], by_id: dict[str, dict]) -> dict:
@@ -79,7 +80,7 @@ def read_memories(input_dir: Path, *, preferences_only: bool = False) -> list[di
     for directory, field in (("state_people", "state_memories"), ("event_people", "event_memories")):
         if preferences_only and field != "state_memories":
             continue
-        for path in sorted((input_dir / directory).glob("*.json")):
+        for path in secure_storage.iter_files(input_dir / directory):
             if "manifest" in path.name:
                 continue
             samples = load(path)
@@ -87,7 +88,11 @@ def read_memories(input_dir: Path, *, preferences_only: bool = False) -> list[di
                 raise ValueError(f"Expected sample array: {path}")
             for index, sample in enumerate(samples):
                 sid = distill_profile.sample_id_for(sample, index)
-                peer_key = digest(sample.get("chat_with_id") or sample.get("chat_with") or path.stem)
+                peer_key = digest(
+                    sample.get("chat_with_id")
+                    or sample.get("chat_with")
+                    or secure_storage.logical_path(path).stem
+                )
                 peer = peers.setdefault(peer_key, f"P{len(peers) + 1}")
                 sample_key = sample_ids.setdefault(
                     digest([peer, sid, sample.get("time", "")]),
@@ -111,7 +116,7 @@ def read_memories(input_dir: Path, *, preferences_only: bool = False) -> list[di
                             raise ValueError(f"Empty memory: {path}, sample {sid}, index {memory_index}")
                         memory_key = digest([kind, sample_key, memory])
                         origin = {
-                            "file": str(path),
+                            "file": str(secure_storage.logical_path(path)),
                             "sample_id": sid,
                             "sample_index": index,
                             "kind": kind,
@@ -236,7 +241,7 @@ def resolve_context_window(args: argparse.Namespace) -> int:
         effective_config = asyncio.run(codex_config(command))
         catalog = json.loads(
             subprocess.run(
-                [command, "debug", "models"],
+                [command, "debug", "models", "--bundled"],
                 capture_output=True,
                 text=True,
                 check=True,
@@ -316,7 +321,7 @@ class Embeddings:
             health, self.process = group_state_memories.ensure_embedding_service(self.args, base_url=self.url)
             identity = {key: health.get(key) for key in ("model", "max_length", "device")}
             cache = {"identity": identity, "vectors": {}}
-            for path in sorted(self.batch_dir.glob("*.json")):
+            for path in secure_storage.iter_files(self.batch_dir):
                 shard = load(path)
                 if shard["identity"] != identity:
                     raise ValueError("Embedding model changed; use a new output directory")
@@ -498,7 +503,7 @@ class LLMTasks:
         options = self.options = distill_profile.resolve_llm_args(options)
         self.budget = input_budget(args)
         self.path = args.output_dir / "llm_checkpoint.json"
-        self.entries = load(self.path) if self.path.exists() else {}
+        self.entries = load(self.path) if secure_storage.file_exists(self.path) else {}
         self.client = build_llm_client(
             options.llm_provider,
             config_path=options.config_path,
@@ -834,7 +839,7 @@ def run(args: argparse.Namespace) -> dict:
     try:
         if args.stage in {"prepare", "all"}:
             records = read_memories(args.input_dir, preferences_only=args.preferences_only)
-            if record_path.exists() and load(record_path) != records:
+            if secure_storage.file_exists(record_path) and load(record_path) != records:
                 raise ValueError("Input snapshot changed; use a new output directory")
             save(record_path, records)
             texts = [
@@ -1012,6 +1017,7 @@ def main(argv: list[str] | None = None) -> None:
         "--dry-run", action="store_true", help="Count extracted memories without model calls or writes"
     )
     args = parser.parse_args(argv)
+    secure_storage.configure(args.config_path)
     if args.output_dir is None:
         name = "memory_organization_preferences" if args.preferences_only else "memory_organization"
         args.output_dir = Path("dataset/res_csv/agent") / name

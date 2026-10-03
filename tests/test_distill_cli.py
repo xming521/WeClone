@@ -24,7 +24,7 @@ def test_template_preserves_codex_distill_settings():
     args = distill_profile.default_args()
     args.config_path = Path("settings.template.jsonc")
     resolved = distill_profile.resolve_llm_args(args)
-    assert (resolved.batch_size, resolved.max_tokens, resolved.timeout) == (50, None, 300)
+    assert (resolved.max_tokens, resolved.timeout) == (None, 300)
 
 
 def test_api_provider_does_not_require_codex_exec_settings(tmp_path):

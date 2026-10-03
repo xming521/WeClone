@@ -52,6 +52,22 @@ class PIIDetector:
         nlp_configuration = {
             "nlp_engine_name": "spacy",
             "models": [{"lang_code": self.language, "model_name": model_name}],
+            "ner_model_configuration": {
+                # These spaCy labels have no Presidio PII mapping and are not used by our recognizers.
+                "labels_to_ignore": [
+                    "CARDINAL",
+                    "EVENT",
+                    "FAC",
+                    "LANGUAGE",
+                    "LAW",
+                    "MONEY",
+                    "ORDINAL",
+                    "PERCENT",
+                    "PRODUCT",
+                    "QUANTITY",
+                    "WORK_OF_ART",
+                ],
+            },
         }
 
         provider = NlpEngineProvider(nlp_configuration=nlp_configuration)

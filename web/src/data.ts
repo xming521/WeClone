@@ -14,12 +14,24 @@ export interface ProfileFact {
   value: string;
   source_ids: string[];
   support_count?: number;
+  source_confidence_mean?: number;
+  source_importance_mean?: number;
 }
 
 export interface ProfileSource {
   id?: string;
   sample_time?: string;
   content?: string;
+  confidence?: number;
+  importance?: number;
+}
+
+export interface SourceChat {
+  source_id: string;
+  sample_id: string;
+  chat_with: string;
+  sample_time: string | null;
+  messages: { id: string; role: 'user' | 'assistant'; speaker: string; content: string; time: string | null }[];
 }
 
 interface AttributeInput {
@@ -70,6 +82,14 @@ export const DIMENSION_COLORS: Record<number, string> = {
   5: '#c35f72',
   8: '#3775b4',
 };
+
+// Match the uppercase role label, excluding Latin identifiers and hyphenated model names.
+// Chinese exceptions are common terms, independent of profile samples; extend for new terms.
+const PROFILE_ROLE_B = /(?<![A-Za-z0-9_]|[A-Za-z0-9][-－]|维生素)B(?![A-Za-z0-9_]|[-－][A-Za-z0-9]|站|超|型|股|细胞|族)/g;
+
+export function displayProfileText(text: string): string {
+  return text.replace(PROFILE_ROLE_B, '我');
+}
 
 export function buildModel(input: ProfileInput): ProfileModel {
   const nodes = new Map<string, ProfileNode>();

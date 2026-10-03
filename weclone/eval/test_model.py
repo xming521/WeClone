@@ -1,7 +1,7 @@
-import json
 import sys
 from typing import cast  # 导入 cast
 
+import click
 import httpx
 from tqdm import tqdm
 
@@ -9,6 +9,7 @@ from weclone.core.inference import OpenAICompatibleClient, RetryPolicy
 from weclone.utils.config import load_config
 from weclone.utils.config_models import TestModelArgs, WCInferConfig
 from weclone.utils.log import logger
+from weclone.utils.secure_storage import lock, read_json, unlock, write_text
 
 infer_config = cast(WCInferConfig, load_config("web_demo"))
 test_config = cast(TestModelArgs, load_config("test_model"))
@@ -36,7 +37,7 @@ def _check_api_server() -> None:
     try:
         response = httpx.get(
             str(client.base_url).rstrip("/") + "/models",
-            headers={"Authorization": f"Bearer {client.api_key}"},
+            headers=client.client.default_headers,
             timeout=45,
         )
         response.raise_for_status()
@@ -46,6 +47,33 @@ def _check_api_server() -> None:
             "Please start the server first by running: weclone-cli server --inference --port 8005"
         )
         sys.exit(1)
+
+
+def _authenticate_server() -> None:
+    password = click.prompt("输入网页与数据读写共用密码", hide_input=True)
+    try:
+        unlock(password)
+        server_url = str(client.base_url).rstrip("/").removesuffix("/v1")
+        response = httpx.post(
+            server_url + "/api/auth/login",
+            json={"password": password},
+            headers={"X-WeClone-Request": "1"},
+            timeout=45,
+        )
+        if response.status_code != 200:
+            raise click.ClickException(f"网页鉴权失败（HTTP {response.status_code}），未发送评估聊天内容。")
+        cookie = "; ".join(f"{name}={value}" for name, value in response.cookies.items())
+        if not cookie:
+            raise click.ClickException("网页登录未返回会话，无法执行评估。")
+        client.client = client.client.with_options(
+            default_headers={"Cookie": cookie, "X-WeClone-Request": "1"}
+        )
+    except httpx.HTTPError:
+        raise click.ClickException(
+            "无法连接网页服务，请先启动 weclone-cli server --inference --port 8005。"
+        ) from None
+    finally:
+        del password
 
 
 def handler_text(content: str, history: list, config):
@@ -66,20 +94,24 @@ def handler_text(content: str, history: list, config):
 
 
 def main():
-    _check_api_server()
-    test_list = json.loads(open(test_config.test_data_path, "r", encoding="utf-8").read())["questions"]
-    res = []
-    for questions in tqdm(test_list, desc=" Testing..."):
-        history = []
-        for q in questions:
-            handler_text(q, history=history, config=completion_config)
-        res.append(history)
+    try:
+        _authenticate_server()
+        _check_api_server()
+        test_list = read_json(test_config.test_data_path, import_plaintext=True)["questions"]
+        res = []
+        for questions in tqdm(test_list, desc=" Testing..."):
+            history = []
+            for q in questions:
+                response = handler_text(q, history=history, config=completion_config)
+                if not history or history[-1].get("role") != "assistant":
+                    raise click.ClickException(response)
+            res.append(history)
 
-    res_file = open("test_result-my.txt", "w")
-    for r in res:
-        for i in r:
-            res_file.write(i["content"] + "\n")
-        res_file.write("\n")
+        output = "test_result-my.txt"
+        write_text(output, "\n\n".join("\n".join(item["content"] for item in result) for result in res))
+    finally:
+        client.close()
+        lock()
 
 
 if __name__ == "__main__":

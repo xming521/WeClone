@@ -24,6 +24,7 @@ from typing import Any, Iterable, Sequence
 import pyjson5
 
 from weclone.prompts.chat_distill import MERGE_PROMPT_TEMPLATE
+from weclone.utils import secure_storage
 
 DEFAULT_OUTPUT_DIR = Path("dataset/res_csv/agent/memory_grouping")
 DEFAULT_GROUPING_PATH = DEFAULT_OUTPUT_DIR
@@ -112,49 +113,29 @@ def coerce_int(value: Any, default: int = 0) -> int:
 
 
 def load_json(path: Path) -> Any:
-    return json.loads(path.read_text(encoding="utf-8"))
+    return secure_storage.read_json(path)
 
 
 def atomic_save_json(path: Path, payload: Any, *, indent: int) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp_path = path.with_suffix(path.suffix + ".tmp")
-    tmp_path.write_text(
-        json.dumps(payload, ensure_ascii=False, indent=indent, default=str) + "\n",
-        encoding="utf-8",
-    )
-    tmp_path.replace(path)
+    secure_storage.write_json(path, payload, indent=indent, default=str)
 
 
 def write_jsonl(path: Path, rows: Iterable[dict[str, Any]]) -> int:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    count = 0
-    tmp_path = path.with_suffix(path.suffix + ".tmp")
-    with tmp_path.open("w", encoding="utf-8") as f:
-        for row in rows:
-            f.write(json.dumps(row, ensure_ascii=False, default=str) + "\n")
-            count += 1
-    tmp_path.replace(path)
-    return count
+    entries = list(rows)
+    secure_storage.write_jsonl(path, entries)
+    return len(entries)
 
 
 def read_jsonl(path: Path) -> list[dict[str, Any]]:
-    rows: list[dict[str, Any]] = []
-    with path.open("r", encoding="utf-8") as f:
-        for line_no, line in enumerate(f, start=1):
-            text = line.strip()
-            if not text:
-                continue
-            try:
-                parsed = json.loads(text)
-            except json.JSONDecodeError as exc:
-                raise ValueError(f"Invalid JSONL at {path}:{line_no}: {exc}") from exc
-            if not isinstance(parsed, dict):
-                raise ValueError(f"Expected JSON object at {path}:{line_no}")
-            rows.append(parsed)
+    rows = secure_storage.read_jsonl(path)
+    for line_no, row in enumerate(rows, start=1):
+        if not isinstance(row, dict):
+            raise ValueError(f"Expected JSON object at {path}:{line_no}")
     return rows
 
 
 def person_stem(path: Path) -> str:
+    path = secure_storage.logical_path(path)
     name = path.name
     if name.endswith(DEFAULT_GROUPING_SUFFIX):
         return name[: -len(DEFAULT_GROUPING_SUFFIX)]
@@ -162,12 +143,15 @@ def person_stem(path: Path) -> str:
 
 
 def grouping_paths_for(grouping_path: Path, *, allow_extracted: bool = False) -> list[Path]:
-    if grouping_path.is_file():
-        return [grouping_path]
+    if secure_storage.file_exists(grouping_path):
+        return [secure_storage.logical_path(grouping_path)]
     if grouping_path.is_dir():
-        paths = sorted(path for path in grouping_path.glob(f"*{DEFAULT_GROUPING_SUFFIX}") if path.is_file())
+        paths = [
+            secure_storage.logical_path(path)
+            for path in secure_storage.iter_files(grouping_path, f"*{DEFAULT_GROUPING_SUFFIX}")
+        ]
         if not paths and allow_extracted:
-            paths = sorted(path for path in grouping_path.glob("*.json") if path.is_file())
+            paths = [secure_storage.logical_path(path) for path in secure_storage.iter_files(grouping_path)]
         if paths:
             return paths
         raise FileNotFoundError(
@@ -342,7 +326,7 @@ def resolve_llm_args(args: SimpleNamespace) -> SimpleNamespace:
 
 
 def load_state(state_path: Path, *, overwrite: bool) -> dict[str, Any]:
-    if overwrite or not state_path.exists():
+    if overwrite or not secure_storage.file_exists(state_path):
         return {"version": 1, "entries": {}, "created_at": now_ts()}
     state = load_json(state_path)
     if not isinstance(state, dict) or not isinstance(state.get("entries"), dict):
@@ -441,11 +425,9 @@ def run_llm_merge(args: SimpleNamespace) -> dict[str, Any]:
         pending_tasks.append(task)
 
     if args.dry_run:
-        preview = {
-            "tasks": len(tasks),
-            "pending": len(pending_tasks),
-            "first_prompt": normalize_text(pending_tasks[0].get("prompt")) if pending_tasks else "",
-        }
+        preview: dict[str, Any] = {"tasks": len(tasks), "pending": len(pending_tasks)}
+        if not secure_storage.is_encrypted_mode():
+            preview["first_prompt"] = normalize_text(pending_tasks[0].get("prompt")) if pending_tasks else ""
         return preview
 
     from weclone.core.inference.llm_client import LLMRequest, build_llm_client
@@ -1066,6 +1048,7 @@ def print_command_report(args: SimpleNamespace, report: dict[str, Any]) -> None:
 def main(argv: Sequence[str] | None = None) -> None:
     parser = build_arg_parser()
     parsed_args = parser.parse_args(argv)
+    secure_storage.configure(parsed_args.config_path)
     try:
         if getattr(parsed_args, "skip_merge", False) or not memory_merge_enabled(parsed_args.config_path):
             print(

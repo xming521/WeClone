@@ -206,3 +206,5 @@ dataset/res_csv/agent/*
 AGENTS.md
 logs/*
 web/node_modules/*
+.weclone/
+.weclone-security/

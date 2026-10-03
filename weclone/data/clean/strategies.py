@@ -11,6 +11,7 @@ from tqdm import tqdm
 from weclone.core.inference import OpenAICompatibleClient
 from weclone.data.models import QaPair, QaPairScore, QaPairScoreWithId
 from weclone.prompts.clean_data import CLEAN_PROMPT
+from weclone.utils import secure_storage
 from weclone.utils.config_models import WCMakeDatasetConfig
 from weclone.utils.log import logger
 
@@ -48,8 +49,7 @@ class CleaningStrategy(ABC):
         original_data_path, cleaned_data_path = paths.values()
 
         try:
-            with open(original_data_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
+            data = secure_storage.read_json(original_data_path)
             accept_score = config.clean_dataset.llm.accept_score
             filtered_data = [item for item in data if item.get("score", 0) >= accept_score]
 
@@ -57,14 +57,15 @@ class CleaningStrategy(ABC):
                 logger.warning("No data retained after cleaning, will use original dataset.")
                 return original_dataset_name
 
-            with open(cleaned_data_path, "w", encoding="utf-8") as f:
-                json.dump(filtered_data, f, ensure_ascii=False, indent=2)
+            secure_storage.write_json(cleaned_data_path, filtered_data, indent=2)
             logger.success(
                 f"Filtered data below {accept_score} score, retained {len(filtered_data)} items, saved to {cleaned_data_path}"
             )
             return cleaned_dataset_name
 
         except Exception as e:
+            if secure_storage.is_encrypted_mode():
+                raise
             logger.error(f"Error occurred during data cleaning, will use original dataset: {e}")
             return original_dataset_name
 

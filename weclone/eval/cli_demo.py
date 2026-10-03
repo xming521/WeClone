@@ -1,8 +1,12 @@
 from llamafactory.chat import ChatModel
 from llamafactory.extras.misc import torch_gc
+from llamafactory.hparams import get_infer_args
+
+from weclone.train.security import model_runtime, parsed_cli_arguments
+from weclone.utils.secure_storage import is_encrypted_mode
 
 
-def main():
+def _chat_loop(chat_model):
     try:
         import platform
 
@@ -11,7 +15,6 @@ def main():
     except ImportError:
         print("Install `readline` for a better experience.")
 
-    chat_model = ChatModel()
     messages = []
     print(
         "Welcome to the CLI application, use `clear` to remove the history, use `exit` to exit the application."
@@ -44,6 +47,14 @@ def main():
             response += new_text
         print()
         messages.append({"role": "assistant", "content": response})
+
+
+def main():
+    if not is_encrypted_mode():
+        _chat_loop(ChatModel())
+        return
+    with model_runtime(parsed_cli_arguments(get_infer_args)) as runtime:
+        _chat_loop(ChatModel(runtime))
 
 
 if __name__ == "__main__":

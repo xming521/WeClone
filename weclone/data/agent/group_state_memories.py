@@ -17,6 +17,8 @@ from urllib.parse import urlparse
 
 import pyjson5
 
+from weclone.utils import secure_storage
+
 DEFAULT_INPUT_PATH = Path("dataset/res_csv/agent/people")
 DEFAULT_OUTPUT_DIR = Path("dataset/res_csv/agent/memory_grouping")
 DEFAULT_CONFIG_PATH = Path("settings.jsonc")
@@ -134,14 +136,14 @@ def unique_texts(values: Iterable[Any]) -> list[str]:
 
 
 def load_json(path: Path) -> Any:
-    return json.loads(path.read_text(encoding="utf-8"))
+    return secure_storage.read_json(path)
 
 
 def input_paths_for(input_path: Path) -> list[Path]:
-    if input_path.is_file():
-        return [input_path]
+    if secure_storage.file_exists(input_path):
+        return [secure_storage.logical_path(input_path)]
     if input_path.is_dir():
-        paths = sorted(path for path in input_path.glob("*.json") if path.is_file())
+        paths = [secure_storage.logical_path(path) for path in secure_storage.iter_files(input_path)]
         if paths:
             return paths
         raise FileNotFoundError(f"No JSON files found in input directory: {input_path}")
@@ -149,13 +151,7 @@ def input_paths_for(input_path: Path) -> list[Path]:
 
 
 def atomic_save_json(path: Path, payload: Any, *, indent: int) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp_path = path.with_suffix(path.suffix + ".tmp")
-    tmp_path.write_text(
-        json.dumps(payload, ensure_ascii=False, indent=indent, default=str) + "\n",
-        encoding="utf-8",
-    )
-    tmp_path.replace(path)
+    secure_storage.write_json(path, payload, indent=indent, default=str)
 
 
 def load_embedding_service_args(config_path: Path) -> dict[str, Any]:
@@ -248,6 +244,8 @@ def configure_embedding_service_env(args: SimpleNamespace, base_url: str) -> dic
 
 
 def tail_text(path: Path, *, max_chars: int = 4000) -> str:
+    if secure_storage.is_encrypted_mode():
+        return "Embedding diagnostics are disabled in encrypted mode."
     try:
         text = path.read_text(encoding="utf-8", errors="replace")
     except OSError:
@@ -268,6 +266,16 @@ def start_embedding_service(args: SimpleNamespace, base_url: str) -> subprocess.
         if script_path == resolve_repo_path(DEFAULT_EMBEDDING_SERVICE_SCRIPT)
         else [sys.executable, str(script_path)]
     )
+
+    if secure_storage.is_encrypted_mode():
+        # A generic subprocess may echo request text in its own diagnostics.
+        return subprocess.Popen(
+            command,
+            cwd=str(REPO_ROOT),
+            env=env,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
 
     with log_path.open("ab") as log_file:
         marker = (
@@ -1071,6 +1079,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
 
 def main() -> None:
     args = build_arg_parser().parse_args()
+    secure_storage.configure(args.config_path)
     requested_input_path = Path(args.input_path)
     if requested_input_path.is_dir() and args.output_path:
         raise ValueError("--output-path can only be used when --input-path points to one JSON file.")

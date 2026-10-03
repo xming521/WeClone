@@ -151,6 +151,7 @@ class TelegramArgs(BaseModel):
 
 
 class MakeDatasetArgs(BaseConfigModel):
+    csv_folder: str = "./dataset/csv"
     model_config = {"extra": "forbid"}
 
     platform: PlatformType = Field(..., description="Data source platform")
@@ -327,12 +328,21 @@ class CommonMethods:
         return getattr(self, "dataset", "")
 
 
+class SecurityArgs(BaseModel):
+    model_config = {"extra": "forbid"}
+
+    storage_mode: Literal["encrypted", "plaintext"] = "plaintext"
+    state_dir: str = ".weclone"
+    runtime_dir: str | None = None
+
+
 class WcConfig(BaseModel):
     model_config = {"extra": "forbid"}
 
     version: str = Field(..., description="Configuration file version")
     common_args: CommonArgs = Field(..., description="Common parameters")
     cli_args: CliArgs = Field(..., description="Command line arguments")
+    security_args: SecurityArgs = Field(default_factory=SecurityArgs)
     codex_exec_args: Optional[CodexExecArgs] = None
     agent_distill_args: Optional[AgentDistillArgs] = None
     make_dataset_args: MakeDatasetArgs = Field(..., description="Dataset processing parameters")

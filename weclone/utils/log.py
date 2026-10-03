@@ -8,6 +8,29 @@ from loguru import logger
 
 logger.remove()
 
+
+def _encrypted_logging() -> bool:
+    try:
+        from weclone.utils.secure_storage import is_encrypted_mode
+
+        return is_encrypted_mode()
+    except Exception:
+        # A broken/mismatched security configuration must not make Loguru dump
+        # the entire unformatted record while reporting a formatter failure.
+        return True
+
+
+def _persistent_log_format(record) -> str:
+    prefix = "{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | {name}:{function}:{line}"
+    if _encrypted_logging():
+        # Arbitrary messages and traceback locals can contain chat text. Retain
+        # only location, severity, timestamp and exception class in disk logs.
+        exception = record.get("exception")
+        error_type = exception.type.__name__ if exception else "none"
+        return prefix + f" | event error_type={error_type}\n"
+    return prefix + " - {message}\n{exception}"
+
+
 env_log_level = os.getenv("WC_LOG_LEVEL")
 # Initialize basic log configuration, will be reconfigured later by configure_log_level_from_config
 logger.add(
@@ -30,7 +53,8 @@ class InterceptHandler(logging.Handler):
         timestamp = time.strftime("%H:%M:%S")
         level_color = "\033[36m" if record.levelno >= logging.INFO else "\033[0m"
         reset_color = "\033[0m"
-        message = f"[{record.name}] | {level_color}{record.levelname[0]}{reset_color} | {timestamp} | {record.getMessage()}"
+        text = record.getMessage()
+        message = f"[{record.name}] | {level_color}{record.levelname[0]}{reset_color} | {timestamp} | {text}"
         print(message, file=sys.stderr)
 
 
@@ -42,6 +66,9 @@ logging.basicConfig(handlers=[intercept_handler], level=0, force=True)
 def capture_output(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
+        if _encrypted_logging():
+            # full_log cannot turn authenticated terminal output into a disk copy.
+            return func(*args, **kwargs)
         log_sink_buffer = []
 
         def list_sink(message):
@@ -98,7 +125,7 @@ def capture_output(func):
         sys.stderr = OutputTeeToGlobalLog(original_stderr, logger.opt(raw=True).error)
 
         try:
-            func(*args, **kwargs)
+            return func(*args, **kwargs)
         finally:
             sys.stdout = original_stdout
             sys.stderr = original_stderr
@@ -137,7 +164,7 @@ def configure_log_level_from_config():
         retention="7 days",
         compression="zip",
         level="DEBUG",
-        format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | {name}:{function}:{line} - {message}",
+        format=_persistent_log_format,
         encoding="utf-8",
         enqueue=True,
     )

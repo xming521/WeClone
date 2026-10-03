@@ -146,6 +146,43 @@ weclone-cli make-dataset
 ```
 数据处理更多参数说明：[数据预处理](https://docs.weclone.love/zh/docs/deploy/data_preprocessing.html#%E7%9B%B8%E5%85%B3%E5%8F%82%E6%95%B0)
 
+### 一键生成用户画像
+
+在项目根目录执行：
+```bash
+weclone-cli build-profile
+```
+执行时选择仅抽取画像（默认）或同时抽取事件。两者信息可能重叠，Token 预算有限时建议仅抽取画像；也可直接指定：
+```bash
+weclone-cli build-profile --profile-only
+weclone-cli build-profile --with-events
+```
+结果默认保存在 `dataset/res_csv/agent/profile_runs/`，完成后打印画像文件路径。可用 `--output-dir <新目录>` 指定结果目录；API 模型需用 `--max-context-tokens <上限>` 指定输入 Token 上限。
+
+运行 `weclone-cli server` 查看和审核画像；指定画像使用 `weclone-cli server --source <画像文件路径>`。
+
+### 数据加密与密码
+
+在 `settings.jsonc` 中设置：
+```json
+"security_args": {
+    "storage_mode": "encrypted"
+}
+```
+新模板默认 `encrypted`（加密模式），也可选 `plaintext`（明文模式）；旧配置未设置此项时使用明文。加密模式暂不支持分布式训练。
+
+首次运行加密任务或访问网页时设置共用密码，后续任务和网页登录均使用该密码。
+
+加密产物以 `.enc` 结尾；原始聊天和手动导出的明文文件仍需自行保管。请保留 `.weclone/` 目录，其中的密钥是读取加密数据所必需的。
+
+导出明文、修改或重置密码：
+```bash
+weclone-cli decrypt --input <加密文件> --output <新的明文文件>
+weclone-cli security-change-password  # 使用旧密码修改，保留数据
+weclone-cli server-reset-password     # 忘记密码时重置
+```
+忘记密码无法恢复旧密文；重置密码或切换存储模式后，需在新输出目录从原始聊天重新生成数据。
+
 ## 配置参数并微调模型
 
 - (可选)修改 `settings.jsonc` 的 `model_name_or_path` 、`template`、 `lora_target`选择本地下载好的其他模型。  

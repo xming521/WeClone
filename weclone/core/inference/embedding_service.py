@@ -407,13 +407,13 @@ class EmbeddingRequestHandler(BaseHTTPRequestHandler):
         try:
             with _embedder_lock:
                 embeddings = embedder.encode_texts(texts, batch_size=batch_size)
-        except torch.OutOfMemoryError as exc:
-            logger.exception("Embedding request failed with CUDA OOM.")
-            _error_response(self, 503, f"CUDA OOM: {exc}")
+        except torch.OutOfMemoryError:
+            logger.error("Embedding request failed with CUDA OOM.")
+            _error_response(self, 503, "CUDA OOM")
             return
         except Exception as exc:
-            logger.exception("Embedding request failed.")
-            _error_response(self, 500, str(exc))
+            logger.error("Embedding request failed: {}", type(exc).__name__)
+            _error_response(self, 500, type(exc).__name__)
             return
 
         _json_response(self, 200, {"embeddings": embeddings})

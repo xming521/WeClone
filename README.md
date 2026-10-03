@@ -149,6 +149,43 @@ weclone-cli make-dataset
 ```
 More Parameter Details: [Data Preprocessing](https://docs.weclone.love/docs/deploy/data_preprocessing.html#related-parameters)
 
+### Generate a User Profile in One Command
+
+Run from the project root:
+```bash
+weclone-cli build-profile
+```
+Choose profiles only (the default) or include events. The results may overlap; choose profiles only to save tokens. You can also select the mode directly:
+```bash
+weclone-cli build-profile --profile-only
+weclone-cli build-profile --with-events
+```
+Results are saved under `dataset/res_csv/agent/profile_runs/`, and the profile path is printed on completion. Use `--output-dir <new-directory>` to choose the result directory. API models require `--max-context-tokens <limit>` to set the input token limit.
+
+Run `weclone-cli server` to view and review profiles, or `weclone-cli server --source <profile-path>` to select a profile.
+
+### Data Encryption and Passwords
+
+Set `security_args` in `settings.jsonc`:
+```json
+"security_args": {
+    "storage_mode": "encrypted"
+}
+```
+New templates default to `encrypted`; choose `plaintext` for plaintext storage. Older configurations without this setting use plaintext. Encrypted mode does not yet support distributed training.
+
+Set a shared password at the first encrypted task or web visit. Use it to unlock later tasks and sign in to the web interface.
+
+Encrypted outputs end in `.enc`. Protect your original chats and any plaintext exports. Keep the `.weclone/` directory: it contains the key needed to read encrypted data.
+
+Export plaintext, change a password, or reset a forgotten password:
+```bash
+weclone-cli decrypt --input <encrypted-file> --output <new-plaintext-file>
+weclone-cli security-change-password  # Requires the old password; preserves data
+weclone-cli server-reset-password     # Reset a forgotten password
+```
+Encrypted data cannot be recovered without the password. After resetting it or switching storage modes, regenerate data from the original chats in a new output directory.
+
 ## Configure Parameters and Fine-tune Model
 
 - (Optional) Modify `model_name_or_path`, `template`, `lora_target` in `settings.jsonc` to select other locally downloaded models.   
