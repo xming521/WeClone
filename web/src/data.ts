@@ -221,6 +221,16 @@ export function filterProfile(input: ProfileInput, view: ReviewView): ProfileInp
   }) };
 }
 
+export function exportProfile(input: ProfileInput, view: ReviewView) {
+  const profile = filterProfile(input, view);
+  const sourceIds = new Set(profile.facts.flatMap((fact) => fact.source_ids));
+  return {
+    dimensions: profile.dimensions,
+    facts: profile.facts.map(({ id, dim, attr, value, source_ids, origin }) => ({ id, dim, attr, value, source_ids, origin })),
+    sources: Object.fromEntries(Object.entries(profile.sources).filter(([id]) => sourceIds.has(id))),
+  };
+}
+
 export function collectFacts(model: ProfileModel, id: string): ProfileFact[] {
   const node = model.nodes.get(id);
   if (!node) return [];

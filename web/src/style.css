@@ -344,6 +344,9 @@ button:disabled { cursor: default; opacity: .45; }
 .editor-backdrop { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; padding: 20px; background: #132d285e; backdrop-filter: blur(5px); }
 .fact-editor { width: min(580px, 100%); max-height: 90dvh; overflow: auto; padding: 26px; background: #fffefa; border: 1px solid #d9e6df; border-radius: 20px; box-shadow: 0 22px 70px #112f2940; }
 .fact-editor h2 { margin: 0 0 20px; font-size: 21px; }
+.export-confirm { width: min(440px, 100%); }
+.export-confirm > p { line-height: 1.8; }
+.export-confirm strong { color: #087f73; }
 .fact-editor > label { display: grid; gap: 8px; margin: 16px 0; font-size: 13px; }
 .fact-editor input, .fact-editor textarea, .fact-editor select { width: 100%; min-width: 0; padding: 10px; border: 1px solid #cfded4; border-radius: 8px; background: white; color: #283f35; font: inherit; }
 .fact-editor textarea { resize: vertical; }

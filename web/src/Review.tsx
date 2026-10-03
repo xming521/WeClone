@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useId, useMemo, useRef, useState 
 import type { ReactNode } from 'react';
 import { ArrowUpRight, BadgeCheck, Check, ChevronDown, FileClock, CircleX, Download, Layers3, MessageSquare, Plus, X } from 'lucide-react';
 import * as Tooltip from '@radix-ui/react-tooltip';
-import { buildModel, collectFacts, displayProfileText, filterProfile, retainedSelection } from './data';
+import { buildModel, collectFacts, displayProfileText, exportProfile, filterProfile, retainedSelection } from './data';
 import type { ProfileFact, ProfileInput, ReviewStatus, ReviewView } from './data';
 import { useGraphStore } from './store';
 import { api } from './Auth';
@@ -158,10 +158,42 @@ export function ReviewBar() {
 
 export function ReviewActions() {
   const c = useController();
-  return <div className="header-review-actions">
-    <button disabled={c.busy} onClick={() => c.edit(null)} aria-label="新增画像" title="新增画像"><Plus size={17} /></button>
-    <a href="/api/avatar-profile?download=true" aria-label="导出分身画像" title="导出分身画像"><Download size={17} /></a>
-  </div>;
+  const [selection, setSelection] = useState<{ view: ReviewView; profile: ReturnType<typeof exportProfile> } | null>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
+  const descriptionId = useId();
+  useEffect(() => { if (selection) dialogRef.current?.showModal(); }, [selection]);
+  function close() { dialogRef.current?.close(); setSelection(null); }
+  function download() {
+    if (!selection) return;
+    const url = URL.createObjectURL(new Blob([JSON.stringify(selection.profile, null, 2)], { type: 'application/json;charset=utf-8' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `profile_${selection.view}.json`;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    close();
+  }
+  return <>
+    <div className="header-review-actions">
+      <button disabled={c.busy} onClick={() => c.edit(null)} aria-label="新增画像" title="新增画像"><Plus size={17} /></button>
+      <button type="button" disabled={c.busy || !c.input} onClick={() => {
+        if (c.input) setSelection({ view: c.view, profile: exportProfile(c.input, c.view) });
+      }} aria-label="导出当前视图" title="导出当前视图"><Download size={17} /></button>
+    </div>
+    {selection && <dialog ref={dialogRef} className="editor-backdrop" aria-labelledby={titleId} aria-describedby={descriptionId}
+      onCancel={(event) => { event.preventDefault(); close(); }}>
+      <div className="fact-editor export-confirm">
+        <h2 id={titleId}>导出画像</h2>
+        <p id={descriptionId}>是否导出当前“<strong>{STATUS[selection.view]}</strong>”视图中的 <strong>{selection.profile.facts.length}</strong> 条画像？</p>
+        <p className="editor-hint">导出为 JSON 文件，包含画像层级和关联来源。</p>
+        <div className="editor-actions"><button type="button" autoFocus onClick={close}>取消</button>
+          <button className="primary" type="button" onClick={download}>确认导出</button></div>
+      </div>
+    </dialog>}
+  </>;
 }
 
 interface HistoryEntry { at: string; action: string; before: ProfileFact | null; after: ProfileFact }
