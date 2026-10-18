@@ -1,3 +1,4 @@
+import hashlib
 import json
 import sys
 import threading
@@ -362,6 +363,25 @@ def test_codex_success_schema_usage_search_and_cleanup(codex):
     assert result.ok and result.parsed_model == Score(score=4)
     assert result.metadata["usage"]["cached_input_tokens"] == 5
     assert result.metadata["web_search_calls"] == 1
+    assert not list(codex.requests_dir.iterdir())
+
+
+def test_codex_long_prompt_survives_polling_timeout(codex, monkeypatch):
+    program = """import hashlib, sys, time
+from pathlib import Path
+time.sleep(0.5)
+prompt = sys.stdin.read()
+Path(sys.argv[1]).write_text(hashlib.sha256(prompt.encode()).hexdigest())
+"""
+
+    def command(request, *, output_path, schema_path, cwd):
+        return [sys.executable, "-c", program, str(output_path)]
+
+    monkeypatch.setattr(codex, "_build_command", command)
+    prompt = "中文长提示词\n" * 20000
+    result = codex.chat(prompt)
+    assert result.ok, result.error
+    assert result.text == hashlib.sha256(prompt.encode()).hexdigest()
     assert not list(codex.requests_dir.iterdir())
 
 

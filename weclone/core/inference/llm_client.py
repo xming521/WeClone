@@ -902,17 +902,19 @@ class CodexExecClient(BaseBatchMixin):
             proc = None
             try:
                 self._wait_for_launch()
-                proc = subprocess.Popen(
-                    cmd,
-                    stdin=subprocess.PIPE,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    text=True,
-                    start_new_session=os.name == "posix",
-                    env=process_env,
-                )
+                prompt_path = tmp_path / "prompt.txt"
+                prompt_path.write_text(prompt, encoding="utf-8")
+                with prompt_path.open("rb") as prompt_input:
+                    proc = subprocess.Popen(
+                        cmd,
+                        stdin=prompt_input,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        text=True,
+                        start_new_session=os.name == "posix",
+                        env=process_env,
+                    )
                 started = time.monotonic()
-                pending_input = prompt
                 while True:
                     if self._stop_event.is_set():
                         raise CancelledError("codex execution interrupted")
@@ -920,10 +922,10 @@ class CodexExecClient(BaseBatchMixin):
                     if remaining <= 0:
                         raise subprocess.TimeoutExpired(cmd, timeout)
                     try:
-                        stdout, stderr = proc.communicate(input=pending_input, timeout=min(0.25, remaining))
+                        stdout, stderr = proc.communicate(timeout=min(0.25, remaining))
                         break
                     except subprocess.TimeoutExpired:
-                        pending_input = None
+                        continue
                 output_text = output_path.read_text(encoding="utf-8").strip() if output_path.exists() else ""
             except BaseException as exc:
                 if proc is not None and proc.poll() is None:

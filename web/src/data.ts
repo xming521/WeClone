@@ -26,6 +26,11 @@ export interface ProfileSource {
   importance?: number;
 }
 
+export interface ChatSelection {
+  id: string;
+  label: string;
+}
+
 export interface SourceChat {
   source_id: string;
   sample_id: string;
@@ -75,17 +80,34 @@ export interface ProfileModel {
   sources: Record<string, ProfileSource>;
 }
 
-export const DIMENSION_COLORS: Record<number, string> = {
-  1: '#008f85',
-  3: '#7859cf',
-  4: '#d28b32',
-  5: '#c35f72',
-  8: '#3775b4',
-};
+// Single source of truth for profile dimensions (ordered). Icons live in LeftPanel because data.ts must stay import-free.
+export const DIMENSIONS = [
+  { dim: 1, color: '#008f85' },
+  { dim: 3, color: '#7859cf' },
+  { dim: 4, color: '#d28b32' },
+  { dim: 5, color: '#c35f72' },
+  { dim: 8, color: '#3775b4' },
+] as const;
+
+export type DimensionId = (typeof DIMENSIONS)[number]['dim'];
+
+export const ROOT_COLOR = '#59616d';
+
+// Unknown or missing dimensions fall back to the first dimension's colour.
+export function dimensionColor(dim: number | null | undefined): string {
+  return (DIMENSIONS.find((entry) => entry.dim === dim) ?? DIMENSIONS[0]).color;
+}
+
+const CHINESE_NUMERALS = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九', '十'];
+
+export function chineseNumeral(n: number): string {
+  return CHINESE_NUMERALS[n] ?? String(n);
+}
 
 // Match the uppercase role label, excluding Latin identifiers and hyphenated model names.
 // Chinese exceptions are common terms, independent of profile samples; extend for new terms.
-const PROFILE_ROLE_B = /(?<![A-Za-z0-9_]|[A-Za-z0-9][-－]|维生素)B(?![A-Za-z0-9_]|[-－][A-Za-z0-9]|站|超|型|股|细胞|族)/g;
+const PROFILE_ROLE_B =
+  /(?<![A-Za-z0-9_]|[A-Za-z0-9][-－]|维生素)B(?![A-Za-z0-9_]|[-－][A-Za-z0-9]|站|超|型|股|细胞|族)/g;
 
 export function displayProfileText(text: string): string {
   return text.replace(PROFILE_ROLE_B, '我');
@@ -133,7 +155,9 @@ export function buildModel(input: ProfileInput): ProfileModel {
   }
 
   for (const dimension of input.dimensions) {
-    if (!(dimension.dim in DIMENSION_COLORS)) continue;
+    // Dimensions not listed in DIMENSIONS are skipped. Keep in sync with `dims` in
+    // weclone/data/agent/llm_profile_hierarchy.py.
+    if (!DIMENSIONS.some((entry) => entry.dim === dimension.dim)) continue;
     const id = `dimension:${dimension.dim}`;
     const childIds = dimension.groups.map((group) => group.id);
     const attributeCount = dimension.groups.reduce(
@@ -179,7 +203,33 @@ export function ancestors(model: ProfileModel, id: string): ProfileNode[] {
 
 export function retainedSelection(previous: ProfileModel, model: ProfileModel, id: string | null): string | null {
   if (id === null || model.nodes.has(id)) return id;
-  return ancestors(previous, id).reverse().find((node) => model.nodes.has(node.id))?.id ?? 'root';
+  return (
+    ancestors(previous, id)
+      .reverse()
+      .find((node) => model.nodes.has(node.id))?.id ?? 'root'
+  );
+}
+
+export interface NavigationState {
+  expandedIds: Set<string>;
+  selectedId: string | null;
+  focusedDimension: number | null;
+}
+
+// Keep the expanded nodes and selection that still exist after the model changes.
+export function reconcileNavigation(
+  previous: ProfileModel,
+  next: ProfileModel,
+  current: Pick<NavigationState, 'expandedIds' | 'selectedId'>,
+): NavigationState {
+  const expandedIds = new Set([...current.expandedIds].filter((id) => next.nodes.has(id)));
+  expandedIds.add('root');
+  next.dimensionIds.forEach((id) => {
+    if (!previous.nodes.has(id)) expandedIds.add(id);
+  });
+  const selectedId = retainedSelection(previous, next, current.selectedId);
+  const focusedDimension = selectedId ? (next.nodes.get(selectedId)?.dim ?? null) : null;
+  return { expandedIds, selectedId, focusedDimension };
 }
 
 export function visibleNodes(model: ProfileModel, expandedIds: Set<string>): ProfileNode[] {
@@ -215,15 +265,88 @@ export function filterProfile(input: ProfileInput, view: ReviewView): ProfileInp
     }
     return items.length ? { ...group, items } : null;
   }
-  return { ...input, facts, dimensions: input.dimensions.flatMap((dimension) => {
-    const groups = dimension.groups.map(filter).filter((group): group is GroupInput => group !== null);
-    return groups.length ? [{ ...dimension, groups }] : [];
-  }) };
+  return {
+    ...input,
+    facts,
+    dimensions: input.dimensions.flatMap((dimension) => {
+      const groups = dimension.groups.map(filter).filter((group): group is GroupInput => group !== null);
+      return groups.length ? [{ ...dimension, groups }] : [];
+    }),
+  };
+}
+
+export function exportProfile(input: ProfileInput, view: ReviewView) {
+  const profile = filterProfile(input, view);
+  const sourceIds = new Set(profile.facts.flatMap((fact) => fact.source_ids));
+  return {
+    dimensions: profile.dimensions,
+    facts: profile.facts.map(({ id, dim, attr, value, source_ids, origin, status }) => ({
+      id,
+      dim,
+      attr,
+      value,
+      source_ids,
+      origin,
+      status,
+    })),
+    sources: Object.fromEntries(Object.entries(profile.sources).filter(([id]) => sourceIds.has(id))),
+  };
 }
 
 export function collectFacts(model: ProfileModel, id: string): ProfileFact[] {
   const node = model.nodes.get(id);
   if (!node) return [];
-  return node.kind === 'attribute' ? node.factIndices.map((index) => model.facts[index])
+  return node.kind === 'attribute'
+    ? node.factIndices.map((index) => model.facts[index])
     : node.childIds.flatMap((child) => collectFacts(model, child));
+}
+
+export type Level = 1 | 2 | 3;
+
+/** Depth of a node in the dimension > topic > subtopic hierarchy, null for root and attributes. */
+export function levelOf(kind: NodeKind): Level | null {
+  return kind === 'dimension' ? 1 : kind === 'topic' ? 2 : kind === 'subtopic' ? 3 : null;
+}
+
+/** Whether the node is a dimension, topic or subtopic at depth `level` or shallower. */
+export function withinLevel(node: ProfileNode, level: Level): boolean {
+  const depth = levelOf(node.kind);
+  return depth !== null && depth <= level;
+}
+
+export function levelIsExpanded(
+  model: ProfileModel,
+  expandedIds: Set<string>,
+  level: Level,
+  dim: number | null,
+): boolean {
+  return (
+    dim !== null &&
+    expandedIds.has('root') &&
+    [...model.nodes.values()]
+      .filter((node) => node.dim === dim && node.childIds.length && withinLevel(node, level))
+      .every((node) => expandedIds.has(node.id))
+  );
+}
+
+/** Expanded set after toggling `level` of dimension `dim`: collapse it when fully expanded, else expand it. */
+export function toggleLevelExpansion(
+  model: ProfileModel,
+  expandedIds: Set<string>,
+  level: Level,
+  dim: number,
+): Set<string> {
+  const next = new Set(expandedIds);
+  if (levelIsExpanded(model, next, level, dim)) {
+    for (const node of model.nodes.values()) {
+      const depth = levelOf(node.kind);
+      if (node.dim === dim && depth !== null && depth >= level) next.delete(node.id);
+    }
+  } else {
+    next.add('root');
+    for (const node of model.nodes.values()) {
+      if (node.dim === dim && node.childIds.length && withinLevel(node, level)) next.add(node.id);
+    }
+  }
+  return next;
 }
