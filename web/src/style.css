@@ -2331,3 +2331,30 @@ button:disabled {
     width: 30px;
   }
 }
+
+/* 人生画像与说话风格的切换 */
+.mode-switch {
+  display: flex;
+  flex-shrink: 0;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 10px;
+  background: #edf1eb;
+}
+.mode-switch a {
+  padding: 6px 11px;
+  border-radius: 8px;
+  color: #71867a;
+  font-size: 11.5px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.mode-switch a:hover {
+  color: var(--color-accent-dark);
+}
+.mode-switch a[aria-current='page'] {
+  background: var(--color-white);
+  color: #326d5d;
+  box-shadow: 0 2px 8px #294e3610;
+}

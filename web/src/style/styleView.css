@@ -1,0 +1,351 @@
+/* 说话风格页：外壳沿用人生画像的 app-shell、left-panel、topbar 和 detail-panel。 */
+.style-back {
+  color: var(--color-accent-dark);
+  font-size: 12px;
+}
+
+/* The frame keeps its size when the detail panel opens. The stage slides instead of shrinking. */
+.bubble-frame {
+  position: absolute;
+  z-index: 1;
+  top: 86px;
+  bottom: 70px;
+  left: calc(var(--left-panel-width) + 24px);
+  right: 24px;
+}
+.bubble-stage {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform-origin: center;
+  transition: transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Flat fills like the profile map's nodes. Shade follows how often the trait shows up. */
+.trait-bubble {
+  position: absolute;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  animation: bubble-enter 0.7s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  animation-delay: var(--enter-delay);
+  transition:
+    left 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    top 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.4s,
+    filter 0.4s;
+}
+.trait-bubble.is-selected {
+  z-index: 2;
+}
+.bubble-frame.has-selection .trait-bubble:not(.is-selected) {
+  opacity: 0.6;
+}
+.bubble-frame .trait-bubble.is-dimmed:not(.is-selected) {
+  opacity: 0.2;
+  filter: saturate(0.4);
+}
+/* A faded bubble comes back under the pointer, so it reads as the next thing to open. */
+.bubble-frame.has-selection .trait-bubble:not(.is-selected):hover,
+.bubble-frame .trait-bubble.is-dimmed:not(.is-selected):hover {
+  opacity: 0.92;
+  filter: none;
+}
+.trait-bubble:focus-visible {
+  outline: none;
+}
+.trait-bubble-float {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  animation: bubble-float var(--float-duration) ease-in-out infinite;
+  animation-delay: var(--float-delay);
+}
+.trait-bubble-body {
+  --ink: color-mix(in oklab, var(--bubble-color) 70%, #0b1d19);
+  --fill: color-mix(in oklab, var(--bubble-color) 18%, white);
+  --edge: color-mix(in oklab, var(--bubble-color) 30%, white);
+  --lift: color-mix(in srgb, var(--bubble-color) 38%, transparent);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 100%;
+  height: 100%;
+  padding: 0 14%;
+  border: 1px solid var(--edge);
+  border-radius: 50%;
+  background: var(--fill);
+  box-shadow:
+    0 1px 2px #1b302a0f,
+    0 12px 26px -16px var(--lift);
+  color: var(--ink);
+  text-align: center;
+  transition:
+    transform 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.32s,
+    background-color 0.32s,
+    border-color 0.32s;
+}
+.tier-most .trait-bubble-body {
+  --ink: color-mix(in oklab, var(--bubble-color) 78%, #0b1d19);
+  --fill: color-mix(in oklab, var(--bubble-color) 36%, white);
+  --edge: color-mix(in oklab, var(--bubble-color) 48%, white);
+  --lift: color-mix(in srgb, var(--bubble-color) 48%, transparent);
+}
+.tier-often .trait-bubble-body {
+  --fill: color-mix(in oklab, var(--bubble-color) 23%, white);
+  --edge: color-mix(in oklab, var(--bubble-color) 33%, white);
+}
+.tier-sometimes .trait-bubble-body {
+  --fill: color-mix(in oklab, var(--bubble-color) 11%, white);
+  --edge: color-mix(in oklab, var(--bubble-color) 26%, white);
+}
+.tier-rarely .trait-bubble-body {
+  --ink: color-mix(in oklab, var(--bubble-color) 58%, #4b5a55);
+  --fill: #fffefb;
+  --edge: color-mix(in oklab, var(--bubble-color) 34%, white);
+  --lift: #1b302a1c;
+}
+.trait-bubble:hover .trait-bubble-body,
+.trait-bubble:focus-visible .trait-bubble-body {
+  transform: translateY(-3px) scale(1.035);
+  box-shadow:
+    0 2px 4px #1b302a12,
+    0 20px 34px -16px var(--lift);
+}
+.trait-bubble:active .trait-bubble-body {
+  transform: scale(0.96);
+  transition-duration: 0.12s;
+}
+/* The chosen bubble swells with a little overshoot and takes on a bit more colour. Its neighbours step aside in BubbleField. */
+.trait-bubble.is-selected .trait-bubble-body {
+  border-color: color-mix(in oklab, var(--edge) 75%, var(--bubble-color));
+  background: color-mix(in oklab, var(--fill) 86%, var(--bubble-color));
+  transform: scale(1.2);
+  box-shadow:
+    0 3px 8px #1b302a14,
+    0 28px 44px -20px var(--lift);
+  transition:
+    transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.4s,
+    background-color 0.4s,
+    border-color 0.4s;
+}
+.trait-bubble-body strong {
+  font-size: max(13px, calc(var(--r) * 0.19px));
+  font-weight: 650;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+.trait-bubble-body em {
+  font-size: max(11px, calc(var(--r) * 0.135px));
+  font-style: normal;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.7;
+}
+.trait-bubble-body small {
+  max-width: 100%;
+  margin-top: 2px;
+  overflow: hidden;
+  font-size: max(10.5px, calc(var(--r) * 0.11px));
+  opacity: 0.62;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@keyframes bubble-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+@keyframes bubble-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+}
+@keyframes bubble-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .trait-bubble,
+  .trait-bubble-float,
+  .trait-emblem {
+    animation: none;
+  }
+}
+
+/* style.css loads after this file, so overrides of its classes need the compound selector. */
+.canvas-help.bubble-legend {
+  gap: 12px;
+}
+.bubble-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.legend-swatch {
+  width: 10px;
+  height: 10px;
+  border: 1px solid transparent;
+  border-radius: 50%;
+}
+.legend-swatch.tier-most {
+  border-color: color-mix(in oklab, var(--color-accent) 48%, white);
+  background: color-mix(in oklab, var(--color-accent) 36%, white);
+}
+.legend-swatch.tier-often {
+  border-color: color-mix(in oklab, var(--color-accent) 33%, white);
+  background: color-mix(in oklab, var(--color-accent) 23%, white);
+}
+.legend-swatch.tier-sometimes {
+  border-color: color-mix(in oklab, var(--color-accent) 26%, white);
+  background: color-mix(in oklab, var(--color-accent) 11%, white);
+}
+.legend-swatch.tier-rarely {
+  border-color: color-mix(in oklab, var(--color-accent) 34%, white);
+  background: #fffefb;
+}
+.bubble-legend .legend-note {
+  margin-left: 8px;
+}
+
+/* Bubbles slide under the panel, so it is fully opaque here. */
+.detail-panel.trait-detail {
+  background: #fdfcf9;
+}
+.trait-hero {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 4px;
+}
+.trait-emblem {
+  flex: 0 0 auto;
+  width: 78px;
+  height: 78px;
+  animation: bubble-pop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s backwards;
+}
+.trait-emblem .trait-bubble-body {
+  padding: 0;
+}
+.trait-emblem .trait-bubble-body strong {
+  font-size: 19px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.trait-title {
+  margin: 0;
+  color: color-mix(in oklab, var(--bubble-color) 72%, #0b1d19);
+  font-size: 21px;
+  font-weight: 700;
+}
+.trait-note {
+  margin: 5px 0 0;
+  color: var(--color-ink-soft);
+  font-size: 12.5px;
+  line-height: 1.65;
+}
+.trait-frequency {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin: 18px 0 0;
+  color: var(--color-ink-soft);
+  font-size: 12.5px;
+}
+.trait-frequency b {
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--bubble-color) 16%, white);
+  color: color-mix(in oklab, var(--bubble-color) 75%, #0b1d19);
+  font-size: 11px;
+  font-weight: 700;
+}
+.trait-section {
+  margin-top: 26px;
+}
+.trait-section h3 {
+  margin: 0 0 10px;
+  color: var(--color-ink-body);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.trait-examples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.trait-examples span {
+  padding: 5px 12px;
+  border: 1px solid color-mix(in srgb, var(--bubble-color) 22%, transparent);
+  border-radius: 999px;
+  background: var(--color-white);
+  color: var(--color-ink-body);
+  font-size: 13px;
+}
+.trait-variation {
+  margin: 0 0 10px;
+  color: var(--color-ink-soft);
+  font-size: 12px;
+}
+.trait-contacts {
+  display: grid;
+  gap: 7px;
+}
+.trait-contact {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr) 40px;
+  align-items: center;
+  gap: 10px;
+  font-size: 11.5px;
+}
+.trait-contact-name {
+  overflow: hidden;
+  color: var(--color-ink-soft);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.trait-contact-bar {
+  position: relative;
+  height: 8px;
+  border-radius: 4px;
+  background: #edf1ee;
+}
+.trait-contact-bar i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--bubble-color) 55%, white);
+}
+.trait-contact-bar b {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 1.5px;
+  background: var(--color-ink-soft);
+}
+.trait-contact-value {
+  color: var(--color-ink-body);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.trait-source {
+  margin: 14px 0 0;
+  color: var(--color-subtle);
+  font-size: 10.5px;
+  line-height: 1.6;
+}

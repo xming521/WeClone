@@ -13,6 +13,8 @@ import { ReviewOverlays } from './review/ReviewOverlays';
 import { DIMENSIONS, chineseNumeral } from './data';
 import { useProfileStore } from './store';
 import { AuthGate, LogoutButton } from './Auth';
+import { ModeSwitch, modeFromHash } from './ModeSwitch';
+import { StyleApp } from './style/StyleApp';
 
 function Atlas() {
   const viewModel = useProfileStore((state) => state.viewModel)!;
@@ -64,8 +66,9 @@ function Atlas() {
                   <span>画像维度</span>
                 </button>
               )}
+              <ModeSwitch mode="profile" />
               <div className="topbar-heading">
-                <span className="topbar-dot" /> 画像地图 <span className="topbar-divider">/</span>{' '}
+                <span className="topbar-divider">/</span>{' '}
                 <strong>{active?.name ?? `${chineseNumeral(DIMENSIONS.length)}维总览`}</strong>
               </div>
             </div>
@@ -117,10 +120,17 @@ function ProfileApp() {
   return <Atlas />;
 }
 
+function useMode() {
+  const [mode, setMode] = useState(() => modeFromHash(window.location.hash));
+  useEffect(() => {
+    const update = () => setMode(modeFromHash(window.location.hash));
+    window.addEventListener('hashchange', update);
+    return () => window.removeEventListener('hashchange', update);
+  }, []);
+  return mode;
+}
+
 export default function App() {
-  return (
-    <AuthGate>
-      <ProfileApp />
-    </AuthGate>
-  );
+  const mode = useMode();
+  return <AuthGate>{mode === 'style' ? <StyleApp /> : <ProfileApp />}</AuthGate>;
 }
