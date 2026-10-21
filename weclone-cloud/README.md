@@ -29,6 +29,19 @@
 
 ---
 
+## 测试版本（升级前先对照）
+
+| 组件 | 已验证版本 | 固定方式 |
+|---|---|---|
+| WeClone | `master@d4af5ba`（2026-10-18） | 子目录跟随父仓库 |
+| LangBot | **v4.11.1** | `start-langbot-docker.cmd`；镜像建议改成具体 tag |
+| WeChatPad-Docker | commit `c6d1b7a` | `tools/prepare_wechatpad.ps1 -Ref`（已默认钉住） |
+| Python | 3.12.x | `.venv` |
+
+升级任何一项后，按 [维护手册](docs/maintenance.md) 第三节逐项复验（适配器补丁、compose 挂载、协议端接口）。
+
+---
+
 ## 快速开始（只有分身，3 分钟）
 
 ### 小白三步（双击即用）
@@ -167,6 +180,7 @@ weclone-cloud/
 | [docs/architecture.md](docs/architecture.md) | 与 WeClone 的对应关系、关键取舍 |
 | [docs/providers.md](docs/providers.md) | OpenAI / 百炼 / 本地模型等配置 |
 | [docs/langbot.md](docs/langbot.md) | LangBot 接入细节 |
+| [docs/maintenance.md](docs/maintenance.md) | **长期维护**：版本矩阵、升级步骤、回归检查、发布流程 |
 
 ---
 

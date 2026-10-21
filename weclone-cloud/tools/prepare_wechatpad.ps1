@@ -15,7 +15,10 @@
     Use a spare account, and run it in the same region as the phone.
 #>
 param(
-    [string]$Root = ""
+    [string]$Root = "",
+    # Pinned to the commit this project was verified against. Use -Ref main to
+    # track upstream, then re-run the checks in docs/maintenance.md.
+    [string]$Ref = "c6d1b7a6a5997eeaaf8fcef801c03f70338d81b9"
 )
 
 $ErrorActionPreference = "Stop"
@@ -36,11 +39,28 @@ if ($LASTEXITCODE -ne 0) {
 
 if (-not (Test-Path (Join-Path $Root "docker-compose.yml")) -and -not (Test-Path (Join-Path $Root "docker-compose.yaml"))) {
     Write-Step "cloning WeChatPad-Docker"
-    & git clone --depth 1 https://github.com/fdc310/WeChatPad-Docker $Root
-    if ($LASTEXITCODE -ne 0) {
+    $previous = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try {
+        & git clone --depth 1 https://github.com/fdc310/WeChatPad-Docker $Root
+        $cloned = $LASTEXITCODE -eq 0
+        if ($cloned -and $Ref) {
+            Write-Step "pinning to $Ref"
+            & git -C $Root checkout --quiet $Ref
+            if ($LASTEXITCODE -ne 0) {
+                Write-Host "   !! commit not reachable in the shallow clone, staying on the default branch" -ForegroundColor Yellow
+                Write-Host "   !! run: git -C `"$Root`" fetch --depth 50 origin && git -C `"$Root`" checkout $Ref"
+            }
+        }
+    } finally {
+        $ErrorActionPreference = $previous
+    }
+    if (-not (Test-Path (Join-Path $Root "docker-compose.yml")) -and -not (Test-Path (Join-Path $Root "docker-compose.yaml"))) {
         Write-Host "FAILED: git clone failed. Clone manually into $Root" -ForegroundColor Red
         exit 1
     }
+} else {
+    Write-Host ".. $Root already exists, keeping the current checkout" -ForegroundColor DarkGray
 }
 
 function Pull-Image([string]$Image, [int]$Tries = 4) {

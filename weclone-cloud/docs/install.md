@@ -47,6 +47,17 @@ cd weclone-cloud
 3. 安装 WeClone 基础依赖 + `presidio`（脱敏）+ `zh_core_web_sm`（中文分词）；
 4. 打一个补丁：WeClone 里 spaCy 写死 `n_process=24`，Windows 上会 `MemoryError`，改成 1。
 
+### 1.1 两种使用位置（先确认你在哪）
+
+| 你在哪 | 安装方式 | 数据集路径 | `make-dataset` 在哪跑 |
+|---|---|---|---|
+| **独立仓库**（clone 的 `weclone-cloud`） | `.\bootstrap.ps1 -Install` | `app\dataset\...` | `cd app` |
+| **WeClone 仓库内**（`WeClone\weclone-cloud\`） | 跳过，直接 `uv sync` | `dataset\...` | 仓库根目录 |
+
+脚本会自动判断：检测到上级目录就是 WeClone 仓库时，**跳过复制、复用父仓库**，不会重复下载。
+
+下面按「独立仓库」写；在 WeClone 仓库内使用时，把 `app\` 换成 `..\`。
+
 > 想在本机跑 LoRA 训练（需要 NVIDIA 显卡，约 10GB）才追加 `-Full`。
 
 验证：

@@ -1,7 +1,3 @@
-# Inside a WeClone checkout this script is not needed: the parent
-# directory is WeClone itself. Run 'uv sync' and then, from the repo root,
-# 'python -m weclone_cloud.cli'.
-
 <#
 .SYNOPSIS
     Copy WeClone into .\app and install dependencies (uv if available, otherwise python -m venv + pip).
@@ -35,6 +31,17 @@ param(
 $ErrorActionPreference = "Stop"
 $Root = $PSScriptRoot
 if (-not $Dest) { $Dest = Join-Path $Root "app" }
+
+# Inside a WeClone checkout (i.e. this folder lives at WeClone/weclone-cloud),
+# the parent directory already IS WeClone: reuse it instead of copying/cloning.
+$ParentRoot = Split-Path -Parent $Root
+if (Test-Path (Join-Path $ParentRoot "weclone\__init__.py")) {
+    Write-Host ">> parent directory is a WeClone checkout, reusing it" -ForegroundColor Cyan
+    $SkipCopy = $true
+    if (-not $Source) { $Source = $ParentRoot }
+    $Dest = $ParentRoot
+}
+
 $VenvDir = Join-Path $Root ".venv"
 $VenvPy = Join-Path $VenvDir "Scripts\python.exe"
 
