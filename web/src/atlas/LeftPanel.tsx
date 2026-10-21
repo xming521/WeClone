@@ -1,7 +1,8 @@
 import type { CSSProperties } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { ChevronLeft, Compass, Fingerprint, Heart, Layers3, Target } from 'lucide-react';
-import { DIMENSIONS, chineseNumeral, dimensionColor, type DimensionId } from '../data';
+import { DIMENSIONS, chineseNumeral, dimensionColor, displayProfileText, type DimensionId } from '../data';
+import type { Grouping } from '../data';
 import { useProfileStore } from '../store';
 
 const DIMENSION_ICONS: Record<DimensionId, LucideIcon> = {
@@ -24,8 +25,12 @@ export function LeftPanel({
   onSelect: () => void;
 }) {
   const viewModel = useProfileStore((state) => state.viewModel)!;
+  const fullModel = useProfileStore((state) => state.fullModel)!;
+  const hasDomains = useProfileStore((state) => !!state.input?.domains?.length);
   const focusedDimension = useProfileStore((state) => state.focusedDimension);
   const reveal = useProfileStore((state) => state.reveal);
+  const byDomain = viewModel.grouping === 'domain';
+  const heading = byDomain ? '画像领域' : '画像维度';
   return (
     <aside
       className={`left-panel${open ? '' : ' is-collapsed'}`}
@@ -51,27 +56,39 @@ export function LeftPanel({
           <br />
           <em>都更了解你。</em>
         </h1>
-        <p>沿着{chineseNumeral(DIMENSIONS.length)}条生活脉络，探索你的画像。</p>
+        <p>
+          {byDomain
+            ? `沿着${chineseNumeral(fullModel.dimensionIds.length)}个生活领域，探索你的画像。`
+            : `沿着${chineseNumeral(DIMENSIONS.length)}条生活脉络，探索你的画像。`}
+        </p>
       </div>
-      <div className="nav-heading">画像维度</div>
-      <nav className="dimension-list" aria-label="画像维度">
+      <div className="nav-heading-row">
+        <div className="nav-heading">{heading}</div>
+        {hasDomains && <GroupingSwitch value={viewModel.grouping} />}
+      </div>
+      <nav className={`dimension-list${byDomain ? ' is-compact' : ''}`} aria-label={heading}>
         {viewModel.dimensionIds.map((id) => {
           const node = viewModel.nodes.get(id)!;
           const color = dimensionColor(node.dim);
-          const Icon = DIMENSION_ICONS[node.dim as DimensionId];
+          const Icon = byDomain ? null : DIMENSION_ICONS[node.dim as DimensionId];
           return (
             <button
               key={id}
               type="button"
               className={`dimension-item ${focusedDimension === node.dim ? 'active' : ''}`}
+              title={node.description ? displayProfileText(node.description) : undefined}
               onClick={() => {
                 reveal(id);
                 onSelect();
               }}
               style={{ '--dimension-color': color } as CSSProperties}
             >
-              <span className="dimension-icon">
-                <Icon size={19} strokeWidth={1.7} />
+              <span className="dimension-icon" aria-hidden="true">
+                {Icon ? (
+                  <Icon size={19} strokeWidth={1.7} />
+                ) : (
+                  <span className="domain-initial">{[...node.name][0]}</span>
+                )}
               </span>
               <span className="dimension-copy">
                 <strong>{node.name}</strong>
@@ -87,5 +104,28 @@ export function LeftPanel({
         </div>
       </div>
     </aside>
+  );
+}
+
+const GROUPINGS: { value: Grouping; label: string }[] = [
+  { value: 'dimension', label: '按维度' },
+  { value: 'domain', label: '按领域' },
+];
+
+function GroupingSwitch({ value }: { value: Grouping }) {
+  const setGrouping = useProfileStore((state) => state.setGrouping);
+  return (
+    <div className="grouping-switch" role="group" aria-label="画像分组方式">
+      {GROUPINGS.map((option) => (
+        <button
+          key={option.value}
+          type="button"
+          aria-pressed={value === option.value}
+          onClick={() => setGrouping(option.value)}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
   );
 }

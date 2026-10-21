@@ -1,8 +1,7 @@
-// Pure layout and graph-data helpers. Only type imports are allowed here so the
-// tests can load this file directly with node's type stripping.
-import type { NodeKind, ProfileModel, ProfileNode } from '../data';
+// Pure layout helpers. Only type imports are allowed here so the tests can load this file
+// directly with node's type stripping.
+import type { ProfileModel, ProfileNode } from '../data';
 
-// Type aliases (not interfaces) so they stay assignable to G6's Record<string, unknown> data.
 export type Point = {
   x: number;
   y: number;
@@ -10,44 +9,12 @@ export type Point = {
 
 export type Positions = Map<string, Point>;
 
-export type NodeDatumData = { kind: NodeKind; dim: number | null; name: string };
-
-export type EdgeDatumData = { kind: NodeKind; dim: number | null };
-
-export type SelectionPath = {
-  selectedId: string | null;
-  path: Set<string>;
-};
-
-export type GraphNodeDatum = {
-  id: string;
-  states: string[];
-  data: NodeDatumData;
-  style: Point;
-};
-
-export type GraphEdgeDatum = {
-  id: string;
-  source: string;
-  target: string;
-  states: string[];
-  data: EdgeDatumData;
-};
-
-export function nodeSelection(id: string, { selectedId }: SelectionPath): string[] {
-  return id === selectedId ? ['selected'] : [];
-}
-
-export function edgeSelection(source: string, target: string, { path }: SelectionPath): string[] {
-  return path.has(source) && path.has(target) ? ['route'] : [];
-}
-
 /** Fixed direction of each dimension around the root, starting on the left and going clockwise. */
-function dimensionAngle(index: number, count: number): number {
+export function dimensionAngle(index: number, count: number): number {
   return Math.PI - (index * 2 * Math.PI) / count;
 }
 
-/** Above this many visible nodes attribute labels are hidden and attributes pack closer together. */
+/** Above this many visible nodes attributes pack closer together and their labels show only when zoomed in. */
 export const DENSE_NODE_COUNT = 600;
 
 // Space one visible node takes inside its dimension cluster: a cluster of n nodes spans about this times sqrt(n).
@@ -183,69 +150,35 @@ export function computeSeeds(
   return seeds;
 }
 
-export function buildGraphData(
-  visible: ProfileNode[],
-  seeds: Positions,
-  initial: Positions,
-  selection: SelectionPath,
-): { nodes: GraphNodeDatum[]; edges: GraphEdgeDatum[] } {
-  const nextPositions: Positions = new Map();
-  const displayed = new Set(visible.map((node) => node.id));
-  const nodes = visible.map((node, index) => {
-    const prior = seeds.get(node.id);
-    const parent = node.parentId ? nextPositions.get(node.parentId) : undefined;
-    const initialPosition = initial.get(node.id);
+/**
+ * Position of every visible node: its seed, else its initial position, else a spot around its
+ * parent (nodes come parent first), else the origin.
+ */
+export function placeNodes(visible: ProfileNode[], seeds: Positions, initial: Positions): Positions {
+  const positions: Positions = new Map();
+  visible.forEach((node, index) => {
+    const parent = node.parentId ? positions.get(node.parentId) : undefined;
     const angle = index * 2.39996;
     const distance = node.kind === 'dimension' ? 210 : node.kind === 'attribute' ? 90 : 135;
-    const position =
-      prior ??
-      initialPosition ??
-      (parent
-        ? {
-            x: parent.x + Math.cos(angle) * distance,
-            y: parent.y + Math.sin(angle) * distance,
-          }
-        : { x: 0, y: 0 });
-    nextPositions.set(node.id, position);
-    return {
-      id: node.id,
-      states: nodeSelection(node.id, selection),
-      data: { kind: node.kind, dim: node.dim, name: node.name },
-      style: position,
-    };
+    positions.set(
+      node.id,
+      seeds.get(node.id) ??
+        initial.get(node.id) ??
+        (parent
+          ? { x: parent.x + Math.cos(angle) * distance, y: parent.y + Math.sin(angle) * distance }
+          : { x: 0, y: 0 }),
+    );
   });
-  const edges = visible
-    .filter((node) => node.parentId && displayed.has(node.parentId))
-    .map((node) => ({
-      id: `edge:${node.id}`,
-      source: node.parentId!,
-      target: node.id,
-      states: edgeSelection(node.parentId!, node.id, selection),
-      data: { kind: node.kind, dim: node.dim },
-    }));
-  return { nodes, edges };
+  return positions;
 }
 
-/**
- * True when the next render keeps the same nodes and the same edges (matched by
- * id and source), so the existing layout can be redrawn without re-running it.
- */
-export function sameTopology(
-  switchingView: boolean,
-  fitted: boolean,
-  previous: Positions,
-  nodes: Array<{ id: string }>,
-  currentEdges: Array<{ id?: string; source: string }>,
-  edges: Array<{ id: string; source: string }>,
+/** True when `next` lists the same nodes under the same parents in the same order as `current`. */
+export function sameTree(
+  current: Array<{ id: string; parentId: string | null }>,
+  next: Array<{ id: string; parentId: string | null }>,
 ): boolean {
-  if (switchingView || !fitted) return false;
-  if (previous.size !== nodes.length || !nodes.every((node) => previous.has(node.id))) return false;
-  if (currentEdges.length !== edges.length) return false;
-  const sourcesById = new Map<string, Set<string>>();
-  for (const edge of edges) {
-    const sources = sourcesById.get(edge.id);
-    if (sources) sources.add(edge.source);
-    else sourcesById.set(edge.id, new Set([edge.source]));
-  }
-  return currentEdges.every((edge) => edge.id !== undefined && sourcesById.get(edge.id)?.has(edge.source) === true);
+  return (
+    current.length === next.length &&
+    current.every((node, index) => node.id === next[index].id && node.parentId === next[index].parentId)
+  );
 }

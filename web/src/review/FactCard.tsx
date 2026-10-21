@@ -21,6 +21,13 @@ export function FactCard({
   const edit = useProfileStore((state) => state.edit);
   const openChat = useProfileStore((state) => state.openChat);
   const chatId = useProfileStore((state) => state.chat?.id);
+  // The domain view mixes dimensions under one topic, so each card names its own.
+  const dimensionName = useProfileStore((state) =>
+    state.viewModel?.grouping === 'domain'
+      ? state.input?.dimensions.find((dimension) => dimension.dim === fact.dim)?.name
+      : undefined,
+  );
+  const meta = [dimensionName, fact.origin === 'manual' && '手动添加'].filter(Boolean).join(' · ');
   return (
     <article className="fact-card">
       <div className="fact-heading">
@@ -37,7 +44,7 @@ export function FactCard({
         <span className={`status-badge ${fact.status}`}>{STATUS[fact.status]}</span>
       </div>
       <p>{displayProfileText(fact.value)}</p>
-      {fact.origin === 'manual' && <small>手动添加</small>}
+      {meta && <small>{meta}</small>}
       <FactScores fact={fact} />
       <div className="fact-actions">
         {fact.status !== 'approved' && (

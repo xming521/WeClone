@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import type { Graph } from '@antv/g6';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import { Menu, Move } from 'lucide-react';
+import type { AtlasControls } from './atlas/atlasEngine';
 import { CanvasToolbar } from './atlas/CanvasToolbar';
 import { DetailPanel } from './atlas/DetailPanel';
 import { GraphCanvas } from './atlas/GraphCanvas';
@@ -18,7 +18,8 @@ import { StyleApp } from './style/StyleApp';
 
 function Atlas() {
   const viewModel = useProfileStore((state) => state.viewModel)!;
-  const graphRef = useRef<Graph | null>(null);
+  const domainCount = useProfileStore((state) => state.fullModel!.dimensionIds.length);
+  const atlasRef = useRef<AtlasControls | null>(null);
   const [leftOpen, setLeftOpen] = useState(true);
   const [leftTouched, setLeftTouched] = useState(false);
   const focusedDimension = useProfileStore((state) => state.focusedDimension);
@@ -26,6 +27,7 @@ function Atlas() {
   const detailOpen = useProfileStore((state) => state.detailOpen);
   const closeDetail = useProfileStore((state) => state.closeDetail);
   const active = viewModel.nodes.get(`dimension:${focusedDimension}`);
+  const byDomain = viewModel.grouping === 'domain';
 
   useEffect(() => {
     if (leftTouched) return;
@@ -63,13 +65,18 @@ function Atlas() {
                   }}
                 >
                   <Menu size={17} />
-                  <span>画像维度</span>
+                  <span>{byDomain ? '画像领域' : '画像维度'}</span>
                 </button>
               )}
               <ModeSwitch mode="profile" />
               <div className="topbar-heading">
                 <span className="topbar-divider">/</span>{' '}
-                <strong>{active?.name ?? `${chineseNumeral(DIMENSIONS.length)}维总览`}</strong>
+                <strong>
+                  {active?.name ??
+                    (byDomain
+                      ? `${chineseNumeral(domainCount)}个领域总览`
+                      : `${chineseNumeral(DIMENSIONS.length)}维总览`)}
+                </strong>
               </div>
             </div>
             <div className="topbar-actions">
@@ -80,10 +87,10 @@ function Atlas() {
           </div>
           <ReviewBar />
           {!viewModel.facts.length && <div className="graph-empty">当前视图没有画像记录</div>}
-          <GraphCanvas key={resetVersion} graphRef={graphRef} />
-          <CanvasToolbar graphRef={graphRef} />
+          <GraphCanvas key={resetVersion} atlasRef={atlasRef} />
+          <CanvasToolbar atlasRef={atlasRef} />
           <div className="canvas-help">
-            <Move size={15} /> 拖动节点牵动图谱 · 点击探索
+            <Move size={15} /> 悬停点亮归属路径 · 点击展开并聚焦，再点一次收起 · 拖动节点牵动图谱
           </div>
         </main>
         <ReviewOverlays />

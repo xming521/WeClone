@@ -1,0 +1,136 @@
+/* The first-visit intro (nightIntro.ts): night falls over the page, then dawn hands it back to the map. */
+.night-intro {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  overflow: hidden;
+  background: linear-gradient(180deg, #0b1316 0%, #121c1f 100%);
+  font-family: 'Noto Sans', 'Noto Sans SC', 'Noto Sans CJK SC', system-ui, sans-serif;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+  animation: night-intro-in 0.45s ease backwards;
+}
+/* Once the sky is drawn, dawn must uncover the page underneath. */
+.night-intro[data-sky='on'] {
+  background: none;
+}
+.night-intro[data-state='leaving'] {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+  animation: none;
+}
+.night-intro canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.night-intro-sky {
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+.night-intro:not([data-state='waiting']) .night-intro-sky {
+  opacity: 1;
+}
+
+.night-intro-title {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+.night-intro-title > div {
+  opacity: 0;
+  font-size: min(52px, 7.4vw);
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: 0.01em;
+  color: #eef3f1;
+  will-change: opacity, transform;
+}
+.night-intro-title > div:first-child {
+  margin-bottom: min(20px, 3.4vw);
+  font-size: min(24px, 4.2vw);
+  font-weight: 400;
+  letter-spacing: 0.16em;
+  color: #93a8a2;
+  font-variant-numeric: tabular-nums;
+}
+.night-intro-title > div:nth-child(2) {
+  margin-bottom: min(10px, 1.8vw);
+}
+.night-intro-title span {
+  color: #6fd0c2;
+}
+
+/* Turns from night glass to the day's paper button as dawn reaches it (--intro-day). */
+.night-intro-skip {
+  position: absolute;
+  right: 28px;
+  bottom: 27px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 45px;
+  padding: 0 16px 0 18px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, #e4ebe4 calc(var(--intro-day, 0) * 100%), rgba(255, 255, 255, 0.16));
+  border-radius: 14px;
+  background: color-mix(in srgb, rgba(255, 255, 255, 0.92) calc(var(--intro-day, 0) * 100%), rgba(255, 255, 255, 0.07));
+  box-shadow: 0 11px 30px color-mix(in srgb, #46645321 calc(var(--intro-day, 0) * 100%), transparent);
+  backdrop-filter: blur(16px);
+  color: color-mix(in srgb, #587169 calc(var(--intro-day, 0) * 100%), #d5e1dd);
+  font:
+    600 12px 'Noto Sans',
+    'Noto Sans SC',
+    system-ui,
+    sans-serif;
+  cursor: pointer;
+}
+.night-intro-skip::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 2px;
+  background: currentColor;
+  opacity: 0.22;
+  transform-origin: left;
+  transform: scaleX(var(--intro-progress, 0));
+}
+.night-intro-skip:focus-visible {
+  outline: 2px solid #008f85;
+  outline-offset: 2px;
+}
+.night-intro[data-state='waiting'] .night-intro-skip {
+  visibility: hidden;
+}
+
+/* The page around the map stays hidden while the intro plays and fades in when the map takes over. */
+:root[data-atlas-intro='playing'] .app-shell > :not(.atlas-main),
+:root[data-atlas-intro='playing'] .atlas-main > :is(.topbar, .review-bar, .graph-empty, .canvas-toolbar, .canvas-help) {
+  opacity: 0;
+  pointer-events: none;
+}
+:root[data-atlas-intro='revealing'] .app-shell > :not(.atlas-main),
+:root[data-atlas-intro='revealing']
+  .atlas-main
+  > :is(.topbar, .review-bar, .graph-empty, .canvas-toolbar, .canvas-help) {
+  animation: night-intro-in 0.6s ease backwards;
+}
+
+@keyframes night-intro-in {
+  from {
+    opacity: 0;
+  }
+}

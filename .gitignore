@@ -159,6 +159,7 @@ test-scripts-my/
 !tests/tests_data/test_person/test_0_730.csv
 !tests/tests_data/test_PII/test_0_730.csv
 *test.*
+!web/tests/*.test.ts
 *-exp.*
 experiment/
 *users.json   

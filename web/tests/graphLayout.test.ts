@@ -3,12 +3,12 @@ import { test } from 'node:test';
 import { buildModel, visibleNodes } from '../src/data.ts';
 import type { ProfileInput } from '../src/data.ts';
 import {
-  buildGraphData,
   clusterCenters,
   computeSeeds,
   expansionPositions,
   overviewPositions,
-  sameTopology,
+  placeNodes,
+  sameTree,
   shiftClusters,
 } from '../src/atlas/graphLayout.ts';
 
@@ -35,7 +35,6 @@ const input: ProfileInput = {
 };
 
 const model = buildModel(input);
-const selection = { selectedId: 'root', path: new Set<string>() };
 
 test('overviewPositions places every node with the root at the origin', () => {
   const positions = overviewPositions(model);
@@ -63,25 +62,18 @@ test('expansionPositions keeps existing coordinates and only places new nodes', 
   }
 });
 
-test('sameTopology compares node count, edge count, and edge id plus source', () => {
+test('sameTree compares ids and parents in order', () => {
   const visible = visibleNodes(model, new Set(['root', 'dimension:8']));
-  const { nodes, edges } = buildGraphData(visible, overviewPositions(model), overviewPositions(model), selection);
-  const previous = new Map(nodes.map((node) => [node.id, node.style]));
-  const current = edges.map(({ id, source }) => ({ id, source }));
-
-  assert.equal(sameTopology(false, true, previous, nodes, [...current].reverse(), edges), true);
+  assert.equal(sameTree(visible, [...visible]), true);
+  assert.equal(sameTree(visible, visible.slice(1)), false);
+  assert.equal(sameTree(visible, [...visible].reverse()), false);
   assert.equal(
-    sameTopology(false, true, previous, nodes, [...current, { id: 'edge:extra', source: 'root' }], edges),
+    sameTree(
+      visible,
+      visible.map((node) => ({ ...node, parentId: node.parentId && 'root' })),
+    ),
     false,
   );
-  assert.equal(
-    sameTopology(false, true, previous, nodes, [{ ...current[0], source: 'dimension:1' }, ...current.slice(1)], edges),
-    false,
-  );
-  assert.equal(sameTopology(false, true, previous, nodes, current.slice(1), edges), false);
-  assert.equal(sameTopology(true, true, previous, nodes, current, edges), false);
-  assert.equal(sameTopology(false, false, previous, nodes, current, edges), false);
-  assert.equal(sameTopology(false, true, new Map([...previous].slice(1)), nodes, current, edges), false);
 });
 
 test('computeSeeds reuses current positions in the same view and aligns the root when switching', () => {
@@ -109,20 +101,23 @@ test('computeSeeds reuses current positions in the same view and aligns the root
   assert.deepEqual(fallback.get('root'), previous.get('root'));
 });
 
-test('buildGraphData attaches display data to every node and the target kind to every edge', () => {
+test('placeNodes prefers seeds, then initial positions, then a spot around the parent', () => {
   const visible = visibleNodes(model, new Set(['root', 'dimension:8']));
-  const { nodes, edges } = buildGraphData(visible, new Map(), overviewPositions(model), {
-    selectedId: 'topic-a',
-    path: new Set(['topic-a', 'dimension:8', 'root']),
-  });
-  assert.deepEqual(nodes[0].data, { kind: 'root', dim: null, name: '我的画像' });
-  assert.deepEqual(nodes.find((node) => node.id === 'topic-a')!.states, ['selected']);
-  const edge = edges.find((item) => item.id === 'edge:dimension:8')!;
+  const seeds = new Map([['root', { x: 5, y: 6 }]]);
+  const initial = new Map([
+    ['root', { x: 50, y: 60 }],
+    ['dimension:8', { x: 300, y: 0 }],
+  ]);
+  const positions = placeNodes(visible, seeds, initial);
   assert.deepEqual(
-    [edge.source, edge.target, edge.data, edge.states],
-    ['root', 'dimension:8', { kind: 'dimension', dim: 8 }, ['route']],
+    [...positions.keys()],
+    visible.map((node) => node.id),
   );
-  assert.equal(edges.length, visible.length - 1);
+  assert.deepEqual(positions.get('root'), { x: 5, y: 6 });
+  assert.deepEqual(positions.get('dimension:8'), { x: 300, y: 0 });
+  const topic = positions.get('topic-a')!;
+  assert.ok(Math.abs(Math.hypot(topic.x - 300, topic.y) - 135) < 1e-9);
+  assert.deepEqual(placeNodes(visible, new Map(), new Map()).get('root'), { x: 0, y: 0 });
 });
 
 test('clusterCenters keeps each dimension direction and moves a larger dimension farther out', () => {

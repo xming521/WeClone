@@ -7,10 +7,13 @@ import {
   type ProfileModel,
   type ProfileNode,
 } from '../data';
+import { Score } from '../review/ProfileScores';
+import type { NodeMetrics } from './atlasMetrics';
 
 export function NodePreview({
   viewModel,
   node,
+  metrics,
   x,
   y,
   width,
@@ -18,6 +21,8 @@ export function NodePreview({
 }: {
   viewModel: ProfileModel;
   node: ProfileNode;
+  /** What the node's halo and line show: importance, confidence and chat support. */
+  metrics: NodeMetrics;
   x: number;
   y: number;
   width: number;
@@ -52,8 +57,8 @@ export function NodePreview({
     .join(' / ');
   const summary =
     node.kind === 'attribute'
-      ? `${facts.length} 条画像 · ${new Set(facts.flatMap((fact) => fact.source_ids)).size} 条来源`
-      : `${overview ? `${node.childIds.length} 个${node.kind === 'root' ? '维度' : '主题'} · ` : ''}${node.attributeCount} 项画像属性`;
+      ? `${facts.length} 条画像`
+      : `${overview ? `${node.childIds.length} 个${node.kind !== 'root' ? '主题' : viewModel.grouping === 'domain' ? '领域' : '维度'} · ` : ''}${node.attributeCount} 项画像属性`;
 
   useLayoutEffect(() => {
     const card = ref.current;
@@ -82,6 +87,11 @@ export function NodePreview({
       </div>
       {path && <div className="node-preview-path">{path}</div>}
       <div className="node-preview-summary">{summary}</div>
+      <div className="node-preview-scores">
+        <Score kind="importance" value={metrics.importance ?? undefined} compact />
+        <Score kind="confidence" value={metrics.confidence ?? undefined} compact />
+        <span>{metrics.support} 段聊天支持</span>
+      </div>
       <div className="node-preview-content">
         {overview ? <p>{previews.join(' · ')}</p> : previews.map((preview, index) => <p key={index}>{preview}</p>)}
       </div>

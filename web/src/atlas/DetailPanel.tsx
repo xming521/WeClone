@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import type { CSSProperties } from 'react';
 import * as Tabs from '@radix-ui/react-tabs';
 import { ChevronRight, Sparkles, X } from 'lucide-react';
-import { ancestors, collectFacts, dimensionColor } from '../data';
+import { ancestors, collectFacts, dimensionColor, displayProfileText } from '../data';
 import { useProfileStore } from '../store';
 import { ReviewPanel } from '../review/ReviewPanel';
 
@@ -64,6 +64,7 @@ export function DetailPanel({ open, onClose }: { open: boolean; onClose: () => v
               </div>
             )}
             <h2>{selected.kind === 'root' ? '全部画像' : selected.name}</h2>
+            {selected.description && <p className="detail-description">{displayProfileText(selected.description)}</p>}
           </div>
           <Tabs.Content value="overview" forceMount hidden={tab !== 'overview'}>
             <div className="detail-metrics">
@@ -115,7 +116,11 @@ export function DetailPanel({ open, onClose }: { open: boolean; onClose: () => v
                     </button>
                   ))}
                 </div>
-                {selected.kind === 'root' && <p className="detail-hint">选择左侧维度，逐层展开画像地图。</p>}
+                {selected.kind === 'root' && (
+                  <p className="detail-hint">
+                    选择左侧{fullModel.grouping === 'domain' ? '领域' : '维度'}，逐层展开画像地图。
+                  </p>
+                )}
               </section>
             )}
           </Tabs.Content>

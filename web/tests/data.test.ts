@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
   buildModel,
+  DOMAIN_COLORS,
   chineseNumeral,
   collectFacts,
   dimensionColor,
@@ -275,6 +276,10 @@ test('dimensionColor returns configured colours and falls back to dimension 1', 
 
 test('chineseNumeral renders small counts', () => {
   assert.equal(chineseNumeral(5), '五');
+  assert.equal(chineseNumeral(10), '十');
+  assert.equal(chineseNumeral(16), '十六');
+  assert.equal(chineseNumeral(20), '二十');
+  assert.equal(chineseNumeral(100), '100');
 });
 
 test('buildModel skips dimensions that are not configured', () => {
@@ -292,4 +297,97 @@ test('buildModel skips dimensions that are not configured', () => {
   assert.deepEqual(model.dimensionIds, ['dimension:8']);
   assert.equal(model.nodes.has('dimension:2'), false);
   assert.equal(model.nodes.has('attr-x'), false);
+});
+
+// Two dimensions organized by domain, as build-profile writes them, plus a manual fact on dimension 8.
+const domainInput: ProfileInput = {
+  ...input,
+  domains: [
+    { name: '工作', description: 'B的工作。', topics: ['求职', '职场'] },
+    { name: '空领域', description: '', topics: [] },
+    { name: '兴趣', description: 'B的爱好。', topics: ['运动'] },
+  ],
+  dimensions: [
+    {
+      dim: 3,
+      name: '目标',
+      groups: [
+        {
+          id: 'd3-work',
+          name: '工作',
+          items: [
+            { id: 'd3-work-office', name: '职场', items: [{ id: 'attr-goal', attr: '目标', fact_indices: [0] }] },
+            { id: 'd3-work-jobs', name: '求职', items: [{ id: 'attr-plan', attr: '计划', fact_indices: [1] }] },
+          ],
+        },
+      ],
+    },
+    {
+      dim: 8,
+      name: '兴趣',
+      groups: [
+        {
+          id: 'd8-work',
+          name: '工作',
+          items: [
+            { id: 'd8-work-office', name: '职场', items: [{ id: 'attr-like', attr: '喜好', fact_indices: [2] }] },
+          ],
+        },
+        {
+          id: 'd8-hobby',
+          name: '兴趣',
+          items: [
+            { id: 'd8-hobby-sport', name: '运动', items: [{ id: 'attr-sport', attr: '运动', fact_indices: [3] }] },
+          ],
+        },
+        { id: 'dimension:8:direct', name: '直属属性', items: [{ id: 'attr-manual', attr: '手作', fact_indices: [4] }] },
+      ],
+    },
+  ],
+  facts: Array.from({ length: 5 }, (_, i) => ({
+    ...input.facts[0],
+    id: `fact-${i}`,
+    status: i === 3 ? ('approved' as const) : ('pending' as const),
+  })),
+};
+
+test('domain grouping merges topics across dimensions and keeps the stored attributes', () => {
+  const model = buildModel(domainInput, 'domain');
+  assert.equal(model.grouping, 'domain');
+  assert.deepEqual(
+    model.dimensionIds.map((id) => model.nodes.get(id)!.name),
+    ['工作', '兴趣', '未归入领域'],
+  );
+  const work = model.nodes.get(model.dimensionIds[0])!;
+  assert.equal(work.kind, 'dimension');
+  assert.equal(work.description, 'B的工作。');
+  // Listed topic order, with the topic shared by two dimensions merged into one node.
+  assert.deepEqual(
+    work.childIds.map((id) => model.nodes.get(id)!.name),
+    ['求职', '职场'],
+  );
+  const office = model.nodes.get(work.childIds[1])!;
+  assert.deepEqual(office.childIds, ['attr-goal', 'attr-like']);
+  assert.equal(model.nodes.get('attr-like')!.parentId, office.id);
+  assert.equal(model.nodes.get('attr-like')!.dim, work.dim);
+  // Domains keep their list position as key, so colours do not shift when an empty domain is hidden.
+  assert.equal(model.nodes.get(model.dimensionIds[1])!.dim, 102);
+  assert.equal(dimensionColor(102), DOMAIN_COLORS[2]);
+  const unassigned = model.nodes.get(model.dimensionIds[2])!;
+  assert.deepEqual(
+    collectFacts(model, unassigned.id).map((fact) => fact.id),
+    ['fact-4'],
+  );
+  assert.equal(model.attributeIds.length, 5);
+  assert.equal(model.nodes.get('root')!.attributeCount, 5);
+});
+
+test('domain grouping keeps node identity across review views and needs a domain list', () => {
+  const all = buildModel(domainInput, 'domain');
+  const approved = buildModel(filterProfile(domainInput, 'approved'), 'domain');
+  assert.deepEqual(approved.dimensionIds, [all.dimensionIds[1]]);
+  assert.equal(approved.nodes.get('attr-sport')!.parentId, all.nodes.get('attr-sport')!.parentId);
+  const plain = buildModel({ ...domainInput, domains: undefined }, 'domain');
+  assert.equal(plain.grouping, 'dimension');
+  assert.deepEqual(plain.dimensionIds, ['dimension:3', 'dimension:8']);
 });

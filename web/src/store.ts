@@ -1,7 +1,15 @@
 import { create } from 'zustand';
 import { api } from './api';
 import { ancestors, buildModel, filterProfile, reconcileNavigation, toggleLevelExpansion } from './data';
-import type { ChatSelection, ProfileFact, ProfileInput, ProfileModel, ReviewStatus, ReviewView } from './data';
+import type {
+  ChatSelection,
+  Grouping,
+  ProfileFact,
+  ProfileInput,
+  ProfileModel,
+  ReviewStatus,
+  ReviewView,
+} from './data';
 
 /** What the edit dialog works on. The draft itself is local state of the dialog. */
 export interface EditTarget {
@@ -20,6 +28,8 @@ interface ProfileValues {
   // Data
   input: ProfileInput | null;
   view: ReviewView;
+  /** Requested first level of the map; profiles without domains always show dimensions (see `ProfileModel.grouping`). */
+  grouping: Grouping;
   /** Model of the facts matching `view`. */
   viewModel: ProfileModel | null;
   /** Model of all facts regardless of `view`. */
@@ -45,6 +55,7 @@ interface ProfileActions {
   reload: () => Promise<void>;
   refresh: () => Promise<ProfileInput>;
   setView: (view: ReviewView) => void;
+  setGrouping: (grouping: Grouping) => void;
   setError: (error: string) => void;
   mutate: (request: () => Promise<unknown>, closeEditor?: boolean) => Promise<boolean>;
   review: (facts: ProfileFact[], status: ReviewStatus) => Promise<boolean>;
@@ -62,7 +73,7 @@ interface ProfileActions {
   closeDetail: () => void;
   clearSelection: () => void;
   toggleLevel: (level: 1 | 2 | 3) => void;
-  toggleExpanded: (id: string) => void;
+  clickNode: (id: string) => void;
   reveal: (id: string) => void;
 }
 
@@ -72,10 +83,29 @@ function defaultExpandedNodes(model: ProfileModel): Set<string> {
   return new Set(['root', ...model.dimensionIds]);
 }
 
+const GROUPING_KEY = 'weclone.profile.grouping';
+
+function savedGrouping(): Grouping {
+  try {
+    return window.localStorage.getItem(GROUPING_KEY) === 'domain' ? 'domain' : 'dimension';
+  } catch {
+    return 'dimension';
+  }
+}
+
+function saveGrouping(grouping: Grouping) {
+  try {
+    window.localStorage.setItem(GROUPING_KEY, grouping);
+  } catch {
+    // Without storage the choice lasts for this page only.
+  }
+}
+
 function initialValues(): ProfileValues {
   return {
     input: null,
     view: 'all',
+    grouping: savedGrouping(),
     viewModel: null,
     fullModel: null,
     error: '',
@@ -143,8 +173,13 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
     const input = await api.get<ProfileInput>('profile');
     if (epoch === sessionEpoch) {
       set((state) => {
-        const viewModel = buildModel(filterProfile(input, state.view));
-        return { input, fullModel: buildModel(input), viewModel, ...navigationFor(state, viewModel) };
+        const viewModel = buildModel(filterProfile(input, state.view), state.grouping);
+        return {
+          input,
+          fullModel: buildModel(input, state.grouping),
+          viewModel,
+          ...navigationFor(state, viewModel),
+        };
       });
     }
     return input;
@@ -153,8 +188,22 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
     set((state) => {
       if (state.view === view) return state;
       if (!state.input) return { view };
-      const viewModel = buildModel(filterProfile(state.input, view));
+      const viewModel = buildModel(filterProfile(state.input, view), state.grouping);
       return { view, viewModel, ...navigationFor(state, viewModel) };
+    }),
+  // The other grouping is a different map: it starts over from the overview.
+  setGrouping: (grouping) =>
+    set((state) => {
+      if (state.grouping === grouping) return state;
+      saveGrouping(grouping);
+      if (!state.input) return { grouping };
+      const viewModel = buildModel(filterProfile(state.input, state.view), grouping);
+      return {
+        grouping,
+        viewModel,
+        fullModel: buildModel(state.input, grouping),
+        ...resetState(state, viewModel),
+      };
     }),
   setError: (error) => set({ error }),
   mutate: async (request, closeEditor = false) => {
@@ -194,9 +243,12 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
     const { input, viewModel, selectedId } = get();
     if (!input) return;
     const selected = viewModel?.nodes.get(selectedId ?? 'root');
+    // An attribute's facts name its stored group; in the domain view its parent is a merged topic.
+    const parentId =
+      selected?.kind === 'attribute' ? viewModel!.facts[selected.factIndices[0]]?.group_id : selected?.parentId;
     const location =
       input.locations.find((item) => item.id === selected?.id) ??
-      input.locations.find((item) => item.id === selected?.parentId) ??
+      input.locations.find((item) => item.id === parentId) ??
       input.locations[0];
     set({
       error: '',
@@ -238,19 +290,24 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
       if (!model || dim === null) return state;
       return { expandedIds: toggleLevelExpansion(model, state.expandedIds, level, dim) };
     }),
-  toggleExpanded: (id) =>
+  // A click on the map selects the node and expands it. Only a click on the node already selected
+  // collapses it, so looking at a node never hides its branch. The root always stays expanded.
+  clickNode: (id) =>
     set((state) => {
       const node = state.viewModel?.nodes.get(id);
       if (!node) return state;
-      const detailTab = node.kind === 'attribute' ? 'review' : 'overview';
-      if (!node.childIds.length) return { selectedId: id, focusedDimension: node.dim, detailOpen: true, detailTab };
-      // Reopening the collapsed root redraws the initial map, since re-expanding from the collapsed state scrambles it.
-      if (id === 'root' && !state.expandedIds.has(id))
-        return { ...resetState(state, state.viewModel!), detailOpen: true, detailTab };
+      const selection = {
+        selectedId: id,
+        focusedDimension: node.dim,
+        detailOpen: true,
+        detailTab: node.kind === 'attribute' ? ('review' as const) : ('overview' as const),
+      };
+      const expanded = state.expandedIds.has(id);
+      if (!node.childIds.length || (expanded && (id === 'root' || id !== state.selectedId))) return selection;
       const expandedIds = new Set(state.expandedIds);
-      if (expandedIds.has(id)) expandedIds.delete(id);
+      if (expanded) expandedIds.delete(id);
       else expandedIds.add(id);
-      return { expandedIds, selectedId: id, focusedDimension: node.dim, detailOpen: true, detailTab };
+      return { expandedIds, ...selection };
     }),
   reveal: (id) =>
     set((state) => {

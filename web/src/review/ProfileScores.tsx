@@ -9,7 +9,8 @@ const SCORE_RANGES = {
   importance: { min: 1, max: 4 },
 } as const;
 
-function Score({
+/** A score on its scale. Compact scores show whole numbers as such and averages to one decimal. */
+export function Score({
   kind,
   value,
   compact = false,
@@ -23,10 +24,11 @@ function Score({
   const { min, max } = SCORE_RANGES[kind];
   const valid = typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max;
   const score = valid ? value : null;
+  const shown = score === null ? '未评分' : score.toFixed(compact && Number.isInteger(score) ? 0 : 1);
   return (
     <div
       className={`profile-score ${kind}${compact ? ' compact' : ''}`}
-      aria-label={`${label}：${score === null ? '未评分' : `${score.toFixed(compact ? 0 : 1)} / ${max}`}`}
+      aria-label={`${label}：${score === null ? '未评分' : `${shown} / ${max}`}`}
     >
       <span className="score-label">
         {!compact && <Icon size={14} aria-hidden="true" />}
@@ -53,7 +55,7 @@ function Score({
           </span>
         ))}
       </span>
-      {compact && <span className="source-score-value">{score === null ? '未评分' : score.toFixed(0)}</span>}
+      {compact && <span className="source-score-value">{shown}</span>}
     </div>
   );
 }
