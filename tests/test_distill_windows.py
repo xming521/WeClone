@@ -12,7 +12,7 @@ from weclone.data.agent.distill_windows import (
     render_sample,
     split_window_response,
 )
-from weclone.prompts.chat_distill import (
+from weclone.prompts.distill_memory import (
     EVENT_EXTRACT_PROMPT,
     build_state_extract_prompt,
     build_window_extract_prompt,

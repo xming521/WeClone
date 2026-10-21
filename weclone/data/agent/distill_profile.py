@@ -17,7 +17,7 @@ from weclone.data.agent.distill_windows import (
     make_window_request,
     render_sample,
 )
-from weclone.prompts.chat_distill import build_state_extract_prompt
+from weclone.prompts.distill_memory import build_state_extract_prompt
 from weclone.utils import secure_storage
 from weclone.utils.log import logger
 
@@ -400,14 +400,6 @@ def sample_id_for(item: dict[str, Any], source_index: int) -> str:
         if value is not None and str(value) != "":
             return str(value)
     return str(source_index)
-
-
-def role_label(role: str, target_role: str) -> str | None:
-    if role == target_role:
-        return "B"
-    if role in {"user", "assistant"}:
-        return "A"
-    return None
 
 
 def other_role(target_role: str) -> str:

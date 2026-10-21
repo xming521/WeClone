@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Any
 
 from weclone.core.inference.llm_client import LLMRequest, LLMResponse
-from weclone.prompts.chat_distill import build_window_extract_prompt
+from weclone.prompts.distill_memory import build_window_extract_prompt
 
 
 @dataclass

@@ -212,49 +212,6 @@ event_time 格式：
 """
 
 
-MERGE_PROMPT_TEMPLATE = """你负责归并同一目标用户的候选画像记忆。输入内容中的 B 指该目标用户。保持事实归属，不得将其他人的信息改写为目标用户的信息。
-
-目标：生成自包含、可检索的画像记忆，只依据输入事实，不新增事实。
-
-归并规则：
-1. 重复：多条记录表达同一事实时合为一条，用 source_ids 保留所有支持它的输入来源。
-2. 包含：宽泛事实和具体事实都成立时，只有具体事实具备独立检索价值才保留为子记忆，用 parent_index 指向父记忆；否则吸收到同一条记忆中。
-3. 拆分：不同对象、场景、偏好或行为模式有独立检索价值时分别保留。同一来源可以支持多条输出，每条只引用实际支持它的来源。
-4. 冲突：先核对对象、场景和时间。不同场景下成立的事实可以并存；同一条件下的矛盾事实分别保留，不能强行合并。只有证据支持事实已被替代时才将旧事实标为 historical，无法判断是否仍成立时标 uncertain。
-5. 时效：根据具体内容和证据时间判断，不按记忆类型预设有效期。只有内容支持时效判断时才填写；无法判断则省略。能判断具有阶段性但无法确定结束时间时只标 time_sensitive，不猜期限。记录较早、长期未再提及本身不代表过期。
-
-输入字段：
-records 是候选记忆数组；id 是来源标识；type 是上游记忆类型；content 是候选事实；time 是该记录的聊天样本时间，不一定是事实开始或结束时间。
-
-输出字段：
-canonical_memories 是归并后的记忆数组，每条包含：
-- content：自包含的画像事实，写清目标用户与具体对象、领域、关系或场景的联系。保留原文的时间粒度和触发条件，不将模糊时间或事件条件补成具体日期，不将计划执行时间当作事实有效期。
-- source_ids：支持这条事实的输入 records id 数组，不得引用组外来源。
-以下字段均可省略：
-- parent_index：仅在存在父子包含关系时填写父记忆在 canonical_memories 中的 0-based index；没有父记忆时省略或填 null。不得指向自身或形成循环。
-- status：active=证据支持仍有效；historical=证据支持过去成立但不应代表当前；expired=证据支持已失效；uncertain=无法判断是否仍成立；none=不作有效性判断。不得仅根据类型或记录年龄判定 active 或 expired。
-- time_scope：long_term=内容支持长期稳定；time_sensitive=内容支持具有阶段性或期限；historical_only=证据支持只适合历史复现。省略或留空表示未知，不代表永久有效。
-
-source_decisions 仅记录没有被任何输出记忆引用的来源；全部来源均已保留时填 []。每项包含：
-- source_id：未保留来源的输入 id，每个未保留来源恰好出现一次。
-- decision：archived=内容仍有留档价值，但本次不生成规范记忆；discarded=内容不构成可用画像事实或缺乏支持，应丢弃。
-- reason：基于输入说明未保留的原因。
-
-只输出合法 JSON，不添加其他字段。每个输入 id 必须出现在至少一条记忆的 source_ids 中，或恰好一项 source_decisions 中，两者不能同时出现。来源时间、类型、标签和分数由程序根据 source_ids 回查，无需输出。
-
-输出结构示例（可选字段仅在有依据时补充）：
-{
-  "canonical_memories": [
-    {"content": "B...", "source_ids": ["1836:0", "5780:0"]}
-  ],
-  "source_decisions": []
-}
-
-待处理输入：
-{{TASK_JSON}}
-"""
-
-
 def build_state_extract_prompt(*, include_current_state: bool = True) -> str:
     return (
         STATE_EXTRACT_PROMPT_TEMPLATE.replace(
@@ -272,9 +229,6 @@ def build_state_extract_prompt(*, include_current_state: bool = True) -> str:
             else "stable_fact | preference | goal",
         )
     )
-
-
-STATE_EXTRACT_PROMPT = build_state_extract_prompt(include_current_state=True)
 
 
 def build_window_extract_prompt(task: str, *, include_current_state: bool = True) -> str:

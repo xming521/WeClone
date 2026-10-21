@@ -373,13 +373,13 @@ def dev(ctx: click.Context):
 
 @cli.command(
     "organize-memories",
-    help="Classify, group, and summarize extracted memories.",
+    help="Induce life domains, classify, group into topics, and summarize extracted memories.",
     context_settings={"ignore_unknown_options": True, "allow_extra_args": True},
     add_help_option=False,
 )
 @click.pass_context
 def organize_memories(ctx: click.Context):
-    """Pass stage and embedding options to the memory organization CLI."""
+    """Pass stage options to the memory organization CLI."""
     from weclone.data.agent import organize_memories as organizer
 
     argv = list(ctx.args)

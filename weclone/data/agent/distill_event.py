@@ -34,7 +34,7 @@ from weclone.data.agent.distill_windows import (
     make_window_request,
     render_sample,
 )
-from weclone.prompts.chat_distill import EVENT_EXTRACT_PROMPT
+from weclone.prompts.distill_memory import EVENT_EXTRACT_PROMPT
 from weclone.utils import secure_storage
 from weclone.utils.log import logger
 

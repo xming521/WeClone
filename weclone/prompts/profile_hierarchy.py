@@ -1,51 +1,84 @@
-"""Attribute-only hierarchy generation."""
+"""Prompts that turn organized topics into the browsable profile hierarchy."""
 
-import json
+from weclone.prompts.memory_organization import dimension_name
 
-from weclone.prompts.memory_organization import DIMENSIONS
+VALUE_CHARS = 60
 
-SUBGROUP = {
-    "type": "object",
-    "properties": {"name": {"type": "string"}, "items": {"type": "array", "items": {"type": "integer"}}},
-    "required": ["name", "items"],
-    "additionalProperties": False,
-}
-SCHEMA = {
+SPLIT_SCHEMA = {
     "type": "object",
     "properties": {
-        "groups": {
+        "topics": {
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
                     "name": {"type": "string"},
-                    "items": {
-                        "type": "array",
-                        "items": {"anyOf": [{"type": "integer"}, SUBGROUP]},
-                    },
+                    "items": {"type": "array", "items": {"type": "integer"}},
                 },
                 "required": ["name", "items"],
                 "additionalProperties": False,
             },
         }
     },
-    "required": ["groups"],
+    "required": ["topics"],
     "additionalProperties": False,
 }
-RULES = """将当前维度的画像属性组织成便于人浏览的层级结构，当前维度已是一级中心。
-按属性的实际含义形成多个二级主题；某主题内部存在清晰子主题时再设三级主题，否则直接挂属性。主题名须概括成员，不用某个狭窄属性代替整个主题；不预设类别或数量。
-根据生活领域和对象归组，不因共有“目标、计划、偏好”等表达而归组。保留对象、阶段和范围区别；含义不明时不猜测，不强塞到具体主题。
-输入id是属性编号，attr是原属性名。所有属性编号在整棵树中各出现一次，不合并、改写或新增属性。
-只输出JSON对象，groups是二级主题列表；主题的name是简洁中文组名，items是成员列表，成员可为属性编号或三级主题对象；三级主题的items只能包含属性编号。各主题非空。
-格式：{"groups":[{"name":"二级主题","items":[1,{"name":"三级主题","items":[2,3]}]}]}。
+DESCRIBE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "domains": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {"id": {"type": "integer"}, "description": {"type": "string"}},
+                "required": ["id", "description"],
+                "additionalProperties": False,
+            },
+        }
+    },
+    "required": ["domains"],
+    "additionalProperties": False,
+}
+
+SPLIT_RULES = """你在为一个"以 B 本人身份自动回复聊天"的系统整理 B 的画像。画像按领域、主题、条目三层组织，回复前系统先选领域，再选主题，然后读主题下的条目。
+下面这个主题的条目太多，不便浏览和选取。把它拆成几个更具体的子主题，子主题替代原主题，与同领域其他主题并列。
+1. 按条目实际在聊的对象、事情或阶段拆分，同一件事的条目放在一起，不按维度分开。
+2. 每个子主题尽量不超过 {leaf_facts} 条，但不要为了凑数拆散同一件事。
+3. 子主题名用简洁中文，不超过 12 个字，在本领域内能单独看懂，不与原主题或本领域其他主题重名。
+4. 至少拆成两个子主题。每个条目编号只放进一个子主题，全部条目都要放进子主题。
+
+只输出 JSON：{{"topics":[{{"name":"子主题名","items":[条目编号]}}]}}
+"""
+
+DESCRIBE_RULES = """你在为一个"以 B 本人身份自动回复聊天"的系统整理 B 的画像。回复前，系统先根据对方的消息和领域说明判断话题属于 B 生活的哪个领域。
+下面是 B 画像的各个领域，以及每个领域下的主题和条目数。为每个领域写一句说明，概括其中包括哪些内容，带上 B 在这个领域的具体对象或话题词，便于根据聊天内容识别。
+说明不超过 50 个字，只根据列出的主题概括，不写列表外的内容。每个领域编号只出现一次。
+
+只输出 JSON：{"domains":[{"id":领域编号,"description":"说明"}]}
+
+## 领域
+格式：领域编号 领域名：主题（条目数）、主题（条目数）
 """
 
 
-def prompt(dim: int, attributes: list[dict]) -> str:
+def split_prompt(domain: dict, others: list[str], topic: str, facts: list[dict], leaf_facts: int) -> str:
     return (
-        RULES
-        + "\n当前维度："
-        + DIMENSIONS[dim].split("：")[0]
-        + "\n属性：\n"
-        + json.dumps(attributes, ensure_ascii=False, separators=(",", ":"))
+        SPLIT_RULES.format(leaf_facts=leaf_facts)
+        + f"\n## 领域\n{domain['name']}：{domain['description']}\n"
+        + "\n## 本领域其他主题\n"
+        + ("、".join(others) or "无")
+        + f"\n\n## 原主题\n{topic}\n"
+        + "\n## 条目\n格式：条目编号 属性：内容（维度）\n"
+        + "\n".join(
+            f"{i} {fact['attr']}：{' '.join(fact['value'].split())[:VALUE_CHARS]}（{dimension_name(fact['dim'])}）"
+            for i, fact in enumerate(facts, 1)
+        )
+    )
+
+
+def describe_prompt(domains: list[dict]) -> str:
+    return DESCRIBE_RULES + "\n".join(
+        f"{i} {domain['name']}："
+        + "、".join(f"{topic['name']}（{len(topic['fact_indices'])}）" for topic in domain["topics"])
+        for i, domain in enumerate(domains, 1)
     )

@@ -98,7 +98,7 @@ def run(
             )
             check_distillation(distill_event.default_event_state_path(distill_dir))
 
-    with _stage("[3/4] 分类、分组和归纳记忆"):
+    with _stage("[3/4] 归纳领域、分类、分主题和汇总记忆"):
         organize_memories.main(
             [
                 "--stage",

@@ -10,6 +10,47 @@ DIMENSIONS = {
     8: "兴趣与偏好：B对具体对象、活动、方式或相处体验的喜恶、兴趣和选择倾向。保留偏好对象、方向及适用条件；不将一次行为或评价推广为长期偏好，不将他人的偏好归给B。输入中的peer是来源聊天对方编号，仅正文明确指向聊天对方时用于标识偏好对象。",
 }
 
+PROFILE_DIMS = (1, 3, 4, 5, 8)
+
+
+def dimension_name(dim: int) -> str:
+    return DIMENSIONS[dim].split("：")[0]
+
+
+DOMAIN_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "domains": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {"name": {"type": "string"}, "description": {"type": "string"}},
+                "required": ["name", "description"],
+                "additionalProperties": False,
+            },
+        }
+    },
+    "required": ["domains"],
+    "additionalProperties": False,
+}
+
+TAG_DOMAIN_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "items": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {"id": {"type": "integer"}, "domain": {"type": "integer"}},
+                "required": ["id", "domain"],
+                "additionalProperties": False,
+            },
+        }
+    },
+    "required": ["items"],
+    "additionalProperties": False,
+}
+
 CLASSIFY_SCHEMA = {
     "type": "object",
     "properties": {
@@ -22,12 +63,14 @@ CLASSIFY_SCHEMA = {
                     "fields": {
                         "type": "array",
                         "items": {
-                            "type": "array",
-                            "minItems": 2,
-                            "maxItems": 2,
-                            "items": {
-                                "anyOf": [{"type": "integer", "enum": list(DIMENSIONS)}, {"type": "string"}]
+                            "type": "object",
+                            "properties": {
+                                "dim": {"type": "integer", "enum": list(DIMENSIONS)},
+                                "domain": {"type": "integer"},
+                                "attr": {"type": "string"},
                             },
+                            "required": ["dim", "domain", "attr"],
+                            "additionalProperties": False,
                         },
                     },
                 },
@@ -40,82 +83,78 @@ CLASSIFY_SCHEMA = {
     "additionalProperties": False,
 }
 
-ATTRIBUTE_HIERARCHY_SCHEMA = {
+TOPIC_SCHEMA = {
     "type": "object",
     "properties": {
-        "items": {
+        "topics": {
             "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
-                    "id": {"type": "integer"},
-                    "topic": {"type": "string"},
-                    "attr": {"type": "string"},
+                    "name": {"type": "string"},
+                    "items": {"type": "array", "items": {"type": "integer"}},
                 },
-                "required": ["id", "topic", "attr"],
+                "required": ["name", "items"],
                 "additionalProperties": False,
             },
         }
     },
-    "required": ["items"],
+    "required": ["topics"],
     "additionalProperties": False,
 }
 
-ATTRIBUTE_HIERARCHY_RULES = """将人物身份画像的属性名整理为上层主题和归一属性名。
-输入id是属性编号，attr是原属性名，不包含具体事实。
-根据属性描述的生活领域生成简洁中文主题，不预设类别列表；相关属性可归入同一主题，只有含义等价的属性才统一名称。
-保留属性名中的对象、阶段和范围区别；含义不明确时保留原名，不推测取值。例如“本科专业”和“研究方向”可属于同一主题，但不能合并。
-每个属性只归入一个最直接的主题，同一个归一属性名使用同一个主题。
-只输出JSON对象：{"items":[{"id":1,"topic":"主题名","attr":"归一属性名"}]}。
-items覆盖每个输入id且各一次；topic是上层浏览主题，attr是归一后的属性名。
+DOMAIN_RULES = """你在为一个"以 B 本人身份自动回复聊天"的系统整理 B 的记忆。回复前，系统先判断对方这条消息在聊 B 生活的哪个方面，再到那个方面里找需要的记忆。
+下面是从 B 的聊天记忆中抽出的检索标签及出现次数。请据此把 B 的生活划分为若干领域。
+
+领域的要求：
+1. 领域是 B 生活的一个方面，按"聊天时在聊什么"划分：只看对方的一条消息，就能判断话题属于哪个领域。
+2. 一个领域应能同时容纳身份、目标、条件、计划、偏好、经历等各类信息。只描述一类信息、不对应具体话题的标签（例如沟通偏好、时间安排、风险偏好）不单独成领域。
+3. 按 B 的实际情况和话题粒度切分：B 经常聊、内容多的方面可以单独成领域，内容很少的方面并入相近领域。宽泛标签（例如人际关系、职业发展）覆盖面大，要按具体标签反映的话题拆分，不直接照搬为领域。领域数量 10 到 16 个，标签很少时可以更少。单个领域涵盖的内容不超过全部的四分之一。
+4. 领域之间尽量互斥。姓名、年龄、籍贯这类基本身份信息归入"个人背景"类领域。
+5. 领域名用简洁中文，不超过 10 个字。每个领域写一句描述，说明包括哪些内容，带上 B 在这个领域的具体对象或话题词，便于根据聊天内容识别，不超过 50 字。
+
+只输出 JSON：{"domains":[{"name":"领域名","description":"描述"}]}
+
+## 标签
+格式：标签 出现次数
 """
 
-
-def attribute_hierarchy_prompt(attributes: list[dict]) -> str:
-    return (
-        ATTRIBUTE_HIERARCHY_RULES
-        + "\n属性：\n"
-        + json.dumps(attributes, ensure_ascii=False, separators=(",", ":"))
-    )
-
-
-PREFERENCE_ATTRIBUTE_SCHEMA = {
-    "type": "object",
-    "properties": {
-        "items": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "id": {"type": "string"},
-                    "attrs": {"type": "array", "items": {"type": "string"}},
-                },
-                "required": ["id", "attrs"],
-                "additionalProperties": False,
-            },
-        }
-    },
-    "required": ["items"],
-    "additionalProperties": False,
-}
-
-PREFERENCE_ATTRIBUTE_RULES = """为人物B的每条偏好画像生成简洁中文属性名，用于后续分组归并。
-输入id是记忆编号，content是正文；peer是来源聊天对方编号，仅正文明确指向对方时用于识别对象。
-属性名描述偏好的信息类别，具体对象、喜恶方向及条件留在正文；换成该类别的其他取值时属性名应保持不变。例如喜欢或不喜欢甜食均可使用“口味偏好”。按含义统一同义属性名，不预设类别列表。
-只提取正文支持的B的偏好属性，不把他人偏好或明确的玩笑当作B的偏好。
-只输出JSON对象：{"items":[{"id":"输入编号","attrs":["属性名"]}]}。
-items覆盖每个输入id且各一次；attrs是该条记忆涉及的不重复属性名列表，无可用偏好时为空。
+TAG_DOMAIN_RULES = """你在为一个"以 B 本人身份自动回复聊天"的系统整理 B 的记忆。下面是 B 的生活领域，以及从 B 的聊天记忆中抽出的检索标签。
+把每个标签归入最相关的一个领域，填领域编号。宽泛标签填它最常对应的领域。
+只输出 JSON：{"items":[{"id":标签编号,"domain":领域编号}]}。items 覆盖每个标签编号且各一次。
 """
 
-CLASSIFY_RULES = """你负责将已有人物B的画像和事件记忆分类到本次给定的维度，并为每条记忆提出中文属性名。
+CLASSIFY_RULES = """你负责将已有人物B的画像和事件记忆分类到本次给定的维度，为每条记忆提出中文属性名，并选出所属的B的生活领域。
 目标是保留对当前维度的人物建模有实际作用的信息，不追求覆盖全部输入；普通操作和零散细节若不影响对B的个人特征、现实条件或重要事项的理解，则不收录。
 输入是已抽取记忆，id是记忆编号，content是正文；可选的event_time是原抽取的事件时间，status是计划或目标状态。
 逐一对照本次维度定义，判断记忆事实是否直接提供了该维度描述的信息；匹配后为这部分信息生成属性名。
-属性名用简洁中文描述信息类别，不限定词表；取值是该类别下的具体内容。自检：换成其他可能取值时，属性名应保持不变。例如“人工智能”和“机械工程”均使用“专业或研究方向”。
+属性名用简洁中文描述信息类别，不限定词表；取值是该类别下的具体内容。自检：换成其他可能取值时，属性名应保持不变。例如“人工智能”和“机械工程”均使用“专业或研究方向”。属性名不含人名或P1这类聊天对象编号，涉及的人物留在正文。
+每个归类再从领域列表中选一个领域，填领域编号。领域按这部分信息在聊天时属于什么话题来判断，同一话题下的身份、目标、条件、计划、偏好归入同一领域，不按维度区分。
 明确的玩笑、调侃内容不分类；同条记忆中的非玩笑事实仍可分类。
 同一条可支持多个维度或属性，但每个归类都须有正文中的具体信息支持；各维度独立判断，没有匹配维度时fields为空数组，不为覆盖维度而凑结果。
-只输出JSON对象：{"items":[{"id":"输入记录编号","fields":[[1,"职业"]]}]}。
-items覆盖每个输入id且各一次；id原样复制。fields中的每项是[维度数字ID,中文属性名]。
+只输出JSON对象：{"items":[{"id":"输入记录编号","fields":[{"dim":1,"domain":2,"attr":"职业"}]}]}。
+items覆盖每个输入id且各一次；id原样复制。fields中的每项是一个归类：dim是维度数字ID，domain是领域编号，attr是中文属性名。
+"""
+
+PREFERENCE_RULES = """为人物B的每条偏好画像生成简洁中文属性名，用于后续分组归并，并选出所属的B的生活领域。
+输入id是记忆编号，content是正文；peer是来源聊天对方编号，仅正文明确指向对方时用于识别对象。
+属性名描述偏好的信息类别，具体对象、喜恶方向及条件留在正文；换成该类别的其他取值时属性名应保持不变。例如喜欢或不喜欢甜食均可使用“口味偏好”。按含义统一同义属性名，不预设类别列表。
+只提取正文支持的B的偏好属性，不把他人偏好或明确的玩笑当作B的偏好。
+每个属性再从领域列表中选一个领域，填领域编号。领域按偏好对象在聊天时属于什么话题来判断。
+只输出JSON对象：{"items":[{"id":"输入编号","fields":[{"dim":8,"domain":2,"attr":"属性名"}]}]}。
+items覆盖每个输入id且各一次；fields是该条记忆涉及的不重复偏好属性，dim固定为8，无可用偏好时为空数组。
+"""
+
+TOPIC_RULES = """你在为一个"以 B 本人身份自动回复聊天"的系统整理 B 的记忆。B 的记忆已经分成下面这些领域。回复前，系统先选领域，再在领域里选主题，然后读主题下的条目。
+
+现在把其中一个领域里的属性分成主题：
+1. 按话题分：主题是"聊天时具体在聊什么"，例如"读博申请""实习与工作经历"。同一话题下的身份、目标、条件、计划、偏好放进同一个主题，不按维度分开。
+2. 每个属性后面括号里是它的维度和记忆条数，"例"后面是其中一条记忆的开头。每个主题的记忆总数一般在 {min_memories} 到 {max_memories} 条之间：超过 {max_memories} 条的话题拆成几个并列主题，主题名要能互相区分；记忆很少的零散属性并入话题最接近的主题，不单独成主题。整个领域记忆很少时可以只有一个主题。
+3. 含义相同、只是说法不同的属性放进同一个主题。
+4. 主题名用简洁中文，概括主题里的全部属性，不超过 12 个字。
+5. 每个属性只放进一个主题，全部属性都要放进主题。
+
+只输出 JSON：{{"topics":[{{"name":"主题名","items":[属性编号]}}]}}
 """
 
 SUMMARY_CONTENT_RULES = """将已有记忆整理为给定维度下的属性与事实。
@@ -187,7 +226,10 @@ def batch_summary_prompt(tasks: list[dict]) -> str:
     reduced = tasks[0]["stage"] == "reduce"
     groups, memories = [], {}
     for i, task in enumerate(tasks):
-        group = {"id": i, "attrs": task["attrs"], "source_ids": task["source_ids"]}
+        group = {"id": i}
+        if task.get("topic"):
+            group["topic"] = task["topic"]
+        group.update(attrs=task["attrs"], source_ids=task["source_ids"])
         if reduced:
             group["facts"] = task["rows"]
         else:
@@ -196,7 +238,7 @@ def batch_summary_prompt(tasks: list[dict]) -> str:
     payload = {"groups": groups}
     if not reduced:
         payload["memories"] = list(memories.values())
-    rules = """本次包含多个候选属性组。groups中id是组编号，attrs是候选属性，source_ids是该组候选来源；memories是各组共用、按id去重的原记忆。
+    rules = """本次包含多个候选属性组。groups中id是组编号，topic是该组所属主题（可缺省），attrs是候选属性，source_ids是该组候选来源；memories是各组共用、按id去重的原记忆。
 若组内提供facts，则它们是该组分批归纳结果，合并时保留原source_ids。
 同次请求内跨组统一同义属性、合并重复事实；依据正文选择支持结论的来源，可引用其他组的来源，不得引用输入外的编号。每条合并事实只放入一个相关组，其余组不重复输出；组内仍有其他事实则保留，全部并入其他组时facts为空数组。覆盖所有组id且各一次。
 只输出JSON对象：{"groups":[{"id":0,"facts":[{"attr":"中文属性","value":"具体取值","source_ids":["原记忆编号"]}]}]}。
@@ -210,20 +252,56 @@ def batch_summary_prompt(tasks: list[dict]) -> str:
     )
 
 
-def classify_prompt(records: list[dict], dimensions: tuple[int, ...]) -> str:
-    if dimensions == (8,):
-        return (
-            PREFERENCE_ATTRIBUTE_RULES
-            + "\n记忆：\n"
-            + json.dumps(records, ensure_ascii=False, separators=(",", ":"))
-        )
-    definitions = "\n".join(f"{dim}: {DIMENSIONS[dim]}" for dim in dimensions)
+def domain_block(domains: list[dict]) -> str:
     return (
-        CLASSIFY_RULES
-        + "\n本次维度：\n"
+        "\n## 领域\n"
+        + "\n".join(f"{i}. {domain['name']}：{domain['description']}" for i, domain in enumerate(domains, 1))
+        + "\n"
+    )
+
+
+def domain_prompt(tags: list[tuple[str, int]]) -> str:
+    return DOMAIN_RULES + "\n".join(f"{tag} {count}" for tag, count in tags)
+
+
+def tag_domain_prompt(domains: list[dict], tags: list[tuple[int, str]]) -> str:
+    return (
+        TAG_DOMAIN_RULES
+        + domain_block(domains)
+        + "\n## 标签\n格式：标签编号 标签\n"
+        + "\n".join(f"{i} {tag}" for i, tag in tags)
+    )
+
+
+def classify_prompt(records: list[dict], dimensions: tuple[int, ...], domains: list[dict]) -> str:
+    # Rules and the domain list come first so every batch of one person shares the cached prefix.
+    if dimensions == (8,):
+        rules, definitions = PREFERENCE_RULES, ""
+    else:
+        rules = CLASSIFY_RULES
+        definitions = "\n本次维度：\n" + "\n".join(f"{dim}: {DIMENSIONS[dim]}" for dim in dimensions) + "\n"
+    return (
+        rules
+        + domain_block(domains)
         + definitions
         + "\n记忆：\n"
         + json.dumps(records, ensure_ascii=False, separators=(",", ":"))
+    )
+
+
+def topic_prompt(
+    domains: list[dict], domain: int, attributes: list[dict], min_memories: int, max_memories: int
+) -> str:
+    current = domains[domain - 1]
+    return (
+        TOPIC_RULES.format(min_memories=min_memories, max_memories=max_memories)
+        + domain_block(domains)
+        + f"\n## 当前领域\n{current['name']}：{current['description']}\n"
+        + "\n## 属性\n格式：属性编号 属性名（维度，记忆条数）例：记忆开头\n"
+        + "\n".join(
+            f"{row['id']} {row['attr']}（{dimension_name(row['dim'])}，{row['count']} 条）例：{row['example']}"
+            for row in attributes
+        )
     )
 
 
@@ -234,10 +312,13 @@ def summarize_prompt(
     *,
     reduced: bool = False,
     peer: str | None = None,
+    topic: str | None = None,
 ) -> str:
     extra = "\n本轮输入是分批归纳的facts；合并时保留原source_ids，不用分批编号替代来源。\n" if reduced else ""
     if peer is not None:
         extra += "\npeer：" + json.dumps(peer, ensure_ascii=False) + "\n"
+    if topic is not None:
+        extra += "\n主题：" + json.dumps(topic, ensure_ascii=False) + "\n"
     return (
         SUMMARIZE_RULES
         + f"\n当前维度{dim}的时间规则：{DIMENSION_TIME_RULES[dim]}\n"

@@ -446,11 +446,11 @@ class SecureStorageChecks(unittest.TestCase):
         processor._parsed_csv_files = None
         self.assertEqual(processor.get_csv_files(), [str(physical)])
 
-    def test_encrypted_memory_and_grouping_scans_preserve_logical_names(self):
-        from weclone.data.agent import canonicalize_state_memories, group_state_memories, organize_memories
+    def test_encrypted_memory_scan_preserves_logical_names(self):
+        from weclone.data.agent import organize_memories
 
         source = self.root / "distill/state_people/person.json"
-        physical = secure.write_json(
+        secure.write_json(
             source,
             [
                 {
@@ -469,12 +469,6 @@ class SecureStorageChecks(unittest.TestCase):
         records = organize_memories.read_memories(self.root / "distill")
         self.assertEqual(records[0]["content"], "synthetic-private-fact")
         self.assertEqual(records[0]["origins"][0]["file"], str(source))
-        self.assertEqual(group_state_memories.input_paths_for(source.parent), [source])
-        self.assertEqual(group_state_memories.input_paths_for(physical), [source])
-        grouping = self.root / "grouping/person.prefilter_candidates.json"
-        secure.write_json(grouping, {})
-        self.assertEqual(canonicalize_state_memories.grouping_paths_for(grouping.parent), [grouping])
-        self.assertEqual(canonicalize_state_memories.person_stem(secure.resolve_path(grouping)), "person")
 
     def test_plaintext_keeps_names_and_rejects_existing_encrypted_sqlite(self):
         database = self.root / "review.sqlite3"
