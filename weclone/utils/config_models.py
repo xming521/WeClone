@@ -121,6 +121,33 @@ class AgentDistillArgs(BaseConfigModel):
     sandbox: str = Field("read-only", description="Codex sandbox mode")
 
 
+class ProfileContextArgs(BaseConfigModel):
+    profile_path: Optional[str] = Field(
+        None, description="profile_hierarchy.json to read; null uses the newest build-profile run"
+    )
+    router: Literal["jev", "llm"] = Field(
+        "jev", description="jev: two-stage choice on a systemone endpoint; llm: one call to llm_provider"
+    )
+    jev_url: str = Field(
+        "http://127.0.0.1:8741/v1/systemone", description="Jev-compatible systemone endpoint"
+    )
+    jev_api_key: Optional[str] = Field(None, description="Sent as a Bearer token when set")
+    jev_top_domains: int = Field(3, ge=1, description="Domains whose topics the jev router asks about")
+    jev_timeout: float = Field(30, gt=0, description="Timeout in seconds per jev request")
+    llm_route_max_topics: int = Field(8, ge=1, description="Topics the llm router may pick")
+    fact_budget: int = Field(30, ge=1, description="Maximum routed facts handed to the filter")
+    llm_provider: Literal["codex_exec", "api"] = Field(
+        "codex_exec", description="Filter (and llm router) backend: codex_exec_args or make_dataset_args"
+    )
+    model: Optional[str] = Field(None, description="codex_exec only; null uses codex_exec_args.model")
+    effort: Optional[str] = Field(None, description="codex_exec only; null uses codex_exec_args.effort")
+    llm_timeout: int = Field(120, ge=1, description="Timeout in seconds per LLM request")
+
+
+class HarnessArgs(BaseConfigModel):
+    profile_context: ProfileContextArgs = Field(default_factory=ProfileContextArgs)
+
+
 class LLMCleanConfig(BaseConfigModel):
     accept_score: int = Field(
         2,
@@ -345,6 +372,7 @@ class WcConfig(BaseModel):
     security_args: SecurityArgs = Field(default_factory=SecurityArgs)
     codex_exec_args: Optional[CodexExecArgs] = None
     agent_distill_args: Optional[AgentDistillArgs] = None
+    harness_args: Optional[HarnessArgs] = None
     make_dataset_args: MakeDatasetArgs = Field(..., description="Dataset processing parameters")
     train_sft_args: TrainSftArgs = Field(..., description="SFT fine-tuning parameters")
     train_pt_args: Optional[TrainPtArgs] = Field(None, description="PT continued pre-training parameters")

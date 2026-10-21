@@ -3,7 +3,7 @@ import json
 import pytest
 from fastapi.testclient import TestClient
 
-from weclone.server.profile_review import DEFAULT_STATIC_DIR, create_app
+from weclone.server.profile_review import DEFAULT_STATIC_DIR, ReviewStore, create_app
 
 
 def test_bundled_frontend_assets_exist():
@@ -147,6 +147,28 @@ def test_validation_and_reversing_decision(setup):
         assert review(client, [facts(client)[0]], status).status_code == 200
         assert facts(client)[0]["status"] == status
     assert len(facts(client)) == 3
+
+
+def test_domain_metadata_only_for_domain_profiles(tmp_path):
+    data = {
+        "domains": [{"name": "兴趣", "description": "B的爱好。", "topics": [
+            {"name": "运动", "fact_indices": [0]}, {"name": "阅读", "fact_indices": [1]},
+        ]}],
+        "dimensions": [{"dim": 8, "name": "兴趣与偏好", "groups": [{"name": "兴趣", "items": [
+            {"name": "运动", "items": [{"attr": "运动偏好", "fact_indices": [0]}]},
+            {"name": "阅读", "items": [{"attr": "阅读偏好", "fact_indices": [1]}]},
+        ]}]}],
+        "facts": [{"dim": 8, "attr": "运动偏好", "value": "喜欢跑步"}, {"dim": 8, "attr": "阅读偏好", "value": "喜欢科幻"}],
+        "sources": {},
+    }
+    source = tmp_path / "domains.json"
+    source.write_text(json.dumps(data), encoding="utf-8")
+    store = ReviewStore(tmp_path / "domains.sqlite3", source)
+    assert store.profile()["domains"] == [{"name": "兴趣", "description": "B的爱好。", "topics": ["运动", "阅读"]}]
+    assert "domains" not in store.profile(approved_only=True)
+    del data["domains"]
+    source.write_text(json.dumps(data), encoding="utf-8")
+    assert "domains" not in ReviewStore(tmp_path / "plain.sqlite3", source).profile()
 
 
 def test_invalid_snapshot_import_rolls_back(tmp_path, capsys):

@@ -40,6 +40,21 @@
         "max_samples_per_window": 8,
         "max_content_chars": 400
     },
+    "harness_args": {
+        "profile_context": {
+            // 回复前从画像里选出要放进上下文的条目：路由到主题 → 取至多 fact_budget 条 → LLM 过滤
+            "profile_path": null, // null：最新一次 build-profile 的 profile_hierarchy.json
+            "router": "jev", // jev：systemone 接口两段选择（先领域后主题）；llm：一次 LLM 调用选主题，更准但更慢
+            "jev_url": "http://127.0.0.1:8741/v1/systemone",
+            "jev_api_key": null, // 有值时作为 Bearer token 发送
+            "jev_top_domains": 3,
+            "llm_route_max_topics": 8,
+            "fact_budget": 30,
+            // 过滤和 llm 路由的后端：codex_exec 读取 codex_exec_args，api 读取 make_dataset_args
+            "llm_provider": "codex_exec",
+            "llm_timeout": 120
+        }
+    },
     "make_dataset_args": {
         //数据处理配置
         "platform": "chat", //chat,telegram

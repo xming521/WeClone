@@ -362,6 +362,17 @@ class ReviewStore:
             if not approved_only:
                 result["locations"] = [node for node in nodes if node["kind"] != "attribute"]
                 result["snapshot_sha256"] = snapshot["sha256"]
+                # Profiles organized by domain group each dimension by domain, then topic. The domain
+                # view of the review UI regroups that tree, taking order and descriptions from here.
+                if source_data.get("domains"):
+                    result["domains"] = [
+                        {
+                            "name": domain["name"],
+                            "description": domain.get("description", ""),
+                            "topics": [topic["name"] for topic in domain.get("topics", [])],
+                        }
+                        for domain in source_data["domains"]
+                    ]
             return result
 
 
