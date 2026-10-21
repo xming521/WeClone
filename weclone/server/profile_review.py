@@ -15,6 +15,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from weclone.server.auth import install_auth
+from weclone.server.profile_intro import profile_intro
 from weclone.server.source_chat import source_chat
 from weclone.utils import secure_storage as secure
 
@@ -24,19 +25,17 @@ DEFAULT_STATIC_DIR = Path(__file__).resolve().parents[1] / "web" / "dist"
 
 
 def review_paths(database: Path | None = None, source: Path | None = None) -> tuple[Path, Path]:
-    directory = ROOT / "dataset/res_csv/agent"
     if source is None:
-        legacy = directory / "memory_organization"
-        # Keep an existing legacy snapshot, including when its source was removed.
-        candidates = [legacy, *sorted((directory / "profile_runs").glob("*/profile_hierarchy"), reverse=True)]
+        runs = ROOT / "dataset/res_csv/agent/profile_runs"
+        # The newest build-profile run, including one whose source was removed but whose snapshot is kept.
         selected = next(
             (
-                candidate
-                for candidate in candidates
-                if secure.file_exists(candidate / "profile_hierarchy.json")
-                or secure.file_exists(candidate / "profile_review.sqlite3")
+                run
+                for run in sorted(runs.glob("*/profile_hierarchy"), reverse=True)
+                if secure.file_exists(run / "profile_hierarchy.json")
+                or secure.file_exists(run / "profile_review.sqlite3")
             ),
-            legacy,
+            runs,
         )
         source = selected / "profile_hierarchy.json"
     return database or source.parent / "profile_review.sqlite3", source
@@ -308,6 +307,13 @@ class ReviewStore:
             raise HTTPException(404, "来源记录不存在")
         return source_chat(source_id, source)
 
+    def intro(self):
+        profile = self.profile()
+        with self.connect() as db:
+            snapshot = json.loads(db.execute("SELECT data FROM snapshot WHERE id=1").fetchone()["data"])
+        # Demo profiles carry their message counts beside the facts.
+        return profile_intro({**profile, "_demo": snapshot.get("_demo")})
+
     def profile(self, approved_only=False):
         with self.connect() as db:
             db.execute("BEGIN")
@@ -402,6 +408,10 @@ def create_app(
     @app.get("/api/profile")
     def profile():
         return store.profile()
+
+    @app.get("/api/profile/intro")
+    def intro():
+        return store.intro()
 
     @app.get("/api/avatar-profile")
     def avatar(download: bool = False):

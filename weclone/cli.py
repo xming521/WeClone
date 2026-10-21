@@ -98,6 +98,7 @@ def cli(ctx, config_path):
     secure.configure(config_path)
     ctx.call_on_close(secure.lock)
     if ctx.invoked_subcommand in {
+        "dev",
         "server",
         "server-reset-password",
         "security-init",
@@ -308,6 +309,66 @@ def server(host: str, port: int, database: Path | None, source: Path | None, inf
     from weclone.server.app import serve
 
     serve(host=host, port=port, database=database, source=source, inference=inference)
+
+
+@cli.command("dev", help="Start the backend and frontend development server.")
+@click.pass_context
+def dev(ctx: click.Context):
+    import signal
+    import subprocess
+    import time
+
+    processes = []
+    shutdown_signal = None
+
+    def interrupt(signum, _frame):
+        nonlocal shutdown_signal
+        shutdown_signal = signum
+
+    def signal_group(process, signum):
+        try:
+            os.killpg(process.pid, signum)
+        except ProcessLookupError:
+            pass
+
+    handlers = {
+        sig: signal.signal(sig, interrupt) for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)
+    }
+    try:
+        commands = [
+            [sys.executable, "-m", "weclone.cli", "server", "--port", "5175"],
+            ["pnpm", "--dir", "web", "dev"],
+        ]
+        for command in commands:
+            if shutdown_signal is not None:
+                ctx.exit(128 + shutdown_signal)
+            processes.append(subprocess.Popen(command, start_new_session=True))
+        click.echo("前端 dev: http://127.0.0.1:5174\n后端: http://127.0.0.1:5175\n按 Ctrl+C 关闭全部服务。")
+        while shutdown_signal is None:
+            for process in processes:
+                code = process.poll()
+                if code is not None:
+                    ctx.exit(code if code >= 0 else 128 - code)
+            time.sleep(0.1)
+        ctx.exit(128 + shutdown_signal)
+    except OSError as exc:
+        raise click.ClickException(str(exc)) from None
+    finally:
+        for sig in handlers:
+            signal.signal(sig, signal.SIG_IGN)
+        try:
+            for process in processes:
+                signal_group(process, signal.SIGTERM)
+            for process in processes:
+                try:
+                    process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    pass
+                signal_group(process, signal.SIGKILL)
+                process.wait()
+        finally:
+            for sig, handler in handlers.items():
+                signal.signal(sig, handler)
 
 
 @cli.command(

@@ -18,9 +18,6 @@ from weclone.utils import secure_storage as secure
 
 SESSION_SECONDS = 2 * 60 * 60
 COOKIE = "weclone_session"
-DEFAULT_DATABASE = (
-    Path(__file__).resolve().parents[2] / "dataset/res_csv/agent/memory_organization/profile_review.sqlite3"
-)
 
 
 class AuthStore:

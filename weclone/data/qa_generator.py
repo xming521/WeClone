@@ -509,17 +509,7 @@ class DataProcessor:
                 if not content:
                     continue
 
-                if combined_content and combined_content[-1] not in [
-                    "。",
-                    ".",
-                    "！",
-                    "!",
-                    "？",
-                    "?",
-                    "…",
-                    "，",
-                    ",",
-                ]:
+                if combined_content:
                     combined_content += "\n"
 
                 if i.modality == DataModality.IMAGE:

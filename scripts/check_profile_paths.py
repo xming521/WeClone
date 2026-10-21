@@ -100,25 +100,16 @@ class ProfilePathChecks(unittest.TestCase):
                     self.assertEqual(persisted["id"], fact["id"])
                     self.assertEqual(persisted["status"], "approved")
 
-    def test_legacy_profile_and_snapshot_take_precedence(self):
+    def test_legacy_profile_is_ignored(self):
         for mode in ("plaintext", "encrypted"):
             with self.subTest(mode=mode), self.project(mode) as directory:
-                source = directory / "memory_organization/profile_hierarchy.json"
-                physical_source = self.write_profile(source, "已有画像")
-                self.write_profile(
-                    directory / "profile_runs/20260102_000000/profile_hierarchy/profile_hierarchy.json",
-                    "新运行",
-                )
-                database = source.parent / "profile_review.sqlite3"
-                self.assertEqual(review.review_paths(), (database, source))
+                self.write_profile(directory / "memory_organization/profile_hierarchy.json", "旧目录画像")
+                source = directory / "profile_runs/20260102_000000/profile_hierarchy/profile_hierarchy.json"
+                self.write_profile(source, "新运行")
+                self.assertEqual(review.review_paths(), (source.parent / "profile_review.sqlite3", source))
                 with TestClient(review.create_app()) as client:
                     self.login(client)
-                    self.profile(client, "已有画像")
-                physical_source.unlink()
-                self.assertEqual(review.review_paths(), (database, source))
-                with TestClient(review.create_app()) as client:
-                    self.login(client)
-                    self.profile(client, "已有画像")
+                    self.profile(client, "新运行")
 
     def test_explicit_sources_have_separate_databases(self):
         for mode in ("plaintext", "encrypted"):
