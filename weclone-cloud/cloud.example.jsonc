@@ -1,0 +1,72 @@
+{
+  // ---------------------------------------------------------------------------
+  // weclone-cloud 配置（DeepSeek 版）
+  // 密钥只放在环境变量里；文件里出现的 api_key 仅供临时实验，doctor 会提示。
+  // 官方文档：https://api-docs.deepseek.com/zh-cn/quick_start/pricing/
+  // ---------------------------------------------------------------------------
+  "api": {
+    // 官方 OpenAI 格式地址；加不加 /v1 都兼容
+    "base_url": "https://api.deepseek.com",
+    // 2026-10 起：deepseek-flash（快、便宜） / deepseek-v4-pro（强、贵）
+    "model": "deepseek-flash",
+    "api_key_env": "WECLONE_API_KEY",
+    "temperature": 0,
+    // 打分只要 60 字左右；调大能防截断，但思考模式会先吃掉 token
+    "max_tokens": 400,
+    "timeout": 60,
+    // flash 并发上限 2500，先保守给 8，稳定后再加
+    "max_concurrency": 8,
+    "max_retries": 5,
+    // DeepSeek 只支持 json_object（不支持 json_schema 强约束）
+    "json_mode": "object",
+    // 思考模式默认开启且更贵更慢；auto = 命中 deepseek 时关闭，服务端如需更强推理改 "enabled"
+    "thinking": "auto",
+    // 价格只用于成本估算（人民币 / 百万 token）：此处为 flash 高峰价，空闲时段减半
+    "price_input_per_million": 2,
+    "price_output_per_million": 8,
+    "price_currency": "CNY"
+  },
+
+  "scoring": {
+    // 低于该分数不进入训练集（1-5）
+    "min_score": 3,
+    "max_chars": 6000,
+    "cache_dir": ".cache/weclone-cloud",
+    "use_cache": true,
+    // 遇到 429 时每次请求的最小间隔（秒）
+    "request_interval": 0
+  },
+
+  "finetune": {
+    // DeepSeek 全流程用不到这一段（官方无微调接口）。
+    // 只有以后换成支持 /fine_tuning/jobs 的平台时，才改成 "openai" 并填下面的字段。
+    "provider": "generic",
+    "base_url": "https://api.openai.com/v1",
+    "api_key_env": "OPENAI_API_KEY",
+    "base_model": "gpt-4o-mini-2024-07-18",
+    "suffix": "weclone",
+    "api_style": "method",
+    "epochs": 3,
+    "batch_size": "auto",
+    "learning_rate_multiplier": "auto",
+    "poll_interval": 20,
+    "timeout": 180,
+    "state_file": "finetune_state.json"
+  },
+
+  "serve": {
+    "host": "127.0.0.1",
+    "port": 8010,
+    // 留空 → 依次取 finetune_state.json 的 model、api.model
+    "model": null,
+    // 固定人设（未使用 persona 文件时生效）
+    "system_prompt": "请你扮演一名人类，不要说自己是人工智能。",
+    // weclone-cloud persona 生成的少样本人设文件；存在时优先
+    "system_prompt_file": null,
+    "temperature": 0.7,
+    "top_p": 0.9,
+    "max_tokens": 512,
+    "require_api_key": true,
+    "api_key_env": "WECLONE_SERVE_KEY"
+  }
+}

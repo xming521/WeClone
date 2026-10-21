@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LangBot 页面机器人 · 本地测试</title>
+<style>
+  body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0b0d12;color:#e8ecf4;
+       font:15px/1.6 system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+  .box{width:min(620px,92vw);background:#12151d;border:1px solid #232936;border-radius:18px;padding:26px}
+  h1{margin:0 0 6px;font-size:18px}
+  p{margin:0 0 18px;color:#8b93a5;font-size:13px}
+  input{width:100%;padding:12px 14px;border-radius:10px;border:1px solid #232936;background:#0b0d12;
+        color:#e8ecf4;font:inherit;outline:none}
+  input:focus{border-color:#3b5aa8}
+  button{margin-top:12px;width:100%;padding:12px;border:0;border-radius:10px;cursor:pointer;
+         background:linear-gradient(135deg,#4f8cff,#7c5cff);color:#fff;font:inherit;font-weight:600}
+  .hint{margin-top:14px;font-size:12px;color:#5f6779;line-height:1.7}
+  code{background:#1b1f2a;padding:2px 6px;border-radius:5px;color:#9fb2d8}
+  #status{margin-top:12px;font-size:12px;color:#8b93a5}
+</style>
+</head>
+<body>
+<div class="box">
+  <h1>LangBot 页面机器人 · 本地测试</h1>
+  <p>先在 LangBot 后台创建「页面机器人」，复制嵌入代码里 <code>src=</code> 后面的地址，粘到这里。</p>
+  <input id="url" placeholder="http://localhost:5300/api/v1/embed/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+  <button id="go">加载聊天组件</button>
+  <div id="status"></div>
+  <div class="hint">
+    加载成功后，右下角会出现聊天气泡，点开就能对话。<br>
+    如果没出现：确认 LangBot 正在运行、地址里的 UUID 完整、以及浏览器没拦截混合内容。
+  </div>
+</div>
+<script>
+  const input = document.getElementById('url');
+  const status = document.getElementById('status');
+
+  function load(){
+    const raw = input.value.trim();
+    if (!raw) { status.textContent = '请先粘贴嵌入地址'; return; }
+    let url;
+    try { url = new URL(raw); } catch (e) { status.textContent = '地址格式不对'; return; }
+
+    const old = document.getElementById('langbot-embed');
+    if (old) old.remove();
+
+    const tag = document.createElement('script');
+    tag.id = 'langbot-embed';
+    tag.src = url.toString();
+    tag.dataset.title = '数字分身';
+    tag.onload = function(){ status.textContent = '组件脚本已加载，看右下角。'; };
+    tag.onerror = function(){ status.textContent = '加载失败：检查 LangBot 是否在 ' + url.origin + ' 运行。'; };
+    document.body.appendChild(tag);
+    localStorage.setItem('langbot-embed-url', raw);
+  }
+
+  document.getElementById('go').addEventListener('click', load);
+  input.addEventListener('keydown', function(e){ if (e.key === 'Enter') load(); });
+
+  const saved = localStorage.getItem('langbot-embed-url');
+  if (saved) { input.value = saved; }
+  input.focus();
+</script>
+</body>
+</html>
