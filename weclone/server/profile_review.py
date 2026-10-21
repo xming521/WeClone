@@ -17,6 +17,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from weclone.server.auth import install_auth
 from weclone.server.profile_intro import profile_intro
 from weclone.server.source_chat import source_chat
+from weclone.server.style_view import build_view, style_run_dir
 from weclone.utils import secure_storage as secure
 
 Status = Literal["pending", "approved", "rejected"]
@@ -388,6 +389,7 @@ def create_app(
     static_dir: Path | None = None,
     *,
     inference_router: APIRouter | None = None,
+    style_run: Path | None = None,
 ):
     store = ReviewStore(*review_paths(database, source))
     app = FastAPI(title="WeClone")
@@ -437,6 +439,14 @@ def create_app(
     @app.post("/api/reviews/batch")
     def review(request: ReviewBatch):
         return store.review(request)
+
+    @app.get("/api/style")
+    def style():
+        # Resolved per request: the run is read with the session key, and a new run shows up without a restart.
+        run = style_run_dir(style_run)
+        if run is None:
+            raise HTTPException(404, "还没有风格抽取结果，请先运行 weclone-cli distill-style")
+        return build_view(run)
 
     @app.get("/api/{path:path}", include_in_schema=False)
     def unknown_api(path: str):

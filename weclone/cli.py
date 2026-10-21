@@ -144,6 +144,21 @@ def distill_profile(ctx: click.Context, input_dir: Path | None, output_dir: Path
     )
 
 
+@cli.command(
+    "distill-style",
+    help="Extract speaking style from the profile chat data.",
+    context_settings={"ignore_unknown_options": True, "allow_extra_args": True},
+    add_help_option=False,
+)
+@click.pass_context
+def distill_style(ctx: click.Context):
+    from weclone.data.agent.distill_style.run import main
+
+    config_path = ctx.parent.params.get("config_path") if ctx.parent else None
+    argv = ["--settings", str(config_path)] if config_path else []
+    main(argv + ctx.args)
+
+
 @cli.command("distill-event", help="Extract event memories from chat samples.")
 @click.option("--input-dir", type=click.Path(path_type=Path, file_okay=False))
 @click.option("--output-dir", type=click.Path(path_type=Path, file_okay=False))
