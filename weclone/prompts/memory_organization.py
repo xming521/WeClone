@@ -13,6 +13,8 @@ DIMENSIONS = {
 PROFILE_DIMS = (1, 3, 4, 5, 8)
 # Privacy levels, from shareable with strangers to never leaving the chat it came from.
 SENSITIVITY_LEVELS = ("public", "normal", "private", "sensitive")
+# How a fact holds over time: never changes, latest known state, ended or replaced, tied to one point in time.
+TIME_SCOPES = ("stable", "current", "superseded", "dated")
 
 
 def dimension_name(dim: int) -> str:
@@ -176,6 +178,13 @@ TOPIC_RULES = """你在为一个"以 B 本人身份自动回复聊天"的系统�
 只输出 JSON：{{"topics":[{{"name":"主题名","items":[属性编号]}}]}}
 """
 
+TIME_SCOPE_RULES = """time_scope是时效，取下面四档之一：
+- stable：不会随时间变，多久以前说的都仍成立，例如性别、家乡、出生年份、身高、已取得的学历和毕业院校、童年经历、已结束的经历本身（曾任某职务、曾在某单位工作），以及不随B处境变化的地点客观情况（某地气候、景点、车站位置）。
+- current：会变的身份、状态、条件、目标、偏好或关系，是本次输入里这件事最新的说法，且没有结束的迹象，例如职业、任职阶段、住处、恋爱状态、持有的资产、仍在追求的目标。
+- superseded：会变的状态已经结束，或被本次输入里更晚的说法明确取代，例如在读研究生之后已说毕业、试用期之后已说转正、已完成或放弃的目标。一个状态结束时，依附于它的状态和目标随之结束，例如毕业后，在读期间的实验室、课题组、学生职务和找实习这类求学阶段的目标；离职后，原单位的部门和岗位。与多次出现的说法矛盾、只出现一次或像玩笑的说法，不取代多次出现的说法，本身标superseded。后来没再提到不算结束，仍标current。
+- dated：属于某个具体时间的计划、约定、安排、单次事件或临时情况，例如某天的考试、答应别人的事、一次出行。value写明时间。
+"""
+
 SUMMARY_CONTENT_RULES = (
     """将已有记忆整理为给定维度下的属性与事实。
 目标是保留对当前维度的人物建模有实际作用的信息，不追求覆盖全部输入；普通操作和零散细节若不影响对B的个人特征、现实条件或重要事项的理解，则不收录。
@@ -186,10 +195,12 @@ SUMMARY_CONTENT_RULES = (
 2. 整理取值：在保留独立事实、必要条件和重要变化的前提下尽量合并；同一属性的同义取值、同一事项的互补信息集中表述，不因措辞或候选组不同而重复输出，也不因主题相同就混合不同对象或事项。不同取值按当前维度的时间规则处理。需要选取最新状态时默认比较sample_time，正文或event_time明确指向历史或未来的记录不覆盖现状；仅在要求取最新但无法判定互斥值先后时，在同一条value中列出冲突值并注明“无法确定最新值”。
 3. 保留依据：value写明主体、对象及必要时间和条件。source_ids汇集支持所保留事实的全部输入来源，不只选代表性来源。
 4. 定隐私等级：sensitivity按value实际写出的内容判断，参考来源记忆的等级。value略去了来源里的私密细节时可以降级，例如来源是“B和女友吵架后去吃火锅”，事实“B喜欢吃火锅”可以是public；合并了更私密的来源时随之升级。
+5. 定时效：time_scope按这件事会不会随时间变、写的是不是最新情况来判断。年龄、年级、工龄这类随时间推算的属性，用来源时间换算成出生年份、入学年份、入职年月等起点写入value，标stable。
 
-结果字段：facts是事实列表，无符合条件的信息时为空；attr是中文属性名，value是具体事实，source_ids是支持该事实的原记忆编号，只能引用本次输入提供的来源，sensitivity是事实的隐私等级。
+结果字段：facts是事实列表，无符合条件的信息时为空；attr是中文属性名，value是具体事实，source_ids是支持该事实的原记忆编号，只能引用本次输入提供的来源，sensitivity是事实的隐私等级，time_scope是事实的时效。
 """
     + SENSITIVITY_RULES
+    + TIME_SCOPE_RULES
 )
 
 DIMENSION_TIME_RULES = {
@@ -205,7 +216,7 @@ DIMENSION_TIME_RULES = {
 SUMMARIZE_RULES = (
     SUMMARY_CONTENT_RULES
     + """
-只输出JSON对象：{"facts":[{"attr":"职业","value":"B从事算法研发工作。","source_ids":["输入编号"],"sensitivity":"normal"}]}。
+只输出JSON对象：{"facts":[{"attr":"职业","value":"B从事算法研发工作。","source_ids":["输入编号"],"sensitivity":"normal","time_scope":"current"}]}。
 """
 )
 
@@ -216,8 +227,9 @@ FACT_SCHEMA = {
         "value": {"type": "string"},
         "source_ids": {"type": "array", "items": {"type": "string"}},
         "sensitivity": {"type": "string", "enum": list(SENSITIVITY_LEVELS)},
+        "time_scope": {"type": "string", "enum": list(TIME_SCOPES)},
     },
-    "required": ["attr", "value", "source_ids", "sensitivity"],
+    "required": ["attr", "value", "source_ids", "sensitivity", "time_scope"],
     "additionalProperties": False,
 }
 SUMMARY_SCHEMA = {
@@ -263,9 +275,9 @@ def batch_summary_prompt(tasks: list[dict]) -> str:
     if not reduced:
         payload["memories"] = list(memories.values())
     rules = """本次包含多个候选属性组。groups中id是组编号，topic是该组所属主题（可缺省），attrs是候选属性，source_ids是该组候选来源；memories是各组共用、按id去重的原记忆。
-若组内提供facts，则它们是该组分批归纳结果，合并时保留原source_ids，按合并后的value重新定sensitivity。
+若组内提供facts，则它们是该组分批归纳结果，合并时保留原source_ids，按合并后的value重新定sensitivity和time_scope。
 同次请求内跨组统一同义属性、合并重复事实；依据正文选择支持结论的来源，可引用其他组的来源，不得引用输入外的编号。每条合并事实只放入一个相关组，其余组不重复输出；组内仍有其他事实则保留，全部并入其他组时facts为空数组。覆盖所有组id且各一次。
-只输出JSON对象：{"groups":[{"id":0,"facts":[{"attr":"中文属性","value":"具体取值","source_ids":["原记忆编号"],"sensitivity":"normal"}]}]}。
+只输出JSON对象：{"groups":[{"id":0,"facts":[{"attr":"中文属性","value":"具体取值","source_ids":["原记忆编号"],"sensitivity":"normal","time_scope":"current"}]}]}。
 """
     return (
         SUMMARY_CONTENT_RULES
@@ -339,7 +351,7 @@ def summarize_prompt(
     topic: str | None = None,
 ) -> str:
     extra = (
-        "\n本轮输入是分批归纳的facts；合并时保留原source_ids，不用分批编号替代来源，按合并后的value重新定sensitivity。\n"
+        "\n本轮输入是分批归纳的facts；合并时保留原source_ids，不用分批编号替代来源，按合并后的value重新定sensitivity和time_scope。\n"
         if reduced
         else ""
     )

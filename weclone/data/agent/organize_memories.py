@@ -4,7 +4,9 @@ Stages: prepare reads the extracted memories. domains induces the person's life 
 and maps the tags to them. classify assigns each memory a dimension, a domain and an attribute name, in batches
 grouped by the tags' domains, and gives every memory a privacy level. topics groups each domain's profile
 attributes into conversation topics. summarize writes facts per (topic, dimension), each with its own privacy
-level; dimension 6 is summarized per chat peer and dimension 7 per domain.
+level and time scope (stable, current, superseded or dated); dimension 6 is summarized per chat peer and
+dimension 7 per domain. Identity facts of every domain share one request, so the model can tell which
+candidate a later one replaced.
 """
 
 from __future__ import annotations
@@ -31,6 +33,7 @@ from weclone.prompts.memory_organization import (
     SENSITIVITY_LEVELS,
     SUMMARY_SCHEMA,
     TAG_DOMAIN_SCHEMA,
+    TIME_SCOPES,
     TOPIC_SCHEMA,
     batch_summary_prompt,
     classify_prompt,
@@ -470,10 +473,12 @@ def validate_summary(payload: Any, source_ids: set[str]) -> dict:
     if not isinstance(payload["facts"], list):
         raise ValueError("Summary facts must be an array")
     for fact in payload["facts"]:
-        if not isinstance(fact, dict) or set(fact) != {"attr", "value", "source_ids", "sensitivity"}:
-            raise ValueError("Fact requires attr, value, source_ids and sensitivity")
+        if not isinstance(fact, dict) or set(fact) != {"attr", "value", "source_ids", "sensitivity", "time_scope"}:
+            raise ValueError("Fact requires attr, value, source_ids, sensitivity and time_scope")
         if fact["sensitivity"] not in SENSITIVITY_LEVELS:
             raise ValueError("Unknown sensitivity level")
+        if fact["time_scope"] not in TIME_SCOPES:
+            raise ValueError("Unknown time scope")
         if not chinese_attr(fact["attr"]) or not isinstance(fact["value"], str) or not fact["value"].strip():
             raise ValueError("Missing Chinese attribute or value")
         ids = fact["source_ids"]
@@ -765,7 +770,10 @@ def run_summary_tasks(
 ) -> list[dict]:
     partitions = defaultdict(list)
     for i, task in enumerate(tasks):
-        partitions[(task["stage"], task["dim"], task.get("domain"))].append((i, task))
+        # Identity candidates of one person spread over domains (study status under background and under
+        # study, employment under job search and under work), and only one request can see which replaced which.
+        domain = None if task["dim"] == 1 else task.get("domain")
+        partitions[(task["stage"], task["dim"], domain)].append((i, task))
     requests, positions = [], []
 
     def append(batch):
