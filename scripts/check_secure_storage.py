@@ -466,7 +466,7 @@ class SecureStorageChecks(unittest.TestCase):
                 }
             ],
         )
-        records = organize_memories.read_memories(self.root / "distill")
+        records, _ = organize_memories.read_memories(self.root / "distill")
         self.assertEqual(records[0]["content"], "synthetic-private-fact")
         self.assertEqual(records[0]["origins"][0]["file"], str(source))
 

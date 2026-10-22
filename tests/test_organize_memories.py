@@ -101,7 +101,7 @@ def test_reader_filters_scores_without_modifying_sources(tmp_path, kind):
     path = tmp_path / folder / "peer.json"
     path.write_text(json.dumps([{**sample, **payload}], ensure_ascii=False))
     before = path.read_bytes()
-    rows = [row for row in organize.read_memories(tmp_path) if row["kind"] == kind]
+    rows = [row for row in organize.read_memories(tmp_path)[0] if row["kind"] == kind]
     assert [row["content"] for row in rows] == ["记忆2", "记忆3"]
     assert [(row["importance"], row["confidence"]) for row in rows] == [(2, 3), (4, 4)]
     assert [row["origins"][0]["memory_index"] for row in rows] == [2, 3]
@@ -111,13 +111,19 @@ def test_reader_filters_scores_without_modifying_sources(tmp_path, kind):
 def test_reader_excludes_raw_chat_deduplicates_auxiliary_and_retains_origins(tmp_path):
     _, profile = write_input(tmp_path)
     (tmp_path / "state_people" / "duplicate.json").write_text(json.dumps([profile]))
-    rows = organize.read_memories(tmp_path)
+    rows, peers = organize.read_memories(tmp_path)
     assert len(rows) == 2
     assert "RAW_CHAT" not in json.dumps(rows)
     assert len(next(row for row in rows if row["kind"] == "S")["origins"]) == 2
-    other = {**profile, "chat_with_id": "peer2"}
-    (tmp_path / "state_people" / "other.json").write_text(json.dumps([other]))
-    assert len(organize.read_memories(tmp_path)) == 3
+    assert list(peers.values()) == [{"chat_with_id": "peer1", "chat_with": None}]
+    other = {**profile, "chat_with_id": "peer2", "chat_with": "同学"}
+    (tmp_path / "state_people" / "other.json").write_text(json.dumps([other], ensure_ascii=False))
+    rows, peers = organize.read_memories(tmp_path)
+    assert len(rows) == 3
+    assert sorted(peers.values(), key=lambda peer: peer["chat_with_id"]) == [
+        {"chat_with_id": "peer1", "chat_with": None}, {"chat_with_id": "peer2", "chat_with": "同学"},
+    ]
+    assert {peers[row["peer"]]["chat_with"] for row in rows if row["origins"][0]["file"].endswith("other.json")} == {"同学"}
 
 
 @pytest.mark.parametrize("kind,type_,dims", [
@@ -140,10 +146,10 @@ def test_preference_reader_preserves_ids_scores_and_origins_without_reading_even
                                              ("B偏好独处。", 1, 4), ("B喜欢热闹。", 3, 2)]
     ])
     organize.save(tmp_path / "state_people" / "peer.json", [profile])
-    expected = [row for row in organize.read_memories(tmp_path) if row["type"] == "preference"]
+    expected = [row for row in organize.read_memories(tmp_path)[0] if row["type"] == "preference"]
     (tmp_path / "event_people" / "peer.json").write_text("event input must not be read")
     before = {p: p.read_bytes() for p in tmp_path.rglob("*.json")}
-    actual = organize.read_memories(tmp_path, preferences_only=True)
+    actual, _ = organize.read_memories(tmp_path, preferences_only=True)
     assert actual == expected
     assert [row["content"] for row in actual] == ["B喜欢徒步。", "B不喜欢登山。"]
     assert [row["origins"][0]["memory_index"] for row in actual] == [1, 2]
@@ -625,6 +631,10 @@ def test_full_pipeline_keeps_inputs_and_joins_profile_goals_with_events(tmp_path
     assert output["unused"] == [] and output["unassigned_ids"] == []
     assert output["domains"] == DOMAINS
     assert {row["kind"] for row in output["sources"].values()} == {"S", "ES"}
+    assert sorted(peer["chat_with_id"] for peer in output["peers"].values()) == (
+        ["peer1", "peer2"] if extra_sample == "other_peer" else ["peer1"]
+    )
+    assert {row["peer"] for row in output["sources"].values()} <= set(output["peers"])
     assert fact["sensitivity"] == "normal"
     assert fact["time_scope"] == "current"
     assert {row["sensitivity"] for row in output["sources"].values()} == {"private"}

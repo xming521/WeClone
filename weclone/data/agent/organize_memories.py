@@ -1,6 +1,6 @@
 """Organize extracted profile/event memories by life domain, topic and dimension without reading chat messages.
 
-Stages: prepare reads the extracted memories. domains induces the person's life domains from extraction tags
+Stages: prepare reads the extracted memories and notes which chat each peer id (P1, P2, ...) stands for. domains induces the person's life domains from extraction tags
 and maps the tags to them. classify assigns each memory a dimension, a domain and an attribute name, in batches
 grouped by the tags' domains, and gives every memory a privacy level. topics groups each domain's profile
 attributes into conversation topics. summarize writes facts per (topic, dimension), each with its own privacy
@@ -96,9 +96,11 @@ def allowed_dimensions(record: dict) -> tuple[int, ...]:
     return tuple(sorted(dims))
 
 
-def read_memories(input_dir: Path, *, preferences_only: bool = False) -> list[dict]:
+def read_memories(input_dir: Path, *, preferences_only: bool = False) -> tuple[list[dict], dict[str, dict]]:
+    """Memories passing the score filters, and the chat_with_id and chat_with behind each peer id."""
     records: dict[str, dict] = {}
-    peers: dict[str, str] = {}
+    peer_ids: dict[str, str] = {}
+    peers: dict[str, dict] = {}
     sample_ids: dict[str, str] = {}
     for directory, field in (("state_people", "state_memories"), ("event_people", "event_memories")):
         if preferences_only and field != "state_memories":
@@ -116,7 +118,8 @@ def read_memories(input_dir: Path, *, preferences_only: bool = False) -> list[di
                     or sample.get("chat_with")
                     or secure_storage.logical_path(path).stem
                 )
-                peer = peers.setdefault(peer_key, f"P{len(peers) + 1}")
+                peer = peer_ids.setdefault(peer_key, f"P{len(peer_ids) + 1}")
+                peers.setdefault(peer, {key: sample.get(key) for key in ("chat_with_id", "chat_with")})
                 sample_key = sample_ids.setdefault(
                     digest([peer, sid, sample.get("time", "")]),
                     f"C{len(sample_ids) + 1}",
@@ -181,7 +184,7 @@ def read_memories(input_dir: Path, *, preferences_only: bool = False) -> list[di
     ]
     if not selected:
         raise ValueError(f"No extracted memories match the input and score filters in {input_dir}")
-    return sorted(selected, key=lambda row: (row["sample_time"], row["sample"], row["id"]))
+    return sorted(selected, key=lambda row: (row["sample_time"], row["sample"], row["id"])), peers
 
 
 def prompt_record(record: dict, *, include_sample_time: bool = False) -> dict:
@@ -877,12 +880,13 @@ def summarize_groups(
 
 def run(args: argparse.Namespace) -> dict:
     if args.dry_run:
-        records = read_memories(args.input_dir, preferences_only=args.preferences_only)
+        records, _ = read_memories(args.input_dir, preferences_only=args.preferences_only)
         return {"records": len(records), "by_kind": dict(Counter(row["kind"] for row in records))}
     budget = input_budget(args)
     print(f"codex_context_tokens={args.max_context_tokens}", flush=True)
     args.output_dir.mkdir(parents=True, exist_ok=True)
     record_path = args.output_dir / "records.json"
+    peer_path = args.output_dir / "peers.json"
     domain_path = args.output_dir / "domains.json"
     task_path = args.output_dir / "classification_tasks.json"
     classification_path = args.output_dir / "classifications.json"
@@ -891,10 +895,11 @@ def run(args: argparse.Namespace) -> dict:
     runner = None
     try:
         if "prepare" in stages:
-            records = read_memories(args.input_dir, preferences_only=args.preferences_only)
+            records, peers = read_memories(args.input_dir, preferences_only=args.preferences_only)
             if secure_storage.file_exists(record_path) and load(record_path) != records:
                 raise ValueError("Input snapshot changed; use a new output directory")
             save(record_path, records)
+            save(peer_path, peers)
         else:
             records = load(record_path)
             if args.preferences_only and any(
@@ -1052,6 +1057,7 @@ def run(args: argparse.Namespace) -> dict:
                     "facts": facts,
                     "unused": unused,
                     "unassigned_ids": [item["id"] for item in classifications if not item["fields"]],
+                    "peers": load(peer_path),
                     "sources": by_id,
                 },
             )
