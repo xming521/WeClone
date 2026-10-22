@@ -1,0 +1,42 @@
+# 本地环境
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# 复制进来的 WeClone（体积大，不入库；用 bootstrap.ps1 重建）
+app/
+
+# 第三方仓库（用 start-langbot-docker.cmd / start-wechatpad.cmd 自动克隆）
+langbot-src/
+wechatpad-src/
+WeClone-master/
+
+# 机密（绝不入库）
+cloud.jsonc
+secrets.local.cmd
+.env
+
+# 运行产物
+finetune_state.json
+.cache/
+.uv-cache/
+langbot-data/
+.langbot-data/
+logs/
+build/
+finetune_data/
+dataset/
+*.report.json
+scored.json
+*.zip
+*.tar.gz
+
+# 系统文件
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 临时占位文件
+tools/_wechatpad_note.txt
