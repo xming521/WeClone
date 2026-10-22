@@ -40,6 +40,7 @@ import {
   placeNodes,
   sameTree,
   shiftClusters,
+  topicDistance,
   type Point,
   type Positions,
 } from './graphLayout';
@@ -600,6 +601,7 @@ export class AtlasEngine implements AtlasControls {
       anchors.get(n.kind === 'root' ? 'root' : (dimensionIdOf.get(n.dim) ?? 'root')) ?? anchors.get('root')!;
     const pull = (n: MapNode) => CLUSTER_PULL[n.kind];
     const links: MapLink[] = this.edges.map((e) => ({ source: e.p, target: e.c, child: e.c }));
+    const topicLength = topicDistance(model.dimensionIds.length);
     this.sim?.stop();
     this.layoutDecay = dense ? 0.65 : busy ? 0.4 : 0.06;
     this.sim = forceSimulation<MapNode, MapLink>(this.order)
@@ -618,7 +620,7 @@ export class AtlasEngine implements AtlasControls {
             const anchor = child.kind === 'dimension' ? anchors.get(child.id) : undefined;
             const root = anchors.get('root')!;
             if (anchor) return Math.hypot(anchor.x - root.x, anchor.y - root.y);
-            return child.kind === 'attribute' ? 110 : child.kind === 'subtopic' ? 150 : 220;
+            return child.kind === 'attribute' ? 110 : child.kind === 'subtopic' ? 150 : topicLength;
           })
           .strength(0.75),
       )

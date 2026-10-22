@@ -1,8 +1,9 @@
 import { ArrowUpRight, Check, MessageSquare, X } from 'lucide-react';
-import { displayProfileText } from '../data';
+import { displayProfileText, factTags } from '../data';
 import type { ProfileFact } from '../data';
 import { useProfileStore } from '../store';
 import { FactHistory } from './FactHistory';
+import { PrivacyBadge, TagList } from './privacy';
 import { FactScores, SourceScores } from './ProfileScores';
 import { STATUS } from './status';
 
@@ -41,10 +42,14 @@ export function FactCard({
           />{' '}
           {fact.attr}
         </label>
-        <span className={`status-badge ${fact.status}`}>{STATUS[fact.status]}</span>
+        <span className="fact-badges">
+          <PrivacyBadge level={fact.sensitivity} />
+          <span className={`status-badge ${fact.status}`}>{STATUS[fact.status]}</span>
+        </span>
       </div>
       <p>{displayProfileText(fact.value)}</p>
       {meta && <small>{meta}</small>}
+      <TagList tags={factTags(fact, sources)} limit={5} />
       <FactScores fact={fact} />
       <div className="fact-actions">
         {fact.status !== 'approved' && (
@@ -97,8 +102,12 @@ export function FactCard({
                     <ArrowUpRight size={13} aria-hidden="true" />
                   </button>
                 </div>
-                <time className="evidence-time">{source?.sample_time?.slice(0, 10) ?? '未标注时间'}</time>
+                <div className="evidence-meta">
+                  <time className="evidence-time">{source?.sample_time?.slice(0, 10) ?? '未标注时间'}</time>
+                  <PrivacyBadge level={source?.sensitivity} />
+                </div>
                 <p>{source?.content ?? '来源正文不可用'}</p>
+                <TagList tags={source?.tags ?? []} />
                 <SourceScores source={source} />
               </div>
             );

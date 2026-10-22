@@ -4,6 +4,7 @@ import * as Tabs from '@radix-ui/react-tabs';
 import { ChevronRight, Sparkles, X } from 'lucide-react';
 import { ancestors, collectFacts, dimensionColor, displayProfileText } from '../data';
 import { useProfileStore } from '../store';
+import { PrivacyOverview } from '../review/privacy';
 import { ReviewPanel } from '../review/ReviewPanel';
 
 export function DetailPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -99,6 +100,8 @@ export function DetailPanel({ open, onClose }: { open: boolean; onClose: () => v
                 待审核 {pending} · 已采纳 {approved} · 未采纳 {reviewed - approved}
               </p>
             </section>
+
+            <PrivacyOverview facts={facts} />
 
             {selected.kind !== 'attribute' && (
               <section className="detail-section">

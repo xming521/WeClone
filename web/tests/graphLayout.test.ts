@@ -3,8 +3,10 @@ import { test } from 'node:test';
 import { buildModel, visibleNodes } from '../src/data.ts';
 import type { ProfileInput } from '../src/data.ts';
 import {
+  STAGGER_COUNT,
   clusterCenters,
   computeSeeds,
+  dimensionAngle,
   expansionPositions,
   overviewPositions,
   placeNodes,
@@ -133,6 +135,57 @@ test('clusterCenters keeps each dimension direction and moves a larger dimension
     assert.ok(Math.abs(direction(collapsed.get(id)!) - direction(expanded.get(id)!)) < 1e-9);
   }
   assert.ok(distance(expanded.get('dimension:8')!) > distance(collapsed.get('dimension:8')!));
+});
+
+test('clusterCenters staggers many domains between an inner and an outer ring without overlap', () => {
+  const names = Array.from({ length: STAGGER_COUNT + 4 }, (_, index) => `领域${index}`);
+  const domainModel = buildModel(
+    {
+      dimensions: [
+        {
+          dim: 1,
+          name: '性格',
+          groups: names.map((name, index) => ({
+            id: `group-${index}`,
+            name,
+            items: [
+              { id: `topic-${index}`, name: '主题', items: [{ id: `attr-${index}`, attr: '属性', fact_indices: [] }] },
+            ],
+          })),
+        },
+      ],
+      domains: names.map((name) => ({ name, description: '', topics: ['主题'] })),
+      facts: [],
+      sources: {},
+      locations: [],
+      snapshot_sha256: 'fixture',
+    },
+    'domain',
+  );
+  const ids = domainModel.dimensionIds;
+  assert.equal(ids.length, names.length);
+  const root = { x: 0, y: 0 };
+  const collapsed = clusterCenters(domainModel, visibleNodes(domainModel, new Set(['root'])), root);
+  const distance = (point: { x: number; y: number }) => Math.hypot(point.x, point.y);
+  ids.forEach((id, index) => {
+    const point = collapsed.get(id)!;
+    const angle = dimensionAngle(index, ids.length);
+    assert.ok(Math.abs(Math.atan2(point.y, point.x) - Math.atan2(Math.sin(angle), Math.cos(angle))) < 1e-9);
+    // Collapsed domains are the same size, so the even ones form the inner ring.
+    if (index % 2) assert.ok(distance(point) > distance(collapsed.get(ids[index - 1])!) + 50);
+    for (const other of ids.slice(index + 1)) {
+      const next = collapsed.get(other)!;
+      assert.ok(Math.hypot(point.x - next.x, point.y - next.y) >= 2 * 60 + 50 - 1e-6);
+    }
+  });
+  // Eighty visible nodes in the first domain stand in for its expanded topics.
+  const crowded = [
+    ...visibleNodes(domainModel, new Set(['root'])),
+    ...Array(80).fill(domainModel.nodes.get(domainModel.nodes.get(ids[0])!.childIds[0])!),
+  ];
+  const expanded = clusterCenters(domainModel, crowded, root);
+  assert.ok(distance(expanded.get(ids[0])!) > distance(collapsed.get(ids[0])!));
+  assert.ok(distance(expanded.get(ids[1])!) > distance(collapsed.get(ids[1])!));
 });
 
 test('shiftClusters moves a whole dimension with its dimension node and ignores small offsets', () => {

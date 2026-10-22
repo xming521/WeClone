@@ -3,6 +3,16 @@ export type ReviewView = 'all' | ReviewStatus;
 /** What the first level of the map holds: the five dimensions, or the person's life domains. */
 export type Grouping = 'dimension' | 'domain';
 
+/**
+ * Privacy level of a fact or a source memory: whom the person would tell. Scale from
+ * `SENSITIVITY_RULES` in weclone/prompts/memory_organization.py; profiles built before it have none.
+ */
+export type Sensitivity = 'public' | 'normal' | 'private' | 'sensitive';
+/** The levels, least private first. */
+export const SENSITIVITY_LEVELS: Sensitivity[] = ['public', 'normal', 'private', 'sensitive'];
+/** What the review list filters on: a fact's level, or 'unrated' when it has none. */
+export type PrivacyLevel = Sensitivity | 'unrated';
+
 export interface ProfileFact {
   id: string;
   node_id: string;
@@ -18,6 +28,7 @@ export interface ProfileFact {
   support_count?: number;
   source_confidence_mean?: number;
   source_importance_mean?: number;
+  sensitivity?: Sensitivity;
 }
 
 export interface ProfileSource {
@@ -26,6 +37,9 @@ export interface ProfileSource {
   content?: string;
   confidence?: number;
   importance?: number;
+  /** Retrieval tags the extraction gave the memory. */
+  tags?: string[];
+  sensitivity?: Sensitivity;
 }
 
 export interface ChatSelection {
@@ -110,25 +124,28 @@ export const ROOT_COLOR = '#59616d';
 // Keys follow the domain list and start above every dimension number.
 const DOMAIN_KEY = 100;
 
-// Colours in domain-list order. Neighbours around the root alternate in lightness and lie far apart
-// in hue; checked for colour-vision deficiencies on neighbouring pairs. Lists longer than this repeat.
+// Colours in domain-list order, at one chroma in OKLCH. The hue walks from teal through blue,
+// violet and rose to gold, so neighbouring domains, which the list keeps related, get related
+// colours; it skips yellow-green, which turns muddy at this lightness. Lightness alternates
+// between about 0.59 and 0.68, as the domains alternate between the inner and the outer ring.
+// Lists longer than this repeat.
 export const DOMAIN_COLORS = [
-  '#007872',
-  '#d47eac',
-  '#2f7434',
-  '#ad8bdc',
-  '#746300',
-  '#6ea0e8',
-  '#964d09',
-  '#11b1ca',
-  '#9b4153',
-  '#40b68f',
-  '#854888',
-  '#91aa51',
-  '#5759a6',
-  '#c8943d',
-  '#006c9d',
-  '#df816e',
+  '#058f80',
+  '#1cabb1',
+  '#058aa4',
+  '#49a1d1',
+  '#4a7ebb',
+  '#7e92db',
+  '#7a70b9',
+  '#a984cc',
+  '#9c64a0',
+  '#c67ba9',
+  '#b05e78',
+  '#d27a7c',
+  '#b3624c',
+  '#cf8755',
+  '#ae7a30',
+  '#c2a44f',
 ];
 
 // Unknown or missing dimensions fall back to the first dimension's colour.
@@ -411,6 +428,24 @@ export function exportProfile(input: ProfileInput, view: ReviewView) {
     })),
     sources: Object.fromEntries(Object.entries(profile.sources).filter(([id]) => sourceIds.has(id))),
   };
+}
+
+/** Tags of the fact's sources, those more of its sources carry first; ties keep their first appearance. */
+export function factTags(fact: ProfileFact, sources: Record<string, ProfileSource> | undefined): string[] {
+  const counts = new Map<string, number>();
+  for (const id of fact.source_ids) {
+    for (const tag of new Set(sources?.[id]?.tags ?? [])) counts.set(tag, (counts.get(tag) ?? 0) + 1);
+  }
+  return [...counts].sort((a, b) => b[1] - a[1]).map(([tag]) => tag);
+}
+
+export function privacyLevel(fact: ProfileFact): PrivacyLevel {
+  return fact.sensitivity && SENSITIVITY_LEVELS.includes(fact.sensitivity) ? fact.sensitivity : 'unrated';
+}
+
+/** Facts whose level is one of `levels`; no levels keeps them all. */
+export function filterPrivacy(facts: ProfileFact[], levels: PrivacyLevel[]): ProfileFact[] {
+  return levels.length ? facts.filter((fact) => levels.includes(privacyLevel(fact))) : facts;
 }
 
 export function collectFacts(model: ProfileModel, id: string): ProfileFact[] {

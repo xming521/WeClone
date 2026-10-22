@@ -7,6 +7,8 @@ import {
   collectFacts,
   dimensionColor,
   exportProfile,
+  factTags,
+  filterPrivacy,
   filterProfile,
   levelIsExpanded,
   levelOf,
@@ -15,7 +17,7 @@ import {
   toggleLevelExpansion,
   withinLevel,
 } from '../src/data.ts';
-import type { ProfileInput } from '../src/data.ts';
+import type { ProfileFact, ProfileInput } from '../src/data.ts';
 
 const input: ProfileInput = {
   dimensions: [
@@ -390,4 +392,28 @@ test('domain grouping keeps node identity across review views and needs a domain
   const plain = buildModel({ ...domainInput, domains: undefined }, 'domain');
   assert.equal(plain.grouping, 'dimension');
   assert.deepEqual(plain.dimensionIds, ['dimension:3', 'dimension:8']);
+});
+
+test('factTags puts the tags more sources share first and skips missing sources', () => {
+  const fact = { source_ids: ['s1', 's2', 's3', 'gone'] } as ProfileFact;
+  const sources = {
+    s1: { tags: ['读博', '职业发展'] },
+    s2: { tags: ['职业发展', '职业发展', '实习'] },
+    s3: {},
+  };
+  assert.deepEqual(factTags(fact, sources), ['职业发展', '读博', '实习']);
+  assert.deepEqual(factTags(fact, undefined), []);
+});
+
+test('filterPrivacy keeps the chosen levels, counts unknown levels as unrated, and keeps all without a choice', () => {
+  const facts = [
+    { id: 'a', sensitivity: 'public' },
+    { id: 'b', sensitivity: 'sensitive' },
+    { id: 'c' },
+    { id: 'd', sensitivity: 'secret' },
+  ] as unknown as ProfileFact[];
+  const ids = (levels: Parameters<typeof filterPrivacy>[1]) => filterPrivacy(facts, levels).map((fact) => fact.id);
+  assert.deepEqual(ids([]), ['a', 'b', 'c', 'd']);
+  assert.deepEqual(ids(['public', 'normal']), ['a']);
+  assert.deepEqual(ids(['unrated', 'sensitive']), ['b', 'c', 'd']);
 });

@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { collectFacts } from '../data';
+import { collectFacts, filterPrivacy } from '../data';
 import type { ProfileFact, ReviewStatus } from '../data';
 import { useProfileStore } from '../store';
 import { FactCard } from './FactCard';
+import { PrivacyFilter } from './privacy';
 import { ReviewFilter } from './ReviewFilter';
 
 export function ReviewPanel() {
@@ -11,7 +12,10 @@ export function ReviewPanel() {
   const view = useProfileStore((state) => state.view);
   const setView = useProfileStore((state) => state.setView);
   const selectedId = useProfileStore((state) => state.selectedId) ?? 'root';
-  const facts = collectFacts(viewModel, selectedId);
+  const privacy = useProfileStore((state) => state.privacy);
+  const togglePrivacy = useProfileStore((state) => state.togglePrivacy);
+  const scoped = collectFacts(viewModel, selectedId);
+  const facts = filterPrivacy(scoped, privacy);
   const all = collectFacts(fullModel, selectedId);
   const counts = { pending: 0, approved: 0, rejected: 0 };
   all.forEach((fact) => counts[fact.status]++);
@@ -21,7 +25,8 @@ export function ReviewPanel() {
         <ReviewFilter value={view} counts={{ all: all.length, ...counts }} onChange={setView} />
         <span>{facts.length} 条画像</span>
       </div>
-      <ReviewList key={`${selectedId}:${view}`} facts={facts} />
+      <PrivacyFilter facts={scoped} value={privacy} onToggle={togglePrivacy} />
+      <ReviewList key={`${selectedId}:${view}:${privacy.join()}`} facts={facts} />
     </section>
   );
 }
@@ -32,13 +37,20 @@ function ReviewList({ facts }: { facts: ProfileFact[] }) {
   const [checked, setChecked] = useState<Set<string>>(new Set());
   const [limit, setLimit] = useState(30);
   const page = facts.slice(0, limit);
-  const selected = page.filter((fact) => checked.has(fact.id));
+  // Selecting all takes every fact of the list, also those further down than shown.
+  const selected = facts.filter((fact) => checked.has(fact.id));
   const selectAllRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
-    if (selectAllRef.current) selectAllRef.current.indeterminate = selected.length > 0 && selected.length < page.length;
-  }, [selected.length, page.length]);
+    const box = selectAllRef.current;
+    if (box) box.indeterminate = selected.length > 0 && selected.length < facts.length;
+  }, [selected.length, facts.length]);
   async function batch(status: ReviewStatus) {
     if (!selected.length) return;
+    const hidden = selected.length - page.filter((fact) => checked.has(fact.id)).length;
+    const action = status === 'approved' ? '采纳' : '不采纳';
+    if (hidden && !window.confirm(`${action}选中的 ${selected.length} 条画像？其中 ${hidden} 条还没有显示在列表里。`)) {
+      return;
+    }
     if (await review(selected, status)) setChecked(new Set());
   }
   return (
@@ -50,10 +62,10 @@ function ReviewList({ facts }: { facts: ProfileFact[] }) {
               ref={selectAllRef}
               className="review-checkbox"
               type="checkbox"
-              checked={page.length > 0 && selected.length === page.length}
-              onChange={(event) => setChecked(new Set(event.target.checked ? page.map((fact) => fact.id) : []))}
+              checked={selected.length === facts.length}
+              onChange={(event) => setChecked(new Set(event.target.checked ? facts.map((fact) => fact.id) : []))}
             />
-            选中已展示 {page.length} 条
+            全选 {facts.length} 条
           </label>
           <button disabled={busy || !selected.length} onClick={() => void batch('approved')}>
             采纳 {selected.length || ''}

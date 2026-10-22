@@ -4,6 +4,7 @@ import { ancestors, buildModel, filterProfile, reconcileNavigation, toggleLevelE
 import type {
   ChatSelection,
   Grouping,
+  PrivacyLevel,
   ProfileFact,
   ProfileInput,
   ProfileModel,
@@ -34,6 +35,8 @@ interface ProfileValues {
   viewModel: ProfileModel | null;
   /** Model of all facts regardless of `view`. */
   fullModel: ProfileModel | null;
+  /** Privacy levels the review list shows; none chosen shows every level. Unlike `view`, the map ignores it. */
+  privacy: PrivacyLevel[];
   error: string;
   busy: boolean;
   // Review UI
@@ -55,6 +58,7 @@ interface ProfileActions {
   reload: () => Promise<void>;
   refresh: () => Promise<ProfileInput>;
   setView: (view: ReviewView) => void;
+  togglePrivacy: (level: PrivacyLevel) => void;
   setGrouping: (grouping: Grouping) => void;
   setError: (error: string) => void;
   mutate: (request: () => Promise<unknown>, closeEditor?: boolean) => Promise<boolean>;
@@ -108,6 +112,7 @@ function initialValues(): ProfileValues {
     grouping: savedGrouping(),
     viewModel: null,
     fullModel: null,
+    privacy: [],
     error: '',
     busy: false,
     editing: null,
@@ -191,6 +196,12 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
       const viewModel = buildModel(filterProfile(state.input, view), state.grouping);
       return { view, viewModel, ...navigationFor(state, viewModel) };
     }),
+  togglePrivacy: (level) =>
+    set((state) => ({
+      privacy: state.privacy.includes(level)
+        ? state.privacy.filter((item) => item !== level)
+        : [...state.privacy, level],
+    })),
   // The other grouping is a different map: it starts over from the overview.
   setGrouping: (grouping) =>
     set((state) => {

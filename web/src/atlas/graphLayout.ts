@@ -21,6 +21,90 @@ export const DENSE_NODE_COUNT = 600;
 const clusterSpacing = (visibleCount: number) => (visibleCount > DENSE_NODE_COUNT ? 19 : 31);
 
 /**
+ * From this many dimensions on (the domain view), one ring would leave the middle empty: they
+ * alternate between an inner and an outer ring, and their few topics sit closer to them.
+ */
+export const STAGGER_COUNT = 8;
+// Free space kept between two clusters, and between a cluster and the root.
+const CLUSTER_GAP = 50;
+const ROOT_CLEARANCE = 110;
+
+/** Length of the line from a dimension node to each of its topics. */
+export const topicDistance = (dimensionCount: number) => (dimensionCount >= STAGGER_COUNT ? 130 : 220);
+
+/** Every cluster at the same distance, far enough out that neighbours do not touch. */
+function ringDistances(radii: number[]): number[] {
+  const count = radii.length;
+  // Distance between two neighbouring directions at unit radius.
+  const chord = count > 1 ? 2 * Math.sin(Math.PI / count) : 0;
+  return radii.map((radius, index) => {
+    const neighbour = Math.max(radii[(index + count - 1) % count], radii[(index + 1) % count]);
+    const apart = chord ? (radius + neighbour + CLUSTER_GAP) / chord : 0;
+    return Math.max(330, radius + ROOT_CLEARANCE, apart);
+  });
+}
+
+/**
+ * Even clusters on an inner ring, odd ones on an outer ring between them. Each cluster sits as
+ * close to the root as its own size and its neighbours allow, so the distances differ.
+ */
+function staggeredDistances(radii: number[]): number[] {
+  const count = radii.length;
+  const step = (2 * Math.PI) / count;
+  const angleBetween = (a: number, b: number) => {
+    const turns = Math.abs(a - b) % count;
+    return Math.min(turns, count - turns) * step;
+  };
+  const need = (a: number, b: number) => radii[a] + radii[b] + CLUSTER_GAP;
+  // Distance at which clusters a and b just clear each other when both are that far out.
+  const sharedRing = (a: number, b: number) => need(a, b) / (2 * Math.sin(angleBetween(a, b) / 2));
+  // Distance along its own direction at which cluster b clears cluster a, which sits `away` out.
+  const clearOf = (a: number, away: number, b: number) => {
+    const angle = angleBetween(a, b);
+    const closest = angle >= Math.PI / 2 ? away : away * Math.sin(angle);
+    if (closest >= need(a, b)) return 0;
+    return away * Math.cos(angle) + Math.sqrt(need(a, b) ** 2 - (away * Math.sin(angle)) ** 2);
+  };
+  const inner = radii.map((_, index) => index % 2 === 0);
+  // The next cluster on the same ring in each direction.
+  const ringNeighbours = (index: number) =>
+    [1, -1].map((direction) => {
+      let next = (index + direction + count) % count;
+      while (inner[next] !== inner[index]) next = (next + direction + count) % count;
+      return next;
+    });
+  const distances = radii.map((radius) => radius + ROOT_CLEARANCE);
+  for (const outer of [false, true]) {
+    radii.forEach((_, index) => {
+      if (inner[index] === outer) return;
+      for (const other of ringNeighbours(index)) {
+        if (other !== index) distances[index] = Math.max(distances[index], sharedRing(index, other));
+      }
+      if (!outer) return;
+      radii.forEach((_, other) => {
+        if (inner[other]) distances[index] = Math.max(distances[index], clearOf(other, distances[other], index));
+      });
+    });
+  }
+  // Neighbours on one ring at different distances can still touch: the one farther out moves on.
+  for (let pass = 0; pass < 8; pass++) {
+    let moved = false;
+    for (let a = 0; a < count; a++) {
+      for (let b = a + 1; b < count; b++) {
+        const [near, far] = distances[a] <= distances[b] ? [a, b] : [b, a];
+        const reach = clearOf(near, distances[near], far);
+        if (reach > distances[far] + 0.5) {
+          distances[far] = reach;
+          moved = true;
+        }
+      }
+    }
+    if (!moved) break;
+  }
+  return distances;
+}
+
+/**
  * Target position of every dimension node. Dimensions keep their direction around the
  * root, and a dimension with more visible nodes sits farther out, so that expanded
  * dimensions get their own region instead of growing into their neighbours.
@@ -32,16 +116,18 @@ export function clusterCenters(model: ProfileModel, visible: ProfileNode[], root
     if (node.kind !== 'root' && node.kind !== 'dimension') sizes.set(node.dim, (sizes.get(node.dim) ?? 0) + 1);
   }
   const spacing = clusterSpacing(visible.length);
-  const radii = model.dimensionIds.map((id) => spacing * Math.sqrt(sizes.get(model.nodes.get(id)!.dim)!) + 60);
-  // Distance between two neighbouring directions at unit radius.
-  const chord = count > 1 ? 2 * Math.sin(Math.PI / count) : 0;
+  const staggered = count >= STAGGER_COUNT;
+  // A staggered cluster with any topic shown reaches at least as far as its topics' labels.
+  const reach = staggered ? topicDistance(count) + 40 : 0;
+  const radii = model.dimensionIds.map((id) => {
+    const size = sizes.get(model.nodes.get(id)!.dim)!;
+    return Math.max(spacing * Math.sqrt(size) + 60, size ? reach : 0);
+  });
+  const distances = staggered ? staggeredDistances(radii) : ringDistances(radii);
   return new Map(
     model.dimensionIds.map((id, index) => {
-      const neighbour = Math.max(radii[(index + count - 1) % count], radii[(index + 1) % count]);
-      const apart = chord ? (radii[index] + neighbour + 50) / chord : 0;
-      const distance = Math.max(330, radii[index] + 110, apart);
       const angle = dimensionAngle(index, count);
-      return [id, { x: root.x + distance * Math.cos(angle), y: root.y + distance * Math.sin(angle) }];
+      return [id, { x: root.x + distances[index] * Math.cos(angle), y: root.y + distances[index] * Math.sin(angle) }];
     }),
   );
 }

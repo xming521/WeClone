@@ -1125,6 +1125,44 @@ summary:focus-visible {
   color: #7a8d80;
   line-height: 1.7;
 }
+.overview-privacy {
+  margin-top: 18px;
+  color: var(--color-text-progress);
+  font-size: 11px;
+}
+.overview-privacy > div:first-child {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.privacy-track {
+  display: flex;
+  gap: 2px;
+  height: 5px;
+  margin-top: 10px;
+  overflow: hidden;
+  border-radius: 3px;
+}
+.privacy-track > span {
+  min-width: 3px;
+}
+.privacy-track .public {
+  background: #8fc1b0;
+}
+.privacy-track .normal {
+  background: #a5b6cd;
+}
+.privacy-track .private {
+  background: #d9b679;
+}
+.privacy-track .sensitive {
+  background: #d8928a;
+}
+.overview-privacy p {
+  margin: 9px 0 0;
+  color: #7a8d80;
+  line-height: 1.7;
+}
 .breadcrumb {
   display: flex;
   flex-wrap: wrap;
@@ -1822,6 +1860,117 @@ button:disabled {
   background: #f7e7e5;
   color: #a55951;
 }
+.fact-badges {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 5px;
+}
+/* 隐私度四档由浅到深：公开偏绿、普通偏蓝灰、私密偏琥珀、敏感偏红。 */
+.privacy-badge {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 3px;
+  border-radius: 5px;
+  padding: 3px 6px;
+  font-size: 10px;
+}
+.privacy-badge.public {
+  background: #e5f0ec;
+  color: #3f7a67;
+}
+.privacy-badge.normal {
+  background: #e9eef4;
+  color: #4e6482;
+}
+.privacy-badge.private {
+  background: #f5ecdc;
+  color: #8f6526;
+}
+.privacy-badge.sensitive {
+  background: #f6e3e1;
+  color: #a2453d;
+}
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.tag-list li {
+  padding: 1px 7px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 999px;
+  background: var(--color-surface-subtle);
+  color: var(--color-text-control);
+  font-size: 11px;
+  line-height: 1.6;
+}
+.tag-list .tag-more {
+  color: var(--color-muted);
+}
+.privacy-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: -4px 0 14px;
+}
+.privacy-filter > span {
+  margin-right: 2px;
+  color: #84968b;
+  font-size: 11px;
+}
+.privacy-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border: 1px solid var(--color-border-control);
+  border-radius: 999px;
+  background: var(--color-white);
+  color: var(--color-text-control);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.privacy-chip:hover {
+  background: var(--color-surface-tint);
+}
+.privacy-chip > span {
+  color: var(--color-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.privacy-chip[aria-pressed='true'] {
+  border-color: currentColor;
+}
+.privacy-chip[aria-pressed='true'] > span {
+  color: inherit;
+}
+.privacy-chip.public[aria-pressed='true'] {
+  background: #e5f0ec;
+  color: #3f7a67;
+}
+.privacy-chip.normal[aria-pressed='true'] {
+  background: #e9eef4;
+  color: #4e6482;
+}
+.privacy-chip.private[aria-pressed='true'] {
+  background: #f5ecdc;
+  color: #8f6526;
+}
+.privacy-chip.sensitive[aria-pressed='true'] {
+  background: #f6e3e1;
+  color: #a2453d;
+}
+.privacy-chip.unrated[aria-pressed='true'] {
+  background: var(--color-surface-hover);
+  color: var(--color-ink-action);
+}
 .fact-actions {
   display: flex;
   gap: 5px;
@@ -2140,11 +2289,19 @@ button:disabled {
   background: var(--color-accent-tint-strong);
   border-color: #b7cfc0;
 }
+.evidence-meta {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 5px;
+}
 .evidence-time {
   display: block;
-  margin-top: 5px;
   font-size: 11px;
   color: var(--color-muted);
+}
+.evidence-item > .tag-list {
+  margin-top: 8px;
 }
 .evidence-item > .source-scores {
   justify-content: flex-start;
