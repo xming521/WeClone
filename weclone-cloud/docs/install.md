@@ -391,3 +391,8 @@ docker exec langbot grep -c "_is_duplicate" /app/src/langbot/pkg/platform/source
 | 回复带 `<think>` | 没走本机代理 | 流水线模型选 weclone 供应商那个 `deepseek-flash` |
 | `-3 该链接已绑定微信号` | 授权码已绑旧会话 | 重新 `GenAuthKey1` |
 | `Agent runner temporarily unavailable` | 并发运行被拒 | 流水线并发设 1，关掉错误提示推送 |
+| `无法加载文件 ... 在此系统上禁止运行脚本` | PowerShell 执行策略是 Restricted | `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`，或始终用 `setup.cmd`（它带 `-ExecutionPolicy Bypass`） |
+| `uv ... tunnel error ... os error 10061` | 镜像站/代理连不上（常见于清华源） | 换源重装：`setup.cmd --pypi` 或 `setup.cmd --aliyun`；或先清空 `HTTP_PROXY`/`HTTPS_PROXY` |
+| `'ascii' codec can't encode characters` | API Key 里混进了中文（粘成了 `sk-你的key`） | `doctor` 现在会直接提示；换成真 key |
+| `.cmd` 报 `'-' 不是内部或外部命令` | 脚本里的中文被 GBK 控制台拆行 | 用仓库最新版脚本（已全部改为 ASCII） |
+| 装到一半失败，想重来 | `app\` 已拷好 | `powershell -ExecutionPolicy Bypass -File .\bootstrap.ps1 -Install -SkipCopy` |
