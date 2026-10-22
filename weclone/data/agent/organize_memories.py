@@ -2,9 +2,9 @@
 
 Stages: prepare reads the extracted memories. domains induces the person's life domains from extraction tags
 and maps the tags to them. classify assigns each memory a dimension, a domain and an attribute name, in batches
-grouped by the tags' domains. topics groups each domain's profile attributes into conversation topics.
-summarize writes facts per (topic, dimension); dimension 6 is summarized per chat peer and dimension 7 per
-domain.
+grouped by the tags' domains, and gives every memory a privacy level. topics groups each domain's profile
+attributes into conversation topics. summarize writes facts per (topic, dimension), each with its own privacy
+level; dimension 6 is summarized per chat peer and dimension 7 per domain.
 """
 
 from __future__ import annotations
@@ -28,6 +28,7 @@ from weclone.prompts.memory_organization import (
     CLASSIFY_SCHEMA,
     DOMAIN_SCHEMA,
     PROFILE_DIMS,
+    SENSITIVITY_LEVELS,
     SUMMARY_SCHEMA,
     TAG_DOMAIN_SCHEMA,
     TOPIC_SCHEMA,
@@ -187,6 +188,8 @@ def prompt_record(record: dict, *, include_sample_time: bool = False) -> dict:
             row[key] = record[key]
     if include_sample_time and record.get("sample_time"):
         row["sample_time"] = record["sample_time"]
+    if record.get("sensitivity"):
+        row["sensitivity"] = record["sensitivity"]
     if record.get("peer"):
         row["content"] = re.sub(
             r"(?<![A-Za-zＡ-Ｚａ-ｚ0-9０-９_])[AＡ](?![A-Za-zＡ-Ｚａ-ｚ0-9０-９_]|股)",
@@ -429,8 +432,10 @@ def validate_classification(payload: Any, records: list[dict], domain_count: int
     expected = {row["id"]: row for row in records}
     seen = set()
     for item in payload["items"]:
-        if not isinstance(item, dict) or set(item) != {"id", "fields"}:
-            raise ValueError("Classification item requires id and fields")
+        if not isinstance(item, dict) or set(item) != {"id", "fields", "sensitivity"}:
+            raise ValueError("Classification item requires id, fields and sensitivity")
+        if item["sensitivity"] not in SENSITIVITY_LEVELS:
+            raise ValueError("Unknown sensitivity level")
         rid = item["id"]
         if not isinstance(rid, str) or rid not in expected or rid in seen:
             raise ValueError("Unknown or duplicate classification id")
@@ -465,8 +470,10 @@ def validate_summary(payload: Any, source_ids: set[str]) -> dict:
     if not isinstance(payload["facts"], list):
         raise ValueError("Summary facts must be an array")
     for fact in payload["facts"]:
-        if not isinstance(fact, dict) or set(fact) != {"attr", "value", "source_ids"}:
-            raise ValueError("Fact requires attr, value and source_ids")
+        if not isinstance(fact, dict) or set(fact) != {"attr", "value", "source_ids", "sensitivity"}:
+            raise ValueError("Fact requires attr, value, source_ids and sensitivity")
+        if fact["sensitivity"] not in SENSITIVITY_LEVELS:
+            raise ValueError("Unknown sensitivity level")
         if not chinese_attr(fact["attr"]) or not isinstance(fact["value"], str) or not fact["value"].strip():
             raise ValueError("Missing Chinese attribute or value")
         ids = fact["source_ids"]
@@ -985,6 +992,9 @@ def run(args: argparse.Namespace) -> dict:
                 {"items": load(classification_path)}, records, len(domains)
             )
             topics = load(topic_path)
+            # Summaries see each memory's privacy level, and the output sources keep it.
+            levels = {item["id"]: item["sensitivity"] for item in classifications}
+            by_id = {rid: {**row, "sensitivity": levels[rid]} for rid, row in by_id.items()}
             groups = summary_groups(classifications, by_id, topics)
             runner = runner or LLMTasks(args)
             results = summarize_groups(

@@ -365,16 +365,16 @@ def test_classify_prompts_share_rules_and_domains_before_memories():
 @pytest.mark.parametrize("kind,type_", [("S", "stable_fact"), ("S", "goal"), ("ES", "ES")])
 def test_preference_dimension_rejects_other_memory_types(kind, type_):
     with pytest.raises(ValueError, match="Invalid dimension/source"):
-        organize.validate_classification({"items": [{"id": "a", "fields": [field(8, "活动偏好")]}]},
+        organize.validate_classification({"items": [{"id": "a", "fields": [field(8, "活动偏好")], "sensitivity": "normal"}]},
                                          [record("a", kind, type_)], 2)
 
 
 @pytest.mark.parametrize("defect", ["missing", "unknown", "duplicate", "wrong_source", "removed_dim", "english_attr",
                                     "bool_dim", "unknown_domain", "zero_domain", "bool_domain", "pair_field",
-                                    "duplicate_attr"])
+                                    "duplicate_attr", "no_sensitivity", "unknown_sensitivity"])
 def test_classification_rejects_lost_ids_wrong_dimensions_and_domains(defect):
     rows = [record("s"), record("e", "ES", "ES")]
-    payload = {"items": [{"id": "s", "fields": [field(1, "职业")]}, {"id": "e", "fields": [field(5, "约定")]}]}
+    payload = {"items": [{"id": "s", "fields": [field(1, "职业")], "sensitivity": "normal"}, {"id": "e", "fields": [field(5, "约定")], "sensitivity": "normal"}]}
     first = payload["items"][0]["fields"]
     if defect == "missing":
         payload["items"].pop()
@@ -398,6 +398,10 @@ def test_classification_rejects_lost_ids_wrong_dimensions_and_domains(defect):
         first[0]["domain"] = True
     elif defect == "pair_field":
         payload["items"][0]["fields"] = [[1, "职业"]]
+    elif defect == "no_sensitivity":
+        del payload["items"][1]["sensitivity"]
+    elif defect == "unknown_sensitivity":
+        payload["items"][1]["sensitivity"] = "secret"
     else:
         first.append(field(1, "职业", 2))
     with pytest.raises(ValueError):
@@ -407,12 +411,12 @@ def test_classification_rejects_lost_ids_wrong_dimensions_and_domains(defect):
 def test_open_attributes_multi_assignment_and_empty_result_are_supported():
     rows = [record("a"), record("b")]
     payload = {"items": [
-        {"id": "a", "fields": [field(1, " 职业 "), field(4, "照护可用时间", 2)]},
-        {"id": "b", "fields": []},
+        {"id": "a", "fields": [field(1, " 职业 "), field(4, "照护可用时间", 2)], "sensitivity": "normal"},
+        {"id": "b", "fields": [], "sensitivity": "normal"},
     ]}
     assert organize.validate_classification(payload, rows, 2) == [
-        {"id": "a", "fields": [field(1, "职业"), field(4, "照护可用时间", 2)]},
-        {"id": "b", "fields": []},
+        {"id": "a", "fields": [field(1, "职业"), field(4, "照护可用时间", 2)], "sensitivity": "normal"},
+        {"id": "b", "fields": [], "sensitivity": "normal"},
     ]
 
 
@@ -550,19 +554,19 @@ def fake_runner(fields_for, seen, *, value="B计划与朋友周末郊游。"):
                 elif task["stage"] == "tag_domains":
                     payload = {"items": [{"id": i, "domain": 1} for i in task["ids"]]}
                 elif task["stage"] == "classify":
-                    payload = {"items": [{"id": rid, "fields": fields_for(rid)} for rid in task["ids"]]}
+                    payload = {"items": [{"id": rid, "fields": fields_for(rid), "sensitivity": "private"} for rid in task["ids"]]}
                 elif task["stage"] == "topics":
                     count = len(task["prompt"].split("记忆开头\n", 1)[1].splitlines())
                     payload = {"topics": [{"name": "周末郊游", "items": list(range(1, count + 1))}]}
                 elif "members" in task:
                     payload = {"groups": [
                         {"id": i, "facts": [{"attr": member["attrs"][0], "value": value,
-                                             "source_ids": member["source_ids"]}]}
+                                             "source_ids": member["source_ids"], "sensitivity": "normal"}]}
                         for i, member in enumerate(task["members"])
                     ]}
                 else:
                     payload = {"facts": [{"attr": task["attrs"][0], "value": value,
-                                          "source_ids": task["source_ids"]}]}
+                                          "source_ids": task["source_ids"], "sensitivity": "normal"}]}
                 results.append(validate(payload, task))
             return results
 
@@ -616,6 +620,11 @@ def test_full_pipeline_keeps_inputs_and_joins_profile_goals_with_events(tmp_path
     assert output["unused"] == [] and output["unassigned_ids"] == []
     assert output["domains"] == DOMAINS
     assert {row["kind"] for row in output["sources"].values()} == {"S", "ES"}
+    assert fact["sensitivity"] == "normal"
+    assert {row["sensitivity"] for row in output["sources"].values()} == {"private"}
+    summaries = [task["prompt"] for task in seen if task["stage"] == "summarize"]
+    assert summaries and all('"sensitivity":"private"' in prompt for prompt in summaries)
+    assert all(prompts.SENSITIVITY_RULES in task["prompt"] for task in seen if task["stage"] in ("classify", "summarize"))
     classify = [task["prompt"] for task in seen if task["stage"] == "classify"]
     assert classify and all(prompts.domain_block(DOMAINS) in prompt for prompt in classify)
     assert "出行旅行 " in next(task["prompt"] for task in seen if task["stage"] == "domains")
@@ -723,7 +732,7 @@ def test_classify_stage_sends_preferences_with_preference_rules(tmp_path, monkey
         assert task["prompt"].startswith(prompts.PREFERENCE_RULES if is_preference else prompts.CLASSIFY_RULES)
     assert {rid for task in tasks for rid in task["ids"]} == {row["id"] for row in records}
     assert organize.load(output_dir / "classifications.json") == [
-        {"id": rid, "fields": []} for task in tasks for rid in task["ids"]
+        {"id": rid, "fields": [], "sensitivity": "private"} for task in tasks for rid in task["ids"]
     ]
 
 
@@ -753,7 +762,7 @@ def test_relation_summary_isolates_peers_through_split_and_reduce(split):
                 budget.check(task["prompt"])
                 stages.append(task["stage"])
                 results.append(validate({"facts": [
-                    {"attr": "关系状态", "value": f"B与{peer}是同事。", "source_ids": task["source_ids"]},
+                    {"attr": "关系状态", "value": f"B与{peer}是同事。", "source_ids": task["source_ids"], "sensitivity": "normal"},
                 ]}, task))
             return results
 
@@ -765,21 +774,25 @@ def test_relation_summary_isolates_peers_through_split_and_reduce(split):
         assert result["facts"][0]["source_ids"] == group["source_ids"]
 
 
-@pytest.mark.parametrize("defect", ["unknown", "empty", "duplicate"])
+@pytest.mark.parametrize("defect", ["unknown", "empty", "duplicate", "no_sensitivity", "unknown_sensitivity"])
 def test_summary_rejects_invalid_references(defect):
-    result = {"facts": [{"attr": "职业", "value": "B从事算法工作。", "source_ids": ["a"]}]}
+    result = {"facts": [{"attr": "职业", "value": "B从事算法工作。", "source_ids": ["a"], "sensitivity": "normal"}]}
     if defect == "unknown":
         result["facts"][0]["source_ids"] = ["fake"]
     elif defect == "empty":
         result["facts"][0]["source_ids"] = []
-    else:
+    elif defect == "duplicate":
         result["facts"][0]["source_ids"] = ["a", "a"]
+    elif defect == "no_sensitivity":
+        del result["facts"][0]["sensitivity"]
+    else:
+        result["facts"][0]["sensitivity"] = "secret"
     with pytest.raises(ValueError):
         organize.validate_summary(result, {"a", "b"})
 
 
 def test_summary_allows_unreferenced_inputs_without_extra_output_fields():
-    result = {"facts": [{"attr": "职业", "value": "B从事算法工作。", "source_ids": ["a"]}]}
+    result = {"facts": [{"attr": "职业", "value": "B从事算法工作。", "source_ids": ["a"], "sensitivity": "normal"}]}
     assert organize.validate_summary(result, {"a", "b"}) == result
     assert organize.validate_summary({"facts": []}, {"a"}) == {"facts": []}
     assert "unused_ids" not in json.dumps(organize.SUMMARY_SCHEMA)
@@ -793,7 +806,7 @@ def test_llm_retry_truncation_and_content_addressed_resume(tmp_path):
     runner.options = SimpleNamespace(
         batch_size=2, llm_provider="api", model=None, effort=None, max_tokens=200, timeout=10, overwrite=False,
     )
-    payload = {"items": [{"id": "a", "fields": [field(1, "职业")]}]}
+    payload = {"items": [{"id": "a", "fields": [field(1, "职业")], "sensitivity": "normal"}]}
 
     class Client:
         calls = 0
@@ -833,7 +846,7 @@ def test_llm_resume_ignores_configuration_changes(tmp_path, monkeypatch, change)
     config.write_text(json.dumps(settings))
     args = SimpleNamespace(config_path=config, llm_provider=None, output_dir=tmp_path,
                            max_context_tokens=8192, token_encoding="o200k_base", tokenizer_file=None)
-    payload = {"items": [{"id": "a", "fields": [field(1, "职业")]}]}
+    payload = {"items": [{"id": "a", "fields": [field(1, "职业")], "sensitivity": "normal"}]}
 
     class Client:
         calls = 0
@@ -910,7 +923,7 @@ def test_summary_overwrite_refreshes_current_tasks_and_preserves_other_entries(t
         def generate_batch(self, requests):
             requests = list(requests)
             self.calls += 1
-            facts = [{"attr": "职业", "value": f"第{self.calls}次结果", "source_ids": ["a"]}]
+            facts = [{"attr": "职业", "value": f"第{self.calls}次结果", "source_ids": ["a"], "sensitivity": "normal"}]
             payload = {"groups": [{"id": 0, "facts": facts}]} if batched else {"facts": facts}
             return [LLMResponse(ok=True, parsed_json=payload, finish_reason="stop") for _ in requests]
 
@@ -941,7 +954,7 @@ def test_summary_record_limit_splits_group_and_reduces_all_sources(dim):
             results = []
             for task in tasks:
                 calls.append((task["stage"], len(task["source_ids"])))
-                payload = {"facts": [{"attr": "属性", "value": "同一事实", "source_ids": task["source_ids"]}]}
+                payload = {"facts": [{"attr": "属性", "value": "同一事实", "source_ids": task["source_ids"], "sensitivity": "normal"}]}
                 results.append(validate(payload, task))
             return results
 
@@ -983,7 +996,7 @@ def test_oversized_attribute_group_reduces_across_batches_without_losing_sources
             results = []
             for task in tasks:
                 stages.append(task["stage"])
-                payload = {"facts": [{"attr": "出行计划", "value": "B计划出行。", "source_ids": task["source_ids"]}]}
+                payload = {"facts": [{"attr": "出行计划", "value": "B计划出行。", "source_ids": task["source_ids"], "sensitivity": "normal"}]}
                 results.append(validate(payload, task))
             return results
 
@@ -1008,7 +1021,7 @@ def test_different_attribute_groups_share_llm_batch():
     class Runner:
         def run(self, tasks, validate):
             calls.append(len(tasks))
-            return [validate({"facts": [{"attr": "属性", "value": "已有值", "source_ids": task["source_ids"]}]}, task) for task in tasks]
+            return [validate({"facts": [{"attr": "属性", "value": "已有值", "source_ids": task["source_ids"], "sensitivity": "normal"}]}, task) for task in tasks]
 
     results = organize.summarize_groups(groups, {row["id"]: row for row in rows}, Runner())
     assert calls == [2]
@@ -1027,7 +1040,7 @@ def test_summary_combines_thirty_groups_and_restores_reordered_results():
                 members = task.get("members", [task])
                 sizes.append(len(members))
                 payloads = [{"id": i, "facts": [{"attr": member["attrs"][0], "value": "已有事实",
-                                                   "source_ids": member["source_ids"]}]}
+                                                   "source_ids": member["source_ids"], "sensitivity": "normal"}]}
                             for i, member in enumerate(members)]
                 payload = {"groups": list(reversed(payloads))} if "members" in task else {
                     key: value for key, value in payloads[0].items() if key != "id"
@@ -1043,7 +1056,7 @@ def test_summary_combines_thirty_groups_and_restores_reordered_results():
 @pytest.mark.parametrize("defect", ["unknown_source", "missing_group", "duplicate_group"])
 def test_combined_summary_rejects_unknown_sources_and_lost_groups(defect):
     task = {"members": [{"source_ids": ["a"]}, {"source_ids": ["b"]}]}
-    payload = {"groups": [{"id": i, "facts": [{"attr": "属性", "value": "事实", "source_ids": [rid]}]} for i, rid in enumerate(("a", "b"))]}
+    payload = {"groups": [{"id": i, "facts": [{"attr": "属性", "value": "事实", "source_ids": [rid], "sensitivity": "normal"}]} for i, rid in enumerate(("a", "b"))]}
     if defect == "unknown_source":
         payload["groups"][0]["facts"][0]["source_ids"] = ["not_in_request"]
     elif defect == "missing_group":
@@ -1065,7 +1078,7 @@ def test_cross_group_references_warn_and_survive_final_summary(caplog):
         def run(self, tasks, validate):
             self.calls += len(tasks)
             return [validate({"groups": [
-                {"id": 0, "facts": [{"attr": "职业", "value": "已有事实", "source_ids": ["b"]}]},
+                {"id": 0, "facts": [{"attr": "职业", "value": "已有事实", "source_ids": ["b"], "sensitivity": "normal"}]},
                 {"id": 1, "facts": []},
             ]}, task) for task in tasks]
 
@@ -1090,7 +1103,7 @@ def test_combined_summary_deduplicates_shared_memories_and_respects_token_budget
         def run(self, requests, validate):
             calls.extend(requests)
             assert all(budget.fits(task["prompt"]) for task in requests)
-            return [validate({"facts": [{"attr": "属性", "value": "已有值", "source_ids": ["shared"]}]}, task) for task in requests]
+            return [validate({"facts": [{"attr": "属性", "value": "已有值", "source_ids": ["shared"], "sensitivity": "normal"}]}, task) for task in requests]
 
     organize.run_summary_tasks(tasks, Runner(), 30, budget)
     assert len(calls) == 2

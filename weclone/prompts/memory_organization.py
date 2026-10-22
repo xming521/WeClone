@@ -11,6 +11,8 @@ DIMENSIONS = {
 }
 
 PROFILE_DIMS = (1, 3, 4, 5, 8)
+# Privacy levels, from shareable with strangers to never leaving the chat it came from.
+SENSITIVITY_LEVELS = ("public", "normal", "private", "sensitive")
 
 
 def dimension_name(dim: int) -> str:
@@ -73,8 +75,9 @@ CLASSIFY_SCHEMA = {
                             "additionalProperties": False,
                         },
                     },
+                    "sensitivity": {"type": "string", "enum": list(SENSITIVITY_LEVELS)},
                 },
-                "required": ["id", "fields"],
+                "required": ["id", "fields", "sensitivity"],
                 "additionalProperties": False,
             },
         },
@@ -124,7 +127,16 @@ TAG_DOMAIN_RULES = """你在为一个"以 B 本人身份自动回复聊天"的�
 只输出 JSON：{"items":[{"id":标签编号,"domain":领域编号}]}。items 覆盖每个标签编号且各一次。
 """
 
-CLASSIFY_RULES = """你负责将已有人物B的画像和事件记忆分类到本次给定的维度，为每条记忆提出中文属性名，并选出所属的B的生活领域。
+SENSITIVITY_RULES = """sensitivity是隐私等级，按B愿意对谁说来判断，取下面四档之一：
+- public：对陌生人也会说，例如口味、爱好、在读研究生、所在城市。
+- normal：熟人之间会聊，例如学校和专业、求职进展、近期出行计划、和室友的日常。
+- private：只对亲近的人说，例如感情状况、家庭矛盾、收入和花销、一般健康问题、对具体某人的负面评价、他人的私事。
+- sensitive：只留在原来的聊天里，不告诉其他人，例如疾病诊断和心理健康、性取向、证件号和账号、精确住址、违法违规、他人托付的秘密。
+拿不准时取较高的一档。
+"""
+
+CLASSIFY_RULES = (
+    """你负责将已有人物B的画像和事件记忆分类到本次给定的维度，为每条记忆提出中文属性名，并选出所属的B的生活领域。
 目标是保留对当前维度的人物建模有实际作用的信息，不追求覆盖全部输入；普通操作和零散细节若不影响对B的个人特征、现实条件或重要事项的理解，则不收录。
 输入是已抽取记忆，id是记忆编号，content是正文；可选的event_time是原抽取的事件时间，status是计划或目标状态。
 逐一对照本次维度定义，判断记忆事实是否直接提供了该维度描述的信息；匹配后为这部分信息生成属性名。
@@ -132,18 +144,25 @@ CLASSIFY_RULES = """你负责将已有人物B的画像和事件记忆分类到�
 每个归类再从领域列表中选一个领域，填领域编号。领域按这部分信息在聊天时属于什么话题来判断，同一话题下的身份、目标、条件、计划、偏好归入同一领域，不按维度区分。
 明确的玩笑、调侃内容不分类；同条记忆中的非玩笑事实仍可分类。
 同一条可支持多个维度或属性，但每个归类都须有正文中的具体信息支持；各维度独立判断，没有匹配维度时fields为空数组，不为覆盖维度而凑结果。
-只输出JSON对象：{"items":[{"id":"输入记录编号","fields":[{"dim":1,"domain":2,"attr":"职业"}]}]}。
+每条记忆另给一个sensitivity，按正文判断，fields为空时也要给。
+只输出JSON对象：{"items":[{"id":"输入记录编号","fields":[{"dim":1,"domain":2,"attr":"职业"}],"sensitivity":"normal"}]}。
 items覆盖每个输入id且各一次；id原样复制。fields中的每项是一个归类：dim是维度数字ID，domain是领域编号，attr是中文属性名。
 """
+    + SENSITIVITY_RULES
+)
 
-PREFERENCE_RULES = """为人物B的每条偏好画像生成简洁中文属性名，用于后续分组归并，并选出所属的B的生活领域。
+PREFERENCE_RULES = (
+    """为人物B的每条偏好画像生成简洁中文属性名，用于后续分组归并，并选出所属的B的生活领域。
 输入id是记忆编号，content是正文；peer是来源聊天对方编号，仅正文明确指向对方时用于识别对象。
 属性名描述偏好的信息类别，具体对象、喜恶方向及条件留在正文；换成该类别的其他取值时属性名应保持不变。例如喜欢或不喜欢甜食均可使用“口味偏好”。按含义统一同义属性名，不预设类别列表。
 只提取正文支持的B的偏好属性，不把他人偏好或明确的玩笑当作B的偏好。
 每个属性再从领域列表中选一个领域，填领域编号。领域按偏好对象在聊天时属于什么话题来判断。
-只输出JSON对象：{"items":[{"id":"输入编号","fields":[{"dim":8,"domain":2,"attr":"属性名"}]}]}。
+每条记忆另给一个sensitivity，按正文判断，fields为空时也要给。
+只输出JSON对象：{"items":[{"id":"输入编号","fields":[{"dim":8,"domain":2,"attr":"属性名"}],"sensitivity":"public"}]}。
 items覆盖每个输入id且各一次；fields是该条记忆涉及的不重复偏好属性，dim固定为8，无可用偏好时为空数组。
 """
+    + SENSITIVITY_RULES
+)
 
 TOPIC_RULES = """你在为一个"以 B 本人身份自动回复聊天"的系统整理 B 的记忆。B 的记忆已经分成下面这些领域。回复前，系统先选领域，再在领域里选主题，然后读主题下的条目。
 
@@ -157,17 +176,21 @@ TOPIC_RULES = """你在为一个"以 B 本人身份自动回复聊天"的系统�
 只输出 JSON：{{"topics":[{{"name":"主题名","items":[属性编号]}}]}}
 """
 
-SUMMARY_CONTENT_RULES = """将已有记忆整理为给定维度下的属性与事实。
+SUMMARY_CONTENT_RULES = (
+    """将已有记忆整理为给定维度下的属性与事实。
 目标是保留对当前维度的人物建模有实际作用的信息，不追求覆盖全部输入；普通操作和零散细节若不影响对B的个人特征、现实条件或重要事项的理解，则不收录。
-输入：原记忆的id是记忆编号，content是正文；可选的sample_time是来源聊天时间，event_time是事件时间，status是计划或目标状态。
+输入：原记忆的id是记忆编号，content是正文，sensitivity是原记忆的隐私等级；可选的sample_time是来源聊天时间，event_time是事件时间，status是计划或目标状态。
 仅归纳本次候选属性涉及的信息，排除明确的玩笑、调侃内容，不将其改写为事实。
 归纳步骤：
 1. 统一属性名：attr用简洁中文描述信息类别，value写该类别下的具体内容。自检：换成其他可能取值时，attr应保持不变；不能把具体取值加上“身份、状态、方向”等后缀当作属性名。例如“人工智能专业方向”改为“专业或研究方向”，人工智能写入value。按正文含义合并同义属性名，不同属性分别保留，不因都描述身份就统一成“身份”。
 2. 整理取值：在保留独立事实、必要条件和重要变化的前提下尽量合并；同一属性的同义取值、同一事项的互补信息集中表述，不因措辞或候选组不同而重复输出，也不因主题相同就混合不同对象或事项。不同取值按当前维度的时间规则处理。需要选取最新状态时默认比较sample_time，正文或event_time明确指向历史或未来的记录不覆盖现状；仅在要求取最新但无法判定互斥值先后时，在同一条value中列出冲突值并注明“无法确定最新值”。
 3. 保留依据：value写明主体、对象及必要时间和条件。source_ids汇集支持所保留事实的全部输入来源，不只选代表性来源。
+4. 定隐私等级：sensitivity按value实际写出的内容判断，参考来源记忆的等级。value略去了来源里的私密细节时可以降级，例如来源是“B和女友吵架后去吃火锅”，事实“B喜欢吃火锅”可以是public；合并了更私密的来源时随之升级。
 
-结果字段：facts是事实列表，无符合条件的信息时为空；attr是中文属性名，value是具体事实，source_ids是支持该事实的原记忆编号，只能引用本次输入提供的来源。
+结果字段：facts是事实列表，无符合条件的信息时为空；attr是中文属性名，value是具体事实，source_ids是支持该事实的原记忆编号，只能引用本次输入提供的来源，sensitivity是事实的隐私等级。
 """
+    + SENSITIVITY_RULES
+)
 
 DIMENSION_TIME_RULES = {
     1: "保留身份候选：同一属性的同义取值合并，不同取值分别输出，包括互斥值和新旧值。每条value只写一个候选取值，保留其时间和条件，不将所有候选都写成当前身份；source_ids汇集支持该取值的全部来源。",
@@ -182,7 +205,7 @@ DIMENSION_TIME_RULES = {
 SUMMARIZE_RULES = (
     SUMMARY_CONTENT_RULES
     + """
-只输出JSON对象：{"facts":[{"attr":"职业","value":"B从事算法研发工作。","source_ids":["输入编号"]}]}。
+只输出JSON对象：{"facts":[{"attr":"职业","value":"B从事算法研发工作。","source_ids":["输入编号"],"sensitivity":"normal"}]}。
 """
 )
 
@@ -192,8 +215,9 @@ FACT_SCHEMA = {
         "attr": {"type": "string"},
         "value": {"type": "string"},
         "source_ids": {"type": "array", "items": {"type": "string"}},
+        "sensitivity": {"type": "string", "enum": list(SENSITIVITY_LEVELS)},
     },
-    "required": ["attr", "value", "source_ids"],
+    "required": ["attr", "value", "source_ids", "sensitivity"],
     "additionalProperties": False,
 }
 SUMMARY_SCHEMA = {
@@ -239,9 +263,9 @@ def batch_summary_prompt(tasks: list[dict]) -> str:
     if not reduced:
         payload["memories"] = list(memories.values())
     rules = """本次包含多个候选属性组。groups中id是组编号，topic是该组所属主题（可缺省），attrs是候选属性，source_ids是该组候选来源；memories是各组共用、按id去重的原记忆。
-若组内提供facts，则它们是该组分批归纳结果，合并时保留原source_ids。
+若组内提供facts，则它们是该组分批归纳结果，合并时保留原source_ids，按合并后的value重新定sensitivity。
 同次请求内跨组统一同义属性、合并重复事实；依据正文选择支持结论的来源，可引用其他组的来源，不得引用输入外的编号。每条合并事实只放入一个相关组，其余组不重复输出；组内仍有其他事实则保留，全部并入其他组时facts为空数组。覆盖所有组id且各一次。
-只输出JSON对象：{"groups":[{"id":0,"facts":[{"attr":"中文属性","value":"具体取值","source_ids":["原记忆编号"]}]}]}。
+只输出JSON对象：{"groups":[{"id":0,"facts":[{"attr":"中文属性","value":"具体取值","source_ids":["原记忆编号"],"sensitivity":"normal"}]}]}。
 """
     return (
         SUMMARY_CONTENT_RULES
@@ -314,7 +338,11 @@ def summarize_prompt(
     peer: str | None = None,
     topic: str | None = None,
 ) -> str:
-    extra = "\n本轮输入是分批归纳的facts；合并时保留原source_ids，不用分批编号替代来源。\n" if reduced else ""
+    extra = (
+        "\n本轮输入是分批归纳的facts；合并时保留原source_ids，不用分批编号替代来源，按合并后的value重新定sensitivity。\n"
+        if reduced
+        else ""
+    )
     if peer is not None:
         extra += "\npeer：" + json.dumps(peer, ensure_ascii=False) + "\n"
     if topic is not None:
