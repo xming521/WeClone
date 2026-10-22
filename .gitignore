@@ -209,3 +209,4 @@ logs/*
 web/node_modules/*
 .weclone/
 .weclone-security/
+CLAUDE.md
