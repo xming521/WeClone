@@ -15,6 +15,7 @@ import { useProfileStore } from './store';
 import { AuthGate, LogoutButton } from './Auth';
 import { ModeSwitch, modeFromHash } from './ModeSwitch';
 import { StyleApp } from './style/StyleApp';
+import { SummaryApp } from './summary/SummaryApp';
 
 function Atlas() {
   const viewModel = useProfileStore((state) => state.viewModel)!;
@@ -139,5 +140,5 @@ function useMode() {
 
 export default function App() {
   const mode = useMode();
-  return <AuthGate>{mode === 'style' ? <StyleApp /> : <ProfileApp />}</AuthGate>;
+  return <AuthGate>{mode === 'style' ? <StyleApp /> : mode === 'summary' ? <SummaryApp /> : <ProfileApp />}</AuthGate>;
 }
