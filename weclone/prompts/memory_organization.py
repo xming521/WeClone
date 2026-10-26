@@ -108,6 +108,13 @@ TOPIC_SCHEMA = {
     "additionalProperties": False,
 }
 
+PEER_SCHEMA = {
+    "type": "object",
+    "properties": {"relation": {"type": "string"}},
+    "required": ["relation"],
+    "additionalProperties": False,
+}
+
 DOMAIN_RULES = """你在为一个"以 B 本人身份自动回复聊天"的系统整理 B 的记忆。回复前，系统先判断对方这条消息在聊 B 生活的哪个方面，再到那个方面里找需要的记忆。
 下面是从 B 的聊天记忆中抽出的检索标签及出现次数。请据此把 B 的生活划分为若干领域。
 
@@ -129,12 +136,21 @@ TAG_DOMAIN_RULES = """你在为一个"以 B 本人身份自动回复聊天"的�
 只输出 JSON：{"items":[{"id":标签编号,"domain":领域编号}]}。items 覆盖每个标签编号且各一次。
 """
 
+PEER_RULES = """你在为一个"以 B 本人身份自动回复聊天"的系统整理 B 的记忆。下面是从 B 与一位聊天对象的聊天中抽取的记忆，正文里的聊天对象编号就是这个人，sample_time 是来源聊天时间。
+用一句话写出此人与 B 的关系，供给记忆分领域时参考：先写关系类型，例如家人、恋人、前任、暧昧对象、朋友、同学、室友、同事、导师、客户、网友；关系变过时按时间写出变化，例如"B的同学：2020年起同班，2023年起成为恋人"。
+只依据正文，不推测。不写两人聊过什么，也不写此人的其他情况。不超过 60 个字。看不出关系时 relation 为空字符串。
+只输出 JSON：{"relation":"关系"}
+"""
+
 SENSITIVITY_RULES = """sensitivity是隐私等级，按B愿意对谁说来判断，取下面四档之一：
 - public：对陌生人也会说，例如口味、爱好、在读研究生、所在城市。
 - normal：熟人之间会聊，例如学校和专业、求职进展、近期出行计划、和室友的日常。
 - private：只对亲近的人说，例如感情状况、家庭矛盾、收入和花销、一般健康问题、对具体某人的负面评价、他人的私事。
 - sensitive：只留在原来的聊天里，不告诉其他人，例如疾病诊断和心理健康、性取向、证件号和账号、精确住址、违法违规、他人托付的秘密。
 拿不准时取较高的一档。
+"""
+
+PEER_DOMAIN_RULES = """正文里的P1这类编号是聊天对象，聊天对象列表给出此人与B的关系。B与聊天对象之间相处、沟通、陪伴、情感需求、交往边界、送礼这类关于两人关系本身的信息，按这层关系选领域，例如对恋人或前任的归入感情类领域，不因正文没写明关系就归入亲友类领域；在聊学习、工作、游戏、投资等具体事情时，仍按那件事选领域。
 """
 
 CLASSIFY_RULES = (
@@ -144,7 +160,9 @@ CLASSIFY_RULES = (
 逐一对照本次维度定义，判断记忆事实是否直接提供了该维度描述的信息；匹配后为这部分信息生成属性名。
 属性名用简洁中文描述信息类别，不限定词表；取值是该类别下的具体内容。自检：换成其他可能取值时，属性名应保持不变。例如“人工智能”和“机械工程”均使用“专业或研究方向”。属性名不含人名或P1这类聊天对象编号，涉及的人物留在正文。
 每个归类再从领域列表中选一个领域，填领域编号。领域按这部分信息在聊天时属于什么话题来判断，同一话题下的身份、目标、条件、计划、偏好归入同一领域，不按维度区分。
-明确的玩笑、调侃内容不分类；同条记忆中的非玩笑事实仍可分类。
+"""
+    + PEER_DOMAIN_RULES
+    + """明确的玩笑、调侃内容不分类；同条记忆中的非玩笑事实仍可分类。
 同一条可支持多个维度或属性，但每个归类都须有正文中的具体信息支持；各维度独立判断，没有匹配维度时fields为空数组，不为覆盖维度而凑结果。
 每条记忆另给一个sensitivity，按正文判断，fields为空时也要给。
 只输出JSON对象：{"items":[{"id":"输入记录编号","fields":[{"dim":1,"domain":2,"attr":"职业"}],"sensitivity":"normal"}]}。
@@ -159,7 +177,9 @@ PREFERENCE_RULES = (
 属性名描述偏好的信息类别，具体对象、喜恶方向及条件留在正文；换成该类别的其他取值时属性名应保持不变。例如喜欢或不喜欢甜食均可使用“口味偏好”。按含义统一同义属性名，不预设类别列表。
 只提取正文支持的B的偏好属性，不把他人偏好或明确的玩笑当作B的偏好。
 每个属性再从领域列表中选一个领域，填领域编号。领域按偏好对象在聊天时属于什么话题来判断。
-每条记忆另给一个sensitivity，按正文判断，fields为空时也要给。
+"""
+    + PEER_DOMAIN_RULES
+    + """每条记忆另给一个sensitivity，按正文判断，fields为空时也要给。
 只输出JSON对象：{"items":[{"id":"输入编号","fields":[{"dim":8,"domain":2,"attr":"属性名"}],"sensitivity":"public"}]}。
 items覆盖每个输入id且各一次；fields是该条记忆涉及的不重复偏好属性，dim固定为8，无可用偏好时为空数组。
 """
@@ -296,6 +316,12 @@ def domain_block(domains: list[dict]) -> str:
     )
 
 
+def peer_block(relations: dict[str, str]) -> str:
+    if not relations:
+        return ""
+    return "\n## 聊天对象\n" + "\n".join(f"{peer}：{relation}" for peer, relation in relations.items()) + "\n"
+
+
 def domain_prompt(tags: list[tuple[str, int]]) -> str:
     return DOMAIN_RULES + "\n".join(f"{tag} {count}" for tag, count in tags)
 
@@ -309,8 +335,22 @@ def tag_domain_prompt(domains: list[dict], tags: list[tuple[int, str]]) -> str:
     )
 
 
-def classify_prompt(records: list[dict], dimensions: tuple[int, ...], domains: list[dict]) -> str:
-    # Rules and the domain list come first so every batch of one person shares the cached prefix.
+def peer_prompt(peer: str, records: list[dict]) -> str:
+    # Rules come first so every peer request shares the cached prefix.
+    return (
+        PEER_RULES
+        + f"\n聊天对象编号：{peer}\n记忆：\n"
+        + json.dumps(records, ensure_ascii=False, separators=(",", ":"))
+    )
+
+
+def classify_prompt(
+    records: list[dict],
+    dimensions: tuple[int, ...],
+    domains: list[dict],
+    relations: dict[str, str] | None = None,
+) -> str:
+    # Rules, the domain list and the peer relations come first so every batch of one person shares the cached prefix.
     if dimensions == (8,):
         rules, definitions = PREFERENCE_RULES, ""
     else:
@@ -319,6 +359,7 @@ def classify_prompt(records: list[dict], dimensions: tuple[int, ...], domains: l
     return (
         rules
         + domain_block(domains)
+        + peer_block(relations or {})
         + definitions
         + "\n记忆：\n"
         + json.dumps(records, ensure_ascii=False, separators=(",", ":"))

@@ -132,6 +132,7 @@ def test_split_skips_the_model_when_topics_are_small():
     [{"name": "申请材料", "items": [1]}, {"name": "课程", "items": [2]}],
     [{"name": "申请材料", "items": [1]}, {"name": "读博申请", "items": [2]}],
     [{"name": "申请材料", "items": [1]}, {"name": "面试", "items": [1]}],
+    [{"name": "申请材料", "items": [1]}, {"name": "与P19的相处", "items": [2]}],
 ])
 def test_split_needs_two_new_topics_covering_every_fact(topics):
     with pytest.raises(ValueError):

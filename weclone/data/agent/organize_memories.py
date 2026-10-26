@@ -1,12 +1,14 @@
 """Organize extracted profile/event memories by life domain, topic and dimension without reading chat messages.
 
 Stages: prepare reads the extracted memories and notes which chat each peer id (P1, P2, ...) stands for. domains induces the person's life domains from extraction tags
-and maps the tags to them. classify assigns each memory a dimension, a domain and an attribute name, in batches
-grouped by the tags' domains, and gives every memory a privacy level. topics groups each domain's profile
-attributes into conversation topics. summarize writes facts per (topic, dimension), each with its own privacy
-level and time scope (stable, current, superseded or dated); dimension 6 is summarized per chat peer and
-dimension 7 per domain. Identity facts of every domain share one request, so the model can tell which
-candidate a later one replaced.
+and maps the tags to them. peers writes one line per chat peer on how they relate to B, from the memories that
+mention them. classify assigns each memory a dimension, a domain and an attribute name, in batches grouped by the
+tags' domains, places what passes between B and a peer by that relation, and gives every memory a privacy level.
+topics groups each domain's profile attributes into conversation topics. summarize writes facts per (topic,
+dimension), each with its own privacy level and time scope (stable, current, superseded or dated); dimension 6 is
+summarized per chat peer and dimension 7 per domain. Identity facts of every domain share one request, so the model
+can tell which candidate a later one replaced, and profile groups of different domains that share a memory share
+one request, so its fact is written once.
 """
 
 from __future__ import annotations
@@ -29,6 +31,7 @@ from weclone.prompts.memory_organization import (
     BATCH_SUMMARY_SCHEMA,
     CLASSIFY_SCHEMA,
     DOMAIN_SCHEMA,
+    PEER_SCHEMA,
     PROFILE_DIMS,
     SENSITIVITY_LEVELS,
     SUMMARY_SCHEMA,
@@ -38,6 +41,7 @@ from weclone.prompts.memory_organization import (
     batch_summary_prompt,
     classify_prompt,
     domain_prompt,
+    peer_prompt,
     summarize_prompt,
     tag_domain_prompt,
     topic_prompt,
@@ -45,7 +49,7 @@ from weclone.prompts.memory_organization import (
 from weclone.utils import secure_storage
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
-STAGES = ("prepare", "domains", "classify", "topics", "summarize")
+STAGES = ("prepare", "domains", "peers", "classify", "topics", "summarize")
 # Domain induction and tag mapping read the tags used at least DOMAIN_TAG_MIN_COUNT times, keeping at least
 # DOMAIN_TAG_FLOOR and at most DOMAIN_TAG_LIMIT of the most used tags.
 DOMAIN_TAG_MIN_COUNT = 3
@@ -54,6 +58,11 @@ DOMAIN_TAG_LIMIT = 1000
 TAG_BATCH = 250
 MAX_DOMAINS = 20
 EXAMPLE_CHARS = 30
+# A peer's relation is read from at most PEER_MEMORY_LIMIT of the memories that mention the peer.
+PEER_MEMORY_LIMIT = 200
+PEER_RELATION_CHARS = 100
+# Extraction writes the chat peer as A; prompts show the peer id in its place.
+PEER_PLACEHOLDER = re.compile(r"(?<![A-Za-zＡ-Ｚａ-ｚ0-9０-９_])[AＡ](?![A-Za-zＡ-Ｚａ-ｚ0-9０-９_]|股)")
 
 
 def digest(value: Any) -> str:
@@ -197,11 +206,7 @@ def prompt_record(record: dict, *, include_sample_time: bool = False) -> dict:
     if record.get("sensitivity"):
         row["sensitivity"] = record["sensitivity"]
     if record.get("peer"):
-        row["content"] = re.sub(
-            r"(?<![A-Za-zＡ-Ｚａ-ｚ0-9０-９_])[AＡ](?![A-Za-zＡ-Ｚａ-ｚ0-9０-９_]|股)",
-            lambda _: record["peer"],
-            row["content"],
-        )
+        row["content"] = PEER_PLACEHOLDER.sub(lambda _: record["peer"], row["content"])
         if record["type"] == "preference":
             row["peer"] = record["peer"]
     return row
@@ -370,6 +375,36 @@ def validate_tag_domains(payload: Any, ids: set[int], domain_count: int) -> dict
     if len(mapping) != len(ids):
         raise ValueError("Missing tag ids")
     return mapping
+
+
+def peer_memories(records: list[dict], limit: int = PEER_MEMORY_LIMIT) -> dict[str, list[dict]]:
+    """Each peer's memories that mention the peer: state memories first, then events by importance, oldest first."""
+    mentions = defaultdict(list)
+    for row in records:
+        if PEER_PLACEHOLDER.search(row["content"]):
+            mentions[row["peer"]].append(row)
+    selected = {}
+    for peer in sorted(mentions, key=lambda peer: (len(peer), peer)):
+        ranked = sorted(
+            mentions[peer],
+            key=lambda row: (row["kind"] != "S", -row["importance"], row["sample_time"], row["id"]),
+        )
+        selected[peer] = sorted(ranked[:limit], key=lambda row: (row["sample_time"], row["id"]))
+    return selected
+
+
+def validate_peer(payload: Any) -> str:
+    """The peer's relation to B in one line; empty when the memories do not show it."""
+    if (
+        not isinstance(payload, dict)
+        or set(payload) != {"relation"}
+        or not isinstance(payload["relation"], str)
+    ):
+        raise ValueError("Peer relation requires relation")
+    relation = " ".join(payload["relation"].split())
+    if len(relation) > PEER_RELATION_CHARS:
+        raise ValueError("Peer relation is too long")
+    return relation
 
 
 def provisional_domains(records: list[dict], mapping: dict[str, int], counts: Counter) -> list[int | None]:
@@ -590,6 +625,7 @@ def task_schema(task: dict) -> dict:
     return {
         "domains": DOMAIN_SCHEMA,
         "tag_domains": TAG_DOMAIN_SCHEMA,
+        "peers": PEER_SCHEMA,
         "classify": CLASSIFY_SCHEMA,
         "topics": TOPIC_SCHEMA,
     }.get(task["stage"], SUMMARY_SCHEMA)
@@ -764,6 +800,40 @@ def validate_summary_batch(payload: Any, task: dict) -> list[dict]:
     return [results[i] for i in range(len(task["members"]))]
 
 
+def summary_partitions(tasks: list[dict]) -> dict[tuple, list[tuple[int, dict]]]:
+    """Summary tasks that may share a request: one stage and dimension, and one domain unless memories link them."""
+    keys = []
+    for task in tasks:
+        # Identity candidates of one person spread over domains (study status under background and under
+        # study, employment under job search and under work), and only one request can see which replaced which.
+        domain = None if task["dim"] == 1 else task.get("domain")
+        keys.append((task["stage"], task["dim"], domain))
+    # A memory classified under several domains feeds a group in each, and separate requests each write its fact.
+    # Profile groups linked by shared memories leave their domains for one partition, so one request writes the fact
+    # once. Dimension 7 is summarized per domain, and linking it would merge whole domains.
+    parent = list(range(len(tasks)))
+
+    def root(i: int) -> int:
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+
+    first: dict[tuple, int] = {}
+    for i, task in enumerate(tasks):
+        if task["dim"] in PROFILE_DIMS:
+            for sid in task["source_ids"]:
+                parent[root(i)] = root(first.setdefault((task["stage"], task["dim"], sid), i))
+    spans = defaultdict(set)
+    for i, key in enumerate(keys):
+        spans[root(i)].add(key)
+    partitions = defaultdict(list)
+    for i, task in enumerate(tasks):
+        linked = len(spans[root(i)]) > 1
+        partitions[(*keys[i][:2], ("linked", root(i))) if linked else keys[i]].append((i, task))
+    return partitions
+
+
 def run_summary_tasks(
     tasks: list[dict],
     runner: LLMTasks,
@@ -771,12 +841,7 @@ def run_summary_tasks(
     budget: InputBudget | None,
     max_records: int = 300,
 ) -> list[dict]:
-    partitions = defaultdict(list)
-    for i, task in enumerate(tasks):
-        # Identity candidates of one person spread over domains (study status under background and under
-        # study, employment under job search and under work), and only one request can see which replaced which.
-        domain = None if task["dim"] == 1 else task.get("domain")
-        partitions[(task["stage"], task["dim"], domain)].append((i, task))
+    partitions = summary_partitions(tasks)
     requests, positions = [], []
 
     def append(batch):
@@ -888,6 +953,7 @@ def run(args: argparse.Namespace) -> dict:
     record_path = args.output_dir / "records.json"
     peer_path = args.output_dir / "peers.json"
     domain_path = args.output_dir / "domains.json"
+    relation_path = args.output_dir / "peer_relations.json"
     task_path = args.output_dir / "classification_tasks.json"
     classification_path = args.output_dir / "classifications.json"
     topic_path = args.output_dir / "topics.json"
@@ -932,13 +998,32 @@ def run(args: argparse.Namespace) -> dict:
             )
             mapping = {tags[i - 1]: domain for result in results for i, domain in result.items()}
             save(domain_path, {"domains": domains, "tags": mapping})
+        if "peers" in stages:
+            tasks = [
+                {
+                    "stage": "peers",
+                    "peer": peer,
+                    "prompt": peer_prompt(
+                        peer, [prompt_record(row, include_sample_time=True) for row in rows]
+                    ),
+                }
+                for peer, rows in peer_memories(records).items()
+            ]
+            results = []
+            if tasks:
+                runner = runner or LLMTasks(args)
+                results = runner.run(tasks, lambda payload, _: validate_peer(payload))
+            save(relation_path, {task["peer"]: relation for task, relation in zip(tasks, results)})
         if set(stages) & {"classify", "topics", "summarize"}:
             state = load(domain_path)
             domains, mapping = state["domains"], state["tags"]
         if "classify" in stages:
+            if not secure_storage.file_exists(relation_path):
+                raise ValueError("Run the peers stage before classify")
+            relations = {peer: relation for peer, relation in load(relation_path).items() if relation}
 
             def prompt(rows, dims):
-                return classify_prompt([prompt_record(row) for row in rows], dims, domains)
+                return classify_prompt([prompt_record(row) for row in rows], dims, domains, relations)
 
             batches = classification_batches(
                 records,
@@ -1005,6 +1090,7 @@ def run(args: argparse.Namespace) -> dict:
                 {"items": load(classification_path)}, records, len(domains)
             )
             topics = load(topic_path)
+            relations = load(relation_path) if secure_storage.file_exists(relation_path) else {}
             # Summaries see each memory's privacy level, and the output sources keep it.
             levels = {item["id"]: item["sensitivity"] for item in classifications}
             by_id = {rid: {**row, "sensitivity": levels[rid]} for rid, row in by_id.items()}
@@ -1057,7 +1143,10 @@ def run(args: argparse.Namespace) -> dict:
                     "facts": facts,
                     "unused": unused,
                     "unassigned_ids": [item["id"] for item in classifications if not item["fields"]],
-                    "peers": load(peer_path),
+                    "peers": {
+                        peer: {**info, "relation": relations.get(peer, "")}
+                        for peer, info in load(peer_path).items()
+                    },
                     "sources": by_id,
                 },
             )

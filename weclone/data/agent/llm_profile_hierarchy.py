@@ -8,6 +8,7 @@ review UI.
 import argparse
 import hashlib
 import json
+import re
 from collections import defaultdict
 from pathlib import Path
 
@@ -15,6 +16,9 @@ from weclone.data.agent.organize_memories import LLMTasks, save, validate_topics
 from weclone.prompts.memory_organization import PROFILE_DIMS, dimension_name
 from weclone.prompts.profile_hierarchy import DESCRIBE_SCHEMA, SPLIT_SCHEMA, describe_prompt, split_prompt
 from weclone.utils import secure_storage
+
+# Chat peer ids as organize_memories assigns them: P1, P2, ...
+PEER_ID = re.compile(r"(?<![A-Za-z0-9])P\d+(?![A-Za-z0-9])")
 
 
 def topic_layout(data: dict) -> tuple[list[dict], list[dict]]:
@@ -42,6 +46,9 @@ def validate_split(payload, count: int, taken: set[str]) -> list[dict]:
     topics = validate_topics(payload, count)
     if len(topics) < 2 or any(topic["name"] in taken for topic in topics):
         raise ValueError("A split needs at least two topics with new names")
+    # The router reads topic names against the incoming message, where a chat peer id never appears.
+    if any(PEER_ID.search(topic["name"]) for topic in topics):
+        raise ValueError("Split topic names must not contain chat peer ids")
     return topics
 
 

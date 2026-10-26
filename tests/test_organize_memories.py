@@ -539,9 +539,34 @@ def test_summary_requests_combine_groups_within_one_domain_and_identity_across_d
     assert requests[1]["topic"] == "读博" and '主题："读博"' in requests[1]["prompt"]
 
 
+@pytest.mark.parametrize("dim", [3, 7])
+def test_summary_requests_join_groups_of_different_domains_that_share_a_memory(dim):
+    rows = {rid: record(rid) for rid in ("a", "b", "c", "d")}
+    units = [(1, "工作", ["a"]), (1, "副业", ["b", "c"]), (2, "读博", ["c", "d"])] if dim == 3 else [
+        (1, None, ["a", "b", "c"]), (2, None, ["c", "d"])]
+    groups = [{"dim": dim, "domain": domain, "attrs": ["属性"], "source_ids": ids, **({"topic": topic} if topic else {})}
+              for domain, topic, ids in units]
+    requests = []
+
+    class Runner:
+        def run(self, tasks, validate):
+            requests.extend(tasks)
+            return [validate({"groups": [{"id": i, "facts": []} for i in range(len(task["members"]))]}, task)
+                    if "members" in task else validate({"facts": []}, task) for task in tasks]
+
+    organize.summarize_groups(groups, rows, Runner())
+    if dim == 7:
+        assert [request["domain"] for request in requests] == [1, 2]
+        return
+    assert len(requests) == 2
+    assert requests[0]["topic"] == "工作"
+    assert [member["topic"] for member in requests[1]["members"]] == ["副业", "读博"]
+
+
 def test_task_schema_follows_stage_and_overrides():
     assert organize.task_schema({"stage": "domains"}) is organize.DOMAIN_SCHEMA
     assert organize.task_schema({"stage": "tag_domains"}) is organize.TAG_DOMAIN_SCHEMA
+    assert organize.task_schema({"stage": "peers"}) is organize.PEER_SCHEMA
     assert organize.task_schema({"stage": "classify"}) is organize.CLASSIFY_SCHEMA
     assert organize.task_schema({"stage": "topics"}) is organize.TOPIC_SCHEMA
     assert organize.task_schema({"stage": "reduce"}) is organize.SUMMARY_SCHEMA
@@ -564,6 +589,8 @@ def fake_runner(fields_for, seen, *, value="B计划与朋友周末郊游。"):
                     payload = {"domains": DOMAINS}
                 elif task["stage"] == "tag_domains":
                     payload = {"items": [{"id": i, "domain": 1} for i in task["ids"]]}
+                elif task["stage"] == "peers":
+                    payload = {"relation": " B的 朋友 "}
                 elif task["stage"] == "classify":
                     payload = {"items": [{"id": rid, "fields": fields_for(rid), "sensitivity": "private"} for rid in task["ids"]]}
                 elif task["stage"] == "topics":
@@ -737,7 +764,7 @@ def test_classify_stage_sends_preferences_with_preference_rules(tmp_path, monkey
         return []
 
     monkeypatch.setattr(organize, "LLMTasks", fake_runner(fields_for, []))
-    for stage in ("prepare", "domains", "classify"):
+    for stage in ("prepare", "domains", "peers", "classify"):
         organize.run(run_args(input_dir, output_dir, stage))
     records = organize.load(output_dir / "records.json")
     tasks = organize.load(output_dir / "classification_tasks.json")
@@ -751,6 +778,68 @@ def test_classify_stage_sends_preferences_with_preference_rules(tmp_path, monkey
     assert organize.load(output_dir / "classifications.json") == [
         {"id": rid, "fields": [], "sensitivity": "private"} for task in tasks for rid in task["ids"]
     ]
+
+
+def test_peer_memories_keep_mentions_state_first_then_important_events_in_time_order():
+    rows = [{**record(rid, kind=kind), "peer": peer, "content": content, "importance": importance,
+             "sample_time": time}
+            for rid, kind, peer, content, importance, time in [
+                ("e1", "ES", "P10", "B与A吃饭。", 2, "2024-03"),
+                ("e2", "ES", "P10", "B请A帮忙。", 4, "2024-02"),
+                ("s1", "S", "P10", "B与A是同事。", 2, "2024-04"),
+                ("e3", "ES", "P10", "B看了A股行情。", 5, "2024-01"),
+                ("e4", "ES", "P2", "B与A约饭。", 2, "2024-01"),
+                ("e5", "ES", "P3", "B在学习。", 5, "2024-01"),
+            ]]
+    selected = organize.peer_memories(rows, limit=2)
+    assert list(selected) == ["P2", "P10"]
+    assert [row["id"] for row in selected["P10"]] == ["e2", "s1"]
+    assert [row["id"] for row in selected["P2"]] == ["e4"]
+
+
+@pytest.mark.parametrize("payload,expected", [
+    ({"relation": " B的 同事 "}, "B的 同事"),
+    ({"relation": ""}, ""),
+    ({}, ValueError),
+    ({"relation": "同事", "note": "x"}, ValueError),
+    ({"relation": 1}, ValueError),
+    ({"relation": "关" * 101}, ValueError),
+])
+def test_peer_relation_is_one_short_line(payload, expected):
+    if expected is ValueError:
+        with pytest.raises(ValueError):
+            organize.validate_peer(payload)
+    else:
+        assert organize.validate_peer(payload) == expected
+
+
+def test_peer_relations_reach_classify_prompts_and_organized_peers(tmp_path, monkeypatch):
+    input_dir, output_dir = tmp_path / "input", tmp_path / "output"
+    sample, profile = write_input(input_dir)
+    profile["state_memories"].append(
+        {"type": "goal", "content": "B打算和大学同学A一起去郊游。", "tags": ["出行旅行"], "importance": 2, "confidence": 3}
+    )
+    organize.save(input_dir / "state_people" / "peer.json", [profile, {**profile, "chat_with_id": "peer2",
+                                                                       "state_memories": profile["state_memories"][:1]}])
+    seen = []
+    monkeypatch.setattr(organize, "LLMTasks", fake_runner(lambda rid: [field(5, "出行安排")], seen))
+    organize.run(run_args(input_dir, output_dir, "prepare"))
+    organize.run(run_args(input_dir, output_dir, "domains"))
+    with pytest.raises(ValueError, match="peers stage"):
+        organize.run(run_args(input_dir, output_dir, "classify"))
+    for stage in ("peers", "classify", "topics", "summarize"):
+        organize.run(run_args(input_dir, output_dir, stage))
+    requests = [task for task in seen if task["stage"] == "peers"]
+    assert [task["peer"] for task in requests] == ["P1"]
+    assert requests[0]["prompt"].startswith(prompts.PEER_RULES)
+    assert "B打算和大学同学P1一起去郊游。" in requests[0]["prompt"] and "B计划周末去郊游" not in requests[0]["prompt"]
+    assert organize.load(output_dir / "peer_relations.json") == {"P1": "B的 朋友"}
+    classify = [task["prompt"] for task in seen if task["stage"] == "classify"]
+    block = prompts.domain_block(DOMAINS) + "\n## 聊天对象\nP1：B的 朋友\n"
+    assert classify and all(block in prompt for prompt in classify)
+    assert all(prompt.index(block) < prompt.index("记忆：") for prompt in classify)
+    output = organize.load(output_dir / "organized_memories.json")
+    assert {peer: info["relation"] for peer, info in output["peers"].items()} == {"P1": "B的 朋友", "P2": ""}
 
 
 @pytest.mark.parametrize("split", [False, True])
