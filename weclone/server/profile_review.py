@@ -9,13 +9,21 @@ from pathlib import Path
 from typing import Literal
 from uuid import uuid4
 
-from fastapi import APIRouter, FastAPI, HTTPException
+from fastapi import APIRouter, FastAPI, HTTPException, Query
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from weclone.server.auth import install_auth
 from weclone.server.profile_intro import profile_intro
+from weclone.server.profile_summary import (
+    EXTRA_FACTS,
+    Level,
+    SummaryEdit,
+    SummaryGenerate,
+    SummaryReview,
+    SummaryStore,
+)
 from weclone.server.source_chat import source_chat
 from weclone.server.style_view import build_view, style_run_dir
 from weclone.utils import secure_storage as secure
@@ -439,6 +447,24 @@ def create_app(
     @app.post("/api/reviews/batch")
     def review(request: ReviewBatch):
         return store.review(request)
+
+    summaries = SummaryStore(store)
+
+    @app.get("/api/summaries")
+    def summary_view(level: Level = "full", facts: int = Query(0, ge=0, le=EXTRA_FACTS)):
+        return summaries.view(level, facts)
+
+    @app.post("/api/summaries/generate")
+    def summary_generate(request: SummaryGenerate):
+        return summaries.generate(request.level)
+
+    @app.patch("/api/summaries")
+    def summary_edit(request: SummaryEdit):
+        return summaries.edit(request)
+
+    @app.post("/api/summaries/review")
+    def summary_review(request: SummaryReview):
+        return summaries.review(request)
 
     @app.get("/api/style")
     def style():

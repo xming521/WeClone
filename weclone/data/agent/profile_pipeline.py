@@ -71,7 +71,7 @@ def run(
         max_context_tokens = organize_memories.resolve_context_window(args)
     click.echo(f"输入 Token 上限：{max_context_tokens}")
 
-    with _stage("[1/4] 准备聊天数据"):
+    with _stage("[1/5] 准备聊天数据"):
         from weclone.data.qa_generator import DataProcessor
 
         DataProcessor().main(
@@ -86,19 +86,19 @@ def run(
         raise FileNotFoundError(f"没有生成聊天样本：{people_dir}")
     click.echo(f"聊天样本准备完成：{len(source_files)} 个聊天文件。")
 
-    with _stage("[2/4] 抽取画像记忆"):
+    with _stage("[2/5] 抽取画像记忆"):
         distill_profile.main(
             input_dir=people_dir, output_dir=distill_dir, config_path=config_path, confirmed=True
         )
         check_distillation(distill_profile.default_state_path(distill_dir))
     if with_events:
-        with _stage("[2/4] 抽取事件记忆"):
+        with _stage("[2/5] 抽取事件记忆"):
             distill_event.main(
                 input_dir=people_dir, output_dir=distill_dir, config_path=config_path, confirmed=True
             )
             check_distillation(distill_event.default_event_state_path(distill_dir))
 
-    with _stage("[3/4] 归纳领域、分类、分主题和汇总记忆"):
+    with _stage("[3/5] 归纳领域、分类、分主题和汇总记忆"):
         organize_memories.main(
             [
                 "--stage",
@@ -114,7 +114,7 @@ def run(
             ]
         )
 
-    with _stage("[4/4] 生成画像层级"):
+    with _stage("[4/5] 生成画像层级"):
         llm_profile_hierarchy.main(
             [
                 "--input-path",
@@ -130,4 +130,12 @@ def run(
         result = secure_storage.resolve_path(hierarchy_dir / "profile_hierarchy.json")
         if not result.is_file():
             raise FileNotFoundError(f"没有生成画像文件：{result}")
+
+    # The profile is done by now, so domains left without a summary only get a note.
+    with _stage("[5/5] 生成领域总结"):
+        from weclone.server.profile_summary import build_summaries
+
+        missing = build_summaries(hierarchy_dir)
+    if missing:
+        click.echo(f"领域总结：{missing}")
     return result
