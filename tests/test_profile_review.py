@@ -4,6 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from weclone.server.profile_review import DEFAULT_STATIC_DIR, ReviewStore, create_app
+from weclone.utils import secure_storage
 
 
 def test_bundled_frontend_assets_exist():
@@ -12,8 +13,15 @@ def test_bundled_frontend_assets_exist():
 
 
 @pytest.fixture
-def setup(tmp_path, capsys):
+def setup(tmp_path, monkeypatch):
+    settings = tmp_path / "settings.jsonc"
+    settings.write_text(
+        json.dumps({"security_args": {"storage_mode": "plaintext", "state_dir": str(tmp_path / "state")}})
+    )
+    monkeypatch.setenv("WECLONE_CONFIG_PATH", str(settings))
+    secure_storage.configure()
     data = {
+        "domains": [],
         "dimensions": [{"dim": 8, "name": "兴趣", "groups": [
             {"name": "运动", "items": [{"attr": "运动偏好", "fact_indices": [0, 1]}]},
             {"name": "阅读", "items": [{"attr": "阅读偏好", "fact_indices": [2]}]},
@@ -31,9 +39,9 @@ def setup(tmp_path, capsys):
     source.write_text(json.dumps(data), encoding="utf-8")
     database = tmp_path / "review.sqlite3"
     client = TestClient(create_app(database, source, tmp_path / "no-static"))
-    password = capsys.readouterr().out.strip().split("：")[-1]
     client.headers["X-WeClone-Request"] = "1"
-    assert client.post("/api/auth/login", json={"password": password}).status_code == 200
+    password = {"password": "review-test", "confirmation": "review-test"}
+    assert client.post("/api/auth/setup", json=password).status_code == 200
     return client, database, source
 
 
@@ -149,7 +157,7 @@ def test_validation_and_reversing_decision(setup):
     assert len(facts(client)) == 3
 
 
-def test_domain_metadata_only_for_domain_profiles(tmp_path):
+def test_domain_metadata_only_in_review_profile(tmp_path):
     data = {
         "domains": [{"name": "兴趣", "description": "B的爱好。", "topics": [
             {"name": "运动", "fact_indices": [0]}, {"name": "阅读", "fact_indices": [1]},
@@ -166,22 +174,20 @@ def test_domain_metadata_only_for_domain_profiles(tmp_path):
     store = ReviewStore(tmp_path / "domains.sqlite3", source)
     assert store.profile()["domains"] == [{"name": "兴趣", "description": "B的爱好。", "topics": ["运动", "阅读"]}]
     assert "domains" not in store.profile(approved_only=True)
-    del data["domains"]
-    source.write_text(json.dumps(data), encoding="utf-8")
-    assert "domains" not in ReviewStore(tmp_path / "plain.sqlite3", source).profile()
 
 
-def test_invalid_snapshot_import_rolls_back(tmp_path, capsys):
+def test_invalid_snapshot_import_rolls_back(tmp_path):
     source = tmp_path / "source.json"
     database = tmp_path / "review.sqlite3"
-    data = {"dimensions": [{"dim": 8, "name": "兴趣", "groups": []}], "facts": [{"value": "未挂载"}], "sources": {}}
+    data = {
+        "domains": [],
+        "dimensions": [{"dim": 8, "name": "兴趣", "groups": []}],
+        "facts": [{"value": "未挂载"}],
+        "sources": {},
+    }
     source.write_text(json.dumps(data))
     with pytest.raises(ValueError, match="every fact"):
-        create_app(database, source)
+        ReviewStore(database, source).profile()
     data["facts"] = []
     source.write_text(json.dumps(data))
-    client = TestClient(create_app(database, source))
-    password = capsys.readouterr().out.strip().split("：")[-1]
-    assert client.post("/api/auth/login", json={"password": password},
-                       headers={"X-WeClone-Request": "1"}).status_code == 200
-    assert facts(client) == []
+    assert ReviewStore(database, source).profile()["facts"] == []

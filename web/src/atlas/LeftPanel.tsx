@@ -26,7 +26,6 @@ export function LeftPanel({
 }) {
   const viewModel = useProfileStore((state) => state.viewModel)!;
   const fullModel = useProfileStore((state) => state.fullModel)!;
-  const hasDomains = useProfileStore((state) => !!state.input?.domains?.length);
   const focusedDimension = useProfileStore((state) => state.focusedDimension);
   const reveal = useProfileStore((state) => state.reveal);
   const byDomain = viewModel.grouping === 'domain';
@@ -64,7 +63,7 @@ export function LeftPanel({
       </div>
       <div className="nav-heading-row">
         <div className="nav-heading">{heading}</div>
-        {hasDomains && <GroupingSwitch value={viewModel.grouping} />}
+        <GroupingSwitch value={viewModel.grouping} />
       </div>
       <nav className={`dimension-list${byDomain ? ' is-compact' : ''}`} aria-label={heading}>
         {viewModel.dimensionIds.map((id) => {

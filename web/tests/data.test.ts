@@ -20,6 +20,7 @@ import {
 import type { ProfileFact, ProfileInput } from '../src/data.ts';
 
 const input: ProfileInput = {
+  domains: [],
   dimensions: [
     {
       dim: 8,
@@ -129,6 +130,7 @@ function reconcileFixture(): ProfileInput {
     original: { attr: node, value: `内容${i}`, source_ids: [] },
   });
   return {
+    domains: [],
     dimensions: [
       {
         dim: 8,
@@ -384,14 +386,11 @@ test('domain grouping merges topics across dimensions and keeps the stored attri
   assert.equal(model.nodes.get('root')!.attributeCount, 5);
 });
 
-test('domain grouping keeps node identity across review views and needs a domain list', () => {
+test('domain grouping keeps node identity across review views', () => {
   const all = buildModel(domainInput, 'domain');
   const approved = buildModel(filterProfile(domainInput, 'approved'), 'domain');
   assert.deepEqual(approved.dimensionIds, [all.dimensionIds[1]]);
   assert.equal(approved.nodes.get('attr-sport')!.parentId, all.nodes.get('attr-sport')!.parentId);
-  const plain = buildModel({ ...domainInput, domains: undefined }, 'domain');
-  assert.equal(plain.grouping, 'dimension');
-  assert.deepEqual(plain.dimensionIds, ['dimension:3', 'dimension:8']);
 });
 
 test('factTags puts the tags more sources share first and skips missing sources', () => {

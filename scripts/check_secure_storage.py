@@ -455,6 +455,7 @@ class SecureStorageChecks(unittest.TestCase):
             [
                 {
                     "id": "1",
+                    "chat_with_id": "peer",
                     "state_memories": [
                         {
                             "type": "stable_fact",

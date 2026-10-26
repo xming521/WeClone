@@ -53,6 +53,7 @@ def chats(tmp_path):
     ], ensure_ascii=False), encoding="utf-8")
     origin = lambda sample: [{"file": str(chat), "sample_id": sample}]  # noqa: E731
     return {
+        "domains": [],
         "dimensions": hierarchy(
             (8, "兴趣", [("运动", "运动偏好", [0]), ("户外", "户外偏好", [2])]),
             (1, "基本身份", [("健康状况", "睡眠", [1])]),
@@ -99,6 +100,7 @@ def test_rejected_fact_no_longer_lends_lines(client_for, chats):
 def test_inline_conversations_use_the_most_frequent_last_speaker(client_for):
     data = {
         "_demo": {"message_total": 41236, "messages_by_month": {"2019-05": 3, "2026-02": 7, "2018-01": 0}},
+        "domains": [],
         "dimensions": hierarchy((8, "兴趣", [("运动", "运动偏好", [0, 1])]), (5, "计划", [("投资理财", "基金", [2])])),
         "facts": [
             {"dim": 8, "attr": "运动偏好", "value": "跑步", "source_ids": ["s1"]},

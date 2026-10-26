@@ -29,7 +29,7 @@ interface ProfileValues {
   // Data
   input: ProfileInput | null;
   view: ReviewView;
-  /** Requested first level of the map; profiles without domains always show dimensions (see `ProfileModel.grouping`). */
+  /** First level of the map: the five dimensions or the person's life domains. */
   grouping: Grouping;
   /** Model of the facts matching `view`. */
   viewModel: ProfileModel | null;

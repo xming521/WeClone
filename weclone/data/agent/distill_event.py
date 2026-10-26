@@ -32,9 +32,7 @@ from weclone.data.agent.distill_windows import (
     generate_window_batch,
     group_samples,
     make_window_request,
-    render_sample,
 )
-from weclone.prompts.distill_memory import EVENT_EXTRACT_PROMPT
 from weclone.utils import secure_storage
 from weclone.utils.log import logger
 
@@ -84,15 +82,6 @@ def apply_payload_to_item(item: dict[str, Any], payload: dict[str, Any]) -> bool
     return True
 
 
-def render_event_chat(item: dict[str, Any], *, target_role: str, sample_id: str) -> str:
-    return render_sample(item, sample_id=sample_id, target_role=target_role, include_time=True)
-
-
-def build_prompt(item: dict[str, Any], *, target_role: str, sample_id: str) -> str:
-    rendered_chat = render_event_chat(item, target_role=target_role, sample_id=sample_id)
-    return EVENT_EXTRACT_PROMPT.replace("{{CHAT_JSON}}", rendered_chat)
-
-
 def process_file(
     source_path: Path,
     *,
@@ -105,7 +94,6 @@ def process_file(
     max_tokens: int | None,
     batch_size: int,
     limit_records: int | None,
-    overwrite: bool,
     dry_run: bool,
     state: dict[str, Any],
     state_path: Path,
@@ -143,13 +131,6 @@ def process_file(
             payload = record.get("payload")
             if isinstance(payload, dict) and not dry_run:
                 writeback_changed = apply_payload_to_item(item, payload) or writeback_changed
-            skipped_count += 1
-            continue
-
-        if not overwrite and isinstance(item.get(EVENT_WRITEBACK_FIELD), dict):
-            record["status"] = "done"
-            record["done_reason"] = "input_writeback"
-            record["updated_at"] = now_ts()
             skipped_count += 1
             continue
 
@@ -347,7 +328,6 @@ def main(
                 max_samples_per_window=args.max_samples_per_window,
                 max_content_chars=args.max_content_chars,
                 limit_records=args.limit_records,
-                overwrite=args.overwrite,
                 dry_run=args.dry_run,
                 state=state,
                 state_path=state_path,

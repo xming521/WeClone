@@ -80,8 +80,6 @@ def in_scope(fact: dict, level: str) -> bool:
 def domain_inputs(profile: dict, level: str) -> list[dict]:
     """For each domain of the review store's profile, in order: the facts a summary at `level` is written from,
     as prompt lines with their hash and as export lines, and the last month any of them came up."""
-    if not profile.get("domains"):
-        raise HTTPException(409, "这份画像没有领域划分，请用 build-profile 重新生成")
     members: dict[str, list[int]] = {domain["name"]: [] for domain in profile["domains"]}
 
     def collect(items: list[dict], domain: str):
@@ -444,8 +442,6 @@ def build_summaries(directory: Path) -> str:
         store = SummaryStore(
             ReviewStore(directory / "profile_review.sqlite3", directory / "profile_hierarchy.json")
         )
-        if not store.store.profile().get("domains"):
-            return "画像没有领域划分，没有生成总结。"
         store.generate("full", wait=True)
     except Exception as exc:
         # The profile is already written, so any failure here only leaves the summaries for a later run.

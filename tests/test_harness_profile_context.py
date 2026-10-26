@@ -95,11 +95,6 @@ def test_tree_hides_future_facts_and_dates_by_month():
     )
 
 
-def test_tree_requires_domains():
-    with pytest.raises(ValueError, match="domains"):
-        ProfileTree({"dimensions": [], "facts": []})
-
-
 def test_tree_applies_review_decisions_when_review_db_exists(tmp_path):
     data = profile()
     for item in data["facts"]:

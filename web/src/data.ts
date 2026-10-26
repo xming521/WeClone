@@ -77,8 +77,8 @@ export interface ProfileInput {
   locations: { id: string; parent_id: string | null; kind: string; name: string; dim: number }[];
   snapshot_sha256: string;
   dimensions: { dim: number; name: string; groups: GroupInput[] }[];
-  /** Present when the profile is organized by domain: each dimension then groups by domain, then topic. */
-  domains?: DomainInput[];
+  /** Each dimension groups by domain, then topic. This list gives the domains' order, descriptions and topics. */
+  domains: DomainInput[];
   facts: ProfileFact[];
   sources: Record<string, ProfileSource>;
 }
@@ -205,7 +205,7 @@ function domainLevel(input: ProfileInput): TopLevelInput[] {
     return domain;
   };
   // Listed domains take their keys first, so a domain keeps its id and colour in every review view.
-  for (const domain of input.domains ?? []) domainOf(domain.name, domain.description);
+  for (const domain of input.domains) domainOf(domain.name, domain.description);
   for (const dimension of input.dimensions) {
     if (!DIMENSIONS.some((entry) => entry.dim === dimension.dim)) continue;
     for (const group of dimension.groups) {
@@ -227,7 +227,7 @@ function domainLevel(input: ProfileInput): TopLevelInput[] {
       }
     }
   }
-  const listedTopics = new Map((input.domains ?? []).map((domain) => [domain.name, domain.topics]));
+  const listedTopics = new Map(input.domains.map((domain) => [domain.name, domain.topics]));
   return [...domains.values()]
     .filter((domain) => domain.topics.size || domain.direct.length)
     .map((domain) => {
@@ -240,13 +240,7 @@ function domainLevel(input: ProfileInput): TopLevelInput[] {
     });
 }
 
-/** The grouping a profile can show: the domain view needs a profile organized by domain. */
-export function effectiveGrouping(input: ProfileInput, grouping: Grouping): Grouping {
-  return grouping === 'domain' && input.domains?.length ? 'domain' : 'dimension';
-}
-
-export function buildModel(input: ProfileInput, requested: Grouping = 'dimension'): ProfileModel {
-  const grouping = effectiveGrouping(input, requested);
+export function buildModel(input: ProfileInput, grouping: Grouping = 'dimension'): ProfileModel {
   const nodes = new Map<string, ProfileNode>();
   const attributeIds: string[] = [];
   const dimensionIds: string[] = [];

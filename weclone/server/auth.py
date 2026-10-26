@@ -39,11 +39,6 @@ class AuthStore:
                 CREATE TABLE IF NOT EXISTS sessions (hash TEXT PRIMARY KEY, expires REAL NOT NULL);
             """)
             db.execute("BEGIN IMMEDIATE")
-            # Old generated passwords and 30-day cookies are no longer valid.
-            if db.execute("PRAGMA user_version").fetchone()[0] < 2:
-                db.execute("DELETE FROM sessions")
-                db.execute("DROP TABLE IF EXISTS credentials")
-                db.execute("PRAGMA user_version=2")
             self._sync_generation(db)
 
     @contextmanager

@@ -110,15 +110,12 @@ class CodexExecArgs(BaseConfigModel):
 
 class AgentDistillArgs(BaseConfigModel):
     llm_provider: str = Field("codex_exec", description="LLM backend for agent distill: codex_exec or api")
-    model: Optional[str] = None
-    effort: Optional[str] = None
+    # The request settings below apply to the api backend. codex_exec reads them from codex_exec_args.
     batch_size: int = Field(10, ge=1, description="Maximum concurrent distillation requests")
     max_tokens: Optional[int] = Field(
         None, ge=1, description="Maximum output tokens per distillation request"
     )
     timeout: int = Field(120, ge=1, description="Timeout in seconds for distillation requests")
-    command: str = Field("codex", description="Codex CLI command")
-    sandbox: str = Field("read-only", description="Codex sandbox mode")
 
 
 class ProfileContextArgs(BaseConfigModel):

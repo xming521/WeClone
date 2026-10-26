@@ -19,7 +19,7 @@ def test_template_preserves_codex_distill_settings():
     }
     assert required <= config.keys()
     assert all(config[key] not in (None, "") for key in required)
-    assert (config["request_interval_seconds"], config["capacity_cooldown_seconds"]) == (0.5, 10.0)
+    assert (config["request_interval_seconds"], config["capacity_cooldown_seconds"]) == (0.5, 20.0)
     assert "max_tokens" not in config
     args = distill_profile.default_args()
     args.config_path = Path("settings.template.jsonc")

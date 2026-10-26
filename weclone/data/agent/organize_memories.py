@@ -105,15 +105,13 @@ def allowed_dimensions(record: dict) -> tuple[int, ...]:
     return tuple(sorted(dims))
 
 
-def read_memories(input_dir: Path, *, preferences_only: bool = False) -> tuple[list[dict], dict[str, dict]]:
+def read_memories(input_dir: Path) -> tuple[list[dict], dict[str, dict]]:
     """Memories passing the score filters, and the chat_with_id and chat_with behind each peer id."""
     records: dict[str, dict] = {}
     peer_ids: dict[str, str] = {}
     peers: dict[str, dict] = {}
     sample_ids: dict[str, str] = {}
     for directory, field in (("state_people", "state_memories"), ("event_people", "event_memories")):
-        if preferences_only and field != "state_memories":
-            continue
         for path in secure_storage.iter_files(input_dir / directory):
             if "manifest" in path.name:
                 continue
@@ -122,11 +120,7 @@ def read_memories(input_dir: Path, *, preferences_only: bool = False) -> tuple[l
                 raise ValueError(f"Expected sample array: {path}")
             for index, sample in enumerate(samples):
                 sid = distill_profile.sample_id_for(sample, index)
-                peer_key = digest(
-                    sample.get("chat_with_id")
-                    or sample.get("chat_with")
-                    or secure_storage.logical_path(path).stem
-                )
+                peer_key = digest(sample["chat_with_id"])
                 peer = peer_ids.setdefault(peer_key, f"P{len(peer_ids) + 1}")
                 peers.setdefault(peer, {key: sample.get(key) for key in ("chat_with_id", "chat_with")})
                 sample_key = sample_ids.setdefault(
@@ -184,13 +178,7 @@ def read_memories(input_dir: Path, *, preferences_only: bool = False) -> tuple[l
                             if key in memory:
                                 record[key] = memory[key]
                         records[memory_key] = record
-    selected = [
-        row
-        for row in records.values()
-        if row["importance"] >= 2
-        and row["confidence"] >= 3
-        and (not preferences_only or row["type"] == "preference")
-    ]
+    selected = [row for row in records.values() if row["importance"] >= 2 and row["confidence"] >= 3]
     if not selected:
         raise ValueError(f"No extracted memories match the input and score filters in {input_dir}")
     return sorted(selected, key=lambda row: (row["sample_time"], row["sample"], row["id"])), peers
@@ -266,10 +254,8 @@ def resolve_context_window(args: argparse.Namespace) -> int:
     provider = args.llm_provider or distill_profile.load_agent_distill_config(args.config_path).get(
         "llm_provider"
     )
-    if provider == "codex_exec":
-        config = distill_profile.load_agent_distill_config(args.config_path)
-        if not config.get("model"):
-            config = {**distill_profile.load_codex_exec_config(args.config_path), **config}
+    if distill_profile.normalize_llm_provider(provider) == "codex_exec":
+        config = distill_profile.load_codex_exec_config(args.config_path)
         command = config.get("command", "codex")
         effective_config = asyncio.run(codex_config(command))
         catalog = json.loads(
@@ -945,7 +931,7 @@ def summarize_groups(
 
 def run(args: argparse.Namespace) -> dict:
     if args.dry_run:
-        records, _ = read_memories(args.input_dir, preferences_only=args.preferences_only)
+        records, _ = read_memories(args.input_dir)
         return {"records": len(records), "by_kind": dict(Counter(row["kind"] for row in records))}
     budget = input_budget(args)
     print(f"codex_context_tokens={args.max_context_tokens}", flush=True)
@@ -961,19 +947,13 @@ def run(args: argparse.Namespace) -> dict:
     runner = None
     try:
         if "prepare" in stages:
-            records, peers = read_memories(args.input_dir, preferences_only=args.preferences_only)
+            records, peers = read_memories(args.input_dir)
             if secure_storage.file_exists(record_path) and load(record_path) != records:
                 raise ValueError("Input snapshot changed; use a new output directory")
             save(record_path, records)
             save(peer_path, peers)
         else:
             records = load(record_path)
-            if args.preferences_only and any(
-                row["kind"] != "S" or row["type"] != "preference" for row in records
-            ):
-                raise ValueError(
-                    "Snapshot contains non-preference memories; use the preferences output directory"
-                )
         by_id = {row["id"]: row for row in records}
         counts = tag_counts(records)
         if "domains" in stages:
@@ -1090,7 +1070,7 @@ def run(args: argparse.Namespace) -> dict:
                 {"items": load(classification_path)}, records, len(domains)
             )
             topics = load(topic_path)
-            relations = load(relation_path) if secure_storage.file_exists(relation_path) else {}
+            relations = load(relation_path)
             # Summaries see each memory's privacy level, and the output sources keep it.
             levels = {item["id"]: item["sensitivity"] for item in classifications}
             by_id = {rid: {**row, "sensitivity": levels[rid]} for rid, row in by_id.items()}
@@ -1163,12 +1143,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--stage", choices=(*STAGES, "all"), default="all")
     parser.add_argument("--input-dir", type=Path, default=Path("dataset/res_csv/agent/distill"))
     parser.add_argument(
-        "--preferences-only", action="store_true", help="Only organize preference profile memories"
-    )
-    parser.add_argument(
-        "--output-dir",
-        type=Path,
-        help="Defaults to memory_organization_preferences for --preferences-only, otherwise memory_organization",
+        "--output-dir", type=Path, default=Path("dataset/res_csv/agent/memory_organization")
     )
     parser.add_argument("--config-path", type=Path, default=Path("settings.jsonc"))
     parser.add_argument("--llm-provider", choices=("api", "codex_exec"))
@@ -1204,9 +1179,6 @@ def main(argv: list[str] | None = None) -> None:
     )
     args = parser.parse_args(argv)
     secure_storage.configure(args.config_path)
-    if args.output_dir is None:
-        name = "memory_organization_preferences" if args.preferences_only else "memory_organization"
-        args.output_dir = Path("dataset/res_csv/agent") / name
     for name in (
         "max_context_tokens",
         "max_records",

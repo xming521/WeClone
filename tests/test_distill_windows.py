@@ -150,7 +150,6 @@ def test_process_writeback_retry_resume_and_input_preservation(tmp_path, task, m
         "max_tokens": None,
         "batch_size": 2,
         "limit_records": None,
-        "overwrite": False,
         "dry_run": False,
         "state": state,
         "state_path": tmp_path / "checkpoint.json",
@@ -203,7 +202,6 @@ def test_failed_window_never_becomes_successful_empty_memories(tmp_path, task, m
         max_tokens=None,
         batch_size=30,
         limit_records=None,
-        overwrite=False,
         dry_run=False,
         state=state,
         state_path=tmp_path / "checkpoint.json",
@@ -215,41 +213,10 @@ def test_failed_window_never_becomes_successful_empty_memories(tmp_path, task, m
     assert not module.output_path_for(output_dir, source).exists()
 
 
-@pytest.mark.parametrize("task,module", [("state", distill_profile), ("event", distill_event)])
-def test_existing_input_memories_are_written_to_separate_output(tmp_path, task, module):
-    item = sample(0).item
-    item[f"{task}_memories"] = result("0", task)[f"{task}_memories"]
-    source = tmp_path / "input.json"
-    source.write_text(json.dumps([item]))
-    output_dir = tmp_path / "output"
-    client = Mock()
-    assert module.process_file(
-        source,
-        output_dir=output_dir,
-        target_role="assistant",
-        provider="codex_exec",
-        model="fixture",
-        effort="low",
-        client=client,
-        max_tokens=None,
-        batch_size=30,
-        limit_records=None,
-        overwrite=False,
-        dry_run=False,
-        state={"entries": {}},
-        state_path=tmp_path / "checkpoint.json",
-        indent=2,
-        progress_factory=Mock(),
-    ) == (0, 0)
-    client.generate_batch.assert_not_called()
-    assert json.loads(module.output_path_for(output_dir, source).read_text()) == [item]
-
-
 @pytest.mark.parametrize("max_tokens", [None, 4096])
 def test_window_config_preserves_model_concurrency_and_optional_token_limit(tmp_path, max_tokens):
     config = {
-        "agent_distill_args": {
-            "llm_provider": "codex_exec",
+        "codex_exec_args": {
             "model": "configured-model",
             "effort": "low",
             "command": "codex",
@@ -258,6 +225,7 @@ def test_window_config_preserves_model_concurrency_and_optional_token_limit(tmp_
             "timeout": 120,
             "max_tokens": max_tokens,
         },
+        "agent_distill_args": {"llm_provider": "codex_exec"},
     }
     path = tmp_path / "settings.jsonc"
     path.write_text(json.dumps(config))
@@ -266,51 +234,6 @@ def test_window_config_preserves_model_concurrency_and_optional_token_limit(tmp_
     distill_profile.resolve_llm_args(args)
     assert (args.max_samples_per_window, args.max_content_chars) == (8, 400)
     assert (args.model, args.batch_size, args.max_tokens) == ("configured-model", 30, max_tokens)
-
-
-@pytest.mark.parametrize("task,module", [("state", distill_profile), ("event", distill_event)])
-def test_legacy_checkpoint_restores_per_sample_results(tmp_path, task, module):
-    source = tmp_path / "input.json"
-    items = [sample(0).item, sample(1, recent=True).item]
-    items[1][f"{task}_memories"] = [] if task == "state" else {}
-    source.write_text(json.dumps(items))
-    value = result("0", task)[f"{task}_memories"]
-    expected = json.loads(json.dumps(value))
-    if task == "state":
-        value.append({"type": "current_state", "content": "已过期的近期状态"})
-        value = {"memories": value}
-    state = {
-        "entries": {
-            distill_profile.state_key(source, "0"): {
-                "status": "done",
-                "payload": {"result": value, "response": {"ok": True}},
-            }
-        }
-    }
-    client = Mock()
-    output_dir = tmp_path / "output"
-    assert module.process_file(
-        source,
-        output_dir=output_dir,
-        target_role="assistant",
-        provider="codex_exec",
-        model="fixture",
-        effort="low",
-        client=client,
-        max_tokens=None,
-        batch_size=30,
-        limit_records=None,
-        overwrite=False,
-        dry_run=False,
-        state=state,
-        state_path=tmp_path / "checkpoint.json",
-        indent=2,
-        progress_factory=Mock(),
-    ) == (0, 0)
-    client.generate_batch.assert_not_called()
-    assert (
-        json.loads(module.output_path_for(output_dir, source).read_text())[0][f"{task}_memories"] == expected
-    )
 
 
 @pytest.mark.parametrize("module", [distill_profile, distill_event])
@@ -330,7 +253,6 @@ def test_dry_run_previews_a_whole_window_without_writes(tmp_path, capsys, module
         max_tokens=None,
         batch_size=30,
         limit_records=None,
-        overwrite=False,
         dry_run=True,
         state={"entries": {}},
         state_path=checkpoint,

@@ -59,6 +59,7 @@ class ProfileSourceChecks(unittest.TestCase):
             "legacy": {"content": "旧来源"},
         }
         profile = {
+            "domains": [],
             "dimensions": [
                 {
                     "dim": 8,

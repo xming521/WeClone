@@ -15,6 +15,7 @@ import {
 } from '../src/atlas/graphLayout.ts';
 
 const input: ProfileInput = {
+  domains: [],
   dimensions: [
     {
       dim: 8,

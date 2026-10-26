@@ -61,6 +61,7 @@ class WebSecurityChecks(unittest.TestCase):
         secure.write_json(
             self.options["source"],
             {
+                "domains": [],
                 "dimensions": [
                     {
                         "dim": 1,

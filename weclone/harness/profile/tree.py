@@ -50,31 +50,26 @@ def reviewed_profile(review: dict) -> dict:
                         if fact["status"] != "rejected":
                             indices.append(len(facts))
                             facts.append({**fact, "attr": attribute["attr"]})
-    data = {"facts": facts, "sources": review.get("sources", {})}
-    if review.get("domains"):
-        domains = {
-            domain["name"]: {
-                "name": domain["name"],
-                "description": domain.get("description", ""),
-                "topics": [],
-            }
-            for domain in review["domains"]
-        }
-        order = {
-            (domain["name"], name): rank
-            for rank, (domain, name) in enumerate(
-                (domain, name) for domain in review["domains"] for name in domain["topics"]
+    domains = {
+        domain["name"]: {"name": domain["name"], "description": domain["description"], "topics": []}
+        for domain in review["domains"]
+    }
+    order = {
+        (domain["name"], name): rank
+        for rank, (domain, name) in enumerate(
+            (domain, name) for domain in review["domains"] for name in domain["topics"]
+        )
+    }
+    for (domain, topic), indices in sorted(topics.items(), key=lambda item: order.get(item[0], len(order))):
+        if indices:
+            domains.setdefault(domain, {"name": domain, "description": "", "topics": []})["topics"].append(
+                {"name": topic, "fact_indices": indices}
             )
-        }
-        for (domain, topic), indices in sorted(
-            topics.items(), key=lambda item: order.get(item[0], len(order))
-        ):
-            if indices:
-                domains.setdefault(domain, {"name": domain, "description": "", "topics": []})[
-                    "topics"
-                ].append({"name": topic, "fact_indices": indices})
-        data["domains"] = [domain for domain in domains.values() if domain["topics"]]
-    return data
+    return {
+        "facts": facts,
+        "sources": review.get("sources", {}),
+        "domains": [domain for domain in domains.values() if domain["topics"]],
+    }
 
 
 @dataclass(frozen=True)
@@ -87,9 +82,7 @@ class Topic:
 
 class ProfileTree:
     def __init__(self, data: dict, path: Path | None = None):
-        domains = data.get("domains")
-        if not isinstance(domains, list) or not domains:
-            raise ValueError("画像缺少 domains，需要 build-profile 生成的 profile_hierarchy.json")
+        domains = data["domains"]
         self.path = path
         self.facts = data["facts"]
         sources = data.get("sources", {})
@@ -102,7 +95,7 @@ class ProfileTree:
             )
             for fact in self.facts
         ]
-        self.domains = [(domain["name"], domain.get("description", "")) for domain in domains]
+        self.domains = [(domain["name"], domain["description"]) for domain in domains]
         self.topics: dict[str, Topic] = {}
         for d, domain in enumerate(domains):
             for t, topic in enumerate(domain["topics"]):

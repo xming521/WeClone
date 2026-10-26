@@ -33,6 +33,7 @@ function fact(
 }
 
 const input: ProfileInput = {
+  domains: [],
   dimensions: [
     {
       dim: 1,

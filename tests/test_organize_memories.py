@@ -138,46 +138,13 @@ def test_dimension_source_contract(kind, type_, dims):
     assert organize.allowed_dimensions(record("x", kind, type_)) == dims
 
 
-def test_preference_reader_preserves_ids_scores_and_origins_without_reading_events(tmp_path):
-    _, profile = write_input(tmp_path)
-    profile["state_memories"].extend([
-        {"type": "preference", "content": text, "importance": importance, "confidence": confidence}
-        for text, importance, confidence in [("B喜欢徒步。", 2, 3), ("B不喜欢登山。", 3, 4),
-                                             ("B偏好独处。", 1, 4), ("B喜欢热闹。", 3, 2)]
-    ])
-    organize.save(tmp_path / "state_people" / "peer.json", [profile])
-    expected = [row for row in organize.read_memories(tmp_path)[0] if row["type"] == "preference"]
-    (tmp_path / "event_people" / "peer.json").write_text("event input must not be read")
-    before = {p: p.read_bytes() for p in tmp_path.rglob("*.json")}
-    actual, _ = organize.read_memories(tmp_path, preferences_only=True)
-    assert actual == expected
-    assert [row["content"] for row in actual] == ["B喜欢徒步。", "B不喜欢登山。"]
-    assert [row["origins"][0]["memory_index"] for row in actual] == [1, 2]
-    assert all(p.read_bytes() == content for p, content in before.items())
-
-
-def test_preference_reader_reports_no_matching_input(tmp_path):
-    write_input(tmp_path)
-    with pytest.raises(ValueError, match="No extracted memories match"):
-        organize.read_memories(tmp_path, preferences_only=True)
-
-
-@pytest.mark.parametrize("preferences_only", [False, True])
-def test_preference_cli_uses_separate_default_output(monkeypatch, preferences_only):
-    captured = []
-    monkeypatch.setattr(organize, "run", lambda args: captured.append(args))
-    organize.main(["--preferences-only"] if preferences_only else [])
-    assert captured[0].output_dir.name == (
-        "memory_organization_preferences" if preferences_only else "memory_organization"
-    )
-
-
 @pytest.mark.parametrize("configured, expected", [(None, 95000), (160000, 152000)])
 def test_context_window_uses_codex_effective_window_not_model_maximum(tmp_path, monkeypatch, configured, expected):
     config = tmp_path / "settings.jsonc"
-    config.write_text(json.dumps({"agent_distill_args": {
-        "llm_provider": "codex_exec", "model": "test-model", "command": "codex"
-    }}))
+    config.write_text(json.dumps({
+        "codex_exec_args": {"model": "test-model", "command": "codex"},
+        "agent_distill_args": {"llm_provider": "codex_exec"},
+    }))
     catalog = {"models": [
         {"slug": "other-model", "max_context_window": 1000000},
         {"slug": "test-model", "context_window": 100000, "max_context_window": 200000,
@@ -201,9 +168,10 @@ def test_context_window_uses_codex_effective_window_not_model_maximum(tmp_path, 
 
 def test_unknown_model_requires_explicit_context_window(tmp_path, monkeypatch):
     config = tmp_path / "settings.jsonc"
-    config.write_text(json.dumps({"agent_distill_args": {
-        "llm_provider": "codex_exec", "model": "unknown-model", "command": "codex"
-    }}))
+    config.write_text(json.dumps({
+        "codex_exec_args": {"model": "unknown-model", "command": "codex"},
+        "agent_distill_args": {"llm_provider": "codex_exec"},
+    }))
     async def effective_config(command):
         return {}
 
@@ -615,7 +583,7 @@ def fake_runner(fields_for, seen, *, value="B计划与朋友周末郊游。"):
 
 
 def run_args(input_dir, output_dir, stage="all", **overrides):
-    return SimpleNamespace(stage=stage, dry_run=False, preferences_only=False, input_dir=input_dir,
+    return SimpleNamespace(stage=stage, dry_run=False, input_dir=input_dir,
                            output_dir=output_dir, max_context_tokens=272000, token_encoding="o200k_base",
                            tokenizer_file=None, max_records=20, max_summary_groups=30, max_summary_records=300,
                            topic_min_memories=20, topic_max_memories=100, **overrides)
@@ -719,37 +687,6 @@ def test_domains_require_tagged_memories(tmp_path, monkeypatch):
     monkeypatch.setattr(organize, "LLMTasks", fake_runner(lambda rid: [], []))
     with pytest.raises(ValueError, match="no tags"):
         organize.run(run_args(input_dir, output_dir))
-
-
-def test_preference_pipeline_only_sends_preferences_and_retains_sources(tmp_path, monkeypatch):
-    input_dir, output_dir = tmp_path / "input", tmp_path / "output"
-    _, profile = write_input(input_dir)
-    profile["state_memories"].extend([
-        {"type": "preference", "content": text, "tags": ["户外运动"], "importance": 2, "confidence": 3}
-        for text in ["B喜欢与聊天对象一起徒步。", "B偏好与聊天对象结伴徒步。"]
-    ])
-    organize.save(input_dir / "state_people" / "peer.json", [profile])
-    seen = []
-    attrs = iter(["活动偏好", "休闲活动偏好"])
-    monkeypatch.setattr(organize, "LLMTasks", fake_runner(lambda rid: [field(8, next(attrs))], seen,
-                                                          value="B喜欢与P1结伴徒步。"))
-    organize.main(["--preferences-only", "--input-dir", str(input_dir), "--output-dir", str(output_dir),
-                   "--max-context-tokens", "8192"])
-    output = organize.load(output_dir / "organized_memories.json")
-    assert len(output["facts"]) == 1
-    fact = output["facts"][0]
-    assert (fact["dim"], fact["topic"]) == (8, "周末郊游")
-    assert set(fact["source_ids"]) == set(output["sources"])
-    assert len(output["sources"]) == 2
-    assert {row["type"] for row in output["sources"].values()} == {"preference"}
-    assert fact["support_count"] == 1
-    tasks = organize.load(output_dir / "classification_tasks.json")
-    assert tasks and all(task["prompt"].startswith(prompts.PREFERENCE_RULES) for task in tasks)
-    assert organize.load(output_dir / "topics.json")[0]["attrs"] == [[8, "休闲活动偏好"], [8, "活动偏好"]]
-    assert all("B计划周末去郊游" not in task["prompt"] and "RAW_CHAT" not in task["prompt"] for task in seen)
-    domain_prompt = next(task["prompt"] for task in seen if task["stage"] == "domains")
-    assert domain_prompt.endswith("\n户外运动 2") and "出行旅行" not in domain_prompt
-    assert all('"peer":"P1"' in task["prompt"] for task in seen if task["stage"] == "classify")
 
 
 def test_classify_stage_sends_preferences_with_preference_rules(tmp_path, monkeypatch):
@@ -948,11 +885,11 @@ def test_llm_resume_ignores_configuration_changes(tmp_path, monkeypatch, change)
 
     config = tmp_path / "settings.jsonc"
     settings = {
-        "agent_distill_args": {
-            "llm_provider": "codex_exec", "overwrite": False,
+        "codex_exec_args": {
             "model": "model-a", "effort": "low", "batch_size": 2, "max_tokens": 200,
             "timeout": 10, "command": "codex", "sandbox": "read-only",
         },
+        "agent_distill_args": {"llm_provider": "codex_exec", "overwrite": False},
     }
     config.write_text(json.dumps(settings))
     args = SimpleNamespace(config_path=config, llm_provider=None, output_dir=tmp_path,
@@ -985,9 +922,9 @@ def test_llm_resume_ignores_configuration_changes(tmp_path, monkeypatch, change)
     if change == "extraction":
         settings["agent_distill_args"].update(max_samples_per_window=16, max_content_chars=800)
     elif change == "execution":
-        settings["agent_distill_args"].update(batch_size=7, timeout=30)
+        settings["codex_exec_args"].update(batch_size=7, timeout=30)
     elif change == "model":
-        settings["agent_distill_args"].update(model="model-b", effort="high", max_tokens=400)
+        settings["codex_exec_args"].update(model="model-b", effort="high", max_tokens=400)
     elif change == "overwrite":
         settings["agent_distill_args"]["overwrite"] = True
     config.write_text("// edited configuration\n" + json.dumps(settings, indent=2))

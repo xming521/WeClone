@@ -18,7 +18,7 @@ def sample_id(sample: dict, index: int) -> str:
 
 
 def matches_memory(sample: dict, origin: dict, source: dict) -> bool:
-    kind = origin.get("kind", source.get("kind"))
+    kind = origin.get("kind")
     if kind == "S":
         memories, field = sample.get("state_memories"), "content"
     elif kind in {"ES", "EI"}:

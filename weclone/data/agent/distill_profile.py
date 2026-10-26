@@ -15,9 +15,7 @@ from weclone.data.agent.distill_windows import (
     generate_window_batch,
     group_samples,
     make_window_request,
-    render_sample,
 )
-from weclone.prompts.distill_memory import build_state_extract_prompt
 from weclone.utils import secure_storage
 from weclone.utils.log import logger
 
@@ -125,19 +123,6 @@ def required_config_str(
     return text
 
 
-def required_config_int(
-    config: dict[str, Any],
-    key: str,
-    config_path: Path,
-    *,
-    section: str = "agent_distill_args",
-) -> int:
-    value = int(required_config_value(config, key, config_path, section=section))
-    if value < 1:
-        raise ValueError(f"{section}.{key} must be >= 1 in {config_path}")
-    return value
-
-
 def positive_config_int(
     config: dict[str, Any],
     key: str,
@@ -180,43 +165,32 @@ def resolve_llm_args(args: SimpleNamespace) -> SimpleNamespace:
             raise ValueError(f"agent_distill_args.{name} must be a positive integer")
         setattr(args, name, value)
 
-    legacy_codex_config = (
-        load_codex_exec_config(args.config_path) if args.llm_provider == "codex_exec" else {}
-    )
+    # codex exec takes every request setting from codex_exec_args. The API backend reads its endpoint
+    # from make_dataset_args and its concurrency, timeout and token limit from agent_distill_args.
+    codex = args.llm_provider == "codex_exec"
+    section = "codex_exec_args" if codex else "agent_distill_args"
+    config = load_codex_exec_config(args.config_path) if codex else distill_config
     args.batch_size = positive_config_int(
-        distill_config,
-        "batch_size",
-        legacy_codex_config.get("batch_size", DEFAULT_BATCH_SIZE),
-        section="agent_distill_args",
-        config_path=args.config_path,
+        config, "batch_size", DEFAULT_BATCH_SIZE, section=section, config_path=args.config_path
     )
     args.max_tokens = optional_positive_config_int(
-        distill_config,
-        "max_tokens",
-        legacy_codex_config.get("max_tokens", DEFAULT_MAX_TOKENS),
-        section="agent_distill_args",
-        config_path=args.config_path,
+        config, "max_tokens", DEFAULT_MAX_TOKENS, section=section, config_path=args.config_path
     )
     args.timeout = positive_config_int(
-        distill_config,
-        "timeout",
-        legacy_codex_config.get("timeout", DEFAULT_TIMEOUT),
-        section="agent_distill_args",
-        config_path=args.config_path,
+        config, "timeout", DEFAULT_TIMEOUT, section=section, config_path=args.config_path
     )
 
-    if args.llm_provider != "codex_exec":
+    if not codex:
         args.model = None
         args.effort = None
         args.codex_command = None
         args.codex_sandbox = None
         return args
 
-    codex_config = {**legacy_codex_config, **distill_config}
-    args.model = required_config_str(codex_config, "model", args.config_path)
-    args.effort = required_config_str(codex_config, "effort", args.config_path)
-    args.codex_command = required_config_str(codex_config, "command", args.config_path)
-    args.codex_sandbox = required_config_str(codex_config, "sandbox", args.config_path)
+    args.model = required_config_str(config, "model", args.config_path, section=section)
+    args.effort = required_config_str(config, "effort", args.config_path, section=section)
+    args.codex_command = required_config_str(config, "command", args.config_path, section=section)
+    args.codex_sandbox = required_config_str(config, "sandbox", args.config_path, section=section)
     return args
 
 
@@ -361,29 +335,6 @@ def memories_from_payload(payload: dict[str, Any]) -> list[Any] | None:
     return None
 
 
-def filter_current_state_payload(payload: dict[str, Any], *, include_current_state: bool) -> dict[str, Any]:
-    if include_current_state:
-        return payload
-
-    memories = memories_from_payload(payload)
-    if memories is None:
-        return payload
-
-    filtered_memories = [
-        memory
-        for memory in memories
-        if not (isinstance(memory, dict) and memory.get("type") == "current_state")
-    ]
-    if len(filtered_memories) == len(memories):
-        return payload
-
-    filtered_payload = dict(payload)
-    result = dict(payload.get("result") or {})
-    result["memories"] = filtered_memories
-    filtered_payload["result"] = result
-    return filtered_payload
-
-
 def apply_payload_to_item(item: dict[str, Any], payload: dict[str, Any]) -> bool:
     memories = memories_from_payload(payload)
     if memories is None:
@@ -406,22 +357,6 @@ def other_role(target_role: str) -> str:
     return "assistant" if target_role == "user" else "user"
 
 
-def render_chat(item: dict[str, Any], *, target_role: str, sample_id: str) -> str:
-    return render_sample(item, sample_id=sample_id, target_role=target_role, include_time=False)
-
-
-def build_prompt(
-    item: dict[str, Any],
-    *,
-    target_role: str,
-    sample_id: str,
-    include_current_state: bool = True,
-) -> str:
-    rendered_chat = render_chat(item, target_role=target_role, sample_id=sample_id)
-    prompt = build_state_extract_prompt(include_current_state=include_current_state)
-    return prompt.replace("{{CHAT_JSON}}", rendered_chat)
-
-
 def response_payload(response: Any) -> dict[str, Any]:
     if not is_dataclass(response):
         return {"text": str(response)}
@@ -440,7 +375,6 @@ def process_file(
     max_tokens: int | None,
     batch_size: int,
     limit_records: int | None,
-    overwrite: bool,
     dry_run: bool,
     state: dict[str, Any],
     state_path: Path,
@@ -479,16 +413,7 @@ def process_file(
         if is_terminal(record):
             payload = record.get("payload")
             if isinstance(payload, dict) and not dry_run:
-                payload = filter_current_state_payload(payload, include_current_state=include_current_state)
-                record["payload"] = payload
                 writeback_changed = apply_payload_to_item(item, payload) or writeback_changed
-            skipped_count += 1
-            continue
-
-        if not overwrite and isinstance(item.get(STATE_WRITEBACK_FIELD), list):
-            record["status"] = "done"
-            record["done_reason"] = "input_writeback"
-            record["updated_at"] = now_ts()
             skipped_count += 1
             continue
 
@@ -693,7 +618,6 @@ def main(
                 max_samples_per_window=args.max_samples_per_window,
                 max_content_chars=args.max_content_chars,
                 limit_records=args.limit_records,
-                overwrite=args.overwrite,
                 dry_run=args.dry_run,
                 state=state,
                 state_path=state_path,

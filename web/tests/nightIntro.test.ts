@@ -188,6 +188,7 @@ function fact(index: number, support: number, importance: number): ProfileFact {
 }
 
 const input: ProfileInput = {
+  domains: [],
   dimensions: [
     {
       dim: 1,

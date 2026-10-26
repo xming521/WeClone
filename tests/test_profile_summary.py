@@ -2,7 +2,6 @@ import json
 import sqlite3
 
 import pytest
-from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from weclone.data.agent.llm_profile_hierarchy import dimension_view
@@ -391,19 +390,6 @@ def test_build_profile_notes_a_failure_outside_the_model_run_and_frees_the_lock(
     monkeypatch.setattr(profile_summary, "domain_inputs", locked)
     assert profile_summary.build_summaries(tmp_path) == "没有生成成功。原因：database is locked"
     assert not profile_summary.GENERATING.locked()
-
-
-def test_profiles_without_domains_have_no_summaries(setup, tmp_path):
-    data = hierarchy()
-    del data["domains"]
-    plain = tmp_path / "plain"
-    plain.mkdir()
-    (plain / "profile_hierarchy.json").write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
-    store = ReviewStore(plain / "profile_review.sqlite3", plain / "profile_hierarchy.json")
-    with pytest.raises(HTTPException) as error:
-        profile_summary.SummaryStore(store).view("normal")
-    assert error.value.status_code == 409
-    assert profile_summary.build_summaries(plain) == "画像没有领域划分，没有生成总结。"
 
 
 def test_background_generation_reads_and_writes_with_the_session_key(tmp_path, monkeypatch):

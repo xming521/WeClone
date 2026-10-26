@@ -39,6 +39,7 @@ class ProfilePathChecks(unittest.TestCase):
 
     def write_profile(self, source, value):
         data = {
+            "domains": [],
             "dimensions": [
                 {
                     "dim": 8,
