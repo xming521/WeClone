@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Check, ClipboardCopy, KeyRound, Lock, LockOpen, RefreshCw } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { Lock, LockOpen } from 'lucide-react';
 import { api } from '../api';
 import { LogoutButton } from '../Auth';
 import { ModeSwitch } from '../ModeSwitch';
 import '../summary/summary.css';
+import { CopyField, TokenCard, moment, type TokenState } from './accessParts';
 import './assistant.css';
 
 // Shapes of GET /api/assistant, served by weclone/server/assistant.py.
@@ -32,7 +33,7 @@ interface AssistantView {
   domains: string[] | null;
   catalog: CatalogDomain[];
   /** The one token assistants connect with, null until one is generated. */
-  token: { created: string; last_used: string | null } | null;
+  token: TokenState | null;
 }
 
 const LEVELS: { level: Level; label: string; hint: string }[] = [
@@ -45,11 +46,6 @@ type Client = (typeof CLIENTS)[number];
 
 function hoursLabel(hours: number) {
   return hours % 24 ? `${hours} 小时` : `${hours / 24} 天`;
-}
-
-function moment(value: string | number) {
-  const date = new Date(typeof value === 'number' ? value * 1000 : value);
-  return date.toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
 /** Commands that give a client the token. They replace an earlier WeClone entry, so they can run again. */
@@ -68,41 +64,6 @@ function setupCommands(client: Client, url: string, token: string) {
     `http_headers = { Authorization = "Bearer ${token}" }`,
     'EOF',
   ].join('\n');
-}
-
-function CopyField({ label, text }: { label: string; text: string }) {
-  const ref = useRef<HTMLPreElement>(null);
-  const [copied, setCopied] = useState(false);
-  const [failed, setFailed] = useState(false);
-
-  async function copy() {
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch {
-      // Pages served over plain http to another machine have no clipboard API.
-      const selection = window.getSelection();
-      if (ref.current && selection) selection.selectAllChildren(ref.current);
-      if (!document.execCommand('copy')) {
-        setFailed(true);
-        return;
-      }
-    }
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1600);
-  }
-
-  return (
-    <div className="assistant-copy">
-      <pre ref={ref} aria-label={label}>
-        {text}
-      </pre>
-      <button type="button" onClick={() => void copy()}>
-        {copied ? <Check size={14} /> : <ClipboardCopy size={14} />}
-        {copied ? '已复制' : '复制'}
-      </button>
-      {failed && <small>浏览器不允许直接复制，请选中文字后手动复制</small>}
-    </div>
-  );
 }
 
 export function AssistantApp() {
@@ -315,31 +276,15 @@ export function AssistantApp() {
           </section>
         )}
 
-        <section className={`assistant-card${created ? ' assistant-created' : ''}`} aria-label="令牌">
-          <div className="assistant-card-head">
-            <h2>
-              <KeyRound size={15} /> 令牌
-            </h2>
-            <span className={`assistant-state${view.token ? ' on' : ''}`}>{view.token ? '有效' : '未生成'}</span>
-          </div>
-          <p className="summary-hint">
-            {view.token
-              ? `生成于 ${moment(view.token.created)} · ${
-                  view.token.last_used ? `最近使用 ${moment(view.token.last_used)}` : '还没有助手用过'
-                }`
-              : '生成令牌后，在运行助手的机器上执行配置命令。'}
-          </p>
-          <div className="assistant-actions">
-            <button className="primary" type="button" disabled={busy} onClick={issue}>
-              {view.token ? <RefreshCw size={14} /> : <KeyRound size={14} />}
-              {view.token ? '重新生成' : '生成令牌'}
-            </button>
-            {view.token && (
-              <button type="button" disabled={busy} onClick={withdraw}>
-                停用
-              </button>
-            )}
-          </div>
+        <TokenCard
+          token={view.token}
+          created={Boolean(created)}
+          busy={busy}
+          unused="还没有助手用过"
+          empty="生成令牌后，在运行助手的机器上执行配置命令。"
+          onIssue={issue}
+          onWithdraw={withdraw}
+        >
           {created && (
             <div className="assistant-setup">
               <p className="summary-hint">
@@ -368,7 +313,7 @@ export function AssistantApp() {
               </button>
             </div>
           )}
-        </section>
+        </TokenCard>
       </main>
     </div>
   );

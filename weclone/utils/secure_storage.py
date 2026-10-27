@@ -336,6 +336,49 @@ def storage_context(session_key: bytes | None = None) -> Iterator[None]:
             yield
 
 
+def _sealing_cipher(secret: str) -> AESGCM:
+    # The secret is a random token, so it needs no slow derivation like a password does.
+    return AESGCM(
+        HKDF(algorithm=hashes.SHA256(), length=32, salt=None, info=b"weclone:sealed-key").derive(
+            secret.encode()
+        )
+    )
+
+
+def seal_key(key: bytes, secret: str) -> str:
+    """`key` encrypted under `secret`, so a client presenting the secret later is served without anyone logging in.
+    Whoever holds both the secret and the sealed copy can read all data, as with the password."""
+    if not isinstance(key, UnlockedKey):
+        raise StorageLocked("数据尚未解锁，请输入同一访问密码。")
+    nonce = secrets.token_bytes(12)
+    sealed = _sealing_cipher(secret).encrypt(nonce, key, f"weclone:{key.generation}:sealed".encode())
+    return json.dumps(
+        {
+            "generation": key.generation,
+            "nonce": base64.b64encode(nonce).decode("ascii"),
+            "key": base64.b64encode(sealed).decode("ascii"),
+        }
+    )
+
+
+def open_sealed_key(sealed: str | None, secret: str) -> UnlockedKey:
+    """The key `seal_key` sealed under `secret`. StorageLocked when nothing was sealed or the data has since moved to
+    a new generation (a password reset or a new storage mode)."""
+    generation = get_generation()
+    try:
+        value = json.loads(sealed) if sealed else None
+        if value is None or value["generation"] != generation:
+            raise StorageLocked("数据密码重置过，之前保存的密钥已失效。")
+        key = _sealing_cipher(secret).decrypt(
+            base64.b64decode(value["nonce"], validate=True),
+            base64.b64decode(value["key"], validate=True),
+            f"weclone:{generation}:sealed".encode(),
+        )
+    except (InvalidTag, KeyError, ValueError, TypeError) as exc:
+        raise SecurityError("保存的密钥无效") from exc
+    return UnlockedKey(key, str(configure()["state_dir"]), generation)
+
+
 def ensure_unlocked() -> None:
     if not is_encrypted_mode():
         return

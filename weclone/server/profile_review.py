@@ -17,6 +17,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from weclone.server import style_view
 from weclone.server.assistant import install_assistant
 from weclone.server.auth import install_auth
+from weclone.server.bots import install_bots
 from weclone.server.profile_intro import profile_intro
 from weclone.server.profile_summary import (
     EXTRA_FACTS,
@@ -401,6 +402,7 @@ def create_app(
     store = ReviewStore(*review_paths(database, source))
     app = FastAPI(title="WeClone")
     install_auth(app, store.database)
+    install_bots(app, inference=inference_router is not None)
 
     @app.exception_handler(secure.SecurityError)
     async def security_error(request, exc):

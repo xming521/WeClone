@@ -215,6 +215,7 @@ weclone-cli webchat-demo
 ```bash
 weclone-cli server --inference --port 8005
 ```
+接口是 `/v1` 下的 OpenAI 兼容接口，调用时 API Key 填网页「机器人接入」页（`#/bots`）生成的令牌。
 
 ### 使用常见聊天问题测试
 不包含询问个人信息的问题，仅有日常聊天。测试结果在test_result-my.txt。
@@ -230,6 +231,10 @@ weclone-cli test-model
 
 ## 🤖 部署到聊天机器人
 
+机器人平台通过 `/v1` 接口调用分身，先做两步：
+1. 执行 `weclone-cli server --inference --port 8005` 启动服务。机器人平台用 Docker 部署时加上 `--host 172.17.0.1`（宿主机在 Docker 网络里的地址），否则容器访问不到。
+2. 打开网页的「机器人接入」页（`#/bots`）生成令牌，页面上会给出 API Base URL 和 API Key。所有机器人共用这一个令牌，服务重启后照样能用，重新生成或停用后旧令牌立即失效。加密模式下，数据密钥用令牌加密后存在本机，机器人调用时不需要有人登录。令牌要像密码一样保管，它和这份文件放在一起就能解密全部数据。
+
 ### AstrBot
 
 [AstrBot](https://github.com/AstrBotDevs/AstrBot) 是易上手的多平台 LLM 聊天机器人及开发框架 ✨ 平台支持Telegram、飞书等。      
@@ -237,8 +242,8 @@ weclone-cli test-model
 使用步骤：
 1. 部署 AstrBot
 2. 在 AstrBot 中部署消息平台
-3. 执行 `weclone-cli server --inference --port 8005` 启动api服务
-4. 在 AstrBot 中新增服务提供商，类型选择OpenAI，API Base URL 根据AstrBot部署方式填写（例如docker部署可能为http://172.17.0.1:8005/v1） ，模型填写gpt-3.5-turbo,API Key随意填写一个
+3. 按上面两步启动服务并生成令牌
+4. 在 AstrBot 中新增服务提供商，类型选择OpenAI，API Base URL 根据AstrBot部署方式填写（例如docker部署可能为http://172.17.0.1:8005/v1） ，模型填写gpt-3.5-turbo，API Key 填生成的令牌
 5. 微调后不支持工具调用，请先关掉默认的工具，消息平台发送指令： `/tool off_all`，否则会没有微调后的效果。 
 6. 根据微调时使用的default_system，在 AstrBot 中设置系统提示词。
 ![5](https://github.com/user-attachments/assets/19de7072-076a-4cdf-8ae6-46b9b89f536a)
@@ -253,9 +258,9 @@ weclone-cli test-model
 
 
 1. [部署 LangBot](https://github.com/RockChinQ/LangBot#-%E5%BC%80%E5%A7%8B%E4%BD%BF%E7%94%A8)
-2. 执行 `weclone-cli server --inference --port 8005` 启动 WeClone API 服务
+2. 按上面两步启动 WeClone 服务并生成令牌
 3. 在 LangBot 中添加一个机器人
-4. 在模型页添加新模型，名称`gpt-3.5-turbo`，供应商选择 OpenAI，填写 请求 URL 为 WeClone 的地址，详细连接方式可以参考[文档](https://docs.langbot.app/zh/workshop/network-details.html)，API Key 任意填写。
+4. 在模型页添加新模型，名称`gpt-3.5-turbo`，供应商选择 OpenAI，填写 请求 URL 为 WeClone 的地址，详细连接方式可以参考[文档](https://docs.langbot.app/zh/workshop/network-details.html)，API Key 填生成的令牌。
 
 <img width="400px" alt="image" src="https://github.com/user-attachments/assets/fc167dea-7c93-4d94-9c5f-db709d0320ba" />
 

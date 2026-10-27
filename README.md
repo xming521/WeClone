@@ -205,6 +205,7 @@ weclone-cli webchat-demo
 ```bash
 weclone-cli server --inference --port 8005
 ```
+The OpenAI-compatible API is under `/v1`. Use the token generated on the bot access page (`#/bots`) of the web interface as the API key.
 
 ### Test with Common Chat Questions
 Does not include questions asking for personal information, only daily conversation. Test results are in test_result-my.txt.
@@ -220,14 +221,19 @@ weclone-cli test-model
 
 
 ## 🤖 Deploy to Chat Bots
+
+Bot platforms call the clone through the `/v1` API. First:
+1. Run `weclone-cli server --inference --port 8005`. If the bot platform runs in Docker, add `--host 172.17.0.1` (the host's address on the Docker network) so the container can reach the server.
+2. Open the bot access page (`#/bots`) in the web interface and generate a token. The page shows the API Base URL and API Key. All bots share this one token. It keeps working across server restarts until you regenerate or withdraw it, which stops the old one at once. In encrypted mode the data key is stored on this machine encrypted under the token, so bots are served without anyone logging in. Keep the token as safe as the password: together with that file it decrypts all data.
+
 ### AstrBot
 [AstrBot](https://github.com/AstrBotDevs/AstrBot) is an easy-to-use multi-platform LLM chatbot and development framework ✨ Supports Discord, Telegram, Slack, Feishu and other platforms.      
 
 Usage steps:
 1. Deploy AstrBot
 2. Deploy messaging platforms like Discord, Telegram, Slack in AstrBot
-3. Execute `weclone-cli server --inference --port 8005` to start the API service
-4. Add a new service provider in AstrBot, select OpenAI type, fill in the API Base URL according to AstrBot's deployment method (e.g., for docker deployment it might be http://172.17.0.1:8005/v1), fill in the model as gpt-3.5-turbo, and enter any API Key
+3. Start the server and generate a token as described above
+4. Add a new service provider in AstrBot, select OpenAI type, fill in the API Base URL according to AstrBot's deployment method (e.g., for docker deployment it might be http://172.17.0.1:8005/v1), fill in the model as gpt-3.5-turbo, and enter the token as the API Key
 5. Tool calling is not supported after fine-tuning, please turn off the default tools first by sending the command: `/tool off_all` on the messaging platform, otherwise the fine-tuned effect won't be visible.
 6. Set the system prompt in AstrBot according to the default_system used during fine-tuning.
 ![5](https://github.com/user-attachments/assets/19de7072-076a-4cdf-8ae6-46b9b89f536a)
@@ -242,8 +248,8 @@ Usage steps:
 
 1. [Deploy LangBot](https://github.com/RockChinQ/LangBot/blob/master/README_EN.md#-getting-started)
 2. Add a bot (Discord, Telegram, Slack, Lark e.g.) in LangBot
-3. Execute `weclone-cli server --inference --port 8005` to start the WeClone API service
-4. Add a new model in the model page, name it `gpt-3.5-turbo`, select OpenAI as the provider, fill in the request URL as WeClone's address. For detailed connection methods, refer to the [documentation](https://docs.langbot.app/en/workshop/network-details), and enter any API Key.
+3. Start the WeClone server and generate a token as described above
+4. Add a new model in the model page, name it `gpt-3.5-turbo`, select OpenAI as the provider, fill in the request URL as WeClone's address. For detailed connection methods, refer to the [documentation](https://docs.langbot.app/en/workshop/network-details), and enter the token as the API Key.
 
 <img width="400px" alt="image" src="https://github.com/user-attachments/assets/835853ab-6ddc-459e-ae21-b04c38a85b5b" />
 

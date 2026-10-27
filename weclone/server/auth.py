@@ -226,7 +226,11 @@ def install_auth(app, database: Path):
         if not private:
             return await call_next(request)
         try:
-            response = await authorize(request, call_next)
+            if path.startswith("/v1/") and COOKIE not in request.cookies:
+                # Chat bots call the clone's model with their token instead of the owner's session.
+                response = await app.state.bot_gate(request, call_next)
+            else:
+                response = await authorize(request, call_next)
         except secure.SecurityError as exc:
             response = JSONResponse({"detail": str(exc)}, status_code=409)
         response.headers["Cache-Control"] = "no-store"

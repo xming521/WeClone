@@ -16,6 +16,7 @@ import { AuthGate, LogoutButton } from './Auth';
 import { ModeSwitch, modeFromHash } from './ModeSwitch';
 import { StyleApp } from './style/StyleApp';
 import { AssistantApp } from './assistant/AssistantApp';
+import { BotsApp } from './bots/BotsApp';
 import { SummaryApp } from './summary/SummaryApp';
 
 function Atlas() {
@@ -141,7 +142,9 @@ function useMode() {
 
 export default function App() {
   const mode = useMode();
-  const Page = { profile: ProfileApp, style: StyleApp, summary: SummaryApp, assistant: AssistantApp }[mode];
+  const Page = { profile: ProfileApp, style: StyleApp, summary: SummaryApp, assistant: AssistantApp, bots: BotsApp }[
+    mode
+  ];
   return (
     <AuthGate>
       <Page />

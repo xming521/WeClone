@@ -1,8 +1,9 @@
-export type AppMode = 'profile' | 'style' | 'summary' | 'assistant';
+export type AppMode = 'profile' | 'style' | 'summary' | 'assistant' | 'bots';
 
 export function modeFromHash(hash: string): AppMode {
   if (hash.startsWith('#/style')) return 'style';
   if (hash.startsWith('#/assistant')) return 'assistant';
+  if (hash.startsWith('#/bots')) return 'bots';
   return hash.startsWith('#/summary') ? 'summary' : 'profile';
 }
 
@@ -20,6 +21,9 @@ export function ModeSwitch({ mode }: { mode: AppMode }) {
       </a>
       <a href="#/assistant" aria-current={mode === 'assistant' ? 'page' : undefined}>
         助手接入
+      </a>
+      <a href="#/bots" aria-current={mode === 'bots' ? 'page' : undefined}>
+        机器人接入
       </a>
     </nav>
   );

@@ -7,15 +7,10 @@ time, which keeps the key of the owner's session in server memory until then. Ea
 database with the client that made it and what it returned.
 """
 
-import hashlib
 import json
-import os
 import re
-import secrets
 import sqlite3
-from contextlib import contextmanager
 from importlib import metadata
-from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse, Response
@@ -24,6 +19,7 @@ from starlette.concurrency import run_in_threadpool
 
 from weclone.prompts.memory_organization import dimension_name
 from weclone.server import mcp
+from weclone.server.client_access import TokenStore, bearer, local_url
 from weclone.server.profile_summary import (
     ASSISTANT_LEVELS,
     Level,
@@ -36,7 +32,6 @@ from weclone.server.profile_summary import (
 from weclone.utils import secure_storage as secure
 
 ACCESS_FILE = "assistant.sqlite3"
-TOKEN_PREFIX = "wc_"
 # How long the owner can let assistants read encrypted data at a time.
 ACCESS_HOURS = (1, 8, 24, 168)
 SEARCH_LIMIT, MAX_LIMIT, MAX_KEYWORDS = 20, 50, 20
@@ -161,78 +156,27 @@ def fact_line(fact: dict, sources: dict, domain_id: str) -> str:
     return f"- {prefix}{text}（{'，'.join(note for note in notes if note)}）"
 
 
-def bearer(request: Request) -> str:
-    scheme, _, token = request.headers.get("authorization", "").partition(" ")
-    return token.strip() if scheme.lower() == "bearer" else ""
+class AccessStore(TokenStore):
+    """The one token assistants connect with, and the level and domains of what they read."""
 
+    PREFIX = "wc_"
 
-def local_url(request: Request, path: str) -> str:
-    """`path` on this server as programs on this machine reach it, whatever address the browser used."""
-    host, port = request.scope.get("server") or (request.url.hostname, request.url.port)
-    if host in (None, "0.0.0.0", "::"):
-        host = "127.0.0.1"
-    if ":" in host:
-        host = f"[{host}]"
-    address = host if port in (None, 80) else f"{host}:{port}"
-    return f"http://{address}{request.scope.get('root_path', '').rstrip('/')}/{path}"
-
-
-class AccessStore:
-    """The one token assistants connect with, kept as a hash, and the level and domains of what they read."""
-
-    def __init__(self, path: Path):
-        self.path = path
-        path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-        path.parent.chmod(0o700)
-        fd = os.open(path, os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
-        os.fchmod(fd, 0o600)
-        os.close(fd)
-        with self.connect() as db:
-            db.execute(
-                "CREATE TABLE IF NOT EXISTS access (id INTEGER PRIMARY KEY CHECK(id=1), "
-                "level TEXT NOT NULL CHECK(level IN ('full','normal','public')), domains TEXT, "
-                "token_sha256 TEXT, created TEXT, last_used TEXT)"
-            )
-            db.execute("INSERT OR IGNORE INTO access(id,level) VALUES (1,'full')")
-
-    @contextmanager
-    def connect(self):
-        db = sqlite3.connect(self.path, timeout=10)
-        db.row_factory = sqlite3.Row
-        try:
-            with db:
-                yield db
-        finally:
-            db.close()
-
-    @staticmethod
-    def digest(token: str) -> str:
-        return hashlib.sha256(token.encode()).hexdigest()
+    def create(self, db):
+        db.execute(
+            "CREATE TABLE IF NOT EXISTS access (id INTEGER PRIMARY KEY CHECK(id=1), "
+            "level TEXT NOT NULL CHECK(level IN ('full','normal','public')), domains TEXT, "
+            "token_sha256 TEXT, created TEXT, last_used TEXT)"
+        )
+        db.execute("INSERT OR IGNORE INTO access(id,level) VALUES (1,'full')")
 
     @staticmethod
     def choices(row) -> tuple[str, list[str] | None]:
         return row["level"], None if row["domains"] is None else json.loads(row["domains"])
 
     def state(self) -> dict:
-        with self.connect() as db:
-            row = db.execute("SELECT * FROM access").fetchone()
+        row = self.row()
         level, domains = self.choices(row)
-        token = {"created": row["created"], "last_used": row["last_used"]} if row["token_sha256"] else None
-        return {"level": level, "domains": domains, "token": token}
-
-    def issue(self) -> dict:
-        """A new token in place of the old one. The token itself is returned only here."""
-        token = TOKEN_PREFIX + secrets.token_urlsafe(32)
-        created = now()
-        with self.connect() as db:
-            db.execute(
-                "UPDATE access SET token_sha256=?,created=?,last_used=NULL", (self.digest(token), created)
-            )
-        return {"token": token, "created": created}
-
-    def withdraw(self):
-        with self.connect() as db:
-            db.execute("UPDATE access SET token_sha256=NULL,created=NULL,last_used=NULL")
+        return {"level": level, "domains": domains, "token": self.token_state(row)}
 
     def choose(self, level: str):
         with self.connect() as db:
@@ -244,15 +188,8 @@ class AccessStore:
 
     def verify(self, token: str) -> tuple[str, list[str] | None] | None:
         """The level and domains assistants read, None for anything but the current token."""
-        if not token.startswith(TOKEN_PREFIX):
-            return None
-        with self.connect() as db:
-            row = db.execute("SELECT * FROM access WHERE token_sha256=?", (self.digest(token),)).fetchone()
+        row = self.match(token)
         return self.choices(row) if row else None
-
-    def used(self):
-        with self.connect() as db:
-            db.execute("UPDATE access SET last_used=?", (now(),))
 
 
 class AssistantTools:
