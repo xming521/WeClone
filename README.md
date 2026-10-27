@@ -276,7 +276,7 @@ pre-commit install
 ```
 
 The project uses `pytest` for testing, `pyright` for type checking, and `ruff` for code formatting.   
-Before submitting your code, you should run `pytest tests` to ensure all tests pass.
+Before submitting your code, you should run `pytest tests` to ensure all tests pass. The end-to-end fine-tuning tests are skipped by default. Run them with `pytest -m e2e tests`; they need a GPU and the local models named in `tests/configs/`. They keep their chats, dataset, model output and key state in temporary directories, so the project's data is never moved or overwritten.
 
 
 ## 🙏 Acknowledgments

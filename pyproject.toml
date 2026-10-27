@@ -142,4 +142,5 @@ lint.select = [
 target-version = "py312"
 
 [tool.pytest.ini_options]
-addopts = "-x -v -s --tb=short"
+addopts = "-x -v -s --tb=short -m 'not e2e'"
+markers = ["e2e: full SFT pipeline on a GPU with the local models named in tests/configs; run with -m e2e"]

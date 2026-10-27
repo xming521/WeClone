@@ -288,7 +288,7 @@ pre-commit install
 ```
 
 项目使用`pytest`测试，`pyright`检查类型，`ruff`检查代码格式。  
-提交代码前你应该先运行`pytest tests`确保所有测试通过。
+提交代码前你应该先运行`pytest tests`确保所有测试通过。端到端的微调测试默认不运行，用 `pytest -m e2e tests` 运行，需要 GPU 和 `tests/configs/` 里写的本地模型。它的聊天、数据集、模型输出和密钥状态都放在临时目录，不会移动或覆盖项目里的数据。
 
 ## 🙏 致谢
 BUPT VCIS Lab的支持
