@@ -1,7 +1,7 @@
 [project]
 name = "WeClone"
 version = "0.4.01"
-description = "One-stop solution for creating your digital avatar from chat history"
+description = "Build a portrait of your life. Assistants that know you. Clones that talk like you."
 authors = [{ name = "xming521" }]
 readme = "README.md"
 requires-python = ">=3.12,<3.13"

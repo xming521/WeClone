@@ -1,6 +1,7 @@
 ![download](https://github.com/user-attachments/assets/cd4a87c6-1649-4ce5-bce8-bd5b08b278de)
 
-<h3 align="center">🚀 One-stop solution for creating your digital avatar from chat history 💡</h3>  
+<h3 align="center">Build a portrait of your life</h3>
+<h3 align="center">Assistants that know you. Clones that talk like you.</h3>
 
 <div align="center">
 
@@ -21,271 +22,118 @@
 
 <p align="center">
   <a href="https://github.com/xming521/WeClone/blob/master/README_zh.md" target="_blank">简体中文</a>｜
-  English</a>｜
+  English｜
   <a href="https://www.weclone.love/" target="_blank"> Project Homepage </a> ｜
-  <a href="https://docs.weclone.love/docs/introduce/what-is-weclone.html" target="_blank"> Documentation </a> 
+  <a href="https://docs.weclone.love/en/docs/introduce/what-is-weclone.html" target="_blank"> Documentation </a> 
 </p>
 
+WeClone distills your identity, goals, preferences and current situation from your digital life into a portrait of your life, organized by domain, that you can review, trace to its sources and share on your own terms. It also analyzes your speaking style. The portrait works as long-term memory for your AI assistants and will power clones with your personal style. Chat history is supported today, with more data sources coming.
 
-## ✨Core Features
-- 💫 Complete end-to-end solution for creating digital avatars, including chat data export, preprocessing, model training, and deployment
-- 💬 Fine-tune LLM using chat history with support for image modal data, infusing it with that authentic "flavor"
-- 🔗 Integrate with Telegram, WhatsApp (coming soon) to create your own digital avatar
-- 🛡️ Privacy information filtering with localized fine-tuning and deployment for secure and controllable data
+> [!NOTE]
+> WeClone now goes beyond fine-tuned clones. The original fine-tuning workflow remains fully supported, see [Fine-tuned clone](docs/en/finetune.md).
 
+## ✨ Core Features
 
+- 🧠 **MCP access for AI assistants**: Claude Code, Codex and other assistants read your portrait and domain summaries over MCP, with access scoped by life domain and privacy level. Runs entirely on API models, no GPU required.
+- 🎭 **Your own AI clone**: fine-tune an open model on your chat history and deploy it to Telegram, Discord, Slack, Feishu and more through AstrBot or LangBot. Training data is filtered for personal information.
+- 🗣️ **Speaking style analysis**: nine categories of style features, covering vocabulary, syntax, tone, emotion, rhetoric and conversational rhythm.
+- 🗺️ **Interactive life portrait**: your portrait is organized by life domain and topic. Every fact traces back to its source and can be reviewed and edited.
+- 🔒 **Privacy first**: encrypted local storage by default, a privacy level on every fact, and full control over what is exported and shared.
+- 🤖 **Agent clone** (in development): no training required. A large model drives the clone in real time from your portrait, memories and speaking style.
 
-## 📋Features & Notes
+> [!NOTE]
+> The portrait and its extraction prompts are currently in Chinese, and English chats have not been tested yet. The web UI is available in English and Chinese.
 
-### Data Source Platform Support
+## 📰 Recent Updates
 
-| Platform | Text | Images | Voice | Video | Animated Emojis/Stickers | Links (Sharing) | Quote | Forward | Location | Files |
-|----------|------|--------|-------|-------|-----------------|-----------------|-------|---------|----------|-------|
-| Telegram | ✅ | ✅ | ❌ | ❌ | ⚠️Convert to Emoji | ❌ | ❌ | ✅ | ✅ | ❌ |
-| WhatsApp | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 |
-| Discord | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 |
-| Slack | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 |
- 
-### Deployment Platform Support
+- [26/10] Life portrait: `build-profile` extracts, organizes and summarizes your portrait in one command, ready for fact-by-fact review in the web UI
+- [26/10] Assistant access: Claude Code, Codex and other assistants read your portrait over MCP
+- [26/10] Encrypted storage by default, and token access for chat bots
+- [25/07/10] Telegram added as a data source
+- [25/06/05] Fine-tuning on image data
 
-| Platform | Deployment Support |
-|----------|--------------------|
-| Telegram | ✅ |
-| WhatsApp | 🚧 |
-| WeChat (Personal Account) |✅ (Based on **openclaw-weixin**)|
-| Discord | ✅ |
-| Slack | ✅ |
+## 🚀 Quick Start
 
-> [!IMPORTANT]
-> - WeClone is still in rapid iteration phase, current performance does not represent final results.  
-> - LLM fine-tuning effectiveness largely depends on model size, quantity and quality of chat data. Theoretically, larger models with more data yield better results.
-> - The performance of the 7B model is average, while models with 14B or more parameters tend to deliver better results.   
-> - Windows environment has not been rigorously tested. You can use WSL as the runtime environment.
+### 1. Install
 
-### Recent Updates
-[25/07/10] Data source added Telegram   
-[25/06/05] Support for image modal data fine-tuning    
+Python 3.12 is required. [uv](https://docs.astral.sh/uv/) is recommended:
 
-### Hardware Requirements
-
-The project uses Qwen2.5-7B-Instruct model by default with LoRA method for SFT stage fine-tuning. You can also use other models and methods supported by [LLaMA Factory](https://github.com/hiyouga/LLaMA-Factory/tree/main#supported-models).
-
-Estimated VRAM requirements: 
-| Method                          | Precision |   7B  |  14B  |  30B  |   70B  |   `x`B  |
-| ------------------------------- | --------- | ----- | ----- | ----- | ------ | ------- |
-| Full (`bf16` or `fp16`)         |    32     | 120GB | 240GB | 600GB | 1200GB | `18x`GB |
-| Full (`pure_bf16`)              |    16     |  60GB | 120GB | 300GB |  600GB |  `8x`GB |
-| Freeze/LoRA/GaLore/APOLLO/BAdam |    16     |  16GB |  32GB |  64GB |  160GB |  `2x`GB |
-| QLoRA                           |     8     |  10GB |  20GB |  40GB |   80GB |   `x`GB |
-| QLoRA                           |     4     |   6GB |  12GB |  24GB |   48GB | `x/2`GB |
-| QLoRA                           |     2     |   4GB |   8GB |  16GB |   24GB | `x/4`GB |
-
-
-## Environment Setup
-1. CUDA installation (skip if already installed, **requires version 12.6 or above**)
-
-2. It is recommended to use [uv](https://docs.astral.sh/uv/) to install dependencies, which is a very fast Python environment manager. After installing uv, you can use the following commands to create a new Python environment and install dependencies. 
 ```bash
 git clone https://github.com/xming521/WeClone.git && cd WeClone
 uv venv .venv --python=3.12
-source .venv/bin/activate # windows .venv\Scripts\activate
-uv pip install --group main -e . 
-```
-
-3. Copy the configuration file template and rename it to `settings.jsonc`, and make subsequent configuration changes in this file:
-
-```bash
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
+uv pip install -e .
 cp settings.template.jsonc settings.jsonc
 ```
-- For chats in English, also translate `default_system` and set `test_model_args.test_data_path` to `dataset/eval/test_data-en.json`.
-- To fine-tune a **multimodal model**, set `model_name_or_path` to a vision-language model such as `./models/Qwen2.5-VL-7B-Instruct`, set `template` to `qwen2_vl`, add `"image"` to `include_type`, and append `,visual.merger.mlp.0,visual.merger.mlp.2` to `lora_target`.
 
-> [!NOTE]
-> Training and inference related configurations are unified in the file `settings.jsonc`
+All settings live in `settings.jsonc`. The base install is enough to build your portrait and connect assistants. By default the portrait is extracted through the [Codex CLI](https://github.com/openai/codex), which must be installed and signed in. Any OpenAI-compatible API works as well, see [Installation and configuration](docs/en/installation.md).
 
-4. Use the following command to test whether the CUDA environment is correctly configured and can be recognized by PyTorch (not needed for Mac):
-```bash
-  python -c "import torch; print('CUDA Available:', torch.cuda.is_available());"
-```
+### 2. Prepare your data
 
-5. (Optional) Install FlashAttention to accelerate training and inference: `uv pip install flash-attn --no-build-isolation`.
+Telegram chats are supported today. Export them as JSON with Telegram Desktop, put the `ChatExport_*` folders in `dataset/telegram/`, then set `platform` to `telegram` and `telegram_args.my_id` to your user ID in `settings.jsonc`. See [Preparing data](docs/en/data.md).
 
-## Model Download
-It is recommended to use [Hugging Face](https://huggingface.co/docs/hub/models-downloading) to download models, or use the following command:
-```bash
-git lfs install
-git clone https://huggingface.co/Qwen/Qwen2.5-7B-Instruct models/Qwen2.5-7B-Instruct
-```
+### 3. Build your portrait and connect assistants
 
-## Data Preparation
-
-Please use [Telegram Desktop](https://desktop.telegram.org/) to export chat records. Click the top right corner in the chat interface, then click "Export chat history". Select Photos for message types and JSON for format. You can export multiple contacts (group chat records are not recommended), then place the exported `ChatExport_*` in the `./dataset/telegram` directory, meaning put different people's chat record folders together in `./dataset/telegram`.   
-
-
-## Data Preprocessing
-- First, modify the `language`, `platform`, and `include_type` in the configuration file according to your needs.
-- If you use telegram, you need to modify the `telegram_args.my_id` in the configuration file to your own telegram user ID.
-- By default, the project uses Microsoft Presidio to remove `phone numbers, email addresses, credit card numbers, IP addresses, geographic location names, international bank account numbers, cryptocurrency wallet addresses, age information, and generic ID numbers` from the data, but it cannot guarantee 100% identification.
-- Therefore, a blocklist `blocked_words` is provided in `settings.jsonc`, allowing users to manually add words or phrases they want to filter (the entire sentence containing blocked words will be removed by default).
-
-> [!IMPORTANT]
-> 🚨 Please be sure to protect personal privacy and do not leak personal information!
-
-- Execute the following command to process the data. You can modify the `make_dataset_args` in settings.jsonc according to your own chat style.
-```bash
-weclone-cli make-dataset
-```
-More Parameter Details: [Data Preprocessing](https://docs.weclone.love/docs/deploy/data_preprocessing.html#related-parameters)
-
-### Generate a User Profile in One Command
-
-Run from the project root:
-```bash
-weclone-cli build-profile
-```
-It asks what the profile is for. For a personal assistant, it extracts profile memories and events. For a clone, it also extracts speaking style, which needs the `ltp` package and an LTP model in `models/LTPbase`. You can also pass the choice directly:
 ```bash
 weclone-cli build-profile --purpose assistant
-weclone-cli build-profile --purpose clone
-```
-Results are saved under `dataset/res_csv/agent/profile_runs/`, and the profile path is printed on completion. Use `--output-dir <new-directory>` to choose the result directory. API models require `--max-context-tokens <limit>` to set the input token limit.
-
-Run `weclone-cli server` to view and review the newest profile, or `weclone-cli server --run <result-directory>` to select a run.
-
-To let personal assistants such as Claude Code or Codex read your profile, open the assistant page (`#/assistant`) in the web interface, choose the privacy level and the life domains assistants may read, generate a token, and run the commands shown there. All assistants share this one token. Changes apply from their next call. Assistants connect over MCP to `http://127.0.0.1:5175/mcp` and get two read-only tools: `weclone_profile` returns the domain summaries you approved on the domain summary page (`#/summary`), and `weclone_search` finds profile entries by keyword or domain. Keep `weclone-cli server` running while assistants use it. In encrypted mode, also allow assistant access on that page for a set time.
-
-### Data Encryption and Passwords
-
-Set `security_args` in `settings.jsonc`:
-```json
-"security_args": {
-    "storage_mode": "encrypted"
-}
-```
-New templates default to `encrypted`; choose `plaintext` for plaintext storage. Older configurations without this setting use plaintext. Encrypted mode does not yet support distributed training.
-
-Set a shared password at the first encrypted task or web visit. Use it to unlock later tasks and sign in to the web interface.
-
-Encrypted outputs end in `.enc`. Protect your original chats and any plaintext exports. Keep the `.weclone/` directory: it contains the key needed to read encrypted data.
-
-Export plaintext, change a password, or reset a forgotten password:
-```bash
-weclone-cli decrypt --input <encrypted-file> --output <new-plaintext-file>
-weclone-cli security-change-password  # Requires the old password; preserves data
-weclone-cli server-reset-password     # Reset a forgotten password
-```
-Encrypted data cannot be recovered without the password. After resetting it or switching storage modes, regenerate data from the original chats in a new output directory.
-
-## Configure Parameters and Fine-tune Model
-
-- (Optional) Modify `model_name_or_path`, `template`, `lora_target` in `settings.jsonc` to select other locally downloaded models.   
-- Modify `per_device_train_batch_size` and `gradient_accumulation_steps` to adjust VRAM usage.  
-- You can modify parameters like `num_train_epochs`, `lora_rank`, `lora_dropout` in `train_sft_args` based on your dataset's quantity and quality.
-
-### Single GPU Training
-```bash
-weclone-cli train-sft
+weclone-cli server
 ```
 
-### Multi-GPU Training
-Uncomment the `deepspeed` line in `settings.jsonc` and use the following command for multi-GPU training:
-```bash
-uv pip install "deepspeed<=0.16.9"
-deepspeed --num_gpus=number_of_gpus weclone/train/train_sft.py
-```
+Open http://127.0.0.1:5175 to review your portrait fact by fact, approve the summaries on the domain summary page, then generate a token on the assistant page and run the commands it shows for Claude Code or Codex. See [Life portrait and assistants](docs/en/profile.md).
 
-### Simple Inference with Browser Demo
-Test suitable temperature and top_p values, then modify `infer_args` in settings.jsonc for subsequent inference use.
-```bash
-weclone-cli webchat-demo
-```
+### 4. Fine-tune a clone
 
-### Inference Using API
+An NVIDIA GPU is required. The default Qwen2.5-7B-Instruct with LoRA needs about 16GB of VRAM. Install the dependencies and download the model as described in [Fine-tuned clone](docs/en/finetune.md), then run:
 
 ```bash
-weclone-cli server --inference --port 8005
-```
-The OpenAI-compatible API is under `/v1`. Use the token generated on the bot access page (`#/bots`) of the web interface as the API key.
-
-### Test with Common Chat Questions
-Does not include questions asking for personal information, only daily conversation. Test results are in test_result-my.txt.
-```bash
-weclone-cli server --inference --port 8005
-weclone-cli test-model
+weclone-cli make-dataset                     # build training data, filtering personal information
+weclone-cli train-sft                        # LoRA fine-tuning
+weclone-cli server --inference --port 8005   # OpenAI-compatible API
 ```
 
-## 🖼️ Results Showcase
-> [!TIP] 
-> **We're looking for interesting examples of native English speakers chatting with WeClone! Feel free to share them with us on Twitter.**  
+Connect the trained clone to chat platforms through AstrBot or LangBot, see [Chat bots](docs/en/chatbot.md).
 
+## 🔒 Privacy and Security
 
+- **Model services during extraction**: while building your portrait, chat content is sent to the model service you configured, after you confirm. Content already extracted is read from a local cache and not sent again.
+- **Encrypted by default**: the chat snapshot, portrait, training data and fine-tuned model are stored encrypted on your machine, with one password shared by the web UI and the command line.
+- **Access on your terms**: every fact carries a privacy level (public, normal, private, sensitive), and you set in the web UI which domains assistants can read and up to which level.
+- **Training data filtering**: Microsoft Presidio and your own blocked words remove personal information before fine-tuning, though 100% detection is not guaranteed.
 
-## 🤖 Deploy to Chat Bots
+See [Security](docs/en/security.md).
 
-Bot platforms call the clone through the `/v1` API. First:
-1. Run `weclone-cli server --inference --port 8005`. If the bot platform runs in Docker, add `--host 172.17.0.1` (the host's address on the Docker network) so the container can reach the server.
-2. Open the bot access page (`#/bots`) in the web interface and generate a token. The page shows the API Base URL and API Key. All bots share this one token. It keeps working across server restarts until you regenerate or withdraw it, which stops the old one at once. In encrypted mode the data key is stored on this machine encrypted under the token, so bots are served without anyone logging in. Keep the token as safe as the password: together with that file it decrypts all data.
+## 📚 Documentation
 
-### AstrBot
-[AstrBot](https://github.com/AstrBotDevs/AstrBot) is an easy-to-use multi-platform LLM chatbot and development framework ✨ Supports Discord, Telegram, Slack, Feishu and other platforms.      
+| Document | Covers |
+|---|---|
+| [Installation and configuration](docs/en/installation.md) | What to install, model backend, speaking style and fine-tuning dependencies |
+| [Preparing data](docs/en/data.md) | Supported sources, Telegram export |
+| [Life portrait and assistants](docs/en/profile.md) | build-profile, web review, domain summaries, MCP |
+| [Fine-tuned clone](docs/en/finetune.md) | Hardware, model download, training data, training and inference |
+| [Chat bots](docs/en/chatbot.md) | Bot token, AstrBot, LangBot |
+| [Security](docs/en/security.md) | Storage modes, password, keys and tokens, request logs |
 
-Usage steps:
-1. Deploy AstrBot
-2. Deploy messaging platforms like Discord, Telegram, Slack in AstrBot
-3. Start the server and generate a token as described above
-4. Add a new service provider in AstrBot, select OpenAI type, fill in the API Base URL according to AstrBot's deployment method (e.g., for docker deployment it might be http://172.17.0.1:8005/v1), fill in the model as gpt-3.5-turbo, and enter the token as the API Key
-5. Tool calling is not supported after fine-tuning, please turn off the default tools first by sending the command: `/tool off_all` on the messaging platform, otherwise the fine-tuned effect won't be visible.
-6. Set the system prompt in AstrBot according to the default_system used during fine-tuning.
-![5](https://github.com/user-attachments/assets/19de7072-076a-4cdf-8ae6-46b9b89f536a)
-> [!IMPORTANT]
-> Check the api_service logs to ensure that the large model service request parameters are consistent with those used during fine-tuning as much as possible, and turn off all tool plugin capabilities.
-
-### LangBot
-
-[LangBot](https://github.com/langbot-app/LangBot) is an easy-to-use open-source LLM chatbot platform suitable for various scenarios. It connects to various global instant messaging platforms. You can set up your IM bot in just 5 minutes.
-
-<img width="400px" alt="image" src="https://github.com/user-attachments/assets/de44e6e3-3a53-44d9-af76-96364cfca30f" />
-
-1. [Deploy LangBot](https://github.com/RockChinQ/LangBot/blob/master/README_EN.md#-getting-started)
-2. Add a bot (Discord, Telegram, Slack, Lark e.g.) in LangBot
-3. Start the WeClone server and generate a token as described above
-4. Add a new model in the model page, name it `gpt-3.5-turbo`, select OpenAI as the provider, fill in the request URL as WeClone's address. For detailed connection methods, refer to the [documentation](https://docs.langbot.app/en/workshop/network-details), and enter the token as the API Key.
-
-<img width="400px" alt="image" src="https://github.com/user-attachments/assets/835853ab-6ddc-459e-ae21-b04c38a85b5b" />
-
-6. Select the model you just added in the pipeline configuration, or modify the prompt configuration
-
-<img width="400px" alt="image" src="https://github.com/user-attachments/assets/da61342d-84f9-4f02-87bc-3d4c7cdf187c" />
-
+Full tutorials, configuration reference and FAQ are on the [documentation site](https://docs.weclone.love/en/).
 
 ## 📌 Roadmap
+
+- [x] Life portrait: extraction, review and domain summaries
+- [x] Long-term memory for AI assistants over MCP
+- [ ] Agent clone driven by your portrait, memories and speaking style
 - [ ] Support more data sources
 - [ ] Richer context: including contextual conversations, chat participant information, time, etc.
-- [ ] Memory support
 - [ ] Multimodal support: image support already implemented
 - [ ] Data augmentation
-- [ ] GUI support
 - [ ] COT (Chain of Thought) thinking support
 
-## Troubleshooting
-#### [Official Documentation FAQ](https://docs.weclone.love/docs/introduce/FAQ.html)    
-It is also recommended to use [DeepWiki](https://deepwiki.com/xming521/WeClone) for problem solving.
+## 💬 Troubleshooting
 
+- Start with the [official FAQ](https://docs.weclone.love/en/docs/introduce/FAQ.html). [DeepWiki](https://deepwiki.com/xming521/WeClone) can also help.
+- Join the Telegram group linked at the top of this page. We're looking for interesting examples of native English speakers chatting with WeClone, so feel free to share them with us on Twitter.
 
 ## ❤️ Contributing
 
-Any Issues/Pull Requests are welcome!
-
-You can contribute by checking Issues or helping review PRs (Pull Requests). For new feature additions, please discuss through Issues first.   
-Development environment:
-```bash
-uv pip install --group dev -e .
-pre-commit install
-```
-
-The project uses `pytest` for testing, `pyright` for type checking, and `ruff` for code formatting.   
-Before submitting your code, you should run `pytest tests` to ensure all tests pass. The end-to-end fine-tuning tests are skipped by default. Run them with `pytest -m e2e tests`; they need a GPU and the local models named in `tests/configs/`. They keep their chats, dataset, model output and key state in temporary directories, so the project's data is never moved or overwritten.
-
+Issues and pull requests are welcome, and so is help reviewing PRs. Please discuss new features in an issue first. See the [contributing guide](docs/CONTRIBUTING.md#english) for the development environment, tests and frontend builds.
 
 ## 🙏 Acknowledgments
 
@@ -343,8 +191,8 @@ This project also benefits from excellent open source projects such as [PyWxDump
 ## Usage Recommendations
 
 ### Mandatory Bot Identity Identification
-**When using digital avatars generated by this project, it is strongly recommended to:**
-- Clearly identify as "AI Bot" or "Digital Avatar" at the beginning of each conversation
+**When using AI clones generated by this project, it is strongly recommended to:**
+- Clearly identify as "AI Bot" or "AI Clone" at the beginning of each conversation
 - Prominently mark "AI-generated content" in the user interface
 - Avoid letting users mistake it for real human conversation, which could cause risks
 
