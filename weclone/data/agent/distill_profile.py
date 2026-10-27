@@ -1,10 +1,14 @@
+"""Profile (state) and event memories from chat samples, several samples per model request.
+
+Each sample's answer is kept in the LLM cache under its extraction rules and chat text, so a rerun extracts only
+the samples that have no answer yet: those that failed, and those whose text is new or changed.
+"""
+
 import threading
-import time
-from dataclasses import fields, is_dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any, Iterable
+from typing import Any, Iterable, NamedTuple
 
 import click
 import pyjson5
@@ -15,21 +19,23 @@ from weclone.data.agent.distill_windows import (
     generate_window_batch,
     group_samples,
     make_window_request,
+    sample_cache_key,
 )
+from weclone.data.agent.llm_cache import LLMCache
 from weclone.utils import secure_storage
 from weclone.utils.log import logger
 
-DEFAULT_INPUT_DIR = Path("dataset/res_csv/agent/people")
-DEFAULT_OUTPUT_DIR = Path("dataset/res_csv/agent/distill")
-DEFAULT_STATE_PATH = None
 DEFAULT_CONFIG_PATH = Path("settings.jsonc")
 DEFAULT_TARGET_ROLE = "assistant"
 DEFAULT_PROVIDER = "codex_exec"
-DEFAULT_OVERWRITE = True
 DEFAULT_BATCH_SIZE = 10
 DEFAULT_MAX_TOKENS = None
 DEFAULT_TIMEOUT = 120
 STATE_WRITEBACK_FIELD = "state_memories"
+# Each task writes its answers into copies of the chat files, in its own subdirectory and field.
+TASK_OUTPUTS = {"state": ("state_people", STATE_WRITEBACK_FIELD), "event": ("event_people", "event_memories")}
+TASK_LABELS = {"state": "用户画像", "event": "事件记忆"}
+TASK = "state"
 
 DEFAULT_LIMIT_FILES = None
 DEFAULT_LIMIT_RECORDS = None
@@ -38,9 +44,6 @@ _print_lock = threading.Lock()
 
 def default_args() -> SimpleNamespace:
     return SimpleNamespace(
-        input_dir=DEFAULT_INPUT_DIR,
-        output_dir=DEFAULT_OUTPUT_DIR,
-        state_path=DEFAULT_STATE_PATH,
         config_path=DEFAULT_CONFIG_PATH,
         target_role=DEFAULT_TARGET_ROLE,
         llm_provider=None,
@@ -55,7 +58,6 @@ def default_args() -> SimpleNamespace:
         timeout=None,
         limit_files=DEFAULT_LIMIT_FILES,
         limit_records=DEFAULT_LIMIT_RECORDS,
-        overwrite=DEFAULT_OVERWRITE,
         dry_run=False,
         indent=2,
     )
@@ -155,9 +157,6 @@ def optional_positive_config_int(
 
 def resolve_llm_args(args: SimpleNamespace) -> SimpleNamespace:
     distill_config = load_agent_distill_config(args.config_path)
-    args.overwrite = distill_config.get("overwrite", args.overwrite)
-    if type(args.overwrite) is not bool:
-        raise ValueError("agent_distill_args.overwrite must be a boolean")
     args.llm_provider = normalize_llm_provider(args.llm_provider or distill_config.get("llm_provider"))
     for name in ("max_samples_per_window", "max_content_chars"):
         value = distill_config.get(name, getattr(args, name))
@@ -194,10 +193,6 @@ def resolve_llm_args(args: SimpleNamespace) -> SimpleNamespace:
     return args
 
 
-def atomic_save_json(path: Path, payload: dict[str, Any], *, indent: int) -> None:
-    secure_storage.write_json(path, payload, indent=indent, default=str)
-
-
 def atomic_save_any_json(path: Path, payload: Any, *, indent: int) -> None:
     secure_storage.write_json(path, payload, indent=indent, default=str)
 
@@ -214,8 +209,7 @@ def confirm_distillation(args: SimpleNamespace, *, task: str, file_count: int | 
     click.echo(f"即将执行{task}蒸馏：输入 {args.input_dir}（{input_summary}），输出 {args.output_dir}。")
     click.echo(f"模型后端：{args.llm_provider}。输入目录中的聊天样本将交给该模型处理。")
     click.echo("聊天内容可能包含身份、联系方式和私密对话；模型服务可能记录或留存这些内容，存在隐私泄露风险。")
-    if args.overwrite:
-        click.echo("当前配置 overwrite=true，将重新抽取并更新同名结果和断点。")
+    click.echo("已经抽取过的聊天样本直接读取缓存结果，不会再次发送。")
     click.echo("请确认你有权处理这些聊天记录，并同意将聊天内容发送给该模型服务。")
     try:
         return click.confirm("继续执行？", default=False)
@@ -261,88 +255,8 @@ def allow_current_state(item: dict[str, Any], cutoff_time: datetime | None) -> b
     return cutoff_time is not None and sample_time is not None and sample_time >= cutoff_time
 
 
-def default_state_path(output_dir: Path) -> Path:
-    return output_dir / "distill_state_checkpoint.json"
-
-
-def output_path_for(output_dir: Path, source_path: Path) -> Path:
-    return output_dir / "state_people" / source_path.name
-
-
-def new_state(input_dir: Path, output_dir: Path) -> dict[str, Any]:
-    return {
-        "version": 1,
-        "input_dir": str(input_dir),
-        "output_dir": str(output_dir),
-        "entries": {},
-    }
-
-
-def load_state(
-    state_path: Path,
-    *,
-    input_dir: Path,
-    output_dir: Path,
-    overwrite: bool,
-) -> dict[str, Any]:
-    if overwrite or not secure_storage.file_exists(state_path):
-        return new_state(input_dir, output_dir)
-    state = secure_storage.read_json(state_path)
-    if not isinstance(state, dict) or not isinstance(state.get("entries"), dict):
-        raise ValueError(f"State must be an object with entries: {state_path}")
-    state["input_dir"] = str(input_dir)
-    state["output_dir"] = str(output_dir)
-    return state
-
-
-def state_key(source_path: Path, sample_id: str) -> str:
-    return f"{source_path}::{sample_id}"
-
-
-def now_ts() -> str:
-    return time.strftime("%Y-%m-%dT%H:%M:%S%z")
-
-
-def is_terminal(record: Any) -> bool:
-    return isinstance(record, dict) and str(record.get("status") or "") in {"done", "failed"}
-
-
-def make_record(
-    source_path: Path,
-    item: dict[str, Any],
-    *,
-    source_index: int,
-    sample_id: str,
-) -> dict[str, Any]:
-    return {
-        "source_file": str(source_path),
-        "source_index": source_index,
-        "sample_id": sample_id,
-        "sample_time": item.get("time", ""),
-        "chat_with": item.get("chat_with", ""),
-        "status": "pending",
-        "updated_at": now_ts(),
-        "last_error": "",
-    }
-
-
-def memories_from_payload(payload: dict[str, Any]) -> list[Any] | None:
-    result = payload.get("result")
-    if isinstance(result, dict):
-        memories = result.get("memories")
-        if isinstance(memories, list):
-            return memories
-    return None
-
-
-def apply_payload_to_item(item: dict[str, Any], payload: dict[str, Any]) -> bool:
-    memories = memories_from_payload(payload)
-    if memories is None:
-        return False
-    if item.get(STATE_WRITEBACK_FIELD) == memories:
-        return False
-    item[STATE_WRITEBACK_FIELD] = memories
-    return True
+def output_path_for(output_dir: Path, source_path: Path, task: str) -> Path:
+    return output_dir / TASK_OUTPUTS[task][0] / source_path.name
 
 
 def sample_id_for(item: dict[str, Any], source_index: int) -> str:
@@ -353,83 +267,74 @@ def sample_id_for(item: dict[str, Any], source_index: int) -> str:
     return str(source_index)
 
 
-def other_role(target_role: str) -> str:
-    return "assistant" if target_role == "user" else "user"
+def written_answer(task: str, result: dict[str, Any]) -> Any:
+    """What a validated sample result writes into the sample: its memories, or its non-empty event arrays."""
+    if task == "state":
+        return result["memories"]
+    return {kind: events for kind, events in result.items() if events}
 
 
-def response_payload(response: Any) -> dict[str, Any]:
-    if not is_dataclass(response):
-        return {"text": str(response)}
-    return {field.name: getattr(response, field.name) for field in fields(response) if field.name != "raw"}
+class FileStats(NamedTuple):
+    cached: int = 0  # samples answered from the cache
+    pending: int = 0  # samples sent to the model
+    windows: int = 0  # requests the pending samples were packed into
+    failed: int = 0  # pending samples still without an answer after retries
+    calls: int = 0  # model calls made, retries included
 
 
-def process_file(
+def process_task_file(
     source_path: Path,
     *,
+    task: str,
     output_dir: Path,
     target_role: str,
     provider: str,
     model: str | None,
     effort: str | None,
     client: Any,
+    cache: LLMCache,
     max_tokens: int | None,
     batch_size: int,
     limit_records: int | None,
     dry_run: bool,
-    state: dict[str, Any],
-    state_path: Path,
     indent: int,
     progress_factory: Any = tqdm,
     max_samples_per_window: int = 8,
     max_content_chars: int = 400,
-) -> tuple[int, int]:
+) -> FileStats:
+    field = TASK_OUTPUTS[task][1]
+    output_path = output_path_for(output_dir, source_path, task)
     source_data = load_json(source_path)
-    output_path = output_path_for(output_dir, source_path)
     all_items = chat_items(source_data)
-    latest_time, current_state_cutoff_time = current_state_time_window(all_items)
-    items = all_items
-    if limit_records is not None:
-        items = items[:limit_records]
+    _, current_state_since = current_state_time_window(all_items)
+    items = all_items[:limit_records] if limit_records is not None else all_items
     if not items:
         logger.warning(f"Skip {source_path}: no chat records found")
-        return 0, 0
+        return FileStats()
 
-    entries = state.setdefault("entries", {})
-    done_count = 0
-    call_count = 0
-    pending_samples = []
-    skipped_count = 0
-    writeback_changed = False
-
-    for source_index, item in enumerate(items):
-        sample_id = sample_id_for(item, source_index)
-        include_current_state = allow_current_state(item, current_state_cutoff_time)
-        key = state_key(source_path, sample_id)
-        record = entries.get(key)
-        if not isinstance(record, dict):
-            record = make_record(source_path, item, source_index=source_index, sample_id=sample_id)
-            entries[key] = record
-
-        if is_terminal(record):
-            payload = record.get("payload")
-            if isinstance(payload, dict) and not dry_run:
-                writeback_changed = apply_payload_to_item(item, payload) or writeback_changed
-            skipped_count += 1
-            continue
-
-        pending_samples.append(ChatSample(source_index, sample_id, item, include_current_state))
-
-    windows = group_samples(
-        pending_samples,
-        max_samples=max_samples_per_window,
-        max_content_chars=max_content_chars,
-    )
+    samples = [
+        ChatSample(index, sample_id_for(item, index), item, allow_current_state(item, current_state_since))
+        for index, item in enumerate(items)
+    ]
+    keys = {
+        sample.source_index: sample_cache_key(sample, task=task, target_role=target_role)
+        for sample in samples
+    }
+    answers = cache.get_many(keys.values())
+    pending = []
+    for sample in samples:
+        if keys[sample.source_index] in answers:
+            sample.item[field] = answers[keys[sample.source_index]]
+        else:
+            pending.append(sample)
+    cached = len(samples) - len(pending)
+    windows = group_samples(pending, max_samples=max_samples_per_window, max_content_chars=max_content_chars)
     request_rows = [
         (
             window,
             make_window_request(
                 window,
-                task="state",
+                task=task,
                 source_path=source_path,
                 target_role=target_role,
                 provider=provider,
@@ -440,6 +345,12 @@ def process_file(
         )
         for window in windows
     ]
+    since = current_state_since.isoformat() if task == "state" and current_state_since else ""
+    log(
+        f"{source_path.name}: total={len(items)} cached={cached} pending={len(pending)} windows={len(request_rows)} "
+        + (f"current_state_since={since} " if since else "")
+        + f"output={output_path}"
+    )
     if dry_run:
         if request_rows:
             window, request = request_rows[0]
@@ -448,103 +359,57 @@ def process_file(
                 logger.info("Encrypted mode: dry-run prompt content is not printed")
             else:
                 print(request.messages[0]["content"])
-            return len(window), 0
-        return 0, 0
+        return FileStats(cached, len(pending), len(request_rows))
 
-    log(
-        f"{source_path.name}: total={len(items)} pending={len(pending_samples)} windows={len(request_rows)} "
-        f"skipped={skipped_count} batch_size={batch_size} "
-        f"latest_time={latest_time.isoformat() if latest_time else ''} "
-        f"current_state_since={current_state_cutoff_time.isoformat() if current_state_cutoff_time else ''} "
-        f"output={output_path}"
-    )
-    if not dry_run and (writeback_changed or (skipped_count and not secure_storage.file_exists(output_path))):
-        atomic_save_any_json(output_path, source_data, indent=indent)
-        writeback_changed = False
-    if not dry_run:
-        atomic_save_json(state_path, state, indent=indent)
-
-    progress = progress_factory(
-        total=len(items),
-        initial=skipped_count,
-        desc=source_path.name,
-        unit="sample",
-    )
+    failed = calls = 0
+    progress = progress_factory(total=len(items), initial=cached, desc=source_path.name, unit="sample")
     try:
         for batch in batched(request_rows, batch_size):
-            outcomes = generate_window_batch(client, batch, task="state")
-            for outcome in outcomes:
-                call_count += len(outcome.attempts)
-                window_key = f"{source_path}::" + ",".join(str(s.source_index) for s in outcome.samples)
-                state.setdefault("windows", {})[window_key] = {
-                    "sample_ids": [s.sample_id for s in outcome.samples],
-                    "attempts": [response_payload(response) for response in outcome.attempts],
-                    "last_error": outcome.error,
-                }
-                for sample in outcome.samples:
-                    item, sample_id = sample.item, sample.sample_id
-                    record = entries[state_key(source_path, sample_id)]
-                    payload = {
-                        "source_file": str(source_path),
-                        "source_index": sample.source_index,
-                        "sample_id": sample_id,
-                        "sample_time": item.get("time", ""),
-                        "chat_with": item.get("chat_with", ""),
-                        "target_role": target_role,
-                        "role_mapping": {"A": other_role(target_role), "B": target_role},
-                        "include_current_state": sample.include_current_state,
-                        "current_state_window_days": 14,
-                        "latest_sample_time": latest_time.isoformat() if latest_time else "",
-                        "current_state_since": current_state_cutoff_time.isoformat()
-                        if current_state_cutoff_time
-                        else "",
-                        "result": outcome.results.get(sample_id),
-                        "response": {
-                            "ok": not outcome.error,
-                            "error": outcome.error,
-                            "window_key": window_key,
-                        },
-                    }
-                    if not outcome.error:
-                        writeback_changed = apply_payload_to_item(item, payload) or writeback_changed
-                    record["status"] = "failed" if outcome.error else "done"
-                    record["payload"] = payload
-                    record["response_ok"] = not outcome.error
-                    record["last_error"] = outcome.error
-                    record["updated_at"] = now_ts()
-                    done_count += 1
+            answered = []
+            for outcome in generate_window_batch(client, batch, task=task):
+                calls += len(outcome.attempts)
                 if outcome.error:
-                    logger.warning(f"LLM window failed for {source_path.name}; details saved in checkpoint")
+                    failed += len(outcome.samples)
+                    logger.warning(f"LLM window failed for {source_path.name}: {outcome.error}")
+                else:
+                    for sample in outcome.samples:
+                        answer = written_answer(task, outcome.results[sample.sample_id])
+                        sample.item[field] = answer
+                        answered.append(
+                            (keys[sample.source_index], f"{task}_distill", answer, outcome.attempts[-1].model)
+                        )
                 progress.update(len(outcome.samples))
-
-            if writeback_changed:
-                atomic_save_any_json(output_path, source_data, indent=indent)
-                writeback_changed = False
-            atomic_save_json(state_path, state, indent=indent)
-            log(f"{source_path.name}: wrote={done_count} calls={call_count}")
+            cache.put_many(answered)
     finally:
         progress.close()
 
-    if writeback_changed and not dry_run:
+    if failed:
+        # An output file holds an answer for every sample or does not exist, so no later stage reads a partial one.
+        secure_storage.resolve_path(output_path).unlink(missing_ok=True)
+    else:
         atomic_save_any_json(output_path, source_data, indent=indent)
+    log(f"{source_path.name}: extracted={len(pending) - failed} failed={failed} calls={calls}")
+    return FileStats(cached, len(pending), len(request_rows), failed, calls)
 
-    return done_count, call_count
+
+def process_file(source_path: Path, **options: Any) -> FileStats:
+    return process_task_file(source_path, task=TASK, **options)
 
 
-def main(
+def run_task(
+    task: str,
     *,
-    input_dir: Path | None = None,
-    output_dir: Path | None = None,
+    input_dir: Path,
+    output_dir: Path,
     config_path: Path | None = None,
     confirmed: bool = False,
-) -> None:
+    dry_run: bool = False,
+) -> FileStats:
     args = default_args()
-    if input_dir is not None:
-        args.input_dir = input_dir
-    if output_dir is not None:
-        args.output_dir = output_dir
+    args.input_dir, args.output_dir = input_dir, output_dir
     if config_path is not None:
         args.config_path = config_path
+    args.dry_run = dry_run
     secure_storage.configure(args.config_path)
     args = resolve_llm_args(args)
     request_model = args.model if args.llm_provider == "codex_exec" else None
@@ -555,30 +420,15 @@ def main(
 
     if not source_files:
         raise FileNotFoundError(f"No chat JSON files found in {args.input_dir}")
-    if not confirmed and not confirm_distillation(args, task="用户画像", file_count=len(source_files)):
+    label = TASK_LABELS[task]
+    if not confirmed and not confirm_distillation(args, task=label, file_count=len(source_files)):
         raise SystemExit("已取消蒸馏；未写入结果或调用模型。")
 
-    state_path = Path(args.state_path) if args.state_path else default_state_path(args.output_dir)
-    state = load_state(
-        state_path,
-        input_dir=args.input_dir,
-        output_dir=args.output_dir,
-        overwrite=args.overwrite,
-    )
-    state["provider"] = args.llm_provider
-    state["model"] = request_model
-    state["effort"] = request_effort
-    state["batch_size"] = args.batch_size
-    state["max_samples_per_window"] = args.max_samples_per_window
-    state["max_content_chars"] = args.max_content_chars
-    state["writeback_field"] = STATE_WRITEBACK_FIELD
-    state["output_subdir"] = "state_people"
-    state["updated_at"] = now_ts()
-
+    cache = LLMCache()
     log(f"输入目录: {args.input_dir}  文件数: {len(source_files)}")
     log(f"输出目录: {args.output_dir}")
-    log(f"断点文件: {state_path}")
-    log(f"画像字段: {STATE_WRITEBACK_FIELD}")
+    log(f"结果缓存: {cache.path}")
+    log(f"写回字段: {TASK_OUTPUTS[task][1]}")
     log(
         f"provider={args.llm_provider} model={request_model} "
         f"effort={request_effort} batch_size={args.batch_size} dry_run={args.dry_run}"
@@ -589,7 +439,6 @@ def main(
         from weclone.core.inference.llm_client import build_llm_client
 
         args.output_dir.mkdir(parents=True, exist_ok=True)
-        atomic_save_json(state_path, state, indent=args.indent)
         client = build_llm_client(
             args.llm_provider,
             config_path=args.config_path,
@@ -601,43 +450,58 @@ def main(
             sandbox=args.codex_sandbox,
         )
 
-    total_done = 0
-    total_calls = 0
+    stats = []
     try:
         for source_path in source_files:
-            done_count, call_count = process_file(
-                source_path,
-                output_dir=args.output_dir,
-                target_role=args.target_role,
-                provider=args.llm_provider,
-                model=request_model,
-                effort=request_effort,
-                client=client,
-                max_tokens=args.max_tokens,
-                batch_size=args.batch_size,
-                max_samples_per_window=args.max_samples_per_window,
-                max_content_chars=args.max_content_chars,
-                limit_records=args.limit_records,
-                dry_run=args.dry_run,
-                state=state,
-                state_path=state_path,
-                indent=args.indent,
+            stats.append(
+                process_task_file(
+                    source_path,
+                    task=task,
+                    output_dir=args.output_dir,
+                    target_role=args.target_role,
+                    provider=args.llm_provider,
+                    model=request_model,
+                    effort=request_effort,
+                    client=client,
+                    cache=cache,
+                    max_tokens=args.max_tokens,
+                    batch_size=args.batch_size,
+                    max_samples_per_window=args.max_samples_per_window,
+                    max_content_chars=args.max_content_chars,
+                    limit_records=args.limit_records,
+                    dry_run=args.dry_run,
+                    indent=args.indent,
+                )
             )
-            total_done += done_count
-            total_calls += call_count
-            if not args.dry_run:
-                atomic_save_json(state_path, state, indent=args.indent)
-            logger.info(f"Processed {source_path.name}: wrote={done_count}, calls={call_count}")
     finally:
         if client is not None:
             client.close()
 
-    if not args.dry_run:
-        state["updated_at"] = now_ts()
-        atomic_save_json(state_path, state, indent=args.indent)
-    logger.info(f"Done. wrote={total_done}, llm_calls={total_calls}, dry_run={args.dry_run}")
-    log(f"完成: wrote={total_done} llm_calls={total_calls} dry_run={args.dry_run}")
+    total = FileStats(*(sum(values) for values in zip(*stats))) if stats else FileStats()
+    log(
+        f"完成: cached={total.cached} pending={total.pending} windows={total.windows} "
+        f"failed={total.failed} llm_calls={total.calls} dry_run={args.dry_run}"
+    )
+    if total.failed:
+        raise RuntimeError(
+            f"{label}抽取有 {total.failed} 个样本失败。重新运行 build-profile 只会重抽这些样本，其余从缓存读取：{cache.path}"
+        )
+    return total
 
 
-if __name__ == "__main__":
-    main()
+def main(
+    *,
+    input_dir: Path,
+    output_dir: Path,
+    config_path: Path | None = None,
+    confirmed: bool = False,
+    dry_run: bool = False,
+) -> FileStats:
+    return run_task(
+        TASK,
+        input_dir=input_dir,
+        output_dir=output_dir,
+        config_path=config_path,
+        confirmed=confirmed,
+        dry_run=dry_run,
+    )

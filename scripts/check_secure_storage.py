@@ -331,6 +331,7 @@ class SecureStorageChecks(unittest.TestCase):
 
     def test_snapshot_and_checkpoints_use_suffixed_files_on_rerun(self):
         from weclone.data.agent import chat_snapshot, distill_profile
+        from weclone.data.agent.llm_cache import LLMCache
         from weclone.utils.config_models import MakeDatasetArgs
 
         chats, people, registry = self.root / "csv", self.root / "people", self.root / "contacts.json"
@@ -348,13 +349,11 @@ class SecureStorageChecks(unittest.TestCase):
         self.assertEqual(len(list(distill_profile.iter_chat_files(people))), 1)
         with self.assertRaisesRegex(ValueError, "not empty"):
             chat_snapshot.build_snapshot(people, args, registry_path=registry)
-        checkpoint = self.root / "checkpoint.json"
-        state = {"version": 1, "entries": {"sample": {"status": "done"}}}
-        secure.write_json(checkpoint, state)
-        loaded = distill_profile.load_state(
-            checkpoint, input_dir=people, output_dir=self.root, overwrite=False
-        )
-        self.assertEqual(loaded["entries"], state["entries"])
+        cache_path = self.root / "llm_cache.sqlite"
+        LLMCache(cache_path).put_many([("sample", "state", {"memories": ["synthetic-fact"]}, "")])
+        self.assertFalse(cache_path.exists())
+        self.assertTrue(secure.is_encrypted_file(secure.encrypted_path(cache_path)))
+        self.assertEqual(LLMCache(cache_path).get_many(["sample"]), {"sample": {"memories": ["synthetic-fact"]}})
 
     def test_training_checkpoint_suffixes_and_materialization(self):
         from weclone.train.security import _encrypted_checkpoint

@@ -160,6 +160,7 @@ test-scripts-my/
 !tests/tests_data/test_PII/test_0_730.csv
 *test.*
 !web/tests/*.test.ts
+!tests/conftest.py
 *-exp.*
 experiment/
 *users.json   

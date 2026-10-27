@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Any
 
 from weclone.core.inference.llm_client import LLMRequest, LLMResponse
+from weclone.data.agent.llm_cache import cache_key
 from weclone.prompts.distill_memory import build_window_extract_prompt
 
 
@@ -27,12 +28,27 @@ def content_chars(item: dict[str, Any]) -> int:
     return sum(len(content) for _, content in chat_messages(item))
 
 
-def render_sample(item: dict[str, Any], *, sample_id: str, target_role: str, include_time: bool) -> str:
-    lines = [f"#{sample_id}"]
+def sample_body(item: dict[str, Any], *, target_role: str, include_time: bool) -> str:
+    lines = []
     if include_time and item.get("time"):
         lines.append(f"time: {item['time']}")
     lines.extend(("B:" if role == target_role else "A:") + content for role, content in chat_messages(item))
     return "\n".join(lines)
+
+
+def render_sample(item: dict[str, Any], *, sample_id: str, target_role: str, include_time: bool) -> str:
+    body = sample_body(item, target_role=target_role, include_time=include_time)
+    return f"#{sample_id}\n{body}" if body else f"#{sample_id}"
+
+
+def sample_cache_key(sample: ChatSample, *, task: str, target_role: str) -> str:
+    """The rules this sample is extracted under and its text as the model sees it, without the positional id."""
+    return cache_key(
+        "distill",
+        task,
+        build_window_extract_prompt(task, include_current_state=sample.include_current_state),
+        sample_body(sample.item, target_role=target_role, include_time=task == "event"),
+    )
 
 
 def group_samples(

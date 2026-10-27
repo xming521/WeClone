@@ -29,6 +29,7 @@ from typing import Any
 
 from weclone.data.agent import distill_profile
 from weclone.data.agent.contacts import CONTACT_ID
+from weclone.data.agent.llm_cache import LLMCache, cache_key
 from weclone.prompts.memory_organization import (
     BATCH_SUMMARY_SCHEMA,
     CLASSIFY_SCHEMA,
@@ -620,7 +621,10 @@ def task_schema(task: dict) -> dict:
 
 
 class LLMTasks:
-    def __init__(self, args: argparse.Namespace):
+    """Runs prompt tasks on the configured model. Answers live in an LLM cache keyed by stage, prompt and schema, so
+    tasks answered by an earlier run, or before a failure, are not asked again."""
+
+    def __init__(self, args: argparse.Namespace, cache_path: Path | None = None):
         from weclone.core.inference.llm_client import build_llm_client
 
         options = distill_profile.default_args()
@@ -628,8 +632,7 @@ class LLMTasks:
         options.llm_provider = args.llm_provider
         options = self.options = distill_profile.resolve_llm_args(options)
         self.budget = input_budget(args)
-        self.path = args.output_dir / "llm_checkpoint.json"
-        self.entries = load(self.path) if secure_storage.file_exists(self.path) else {}
+        self.cache = LLMCache(cache_path)
         self.client = build_llm_client(
             options.llm_provider,
             config_path=options.config_path,
@@ -646,12 +649,14 @@ class LLMTasks:
 
         input_stats = [self.budget.check(task["prompt"]) for task in tasks]
         schemas = [task_schema(task) for task in tasks]
-        keys = [digest([task["stage"], task["prompt"], schema]) for task, schema in zip(tasks, schemas)]
-        pending = [
-            i
-            for i, key in enumerate(keys)
-            if self.options.overwrite or self.entries.get(key, {}).get("status") != "done"
-        ]
+        keys = [cache_key(task["stage"], task["prompt"], schema) for task, schema in zip(tasks, schemas)]
+        answers = self.cache.get_many(keys)
+        # One request per question, even when several tasks ask the same one.
+        first: dict[str, int] = {}
+        for i, key in enumerate(keys):
+            if key not in answers:
+                first.setdefault(key, i)
+        pending = list(first.values())
         if tasks:
             print(
                 f"{tasks[0]['stage']}: tasks={len(tasks)} pending={len(pending)} "
@@ -660,6 +665,7 @@ class LLMTasks:
             )
         for batch in distill_profile.batched(pending, self.options.batch_size):
             retry = list(batch)
+            errors: Counter[str] = Counter()
             for _ in range(2):
                 requests = [
                     LLMRequest.from_prompt(
@@ -676,39 +682,32 @@ class LLMTasks:
                     for i in retry
                 ]
                 responses = list(self.client.generate_batch(requests))
-                failed = []
+                failed, answered = [], []
+                errors.clear()
                 for position, i in enumerate(retry):
-                    error = "Missing response"
                     try:
                         if position >= len(responses):
-                            raise ValueError(error)
+                            raise ValueError("Missing response")
                         response = responses[position]
                         if not response.ok or response.finish_reason in {"length", "max_tokens"}:
                             raise ValueError(response.error or "Failed or truncated response")
                         validate(response.parsed_json, tasks[i])
-                        self.entries[keys[i]] = {
-                            "status": "done",
-                            "stage": tasks[i]["stage"],
-                            "result": response.parsed_json,
-                            "input": input_stats[i],
-                            "usage": response.metadata.get("usage"),
-                            "elapsed_s": response.elapsed_s,
-                            "model": response.model,
-                        }
+                        answers[keys[i]] = response.parsed_json
+                        answered.append((keys[i], tasks[i]["stage"], response.parsed_json, response.model))
                     except ValueError as exc:
-                        self.entries[keys[i]] = {"status": "failed", "error": str(exc)}
+                        errors[str(exc)] += 1
                         failed.append(i)
-                save(self.path, self.entries)
+                self.cache.put_many(answered)
                 retry = failed
                 if not retry:
                     break
             if retry:
-                raise RuntimeError(f"{len(retry)} LLM tasks failed; rerun to resume from {self.path}")
-        results = []
-        for key, task in zip(keys, tasks):
-            payload = self.entries[key]["result"]
-            results.append(validate(payload, task))
-        return results
+                reasons = "; ".join(f"{error} ×{count}" for error, count in errors.most_common(3))
+                raise RuntimeError(
+                    f"{len(retry)} LLM tasks failed ({reasons}). Rerun the same command to retry them, "
+                    f"answered tasks are read from {self.cache.path}"
+                )
+        return [validate(answers[key], task) for key, task in zip(keys, tasks)]
 
     def close(self) -> None:
         self.client.close()

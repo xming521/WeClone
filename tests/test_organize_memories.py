@@ -6,6 +6,7 @@ import pytest
 
 from weclone.core.inference.llm_client import LLMResponse
 from weclone.data.agent import organize_memories as organize
+from weclone.data.agent.llm_cache import LLMCache
 from weclone.prompts import memory_organization as prompts
 
 DOMAINS = [
@@ -851,13 +852,18 @@ def test_summary_allows_unreferenced_inputs_without_extra_output_fields():
     assert "unused_ids" not in json.dumps(organize.BATCH_SUMMARY_SCHEMA)
 
 
-def test_llm_retry_truncation_and_content_addressed_resume(tmp_path):
+def bare_runner(cache_path, client):
     runner = organize.LLMTasks.__new__(organize.LLMTasks)
-    runner.path, runner.entries = tmp_path / "checkpoint.json", {}
+    runner.cache = LLMCache(cache_path)
     runner.budget = organize.InputBudget(8192, "o200k_base")
     runner.options = SimpleNamespace(
-        batch_size=2, llm_provider="api", model=None, effort=None, max_tokens=200, timeout=10, overwrite=False,
+        batch_size=2, llm_provider="api", model=None, effort=None, max_tokens=200, timeout=10,
     )
+    runner.client = client
+    return runner
+
+
+def test_llm_retry_truncation_and_content_addressed_resume(tmp_path):
     payload = {"items": [{"id": "a", "fields": [field(1, "职业")], "sensitivity": "normal"}]}
 
     class Client:
@@ -869,21 +875,53 @@ def test_llm_retry_truncation_and_content_addressed_resume(tmp_path):
             self.calls += 1
             return [LLMResponse(ok=True, parsed_json=payload, finish_reason="length" if self.calls == 1 else "stop") for _ in requests]
 
-    runner.client = Client()
+    client = Client()
+    runner = bare_runner(tmp_path / "cache.sqlite", client)
     tasks = [{"prompt": "classify a", "stage": "classify"}]
     def validator(result, task):
         return organize.validate_classification(result, [record("a")], 2)
 
     runner.run(tasks, validator)
-    assert runner.client.calls == 2
-    runner.entries = organize.load(runner.path)
+    assert client.calls == 2
     runner.run(tasks, validator)
-    assert runner.client.calls == 2
+    assert client.calls == 2
+    # A later run with the same cache, say into a new output directory, asks nothing either.
+    assert bare_runner(tmp_path / "cache.sqlite", client).run(tasks * 2, validator) == [payload["items"]] * 2
+    assert client.calls == 2
     runner.run([{**tasks[0], "prompt": "updated rules: classify a"}], validator)
-    assert runner.client.calls == 3
+    assert client.calls == 3
 
 
-@pytest.mark.parametrize("change", ["comment", "extraction", "execution", "model", "overwrite"])
+def test_failed_tasks_are_not_cached_and_a_rerun_asks_only_them(tmp_path):
+    asked = []
+    broken = {"classify b"}
+
+    class Client:
+        def generate_batch(self, requests):
+            rows = []
+            for request in requests:
+                prompt = request.messages[0]["content"]
+                asked.append(prompt)
+                rid = prompt[-1]
+                payload = {"items": [{"id": rid, "fields": [field(1, "职业")], "sensitivity": "normal"}]}
+                rows.append(LLMResponse(ok=False, error="quota") if prompt in broken else LLMResponse(ok=True, parsed_json=payload, finish_reason="stop"))
+            return rows
+
+    tasks = [{"prompt": f"classify {rid}", "stage": "classify", "id": rid} for rid in "ab"]
+
+    def validator(result, task):
+        return organize.validate_classification(result, [record(task["id"])], 2)
+
+    runner = bare_runner(tmp_path / "cache.sqlite", Client())
+    with pytest.raises(RuntimeError, match=r"1 LLM tasks failed \(quota ×1\)"):
+        runner.run(tasks, validator)
+    assert asked == ["classify a", "classify b", "classify b"]
+    broken.clear()
+    assert [result[0]["id"] for result in runner.run(tasks, validator)] == ["a", "b"]
+    assert asked[3:] == ["classify b"]
+
+
+@pytest.mark.parametrize("change", ["comment", "extraction", "execution", "model"])
 def test_llm_resume_ignores_configuration_changes(tmp_path, monkeypatch, change):
     from weclone.core.inference import llm_client
 
@@ -893,7 +931,7 @@ def test_llm_resume_ignores_configuration_changes(tmp_path, monkeypatch, change)
             "model": "model-a", "effort": "low", "batch_size": 2, "max_tokens": 200,
             "timeout": 10, "command": "codex", "sandbox": "read-only",
         },
-        "agent_distill_args": {"llm_provider": "codex_exec", "overwrite": False},
+        "agent_distill_args": {"llm_provider": "codex_exec"},
     }
     config.write_text(json.dumps(settings))
     args = SimpleNamespace(config_path=config, llm_provider=None, output_dir=tmp_path,
@@ -929,71 +967,21 @@ def test_llm_resume_ignores_configuration_changes(tmp_path, monkeypatch, change)
         settings["codex_exec_args"].update(batch_size=7, timeout=30)
     elif change == "model":
         settings["codex_exec_args"].update(model="model-b", effort="high", max_tokens=400)
-    elif change == "overwrite":
-        settings["agent_distill_args"]["overwrite"] = True
     config.write_text("// edited configuration\n" + json.dumps(settings, indent=2))
 
     resumed = organize.LLMTasks(args)
     assert resumed.run(tasks, validator) == [payload["items"]]
-    expected_calls = 2 if change == "overwrite" else 1
-    assert client.calls == expected_calls
+    assert client.calls == 1
     if change == "model":
         assert resumed.options.model == "model-b"
         assert resumed.options.effort == "high"
-    if change == "overwrite":
-        resumed.close()
-        settings["agent_distill_args"]["overwrite"] = False
-        config.write_text(json.dumps(settings))
-        resumed = organize.LLMTasks(args)
-        assert resumed.run(tasks, validator) == [payload["items"]]
-        assert client.calls == expected_calls
 
     monkeypatch.setattr(organize, "CLASSIFY_SCHEMA", {
         **organize.CLASSIFY_SCHEMA, "description": "Updated output protocol",
     })
     resumed.run(tasks, validator)
-    assert client.calls == expected_calls + 1
+    assert client.calls == 2
     resumed.close()
-
-
-
-@pytest.mark.parametrize("batched", [False, True])
-def test_summary_overwrite_refreshes_current_tasks_and_preserves_other_entries(tmp_path, batched):
-    runner = organize.LLMTasks.__new__(organize.LLMTasks)
-    runner.path, runner.entries = tmp_path / "checkpoint.json", {"other-stage": {"status": "done"}}
-    runner.budget = organize.InputBudget(8192, "o200k_base")
-    runner.options = SimpleNamespace(
-        batch_size=2, llm_provider="api", model=None, effort=None, max_tokens=200, timeout=10, overwrite=False,
-    )
-    task = {"stage": "summarize", "prompt": "summarize a"}
-    if batched:
-        task["members"] = [0]
-
-    class Client:
-        calls = 0
-
-        def generate_batch(self, requests):
-            requests = list(requests)
-            self.calls += 1
-            facts = [{"attr": "职业", "value": f"第{self.calls}次结果", "source_ids": ["a"], "sensitivity": "normal", "time_scope": "current"}]
-            payload = {"groups": [{"id": 0, "facts": facts}]} if batched else {"facts": facts}
-            return [LLMResponse(ok=True, parsed_json=payload, finish_reason="stop") for _ in requests]
-
-    def validator(result, task):
-        payload = {"facts": result["groups"][0]["facts"]} if batched else result
-        return organize.validate_summary(payload, {"a"})
-
-    runner.client = Client()
-    first = runner.run([task], validator)
-    runner.options.overwrite = True
-    refreshed = runner.run([task], validator)
-    assert runner.client.calls == 2
-    assert first != refreshed
-    runner.entries = organize.load(runner.path)
-    assert runner.entries["other-stage"] == {"status": "done"}
-    runner.options.overwrite = False
-    assert runner.run([task], validator) == refreshed
-    assert runner.client.calls == 2
 
 
 @pytest.mark.parametrize("dim", [5, 6, 8])

@@ -185,7 +185,8 @@ def export_text(chosen: list[tuple[dict, dict]], extra: int) -> str:
 
 
 def summary_runner(output_dir: Path):
-    """build-profile's LLM task runner with the configured model, checkpointed in output_dir."""
+    """build-profile's LLM task runner with the configured model. Its answers stay in output_dir instead of the
+    shared LLM cache, so generating again writes new summaries."""
     from weclone.data.agent.organize_memories import LLMTasks
 
     return LLMTasks(
@@ -195,8 +196,8 @@ def summary_runner(output_dir: Path):
             max_context_tokens=INPUT_TOKENS,
             token_encoding="o200k_base",
             tokenizer_file=None,
-            output_dir=output_dir,
-        )
+        ),
+        cache_path=output_dir / "llm_cache.sqlite",
     )
 
 
@@ -355,7 +356,7 @@ class SummaryStore:
             except Exception as exc:
                 logger.warning(f"领域总结生成失败：{type(exc).__name__}: {exc}")
                 failure = f"{len(todo) - len(stored)} 个领域没有生成成功，下次生成只补这些领域。"
-                # A bare RuntimeError is LLMTasks giving up after retries, pointing to a checkpoint that is gone.
+                # A bare RuntimeError is LLMTasks giving up after retries, pointing to a cache that is gone.
                 if type(exc) is not RuntimeError:
                     failure += f"原因：{str(exc) or type(exc).__name__}"
                 self.failures[level] = failure

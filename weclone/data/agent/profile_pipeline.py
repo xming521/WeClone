@@ -29,13 +29,6 @@ def _stage(label: str):
         )
 
 
-def check_distillation(checkpoint: Path) -> None:
-    state = secure_storage.read_json(checkpoint)
-    failed = [entry for entry in state["entries"].values() if entry.get("status") != "done"]
-    if failed:
-        raise RuntimeError(f"记忆抽取有 {len(failed)} 个样本未完成，停止流水线。详情：{checkpoint}")
-
-
 def run(
     *,
     with_style: bool,
@@ -92,15 +85,14 @@ def run(
     click.echo(f"聊天样本准备完成：{len(source_files)} 个聊天文件。")
 
     with _stage(f"[2/{stages}] 抽取画像记忆"):
+        # Raises when samples failed. Rerunning build-profile into a new directory asks only for those.
         distill_profile.main(
             input_dir=people_dir, output_dir=distill_dir, config_path=config_path, confirmed=True
         )
-        check_distillation(distill_profile.default_state_path(distill_dir))
     with _stage(f"[2/{stages}] 抽取事件记忆"):
         distill_event.main(
             input_dir=people_dir, output_dir=distill_dir, config_path=config_path, confirmed=True
         )
-        check_distillation(distill_event.default_event_state_path(distill_dir))
 
     with _stage(f"[3/{stages}] 归纳领域、分类、分主题和汇总记忆"):
         organize_memories.main(

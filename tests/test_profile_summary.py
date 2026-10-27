@@ -4,6 +4,7 @@ import sqlite3
 import pytest
 from fastapi.testclient import TestClient
 
+from weclone.data.agent.llm_cache import LLMCache
 from weclone.data.agent.llm_profile_hierarchy import dimension_view
 from weclone.prompts.profile_summary import SUMMARY_RULES, SUMMARY_SCHEMA
 
@@ -405,17 +406,19 @@ def test_background_generation_reads_and_writes_with_the_session_key(tmp_path, m
     # From here on only the logged-in session holds the key.
     secure_storage.lock()
 
-    checkpoints = []
+    caches = []
 
     class Runner:
         def __init__(self, output_dir):
-            self.checkpoint = output_dir / "llm_checkpoint.json"
+            self.cache = LLMCache(output_dir / "llm_cache.sqlite")
 
         def run(self, tasks, validate):
-            # LLMTasks keeps its checkpoint in secure storage too.
-            secure_storage.write_json(self.checkpoint, {})
-            checkpoints.append(secure_storage.storage_path(self.checkpoint))
-            return [validate({"title": "标题", "summary": "总结"}, task) for task in tasks]
+            # The generation's answer cache is in secure storage too.
+            answer = {"title": "标题", "summary": "总结"}
+            self.cache.put_many([(task["prompt"], task["stage"], answer, "") for task in tasks])
+            stored = secure_storage.encrypted_path(self.cache.path)
+            caches.append((stored, secure_storage.is_encrypted_file(stored)))
+            return [validate(answer, task) for task in tasks]
 
         def close(self):
             pass
@@ -428,4 +431,44 @@ def test_background_generation_reads_and_writes_with_the_session_key(tmp_path, m
     assert view(client)["error"] == ""
     assert summaries(client)["学业"]["title"] == "标题"
     # Encrypted while it lasted, and gone with the generation.
-    assert checkpoints[0].name == "llm_checkpoint.json.enc" and not checkpoints[0].exists()
+    stored, encrypted = caches[0]
+    assert encrypted and not stored.exists()
+
+
+def test_each_generation_asks_again_and_leaves_the_shared_cache_alone(tmp_path, monkeypatch):
+    from weclone.core.inference import llm_client
+    from weclone.core.inference.llm_client import LLMResponse
+    from weclone.data.agent import llm_cache
+
+    settings = tmp_path / "settings.jsonc"
+    settings.write_text(json.dumps({
+        "codex_exec_args": {
+            "model": "fixture", "effort": "low", "batch_size": 1,
+            "timeout": 30, "command": "codex", "sandbox": "read-only",
+        },
+        "agent_distill_args": {"llm_provider": "codex_exec"},
+    }))
+    monkeypatch.setenv("WECLONE_CONFIG_PATH", str(settings))
+    asked = []
+
+    class Client:
+        def generate_batch(self, requests):
+            requests = list(requests)
+            asked.extend(requests)
+            return [
+                LLMResponse(ok=True, parsed_json={"title": "标题", "summary": "总结"}, finish_reason="stop")
+                for _ in requests
+            ]
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(llm_client, "build_llm_client", lambda *a, **kw: Client())
+    task = {"stage": "domain_summary", "prompt": "总结这个领域", "schema": SUMMARY_SCHEMA}
+    for generation in ("first", "second"):
+        runner = profile_summary.summary_runner(tmp_path / generation)
+        assert runner.run([task], lambda payload, _: payload) == [{"title": "标题", "summary": "总结"}]
+        runner.close()
+    assert len(asked) == 2
+    assert (tmp_path / "first" / "llm_cache.sqlite").is_file()
+    assert not llm_cache.DEFAULT_PATH.exists()

@@ -63,7 +63,7 @@ def test_distillation_requires_consent_before_writes_or_model_calls(
             "model": "fixture", "effort": "medium", "batch_size": 1,
             "timeout": 30, "command": "codex", "sandbox": "read-only",
         },
-        "agent_distill_args": {"overwrite": True, "llm_provider": "codex_exec"},
+        "agent_distill_args": {"llm_provider": "codex_exec"},
     }), encoding="utf-8")
     input_dir = tmp_path / "input"
     input_dir.mkdir()
@@ -72,9 +72,9 @@ def test_distillation_requires_consent_before_writes_or_model_calls(
 
     client = Mock()
     build_client = Mock(return_value=client)
-    process_file = Mock(return_value=(0, 0))
+    process_file = Mock(return_value=distill_profile.FileStats())
     monkeypatch.setattr(llm_client, "build_llm_client", build_client)
-    monkeypatch.setattr(module, "process_file", process_file)
+    monkeypatch.setattr(distill_profile, "process_task_file", process_file)
 
     @click.command()
     def distill():
@@ -83,12 +83,13 @@ def test_distillation_requires_consent_before_writes_or_model_calls(
     result = CliRunner().invoke(distill, input=answer)
 
     assert "聊天内容可能包含身份、联系方式和私密对话" in result.output
-    assert "overwrite=true" in result.output
+    assert "已经抽取过的聊天样本直接读取缓存结果" in result.output
     assert str(input_dir) in result.output
     if approved:
         assert result.exit_code == 0, result.output
         build_client.assert_called_once()
         process_file.assert_called_once()
+        assert process_file.call_args.kwargs["task"] == module.TASK
         assert output_dir.exists()
     else:
         assert result.exit_code == 1, result.output

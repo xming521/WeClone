@@ -5,13 +5,16 @@ import pytest
 
 from weclone.core.inference.llm_client import LLMResponse
 from weclone.data.agent import distill_event, distill_profile
+from weclone.data.agent.distill_profile import FileStats
 from weclone.data.agent.distill_windows import (
     ChatSample,
     content_chars,
     group_samples,
     render_sample,
+    sample_cache_key,
     split_window_response,
 )
+from weclone.data.agent.llm_cache import LLMCache
 from weclone.prompts.distill_memory import (
     EVENT_EXTRACT_PROMPT,
     build_state_extract_prompt,
@@ -112,13 +115,39 @@ def test_invalid_state_windows_are_rejected(defect):
         split_window_response(r, samples, "state")
 
 
+def chats(count, size=20):
+    """Samples with different text, so none shares another's cached answer."""
+    items = [sample(i, size).item for i in range(count)]
+    for i, item in enumerate(items):
+        item["messages"][0]["content"] = f"{i}" + "字" * (size - len(str(i)))
+    return items
+
+
+def file_options(tmp_path, client, **changes):
+    options = {
+        "output_dir": tmp_path / "output",
+        "target_role": "assistant",
+        "provider": "codex_exec",
+        "model": "configured-model",
+        "effort": "low",
+        "client": client,
+        "cache": LLMCache(tmp_path / "cache.sqlite"),
+        "max_tokens": None,
+        "batch_size": 2,
+        "limit_records": None,
+        "dry_run": False,
+        "indent": 2,
+        "progress_factory": Mock(),
+    }
+    return {**options, **changes}
+
+
 @pytest.mark.parametrize("task,module", [("state", distill_profile), ("event", distill_event)])
 def test_process_writeback_retry_resume_and_input_preservation(tmp_path, task, module):
     source = tmp_path / "input.json"
-    items = [sample(i, 100).item for i in range(9)]
+    items = chats(9, 100)
     source.write_text(json.dumps(items))
     original = source.read_bytes()
-    state = {"entries": {}}
     received = []
     failed_once = False
 
@@ -140,77 +169,103 @@ def test_process_writeback_retry_resume_and_input_preservation(tmp_path, task, m
         return responses
 
     client = Mock(generate_batch=Mock(side_effect=generate))
-    options = {
-        "output_dir": tmp_path / "output",
-        "target_role": "assistant",
-        "provider": "codex_exec",
-        "model": "configured-model",
-        "effort": "low",
-        "client": client,
-        "max_tokens": None,
-        "batch_size": 2,
-        "limit_records": None,
-        "dry_run": False,
-        "state": state,
-        "state_path": tmp_path / "checkpoint.json",
-        "indent": 2,
-        "progress_factory": Mock(),
-    }
-    assert module.process_file(source, **options) == (9, 4)
+    options = file_options(tmp_path, client)
+    assert module.process_file(source, **options) == FileStats(cached=0, pending=9, windows=3, failed=0, calls=4)
     assert [len(wave) for wave in received] == [2, 1, 1]
     assert received[1][0] is received[0][0]
-    output = module.output_path_for(options["output_dir"], source)
+    output = distill_profile.output_path_for(options["output_dir"], source, module.TASK)
     saved = json.loads(output.read_text())
     for item in saved:
         expected = result(str(item["id"]), task)[f"{task}_memories"]
         assert item[f"{task}_memories"] == expected
     assert source.read_bytes() == original
-    checkpoint = json.loads(options["state_path"].read_text())
-    assert len(checkpoint["entries"]) == 9
-    assert all(r["status"] == "done" for r in checkpoint["entries"].values())
-    assert sum(len(w["attempts"]) for w in checkpoint["windows"].values()) == 4
-    first = checkpoint["entries"][distill_profile.state_key(source, "0")]
-    assert "results" not in first["payload"]["result"]
-    if task == "state":
-        assert first["payload"]["result"]["memories"] == result("0", task)["state_memories"]
-    output.unlink()
-    options["state"] = checkpoint
+
+    # A rerun, here into another output directory, reads every answer from the cache.
     client.generate_batch.reset_mock()
-    assert module.process_file(source, **options) == (0, 0)
+    rerun = file_options(tmp_path, client, output_dir=tmp_path / "rerun")
+    assert module.process_file(source, **rerun) == FileStats(cached=9, pending=0, windows=0, failed=0, calls=0)
     client.generate_batch.assert_not_called()
-    assert json.loads(output.read_text()) == saved
+    assert json.loads(distill_profile.output_path_for(rerun["output_dir"], source, module.TASK).read_text()) == saved
+
+    # Only a sample whose text changed is asked again, under its new text.
+    items[4]["messages"][0]["content"] = "改" * 100
+    source.write_text(json.dumps(items))
+    received.clear()
+    failed_once = True
+    assert module.process_file(source, **rerun).pending == 1
+    [[request]] = received
+    assert request.metadata["sample_ids"] == ["4"] and "改" * 100 in request.messages[0]["content"]
+
+
+def test_cache_key_leaves_out_position_and_follows_rules_and_text():
+    def key(item, *, recent=False, sid="0", task="state", role="assistant"):
+        return sample_cache_key(ChatSample(0, sid, item, recent), task=task, target_role=role)
+
+    item = sample(0).item
+    assert key(item) == key(item, sid="17")
+    assert key(item) != key(item, recent=True)
+    assert key(item) != key(item, task="event")
+    assert key(item) != key(item, role="user")
+    assert key(item) != key({**item, "messages": [{"role": "assistant", "content": "别的"}]})
+    # Event rules see the chat time, profile rules do not.
+    assert key(item) == key({**item, "time": "2025-02-01"})
+    assert key(item, task="event") != key({**item, "time": "2025-02-01"}, task="event")
 
 
 @pytest.mark.parametrize("task,module", [("state", distill_profile), ("event", distill_event)])
 def test_failed_window_never_becomes_successful_empty_memories(tmp_path, task, module):
     source = tmp_path / "input.json"
-    source.write_text(json.dumps([sample(0).item, sample(1).item]))
-    state = {"entries": {}}
+    source.write_text(json.dumps(chats(2)))
     client = Mock()
     client.generate_batch.side_effect = lambda requests: [
         LLMResponse(ok=True, parsed_json={"results": []}) for _ in requests
     ]
-    output_dir = tmp_path / "output"
-    assert module.process_file(
-        source,
-        output_dir=output_dir,
-        target_role="assistant",
-        provider="codex_exec",
-        model="fixture",
-        effort="low",
-        client=client,
-        max_tokens=None,
-        batch_size=30,
-        limit_records=None,
-        dry_run=False,
-        state=state,
-        state_path=tmp_path / "checkpoint.json",
-        indent=2,
-        progress_factory=Mock(),
-    ) == (2, 2)
+    options = file_options(tmp_path, client, model="fixture", batch_size=30)
+    output = distill_profile.output_path_for(options["output_dir"], source, module.TASK)
+    output.parent.mkdir(parents=True)
+    output.write_text("[]")
+    assert module.process_file(source, **options) == FileStats(cached=0, pending=2, windows=1, failed=2, calls=2)
     assert client.generate_batch.call_count == 2
-    assert all(r["status"] == "failed" and r["payload"]["result"] is None for r in state["entries"].values())
-    assert not module.output_path_for(output_dir, source).exists()
+    # No answer is cached for a failure, and no output file is left that would look complete.
+    assert not output.exists()
+    assert module.process_file(source, **options).pending == 2
+    assert client.generate_batch.call_count == 4
+
+
+def test_failed_samples_stop_the_run_and_a_rerun_asks_only_them(tmp_path, monkeypatch):
+    from weclone.core.inference import llm_client
+
+    config = tmp_path / "settings.jsonc"
+    config.write_text(json.dumps({
+        "codex_exec_args": {
+            "model": "fixture", "effort": "low", "batch_size": 1,
+            "timeout": 30, "command": "codex", "sandbox": "read-only",
+        },
+        "agent_distill_args": {"llm_provider": "codex_exec", "max_samples_per_window": 1},
+    }))
+    input_dir = tmp_path / "people"
+    input_dir.mkdir()
+    (input_dir / "chat.json").write_text(json.dumps(chats(2)))
+    asked = []
+    broken = {"1"}
+
+    def generate(requests):
+        rows = []
+        for request in requests:
+            ids = request.metadata["sample_ids"]
+            asked.append(ids)
+            rows.append(LLMResponse(ok=False, error="boom") if set(ids) & broken else response(ids, "state"))
+        return rows
+
+    client = Mock(generate_batch=Mock(side_effect=generate))
+    monkeypatch.setattr(llm_client, "build_llm_client", lambda *a, **kw: client)
+    run = {"input_dir": input_dir, "output_dir": tmp_path / "distill", "config_path": config, "confirmed": True}
+    with pytest.raises(RuntimeError, match="1 个样本失败"):
+        distill_profile.main(**run)
+    assert asked == [["0"], ["1"], ["1"]]
+    broken.clear()
+    assert distill_profile.main(**run) == FileStats(cached=1, pending=1, windows=1, failed=0, calls=1)
+    assert asked[3:] == [["1"]]
 
 
 @pytest.mark.parametrize("max_tokens", [None, 4096])
@@ -237,29 +292,13 @@ def test_window_config_preserves_model_concurrency_and_optional_token_limit(tmp_
 
 
 @pytest.mark.parametrize("module", [distill_profile, distill_event])
-def test_dry_run_previews_a_whole_window_without_writes(tmp_path, capsys, module):
+def test_dry_run_counts_pending_and_previews_a_whole_window_without_writes(tmp_path, capsys, module):
     source = tmp_path / "input.json"
     source.write_text(json.dumps([sample(i, 100).item for i in range(5)]))
     client = Mock()
-    output_dir, checkpoint = tmp_path / "output", tmp_path / "checkpoint.json"
-    assert module.process_file(
-        source,
-        output_dir=output_dir,
-        target_role="assistant",
-        provider="codex_exec",
-        model="fixture",
-        effort="low",
-        client=client,
-        max_tokens=None,
-        batch_size=30,
-        limit_records=None,
-        dry_run=True,
-        state={"entries": {}},
-        state_path=checkpoint,
-        indent=2,
-        progress_factory=Mock(),
-    ) == (4, 0)
+    options = file_options(tmp_path, client, model="fixture", batch_size=30, dry_run=True)
+    assert module.process_file(source, **options) == FileStats(cached=0, pending=5, windows=2)
     preview = capsys.readouterr().out
     assert "#0\n" in preview and "#3\n" in preview and "#4\n" not in preview
     client.generate_batch.assert_not_called()
-    assert not output_dir.exists() and not checkpoint.exists()
+    assert not options["output_dir"].exists() and not (tmp_path / "cache.sqlite").exists()
