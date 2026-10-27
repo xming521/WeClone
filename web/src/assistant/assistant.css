@@ -1,0 +1,185 @@
+/* The assistant page reuses the summary page's shell, intro, segmented controls and hints. */
+.assistant-main {
+  max-width: 860px;
+}
+.summary-intro > p.assistant-address {
+  margin-top: 10px;
+}
+.assistant-main code {
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: var(--color-surface-hover);
+  color: var(--color-ink-strong);
+  font-size: 12px;
+}
+.assistant-card {
+  margin-top: 18px;
+  padding: 16px 18px;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: var(--color-surface);
+  box-shadow: 0 6px 18px var(--color-shadow-soft);
+}
+.assistant-created {
+  border-color: #b9dccd;
+}
+.assistant-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.assistant-card-head h2 {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--color-ink-strong);
+  font-size: 14px;
+}
+.assistant-card-head + .summary-levels {
+  margin-top: 12px;
+}
+.assistant-actions button,
+.assistant-domains-head button,
+.assistant-copy button,
+button.assistant-done {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 5px;
+  border: 0;
+  border-radius: 9px;
+  padding: 7px 11px;
+  background: var(--color-surface-hover);
+  color: var(--color-ink-action);
+  font-size: 12px;
+  font-weight: 600;
+}
+.assistant-actions button.primary {
+  background: var(--color-accent-dark);
+  color: var(--color-white);
+}
+.assistant-card button:disabled {
+  opacity: 0.55;
+}
+.assistant-state {
+  border-radius: 5px;
+  padding: 3px 7px;
+  background: #eef0ec;
+  color: #7d8a84;
+  font-size: 11px;
+}
+.assistant-state.on {
+  background: #dff1e9;
+  color: #23785e;
+}
+.assistant-domains-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--color-border-hairline);
+}
+.assistant-domains-head h3 {
+  margin: 0;
+  color: var(--color-ink-strong);
+  font-size: 13px;
+}
+.assistant-domains-head span {
+  color: var(--color-subtle);
+  font-size: 12px;
+}
+.assistant-domains-head button {
+  margin-left: auto;
+}
+.assistant-domains {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 6px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.assistant-domains label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 10px;
+  border: 1px solid var(--color-border-hairline);
+  border-radius: 9px;
+  background: var(--color-surface-subtle);
+  color: var(--color-subtle);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.assistant-domains label.shared {
+  border-color: #cfe3d8;
+  background: var(--color-white);
+  color: var(--color-ink-strong);
+}
+.assistant-domains input {
+  margin: 0;
+  accent-color: var(--color-accent-dark);
+}
+.assistant-domains span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.assistant-domains small {
+  flex-shrink: 0;
+  margin-left: auto;
+  color: var(--color-subtle);
+  font-size: 11px;
+}
+.assistant-main a {
+  color: var(--color-ink-action);
+}
+.assistant-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.assistant-setup {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--color-border-hairline);
+}
+.assistant-setup .summary-levels {
+  margin-top: 12px;
+}
+button.assistant-done {
+  margin-top: 12px;
+}
+.assistant-copy {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 8px;
+  margin-top: 10px;
+}
+.assistant-copy pre {
+  min-width: 0;
+  margin: 0;
+  padding: 9px 10px;
+  border: 1px solid var(--color-border-control);
+  border-radius: 9px;
+  background: var(--color-surface-subtle);
+  color: var(--color-ink-strong);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+.assistant-copy small {
+  grid-column: 1 / -1;
+  color: var(--color-danger);
+  font-size: 11.5px;
+}

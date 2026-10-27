@@ -15,6 +15,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from weclone.server import style_view
+from weclone.server.assistant import install_assistant
 from weclone.server.auth import install_auth
 from weclone.server.profile_intro import profile_intro
 from weclone.server.profile_summary import (
@@ -463,6 +464,8 @@ def create_app(
     @app.post("/api/summaries/review")
     def summary_review(request: SummaryReview):
         return summaries.review(request)
+
+    install_assistant(app, store, summaries)
 
     @app.get("/api/style")
     def style():

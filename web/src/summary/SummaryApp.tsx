@@ -16,10 +16,24 @@ import type {
 } from './summaryState';
 import './summary.css';
 
+const LEVEL_LABELS: Record<SummaryLevel, { label: string; hint: string }> = {
+  public: SENSITIVITY.public,
+  normal: SENSITIVITY.normal,
+  full: { label: '全部', hint: '所有还成立的条目，包括私密和敏感的' },
+};
+// What a summary of each level is written from, as the backend's in_scope picks it.
+const SHORT_INTRO =
+  '每个生活领域写一段较短的总结，只用隐私度不高于所选级别的身份、目标、条件和偏好，不用计划承诺和已过时的信息。';
+const INTROS: Record<SummaryLevel, string> = {
+  full: '每个生活领域写一段总结，用这个领域所有还成立的条目，包括私密和敏感的。build-profile 最后一步会生成这一级。',
+  normal: SHORT_INTRO,
+  public: SHORT_INTRO,
+};
 const PLACEHOLDERS: Partial<Record<SummaryState, string>> = {
   empty: '这个领域没有能写进总结的条目：要么高于所选隐私度，要么是计划承诺或已过时的信息。',
   missing: '还没有生成总结。',
 };
+const EMPTY_FULL = '这个领域没有还成立的条目。';
 const FACT_CHOICES = [0, 3, 5, 10];
 
 function SummaryEditor({
@@ -82,6 +96,7 @@ function SummaryEditor({
 function SummaryCard({
   item,
   limits,
+  empty,
   busy,
   editing,
   onEdit,
@@ -91,6 +106,8 @@ function SummaryCard({
 }: {
   item: SummaryDomain;
   limits: SummaryView['limits'];
+  /** Why a domain has nothing to summarise at this level. */
+  empty: string;
   busy: boolean;
   editing: boolean;
   onEdit: () => void;
@@ -117,7 +134,7 @@ function SummaryCard({
           {state === 'stale' && <p className="summary-note">画像有变动，这段已不再导出，重新生成后再确认。</p>}
         </div>
       ) : (
-        <p className="summary-placeholder">{PLACEHOLDERS[state]}</p>
+        <p className="summary-placeholder">{state === 'empty' ? empty : PLACEHOLDERS[state]}</p>
       )}
       {summary && !editing && state !== 'empty' && (
         <div className="summary-actions">
@@ -152,7 +169,7 @@ function SummaryCard({
 }
 
 export function SummaryApp() {
-  const [level, setLevel] = useState<SummaryLevel>('normal');
+  const [level, setLevel] = useState<SummaryLevel>('full');
   const [facts, setFacts] = useState(0);
   const [view, setView] = useState<SummaryView | null>(null);
   const [error, setError] = useState('');
@@ -222,6 +239,7 @@ export function SummaryApp() {
 
   async function copy() {
     if (!view?.text) return;
+    if (level === 'full' && !window.confirm('这份文本含私密和敏感的内容，贴出去就收不回来。确定复制吗？')) return;
     try {
       await navigator.clipboard.writeText(view.text);
     } catch {
@@ -275,7 +293,8 @@ export function SummaryApp() {
         <section className="summary-intro">
           <h1>给个人助理的背景资料</h1>
           <p>
-            每个生活领域写一段总结，只用隐私度不高于所选级别的身份、目标、条件和偏好，不用计划承诺和已过时的信息。确认过的总结才会进入导出文本，所依据的画像一改动就停止导出，等重新生成并确认。
+            {INTROS[level]}
+            确认过的总结才会进入导出文本和助手接入，所依据的画像一改动就停止导出，等重新生成并确认。
           </p>
           <div className="summary-toolbar">
             <div className="summary-levels" role="radiogroup" aria-label="隐私度上限">
@@ -287,13 +306,13 @@ export function SummaryApp() {
                   role="radio"
                   aria-checked={item === level}
                   disabled={!!busy}
-                  title={SENSITIVITY[item].hint}
+                  title={LEVEL_LABELS[item].hint}
                   onClick={() => {
                     setEditing(null);
                     setLevel(item);
                   }}
                 >
-                  {SENSITIVITY[item].label}
+                  {LEVEL_LABELS[item].label}
                 </button>
               ))}
             </div>
@@ -340,6 +359,7 @@ export function SummaryApp() {
                 key={item.domain}
                 item={item}
                 limits={view.limits}
+                empty={level === 'full' ? EMPTY_FULL : PLACEHOLDERS.empty!}
                 busy={!!busy}
                 editing={editing === item.domain}
                 onEdit={() => setEditing(item.domain)}
@@ -372,9 +392,15 @@ export function SummaryApp() {
                     <ClipboardCopy size={14} /> {copied ? '已复制' : '复制'}
                   </button>
                 </div>
-                <p className="summary-hint">
-                  可以粘贴到个人助理的“关于我”、自定义指令或 USER.md。贴出去的内容收不回来，复制前请再看一遍。
-                </p>
+                {level === 'full' ? (
+                  <p className="summary-hint summary-warning">
+                    这一级含私密和敏感的内容，贴出去就收不回来。只想给助理少一些，可以切到普通或公开再生成一份。
+                  </p>
+                ) : (
+                  <p className="summary-hint">
+                    可以粘贴到个人助理的“关于我”、自定义指令或 USER.md。贴出去的内容收不回来，复制前请再看一遍。
+                  </p>
+                )}
               </>
             ) : (
               <p className="summary-placeholder">确认至少一个领域的总结后，这里会出现可以粘贴给个人助理的文本。</p>

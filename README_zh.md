@@ -161,6 +161,8 @@ weclone-cli build-profile --purpose clone
 
 运行 `weclone-cli server` 查看和审核最新的画像，指定某次结果使用 `weclone-cli server --run <结果目录>`。
 
+想让 Claude Code、Codex 等个人助手读取画像：在网页的「助手接入」页选好隐私级别和提供哪些领域，生成令牌，按页面上的命令配置。所有助手共用这一个令牌，改了设置从助手的下一次调用起生效。助手通过 MCP 连接 `http://127.0.0.1:5175/mcp`，有两个只读工具：`weclone_profile` 返回你在「领域总结」页确认过的总结，`weclone_search` 按关键词或领域查画像条目。助手使用期间 `weclone-cli server` 要保持运行。加密模式下还要在这一页打开「允许助手读取」，到设定的时间自动关闭。
+
 ### 数据加密与密码
 
 在 `settings.jsonc` 中设置：

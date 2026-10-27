@@ -150,6 +150,8 @@ Results are saved under `dataset/res_csv/agent/profile_runs/`, and the profile p
 
 Run `weclone-cli server` to view and review the newest profile, or `weclone-cli server --run <result-directory>` to select a run.
 
+To let personal assistants such as Claude Code or Codex read your profile, open the assistant page (`#/assistant`) in the web interface, choose the privacy level and the life domains assistants may read, generate a token, and run the commands shown there. All assistants share this one token. Changes apply from their next call. Assistants connect over MCP to `http://127.0.0.1:5175/mcp` and get two read-only tools: `weclone_profile` returns the domain summaries you approved on the domain summary page (`#/summary`), and `weclone_search` finds profile entries by keyword or domain. Keep `weclone-cli server` running while assistants use it. In encrypted mode, also allow assistant access on that page for a set time.
+
 ### Data Encryption and Passwords
 
 Set `security_args` in `settings.jsonc`:

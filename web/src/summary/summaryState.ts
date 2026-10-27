@@ -1,5 +1,5 @@
 // Shapes of GET /api/summaries, served by weclone/server/profile_summary.py.
-export type SummaryLevel = 'public' | 'normal';
+export type SummaryLevel = 'full' | 'normal' | 'public';
 export type SummaryStatus = 'pending' | 'approved' | 'rejected';
 
 export interface DomainSummary {
@@ -28,7 +28,7 @@ export interface SummaryView {
   text: string;
 }
 
-export const SUMMARY_LEVELS: SummaryLevel[] = ['public', 'normal'];
+export const SUMMARY_LEVELS: SummaryLevel[] = ['public', 'normal', 'full'];
 
 /** Where one domain stands. Only approved summaries reach the export, and generation fills missing and stale ones. */
 export type SummaryState = 'empty' | 'missing' | 'stale' | 'pending' | 'approved' | 'rejected';

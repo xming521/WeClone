@@ -77,9 +77,8 @@ def in_scope(fact: dict, level: str) -> bool:
     )
 
 
-def domain_inputs(profile: dict, level: str) -> list[dict]:
-    """For each domain of the review store's profile, in order: the facts a summary at `level` is written from,
-    as prompt lines with their hash and as export lines, and the last month any of them came up."""
+def domain_members(profile: dict) -> dict[str, list[int]]:
+    """Fact indices of each domain of the review store's profile, in domain order."""
     members: dict[str, list[int]] = {domain["name"]: [] for domain in profile["domains"]}
 
     def collect(items: list[dict], domain: str):
@@ -94,9 +93,15 @@ def domain_inputs(profile: dict, level: str) -> list[dict]:
             # Attributes placed directly on a dimension belong to no domain.
             if not group["id"].endswith(":direct"):
                 collect(group["items"], group["name"])
+    return members
+
+
+def domain_inputs(profile: dict, level: str) -> list[dict]:
+    """For each domain of the review store's profile, in order: the facts a summary at `level` is written from,
+    as prompt lines with their hash and as export lines, and the last month any of them came up."""
     sources = profile.get("sources", {})
     inputs = []
-    for domain, indices in members.items():
+    for domain, indices in domain_members(profile).items():
         rows = []
         for index in indices:
             fact = profile["facts"][index]
@@ -156,6 +161,17 @@ def validate_summary(payload, level: str) -> dict:
     if PEER_ID.search(title) or PEER_ID.search(summary):
         raise ValueError("Summary must not contain chat peer ids")
     return {"title": title, "summary": summary}
+
+
+def exported(inputs: list[dict], rows: dict[str, dict]) -> list[tuple[dict, dict]]:
+    """The summaries that leave WeClone, in domain order: approved and written from the facts as they are now."""
+    return [
+        (item, row)
+        for item in inputs
+        if (row := rows.get(item["domain"])) is not None
+        and row["status"] == "approved"
+        and row["input_sha256"] == item["sha256"]
+    ]
 
 
 def export_text(chosen: list[tuple[dict, dict]], extra: int) -> str:
@@ -257,12 +273,10 @@ class SummaryStore:
 
     def view(self, level: str, extra: int = 0) -> dict:
         inputs, rows = self.state(level)
-        domains, chosen = [], []
+        domains = []
         for item in inputs:
             row = rows.get(item["domain"])
             stale = row is not None and row["input_sha256"] != item["sha256"]
-            if row is not None and row["status"] == "approved" and not stale:
-                chosen.append((item, row))
             domains.append(
                 {
                     "domain": item["domain"],
@@ -278,7 +292,7 @@ class SummaryStore:
             "error": self.failures.get(level, "") if any(due(item, rows) for item in inputs) else "",
             "limits": {"title": TITLE_CHARS, "summary": SUMMARY_MAX_CHARS[level], "facts": EXTRA_FACTS},
             "domains": domains,
-            "text": export_text(chosen, extra),
+            "text": export_text(exported(inputs, rows), extra),
         }
 
     def generate(self, level: str, *, wait: bool = False) -> dict:

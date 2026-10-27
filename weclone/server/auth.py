@@ -28,6 +28,9 @@ class AuthStore:
         os.close(fd)
         self.path.chmod(0o600)
         self._keys: dict[str, tuple[float, bytes]] = {}
+        # Until when personal assistants may read, with the key of the session that allowed it in encrypted mode.
+        # Like session keys it lives only in memory, so a restart ends it.
+        self._assistant: tuple[float, bytes | None] | None = None
         self._key_lock = threading.RLock()
         self._generation = ""
         with self.connect() as db:
@@ -56,8 +59,7 @@ class AuthStore:
         if row is None or row[0] != generation:
             db.execute("DELETE FROM sessions")
             db.execute("INSERT OR REPLACE INTO auth_state VALUES (1,?,0,0)", (generation,))
-            with self._key_lock:
-                self._keys.clear()
+            self.forget_keys()
         self._generation = generation
 
     def setup(self, password: str, confirmation: str):
@@ -123,6 +125,32 @@ class AuthStore:
             for digest, (expires, _) in list(self._keys.items()):
                 if expires <= now:
                     del self._keys[digest]
+            if self._assistant is not None and self._assistant[0] <= now:
+                self._assistant = None
+
+    def forget_keys(self):
+        with self._key_lock:
+            self._keys.clear()
+            self._assistant = None
+
+    def allow_assistant(self, key: bytes | None, seconds: float) -> float:
+        expires = time.time() + seconds
+        with self._key_lock:
+            self._assistant = (expires, key)
+        return expires
+
+    def stop_assistant(self):
+        with self._key_lock:
+            self._assistant = None
+
+    def assistant_access(self) -> tuple[float, bytes | None] | None:
+        """Until when assistants may read and the key they read with, None when they may not."""
+        self.prune_keys()
+        # A new password ends access as it ends sessions.
+        with self.connect() as db:
+            self._sync_generation(db)
+        with self._key_lock:
+            return self._assistant
 
     def expiry(self, token: str):
         self.prune_keys()
@@ -255,8 +283,7 @@ def install_auth(app, database: Path):
                     with store.connect() as db:
                         store._sync_generation(db)
             except secure.SecurityError:
-                with store._key_lock:
-                    store._keys.clear()
+                store.forget_keys()
 
     async def start_key_cleanup():
         app.state.key_cleanup_task = asyncio.create_task(clear_expired_keys())
@@ -269,8 +296,7 @@ def install_auth(app, database: Path):
                 await task
             except asyncio.CancelledError:
                 pass
-        with store._key_lock:
-            store._keys.clear()
+        store.forget_keys()
 
     app.add_event_handler("startup", start_key_cleanup)
     app.add_event_handler("shutdown", stop_key_cleanup)

@@ -113,6 +113,9 @@
   font-size: 12px;
   line-height: 1.7;
 }
+.summary-hint.summary-warning {
+  color: #8f6526;
+}
 .summary-error {
   display: flex;
   justify-content: space-between;
