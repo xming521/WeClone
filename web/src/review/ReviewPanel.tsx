@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { collectFacts, filterPrivacy } from '../data';
 import type { ProfileFact, ReviewStatus } from '../data';
 import { useProfileStore } from '../store';
@@ -7,6 +8,7 @@ import { PrivacyFilter } from './privacy';
 import { ReviewFilter } from './ReviewFilter';
 
 export function ReviewPanel() {
+  const { t } = useTranslation();
   const viewModel = useProfileStore((state) => state.viewModel)!;
   const fullModel = useProfileStore((state) => state.fullModel)!;
   const view = useProfileStore((state) => state.view);
@@ -23,7 +25,7 @@ export function ReviewPanel() {
     <section className="detail-section review-list">
       <div className="review-list-toolbar">
         <ReviewFilter value={view} counts={{ all: all.length, ...counts }} onChange={setView} />
-        <span>{facts.length} 条画像</span>
+        <span>{t(($) => $.review.list.count, { count: facts.length })}</span>
       </div>
       <PrivacyFilter facts={scoped} value={privacy} onToggle={togglePrivacy} />
       <ReviewList key={`${selectedId}:${view}:${privacy.join()}`} facts={facts} />
@@ -32,6 +34,7 @@ export function ReviewPanel() {
 }
 
 function ReviewList({ facts }: { facts: ProfileFact[] }) {
+  const { t } = useTranslation();
   const busy = useProfileStore((state) => state.busy);
   const review = useProfileStore((state) => state.review);
   const [checked, setChecked] = useState<Set<string>>(new Set());
@@ -47,10 +50,11 @@ function ReviewList({ facts }: { facts: ProfileFact[] }) {
   async function batch(status: ReviewStatus) {
     if (!selected.length) return;
     const hidden = selected.length - page.filter((fact) => checked.has(fact.id)).length;
-    const action = status === 'approved' ? '采纳' : '不采纳';
-    if (hidden && !window.confirm(`${action}选中的 ${selected.length} 条画像？其中 ${hidden} 条还没有显示在列表里。`)) {
-      return;
-    }
+    const question =
+      status === 'approved'
+        ? t(($) => $.review.list.confirmApprove, { count: selected.length, hidden })
+        : t(($) => $.review.list.confirmReject, { count: selected.length, hidden });
+    if (hidden && !window.confirm(question)) return;
     if (await review(selected, status)) setChecked(new Set());
   }
   return (
@@ -65,17 +69,17 @@ function ReviewList({ facts }: { facts: ProfileFact[] }) {
               checked={selected.length === facts.length}
               onChange={(event) => setChecked(new Set(event.target.checked ? facts.map((fact) => fact.id) : []))}
             />
-            全选 {facts.length} 条
+            {t(($) => $.review.list.selectAll, { count: facts.length })}
           </label>
           <button disabled={busy || !selected.length} onClick={() => void batch('approved')}>
-            采纳 {selected.length || ''}
+            {t(($) => $.review.approve)} {selected.length || ''}
           </button>
           <button disabled={busy || !selected.length} onClick={() => void batch('rejected')}>
-            不采纳
+            {t(($) => $.review.reject)}
           </button>
         </div>
       )}
-      {!facts.length && <p className="detail-hint">当前视图没有画像记录。</p>}
+      {!facts.length && <p className="detail-hint">{t(($) => $.review.list.empty)}</p>}
       {page.map((fact) => (
         <FactCard
           key={fact.id}
@@ -91,7 +95,7 @@ function ReviewList({ facts }: { facts: ProfileFact[] }) {
       ))}
       {facts.length > limit && (
         <button className="load-more" onClick={() => setLimit(limit + 30)}>
-          继续显示（剩余 {facts.length - limit} 条）
+          {t(($) => $.review.list.more, { count: facts.length - limit })}
         </button>
       )}
     </>

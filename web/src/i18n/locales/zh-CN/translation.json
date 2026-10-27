@@ -1,0 +1,624 @@
+{
+  "common": {
+    "retry": "重试",
+    "language": "界面语言",
+    "httpError": "请求失败：HTTP {{status}}",
+    "listSeparator": "、",
+    "sentenceSeparator": "",
+    "cancel": "取消",
+    "save": "保存",
+    "dismiss": "知道了",
+    "copy": "复制",
+    "copied": "已复制",
+    "copyBlocked": "浏览器不允许直接复制，请在文本框里全选后手动复制"
+  },
+  "errors": {
+    "password_mismatch": "两次输入的密码不一致",
+    "already_set_up": "已设置密码，请使用现有密码登录",
+    "not_set_up": "请先设置密码",
+    "too_many_attempts": "尝试次数过多，请一分钟后再试",
+    "password_wrong": "密码错误",
+    "request_rejected": "请求验证失败",
+    "login_required": "请先输入访问密码",
+    "unlock_required": "请重新输入密码解锁",
+    "storage_locked": "数据尚未解锁，请重新输入密码",
+    "profile_missing": "画像数据尚未生成，请先完成抽取和整理",
+    "fact_not_found": "画像记录不存在",
+    "location_invalid": "请选择已有维度或主题",
+    "fact_changed": "记录已被修改，请刷新数据后核对并重试",
+    "duplicate_facts": "批量操作不能包含重复记录",
+    "batch_changed": "记录已被修改，整批操作未保存，请刷新后重试",
+    "source_not_found": "来源记录不存在",
+    "chat_unavailable": "该来源未保存聊天定位信息，无法查看原文",
+    "chat_missing": "原始聊天文件不存在或与来源记录不一致，请检查本次抽取的来源文件",
+    "style_missing": "这次运行没有抽取说话风格，做分身请运行 weclone-cli build-profile --purpose clone",
+    "summary_generating": "正在生成领域总结，请稍候",
+    "summary_not_found": "领域总结不存在",
+    "summary_changed": "总结已被修改，请刷新后核对并重试",
+    "summary_stale": "这个领域的画像有变动，请先重新生成总结",
+    "duplicate_domains": "批量操作不能包含重复领域",
+    "summary_batch_changed": "总结已被修改，整批操作未保存，请刷新后重试",
+    "summary_batch_stale": "有领域的画像已变动，请先重新生成总结再确认",
+    "assistant_plaintext": "数据是明文存储的，令牌有效时助手就能读取，不需要打开",
+    "api_not_found": "接口不存在"
+  },
+  "app": {
+    "title": "我的画像 · WeClone",
+    "openLeftPanel": "展开左栏",
+    "domainOverview_other": "{{count, zhNumeral}}个领域总览",
+    "dimensionOverview_other": "{{count, zhNumeral}}维总览",
+    "emptyView": "当前视图没有画像记录",
+    "canvasHelp": "悬停点亮归属路径 · 点击展开并聚焦，再点一次收起 · 拖动节点牵动图谱",
+    "loadFailed": "画像地图暂时无法打开",
+    "loading": "正在展开画像地图"
+  },
+  "modes": {
+    "label": "页面",
+    "profile": "人生画像",
+    "style": "说话风格",
+    "summary": "领域总结",
+    "assistant": "助手接入",
+    "bots": "机器人接入"
+  },
+  "auth": {
+    "logout": "退出登录",
+    "checking": "正在验证登录状态",
+    "mismatch": "两次输入的密码不一致",
+    "setupTitle": "设置个人密码",
+    "loginTitle": "解锁个人记忆",
+    "setupEncrypted": "同一个密码用于网页访问和数据加密。忘记密码后需要重新抽取全部数据。",
+    "setupPlaintext": "设置用于网页访问的密码。当前数据采用明文存储。",
+    "loginHint": "输入你设置的密码。",
+    "newPassword": "设置密码",
+    "password": "访问密码",
+    "confirmPassword": "再次输入密码",
+    "verifying": "正在验证…",
+    "setupSubmit": "设置并解锁",
+    "loginSubmit": "解锁",
+    "sessionNote": "登录有效期为 2 小时，到期后需重新输入密码。请在自己的设备上使用。"
+  },
+  "model": {
+    "root": "我的画像",
+    "dimensions": {
+      "1": "人口学与基本身份",
+      "3": "长期需求、动机与目标",
+      "4": "资源禀赋与生活条件",
+      "5": "重要计划与承诺",
+      "8": "兴趣与偏好"
+    },
+    "unassignedDomain": "未归入领域",
+    "directTopic": "直属属性"
+  },
+  "atlas": {
+    "attributes_other": "{{count}} 项画像属性",
+    "left": {
+      "dimensionsTitle": "画像维度",
+      "domainsTitle": "画像领域",
+      "close": "收起左栏",
+      "eyebrow": "A MAP OF YOU",
+      "tagline": "每一条线索，<br/><em>都更了解你。</em>",
+      "domainsIntro_other": "沿着{{count, zhNumeral}}个生活领域，探索你的画像。",
+      "dimensionsIntro_other": "沿着{{count, zhNumeral}}条生活脉络，探索你的画像。",
+      "grouping": "画像分组方式",
+      "groupings": {
+        "dimension": "按维度",
+        "domain": "按领域"
+      }
+    },
+    "detail": {
+      "close": "关闭右侧栏",
+      "kicker": "画像档案",
+      "tabs": "画像档案视图",
+      "overview": "总览",
+      "review": "画像审核",
+      "pending_other": "{{count}} 条待审核",
+      "all": "全部画像",
+      "attributes": "画像属性",
+      "facts": "画像事实",
+      "progress": "审核进度",
+      "reviewed": "已审核画像",
+      "progressCounts": "待审核 {{pending}} · 已采纳 {{approved}} · 未采纳 {{rejected}}",
+      "explore": "继续探索",
+      "domainHint": "选择左侧领域，逐层展开画像地图。",
+      "dimensionHint": "选择左侧维度，逐层展开画像地图。",
+      "footer": "PERSONAL KNOWLEDGE MAP"
+    },
+    "canvas": "可交互的画像知识图谱",
+    "toolbar": {
+      "pickDimension": "先点击一个维度",
+      "pickDomain": "先点击一个领域",
+      "expandDimension": "展开当前维度的{{level}}级节点",
+      "collapseDimension": "收起当前维度的{{level}}级节点",
+      "expandDomain": "展开当前领域的{{level}}级节点",
+      "collapseDomain": "收起当前领域的{{level}}级节点",
+      "level": "{{level}}级",
+      "zoomIn": "放大",
+      "zoomOut": "缩小",
+      "fit": "适应画布",
+      "reset": "复原",
+      "replayIntro": "重放开场动画"
+    },
+    "search": {
+      "placeholder": "搜索主题、属性或内容",
+      "clear": "清除搜索",
+      "empty": "没有找到相关画像"
+    },
+    "preview": {
+      "fact": "{{attr}}：{{value}}",
+      "topics_other": "{{count}} 个主题",
+      "domains_other": "{{count}} 个领域",
+      "dimensions_other": "{{count}} 个维度"
+    }
+  },
+  "intro": {
+    "skip": "跳过",
+    "skipLabel": "跳过开场动画",
+    "said_other": "你说过 {{count, number}} 句话",
+    "saidSomething": "你说过的话",
+    "kept_other": "其中 {{number}} 件事被记住了"
+  },
+  "review": {
+    "refreshFailed": "已保存，但刷新数据失败。请点击“刷新数据”后继续。",
+    "status": {
+      "all": "全部",
+      "pending": "待审核",
+      "approved": "已采纳",
+      "rejected": "未采纳"
+    },
+    "approve": "采纳",
+    "reject": "不采纳",
+    "list": {
+      "count_other": "{{count}} 条画像",
+      "confirmApprove_other": "采纳选中的 {{count}} 条画像？其中 {{hidden}} 条还没有显示在列表里。",
+      "confirmReject_other": "不采纳选中的 {{count}} 条画像？其中 {{hidden}} 条还没有显示在列表里。",
+      "selectAll_other": "全选 {{count}} 条",
+      "empty": "当前视图没有画像记录。",
+      "more_other": "继续显示（剩余 {{count}} 条）"
+    },
+    "fact": {
+      "manual": "手动添加",
+      "select": "选择 {{attr}}",
+      "unreview": "移回待审核",
+      "edit": "编辑",
+      "initial": "初始内容",
+      "evidence_other": "原始抽取与 {{count}} 条证据",
+      "source": "来源 {{n}}",
+      "viewChatLabel": "查看{{label}}的原始聊天记录",
+      "viewChat": "查看原文",
+      "noTime": "未标注时间",
+      "noContent": "来源正文不可用"
+    },
+    "statusLabel": "审核状态",
+    "bookmark_other": "{{label}} {{count}} 条画像",
+    "bookmarkTip_other": "{{label}} · {{count}} 条画像",
+    "bookmarkCloneTip_other": "{{label}} · {{count}} 条画像 · 分身画像",
+    "filterLabel_other": "筛选审核状态：{{label}}，{{count}} 条",
+    "refresh": "刷新数据"
+  },
+  "history": {
+    "show": "查看修改历史",
+    "hide": "收起修改历史",
+    "empty": "暂无修改记录",
+    "actions": {
+      "review": "审核",
+      "create": "新增",
+      "edit": "编辑"
+    },
+    "new": "新记录",
+    "change": "{{action}}：{{before}} → {{after}}",
+    "before": "修改前：{{attr}} · {{value}}",
+    "after": "保存后：{{attr}} · {{value}}",
+    "moved": "归属位置已变更"
+  },
+  "scores": {
+    "confidence": "可信度",
+    "importance": "重要度",
+    "unrated": "未评分",
+    "label": "{{label}}：{{score}}",
+    "factLabel": "原始来源的平均评分，编辑画像后不会重新评分",
+    "support_other": "{{count}} 段聊天支持"
+  },
+  "privacy": {
+    "title": "隐私度",
+    "levels": {
+      "public": {
+        "label": "公开",
+        "hint": "对陌生人也会说"
+      },
+      "normal": {
+        "label": "普通",
+        "hint": "熟人之间会聊"
+      },
+      "private": {
+        "label": "私密",
+        "hint": "只对亲近的人说"
+      },
+      "sensitive": {
+        "label": "敏感",
+        "hint": "只留在原来的聊天里"
+      },
+      "unrated": {
+        "label": "未分级",
+        "hint": "没有隐私度"
+      }
+    },
+    "badgeTitle": "隐私度：{{hint}}",
+    "badgeLabel": "隐私度：{{label}}，{{hint}}",
+    "tags": "检索标签",
+    "overview": "隐私度分布",
+    "levelCount": "{{label}} {{n}}",
+    "privateCount": "私密及敏感 {{n}}",
+    "filter": "按隐私度筛选，不选显示全部"
+  },
+  "editor": {
+    "discard": "放弃未保存的修改？",
+    "editTitle": "编辑画像",
+    "addTitle": "新增画像",
+    "attr": "属性名称",
+    "location": "归属位置",
+    "value": "画像内容",
+    "original": "查看原始内容",
+    "hint": "保存修改后移回待审核，暂不用于分身；“保存并采纳”后纳入分身画像。",
+    "reloadConfirm": "重新载入服务器数据会放弃当前表单中的修改，继续？",
+    "reload": "重新载入记录",
+    "saveApprove": "保存并采纳"
+  },
+  "export": {
+    "action": "导出当前视图",
+    "title": "导出画像",
+    "confirm_other": "是否导出当前“<strong>{{view}}</strong>”视图中的 <strong>{{count}}</strong> 条画像？",
+    "hint": "导出为 JSON 文件，包含画像层级和关联来源。",
+    "submit": "确认导出"
+  },
+  "chat": {
+    "title": "原始聊天记录",
+    "close": "关闭聊天记录",
+    "loading": "正在加载聊天记录…",
+    "me": "我",
+    "self": "本人",
+    "peer": "对方",
+    "messages_other": "{{count}} 条消息 · 抽取时的聊天片段",
+    "footer": "聊天记录",
+    "readOnly": "只读"
+  },
+  "style": {
+    "loadFailed": "风格结果暂时无法打开",
+    "back": "回到人生画像",
+    "loading": "正在读取聊天风格",
+    "eyebrow": "HOW YOU TALK",
+    "tagline": "你怎么聊天，<br/><em>一眼就能看出来。</em>",
+    "highlights": "最明显的是{{traits}}。",
+    "quoted": "「{{title}}」",
+    "quotedSeparator": "",
+    "groupsTitle": "风格侧面",
+    "groupCount_other": "{{count}} 个特点 · {{hint}}",
+    "footnote_other": "{{start}} 至 {{end}} · {{count}} 条消息",
+    "main": "主要特点",
+    "empty": "还没有足够明显的风格特点",
+    "legend": "泡泡越大越常见 · 只列出每 {{every}} 条至少出现 1 次的特点 · 点击看详情",
+    "bubble": "{{title}}，{{rate}}",
+    "groups": {
+      "typing": {
+        "name": "打字习惯",
+        "hint": "标点、换行、长短"
+      },
+      "words": {
+        "name": "用词",
+        "hint": "语气词、网络语、粗口"
+      },
+      "emotion": {
+        "name": "情绪表达",
+        "hint": "笑声、表情、吐槽"
+      },
+      "manner": {
+        "name": "说话方式",
+        "hint": "直说、商量、发问"
+      }
+    },
+    "tiers": {
+      "most": "多数时候",
+      "often": "常常",
+      "sometimes": "有时",
+      "rarely": "偶尔"
+    },
+    "when": {
+      "stance": "表态的时候",
+      "request": "想让对方做什么的时候"
+    },
+    "units": {
+      "messages_other": "{{count}} 条消息",
+      "boundaries_other": "{{count}} 处断句",
+      "bubbles_other": "{{count}} 条气泡",
+      "stances_other": "{{count}} 条表态的消息",
+      "requests_other": "{{count}} 条让对方做事的消息"
+    },
+    "variation": {
+      "relationship_dependent": "跟不同的人聊，差别很明显。",
+      "uncertain": "跟不同的人聊，可能有些差别。",
+      "stable": "跟谁聊都差不多。"
+    },
+    "detail": {
+      "kicker": "风格特点",
+      "frequency": "<b>{{tier}}</b>{{rate}}",
+      "frequencyWhen": "<b>{{tier}}</b>{{when}}，{{rate}}",
+      "almostAll": "几乎每条都这样",
+      "outOfTen_other": "大约 10 条里有 {{count}} 条",
+      "onceEvery": "大约每 {{every}} 条有 1 条",
+      "examples": "常见写法",
+      "contacts": "跟谁聊的时候",
+      "contactsNote": "竖线是整体水平。各人的数字已按消息长短校正。",
+      "sampled": "依据：抽样的 {{amount}}，由模型判断",
+      "counted": "依据：全部 {{amount}}"
+    },
+    "traits": {
+      "lineBreakPunctuation": {
+        "title": "换行当标点",
+        "note": "该打逗号、句号的地方，直接换行接着发"
+      },
+      "noPunctuation": {
+        "title": "不打标点",
+        "note": "发出去的一条里，一个标点都没有"
+      },
+      "splitMessages": {
+        "title": "一句话分几条发",
+        "note": "一次回复拆成好几条，连着发出去"
+      },
+      "shortMessages": {
+        "title": "短消息",
+        "note": "一次回复不超过 8 个字"
+      },
+      "modalParticles": {
+        "title": "语气词",
+        "note": "句子里带「啊」「吧」「嘛」这类词"
+      },
+      "repeatedCharacters": {
+        "title": "连打重复",
+        "note": "「哈哈哈」「？？？」这样，同一个字或符号连着打"
+      },
+      "internetSlang": {
+        "title": "网络用语",
+        "note": "聊天里夹着网络流行语和梗"
+      },
+      "jargon": {
+        "title": "专业词",
+        "note": "工作、学习领域的词直接带进聊天"
+      },
+      "degreeWords": {
+        "title": "程度词",
+        "note": "用「很」「太」「挺」来加重或减轻"
+      },
+      "reduplication": {
+        "title": "叠词",
+        "note": "「看看」「慢慢」这样把字叠起来说"
+      },
+      "profanity": {
+        "title": "粗口",
+        "note": "话里夹着粗口，包括缩写和谐音"
+      },
+      "emotional": {
+        "title": "说话带情绪",
+        "note": "能从字里行间看出开心、无奈或不满"
+      },
+      "implicitEmotion": {
+        "title": "情绪藏在话里",
+        "note": "不直接说出感受，情绪藏在语气和说法里"
+      },
+      "symbolicEmotion": {
+        "title": "用表情符号带情绪",
+        "note": "用表情、符号或拟声来传递情绪"
+      },
+      "laughter": {
+        "title": "笑声和语气声",
+        "note": "用文字打出笑声、惊讶、犹豫"
+      },
+      "grumbling": {
+        "title": "发牢骚",
+        "note": "对烦心事发几句牢骚、诉诉苦"
+      },
+      "snark": {
+        "title": "吐槽",
+        "note": "用揶揄、夸张的话表达不满"
+      },
+      "teasing": {
+        "title": "调侃",
+        "note": "开玩笑地打趣人和事，也包括自嘲"
+      },
+      "direct": {
+        "title": "有话直说",
+        "note": "表达看法和打算时，直接说出来，不绕弯子"
+      },
+      "matterOfFact": {
+        "title": "就事论事",
+        "note": "接对方的话时，回应的是事情本身"
+      },
+      "suggestions": {
+        "title": "商量的口吻",
+        "note": "想让对方做什么时，用建议的语气说"
+      },
+      "questions": {
+        "title": "提问",
+        "note": "回复里带着问题"
+      },
+      "followUps": {
+        "title": "追问",
+        "note": "顺着对方的话继续问下去"
+      },
+      "elaborates": {
+        "title": "主动多聊几句",
+        "note": "不只回答问题，还会顺着往下说"
+      },
+      "advice": {
+        "title": "出主意",
+        "note": "聊着聊着就给对方提建议"
+      },
+      "hedging": {
+        "title": "话不说满",
+        "note": "用「好像」「应该」「可能」给自己留余地"
+      },
+      "emphasis": {
+        "title": "加重语气",
+        "note": "用重复、程度词或符号把话说重"
+      },
+      "agreement": {
+        "title": "附和对方",
+        "note": "对方表态时，说「对」「确实」表示认同"
+      },
+      "metaphors": {
+        "title": "打比方",
+        "note": "借别的事物来形容想说的东西"
+      }
+    }
+  },
+  "summary": {
+    "loadFailed": "领域总结暂时无法打开",
+    "loading": "正在读取领域总结",
+    "domains_other": "{{count, zhNumeral}}个领域",
+    "title": "给个人助理的背景资料",
+    "intro": {
+      "full": "每个生活领域写一段总结，用这个领域所有还成立的条目，包括私密和敏感的。build-profile 最后一步会生成这一级。",
+      "short": "每个生活领域写一段较短的总结，只用隐私度不高于所选级别的身份、目标、条件和偏好，不用计划承诺和已过时的信息。",
+      "review": "确认过的总结才会进入导出文本和助手接入，所依据的画像一改动就停止导出，等重新生成并确认。"
+    },
+    "level": "隐私度上限",
+    "full": {
+      "label": "全部",
+      "hint": "所有还成立的条目，包括私密和敏感的"
+    },
+    "generating": "正在生成…",
+    "generate_other": "生成 {{count}} 个领域",
+    "generated": "都已生成",
+    "approveAll": "全部确认",
+    "approveAllCount_other": "全部确认（{{count}}）",
+    "counts": "已确认 {{approved}} · 待确认 {{pending}} · 需生成 {{due}} · 不导出 {{rejected}}",
+    "generatingHint": "每个领域调用一次模型，通常一两分钟，模型繁忙时会更久。生成在后台进行，可以先离开这个页面。",
+    "failed_other": "{{count}} 个领域没有生成成功，下次生成只补这些领域。",
+    "failedReason": "原因：{{reason}}",
+    "states": {
+      "empty": "没有可用条目",
+      "missing": "未生成",
+      "stale": "需重新生成",
+      "pending": "待确认",
+      "approved": "已确认",
+      "rejected": "不导出"
+    },
+    "editor": {
+      "title": "标题",
+      "summary": "总结",
+      "saveApprove": "保存并确认"
+    },
+    "card": {
+      "facts_other": "{{count}} 条可用",
+      "asOf": "截至 {{date}}",
+      "stale": "画像有变动，这段已不再导出，重新生成后再确认。",
+      "missing": "还没有生成总结。",
+      "empty": "这个领域没有能写进总结的条目：要么高于所选隐私度，要么是计划承诺或已过时的信息。",
+      "emptyFull": "这个领域没有还成立的条目。",
+      "approve": "确认",
+      "edit": "编辑",
+      "unapprove": "撤回确认",
+      "restore": "恢复",
+      "reject": "不导出"
+    },
+    "export": {
+      "title": "导出文本",
+      "facts": "每个领域附原始条目",
+      "factCount_other": "{{count}} 条",
+      "noFacts": "不附",
+      "chars_other": "{{count}} 字",
+      "confirmFull": "这份文本含私密和敏感的内容，贴出去就收不回来。确定复制吗？",
+      "fullWarning": "这一级含私密和敏感的内容，贴出去就收不回来。只想给助理少一些，可以切到普通或公开再生成一份。",
+      "hint": "可以粘贴到个人助理的“关于我”、自定义指令或 USER.md。贴出去的内容收不回来，复制前请再看一遍。",
+      "empty": "确认至少一个领域的总结后，这里会出现可以粘贴给个人助理的文本。"
+    }
+  },
+  "access": {
+    "copyBlocked": "浏览器不允许直接复制，请选中文字后手动复制",
+    "token": {
+      "title": "令牌",
+      "active": "有效",
+      "none": "未生成",
+      "created": "生成于 {{time}}",
+      "lastUsed": "最近使用 {{time}}",
+      "reissue": "重新生成",
+      "issue": "生成令牌",
+      "withdraw": "停用"
+    }
+  },
+  "assistant": {
+    "confirmReissue": "重新生成后旧令牌立即失效，已经配置好的助手都要用新的命令再配置一次。继续吗？",
+    "confirmWithdraw": "停用后所有助手都读不到 WeClone，之后可以重新生成令牌。继续吗？",
+    "loadFailed": "助手接入页暂时无法打开",
+    "loading": "正在读取助手接入设置",
+    "connected": "已接入 · {{level}}",
+    "noToken": "还没有令牌",
+    "title": "让个人助手读取画像",
+    "intro": "Claude Code、Codex 等支持 MCP 的助手可以连接这里的 WeClone：weclone_profile 返回你确认过的领域总结，weclone_search 按关键词或领域查画像条目。所有助手共用一个令牌，读到哪些内容由下面选的级别和领域决定，每次调用都会记下返回了什么。",
+    "address": "MCP 地址 <code>{{url}}</code>",
+    "addressPlaintext": "MCP 地址 <code>{{url}}</code>。数据是明文存储的，令牌有效时助手随时可以读取",
+    "scope": "提供哪些信息",
+    "level": "隐私级别",
+    "levels": {
+      "full": {
+        "label": "全部",
+        "hint": "所有条目，包括私密和敏感的。这些内容会交给助手背后的云端模型。"
+      },
+      "normal": {
+        "label": "普通",
+        "hint": "公开和普通条目。"
+      },
+      "public": {
+        "label": "公开",
+        "hint": "只有公开条目。"
+      }
+    },
+    "domains": "领域",
+    "allDomains": "全部提供，以后新出现的领域也提供",
+    "someDomains": "提供 {{shared}}/{{total}} 个，以后新出现或改名的领域不提供",
+    "resetDomains": "改回全部领域",
+    "sharedDomains": "提供的领域",
+    "domainFacts_other": "{{count}} 条",
+    "domainFactsSummary_other": "{{count}} 条 · 有总结",
+    "noDomains": "还没有画像，运行 build-profile 之后这里会列出各个领域。",
+    "domainsNote_other": "勾掉的领域，总结和条目都不给助手。助手现在能读到 {{count}} 段领域总结：这个级别、勾选的领域里、在<link>领域总结页</link>确认过的。改了从助手的下一次调用起生效，不用重新配置。",
+    "access": {
+      "title": "允许助手读取",
+      "until": "到 {{time}} 自动关闭",
+      "closed": "已关闭",
+      "hint": "数据是加密的，助手只能在你允许的时间里读取。允许期间服务在内存里保留一份密钥，到时间或服务重启就清除。",
+      "change": "改为 {{duration}}",
+      "allow": "允许 {{duration}}",
+      "close": "立即关闭"
+    },
+    "hours_other": "{{count}} 小时",
+    "days_other": "{{count}} 天",
+    "unused": "还没有助手用过",
+    "noTokenHint": "生成令牌后，在运行助手的机器上执行配置命令。",
+    "setup": {
+      "once": "令牌只显示这一次。在运行助手的机器上执行对应的命令，之后新开的会话就能调用 WeClone 的工具。",
+      "clients": "助手",
+      "commands": "{{client}} 配置命令",
+      "other": "其他助手：地址填上面的 MCP 地址，请求头加 <code>Authorization: Bearer 令牌</code>。",
+      "done": "都配置好了，收起"
+    }
+  },
+  "bots": {
+    "confirmReissue": "重新生成后旧令牌立即失效，所有机器人都要换成新令牌。继续吗？",
+    "confirmWithdraw": "停用后所有机器人都调用不了分身，之后可以重新生成令牌。继续吗？",
+    "loadFailed": "机器人接入页暂时无法打开",
+    "loading": "正在读取机器人接入设置",
+    "connected": "已接入",
+    "title": "让聊天机器人调用分身",
+    "intro": "AstrBot、LangBot 等机器人平台通过 OpenAI 兼容接口调用微调后的分身模型。所有机器人共用一个令牌，填在平台的 API Key 里。",
+    "address": "接口地址 <code>{{url}}</code>",
+    "tokenLife": "令牌生成后一直有效，服务重启也不受影响，重新生成或停用后才失效。",
+    "encrypted": "数据是加密的：生成令牌时，数据密钥用令牌加密后存进本机的 bots.sqlite3，机器人调用时凭令牌解开，不需要你登录。令牌和这个文件同时泄露就能解密全部数据，请像密码一样保管令牌。改密码不影响令牌，怀疑泄露时请重新生成。",
+    "noInference": "服务现在没有加载分身模型，用 <code>weclone-cli server --inference</code> 启动后机器人才能调用。",
+    "unused": "还没有机器人用过",
+    "noTokenHint": "生成令牌后，把它填到机器人平台的 API Key 里。",
+    "setup": {
+      "once": "令牌只显示这一次。在机器人平台新增一个 OpenAI 类型的模型服务，API Base URL 填：",
+      "key": "API Key 填：",
+      "model": "模型名称随意填写，例如 gpt-3.5-turbo。微调后的模型不会调用工具，请在平台上关掉工具和插件。机器人平台跑在 Docker 里时，地址里的 127.0.0.1 要换成宿主机在 Docker 网络里的地址（例如 172.17.0.1），并在启动服务时用 --host 指定这个地址。"
+    }
+  }
+}

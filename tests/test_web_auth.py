@@ -31,6 +31,7 @@ def web(tmp_path, monkeypatch):
 def test_private_routes_reject_anonymous(web, method, path):
     response = web.request(method, path, headers=HEADERS)
     assert response.status_code == 401
+    assert response.json()["code"] == "login_required"
     assert response.headers["cache-control"] == "no-store"
 
 

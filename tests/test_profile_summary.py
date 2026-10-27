@@ -336,14 +336,14 @@ def test_summaries_that_came_back_are_kept_when_others_fail(setup, monkeypatch):
     monkeypatch.setattr(profile_summary, "summary_runner", Partial)
     assert generate(client) == {"generating": 2}
     after = view(client)
-    assert after["error"] == "1 个领域没有生成成功，下次生成只补这些领域。"
+    assert after["failure"] == {"failed": 1, "reason": ""}
     rows = {item["domain"]: item["summary"] for item in after["domains"]}
     assert rows["学业"]["summary"] == "在读博士" and rows["饮食"] is None
 
     monkeypatch.setattr(profile_summary, "summary_runner", model)
     assert generate(client) == {"generating": 1}
     assert prompts == [ASSISTANT + "口味偏好：爱吃辣（兴趣与偏好，2 次，2024-07）"]
-    assert view(client)["error"] == "" and summaries(client)["饮食"]["title"] == "标题1"
+    assert view(client)["failure"] is None and summaries(client)["饮食"]["title"] == "标题1"
 
 
 class Failing:
@@ -357,12 +357,12 @@ def test_failed_runner_stores_nothing_and_reports_why(setup, monkeypatch):
     assert generate(client) == {"generating": 2}
     after = view(client)
     assert after["generating"] is False
-    assert after["error"].startswith("2 个领域没有生成成功") and "codex not found" in after["error"]
+    assert after["failure"] == {"failed": 2, "reason": "codex not found"}
     assert all(item["summary"] is None for item in after["domains"])
     # Once nothing waits for a summary, the failure is no longer shown.
     for value in ("计算机博士生", "想去高校  任教", "喜欢做实验", "爱吃辣"):
         reject_fact(client, value)
-    assert view(client)["error"] == ""
+    assert view(client)["failure"] is None
 
 
 def test_build_profile_ends_with_the_full_summary_of_every_domain(setup, tmp_path):
@@ -428,7 +428,7 @@ def test_background_generation_reads_and_writes_with_the_session_key(tmp_path, m
     client.headers["X-WeClone-Request"] = "1"
     assert client.post("/api/auth/login", json={"password": "summary-test"}).status_code == 200
     assert generate(client) == {"generating": 2}
-    assert view(client)["error"] == ""
+    assert view(client)["failure"] is None
     assert summaries(client)["学业"]["title"] == "标题"
     # Encrypted while it lasted, and gone with the generation.
     stored, encrypted = caches[0]

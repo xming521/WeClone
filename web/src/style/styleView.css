@@ -4,6 +4,11 @@
   font-size: 12px;
 }
 
+/* No search box here, so the actions take only their own width and leave the rest to the heading. */
+.style-shell .topbar-actions {
+  flex: 0 0 auto;
+}
+
 /* The frame keeps its size when the detail panel opens. The stage slides instead of shrinking. */
 .bubble-frame {
   position: absolute;

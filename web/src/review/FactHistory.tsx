@@ -1,8 +1,8 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { api } from '../api';
 import { displayProfileText } from '../data';
 import type { ProfileFact } from '../data';
-import { STATUS } from './status';
 
 interface HistoryEntry {
   at: string;
@@ -11,6 +11,7 @@ interface HistoryEntry {
   after: ProfileFact;
 }
 export function FactHistory({ fact }: { fact: ProfileFact }) {
+  const { t, i18n } = useTranslation();
   const [rows, setRows] = useState<HistoryEntry[] | null>(null);
   const [error, setError] = useState('');
   const [open, setOpen] = useState(false);
@@ -30,27 +31,44 @@ export function FactHistory({ fact }: { fact: ProfileFact }) {
           }
         }}
       >
-        {open ? '收起修改历史' : '查看修改历史'}
+        {open ? t(($) => $.history.hide) : t(($) => $.history.show)}
       </button>
       {open && (
         <div>
           {error ||
             (rows?.length === 0
-              ? '暂无修改记录'
+              ? t(($) => $.history.empty)
               : rows?.map((row, i) => (
                   <div className="history-row" key={i}>
-                    <time>{new Date(row.at).toLocaleString()}</time>
+                    <time>{new Date(row.at).toLocaleString(i18n.language)}</time>
                     <p>
-                      {row.action === 'review' ? '审核' : row.action === 'create' ? '新增' : '编辑'}：
-                      {row.before ? STATUS[row.before.status] : '新记录'} → {STATUS[row.after.status]}
+                      {t(($) => $.history.change, {
+                        action:
+                          row.action === 'review'
+                            ? t(($) => $.history.actions.review)
+                            : row.action === 'create'
+                              ? t(($) => $.history.actions.create)
+                              : t(($) => $.history.actions.edit),
+                        before: row.before ? t(($) => $.review.status[row.before!.status]) : t(($) => $.history.new),
+                        after: t(($) => $.review.status[row.after.status]),
+                      })}
                     </p>
                     {row.action !== 'review' && (
                       <>
-                        <p>{row.before && `修改前：${row.before.attr} · ${displayProfileText(row.before.value)}`}</p>
                         <p>
-                          保存后：{row.after.attr} · {displayProfileText(row.after.value)}
+                          {row.before &&
+                            t(($) => $.history.before, {
+                              attr: row.before.attr,
+                              value: displayProfileText(row.before.value),
+                            })}
                         </p>
-                        {row.before?.group_id !== row.after.group_id && <p>归属位置已变更</p>}
+                        <p>
+                          {t(($) => $.history.after, {
+                            attr: row.after.attr,
+                            value: displayProfileText(row.after.value),
+                          })}
+                        </p>
+                        {row.before?.group_id !== row.after.group_id && <p>{t(($) => $.history.moved)}</p>}
                       </>
                     )}
                   </div>

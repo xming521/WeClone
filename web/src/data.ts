@@ -52,7 +52,7 @@ export interface SourceChat {
   sample_id: string;
   chat_with: string;
   sample_time: string | null;
-  messages: { id: string; role: 'user' | 'assistant'; speaker: string; content: string; time: string | null }[];
+  messages: { id: string; role: 'user' | 'assistant'; content: string; time: string | null }[];
 }
 
 interface AttributeInput {
@@ -117,6 +117,10 @@ export const DIMENSIONS = [
 
 export type DimensionId = (typeof DIMENSIONS)[number]['dim'];
 
+export function isDimensionId(dim: number | null | undefined): dim is DimensionId {
+  return DIMENSIONS.some((entry) => entry.dim === dim);
+}
+
 export const ROOT_COLOR = '#59616d';
 
 // The domain view puts the domains where the dimensions are: a domain node has kind 'dimension',
@@ -154,21 +158,13 @@ export function dimensionColor(dim: number | null | undefined): string {
   return (DIMENSIONS.find((entry) => entry.dim === dim) ?? DIMENSIONS[0]).color;
 }
 
-const CHINESE_NUMERALS = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九', '十'];
-
-export function chineseNumeral(n: number): string {
-  if (!Number.isInteger(n) || n < 0 || n >= 100) return String(n);
-  if (n <= 10) return CHINESE_NUMERALS[n];
-  const tens = Math.floor(n / 10);
-  return `${tens > 1 ? CHINESE_NUMERALS[tens] : ''}十${n % 10 ? CHINESE_NUMERALS[n % 10] : ''}`;
-}
-
 // Match the uppercase role label, excluding Latin identifiers and hyphenated model names.
 // Chinese exceptions are common terms, independent of profile samples; extend for new terms.
 const PROFILE_ROLE_B =
   /(?<![A-Za-z0-9_]|[A-Za-z0-9][-－]|维生素)B(?![A-Za-z0-9_]|[-－][A-Za-z0-9]|站|超|型|股|细胞|族)/g;
 
 export function displayProfileText(text: string): string {
+  // eslint-disable-next-line no-restricted-syntax -- the profile's own wording, not UI copy
   return text.replace(PROFILE_ROLE_B, '我');
 }
 
@@ -179,15 +175,22 @@ interface TopLevelInput {
   groups: GroupInput[];
 }
 
-const UNASSIGNED_DOMAIN = '未归入领域';
-const DIRECT_TOPIC = '直属属性';
+/** Names the model gives its own nodes, in the UI language. Passed in because this module stays import-free. */
+export interface ModelLabels {
+  root: string;
+  dimensions: Record<DimensionId, string>;
+  /** The domain of attributes added straight to a dimension. */
+  unassignedDomain: string;
+  /** The topic that holds a domain's attributes without a topic. */
+  directTopic: string;
+}
 
 /**
  * Domain → topic → attribute, regrouped from the dimension tree: the topics of one domain merge
  * across dimensions by name, and their attributes stay the stored nodes. Domains and topics follow
  * the domain list; ones missing from it come after, in the order they appear.
  */
-function domainLevel(input: ProfileInput): TopLevelInput[] {
+function domainLevel(input: ProfileInput, labels: ModelLabels): TopLevelInput[] {
   interface Domain {
     key: number;
     name: string;
@@ -207,10 +210,10 @@ function domainLevel(input: ProfileInput): TopLevelInput[] {
   // Listed domains take their keys first, so a domain keeps its id and colour in every review view.
   for (const domain of input.domains) domainOf(domain.name, domain.description);
   for (const dimension of input.dimensions) {
-    if (!DIMENSIONS.some((entry) => entry.dim === dimension.dim)) continue;
+    if (!isDimensionId(dimension.dim)) continue;
     for (const group of dimension.groups) {
       // The server wraps attributes added straight to a dimension in a `:direct` group: they have no domain.
-      const domain = domainOf(group.id.endsWith(':direct') ? UNASSIGNED_DOMAIN : group.name);
+      const domain = domainOf(group.id.endsWith(':direct') ? labels.unassignedDomain : group.name);
       for (const item of group.items) {
         if ('attr' in item) {
           domain.direct.push(item);
@@ -235,12 +238,12 @@ function domainLevel(input: ProfileInput): TopLevelInput[] {
       const rank = (name: string) => (order.includes(name) ? order.indexOf(name) : order.length);
       const groups = [...domain.topics.values()].sort((a, b) => rank(a.name) - rank(b.name));
       if (domain.direct.length)
-        groups.push({ id: `dimension:${domain.key}:direct`, name: DIRECT_TOPIC, items: domain.direct });
+        groups.push({ id: `dimension:${domain.key}:direct`, name: labels.directTopic, items: domain.direct });
       return { dim: domain.key, name: domain.name, description: domain.description, groups };
     });
 }
 
-export function buildModel(input: ProfileInput, grouping: Grouping = 'dimension'): ProfileModel {
+export function buildModel(input: ProfileInput, labels: ModelLabels, grouping: Grouping = 'dimension'): ProfileModel {
   const nodes = new Map<string, ProfileNode>();
   const attributeIds: string[] = [];
   const dimensionIds: string[] = [];
@@ -283,10 +286,23 @@ export function buildModel(input: ProfileInput, grouping: Grouping = 'dimension'
 
   const topLevel: TopLevelInput[] =
     grouping === 'domain'
-      ? domainLevel(input)
+      ? domainLevel(input, labels)
       : // Dimensions not listed in DIMENSIONS are skipped. Keep in sync with `PROFILE_DIMS` in
-        // weclone/prompts/memory_organization.py.
-        input.dimensions.filter((dimension) => DIMENSIONS.some((entry) => entry.dim === dimension.dim));
+        // weclone/prompts/memory_organization.py. Their names and the `:direct` group's come from the labels,
+        // not the server.
+        input.dimensions.flatMap((dimension) =>
+          isDimensionId(dimension.dim)
+            ? [
+                {
+                  ...dimension,
+                  name: labels.dimensions[dimension.dim],
+                  groups: dimension.groups.map((group) =>
+                    group.id.endsWith(':direct') ? { ...group, name: labels.directTopic } : group,
+                  ),
+                },
+              ]
+            : [],
+        );
   for (const dimension of topLevel) {
     const id = `dimension:${dimension.dim}`;
     const childIds = dimension.groups.map((group) => group.id);
@@ -310,7 +326,7 @@ export function buildModel(input: ProfileInput, grouping: Grouping = 'dimension'
 
   nodes.set('root', {
     id: 'root',
-    name: '我的画像',
+    name: labels.root,
     kind: 'root',
     dim: null,
     parentId: null,

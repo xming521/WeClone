@@ -1,9 +1,11 @@
 import { create } from 'zustand';
 import { api } from './api';
-import { ancestors, buildModel, filterProfile, reconcileNavigation, toggleLevelExpansion } from './data';
+import { DIMENSIONS, ancestors, buildModel, filterProfile, reconcileNavigation, toggleLevelExpansion } from './data';
 import type {
   ChatSelection,
+  DimensionId,
   Grouping,
+  ModelLabels,
   PrivacyLevel,
   ProfileFact,
   ProfileInput,
@@ -11,6 +13,19 @@ import type {
   ReviewStatus,
   ReviewView,
 } from './data';
+import i18n from './i18n';
+
+/** Names of the nodes the model makes itself, in the current language. */
+function modelLabels(): ModelLabels {
+  return {
+    root: i18n.t(($) => $.model.root),
+    dimensions: Object.fromEntries(
+      DIMENSIONS.map(({ dim }) => [dim, i18n.t(($) => $.model.dimensions[dim])]),
+    ) as Record<DimensionId, string>,
+    unassignedDomain: i18n.t(($) => $.model.unassignedDomain),
+    directTopic: i18n.t(($) => $.model.directTopic),
+  };
+}
 
 /** What the edit dialog works on. The draft itself is local state of the dialog. */
 export interface EditTarget {
@@ -178,10 +193,10 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
     const input = await api.get<ProfileInput>('profile');
     if (epoch === sessionEpoch) {
       set((state) => {
-        const viewModel = buildModel(filterProfile(input, state.view), state.grouping);
+        const viewModel = buildModel(filterProfile(input, state.view), modelLabels(), state.grouping);
         return {
           input,
-          fullModel: buildModel(input, state.grouping),
+          fullModel: buildModel(input, modelLabels(), state.grouping),
           viewModel,
           ...navigationFor(state, viewModel),
         };
@@ -193,7 +208,7 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
     set((state) => {
       if (state.view === view) return state;
       if (!state.input) return { view };
-      const viewModel = buildModel(filterProfile(state.input, view), state.grouping);
+      const viewModel = buildModel(filterProfile(state.input, view), modelLabels(), state.grouping);
       return { view, viewModel, ...navigationFor(state, viewModel) };
     }),
   togglePrivacy: (level) =>
@@ -208,11 +223,11 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
       if (state.grouping === grouping) return state;
       saveGrouping(grouping);
       if (!state.input) return { grouping };
-      const viewModel = buildModel(filterProfile(state.input, state.view), grouping);
+      const viewModel = buildModel(filterProfile(state.input, state.view), modelLabels(), grouping);
       return {
         grouping,
         viewModel,
-        fullModel: buildModel(state.input, grouping),
+        fullModel: buildModel(state.input, modelLabels(), grouping),
         ...resetState(state, viewModel),
       };
     }),
@@ -228,7 +243,7 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
       try {
         await get().refresh();
       } catch {
-        if (epoch === sessionEpoch) set({ error: '已保存，但刷新数据失败。请点击“刷新数据”后继续。' });
+        if (epoch === sessionEpoch) set({ error: i18n.t(($) => $.review.refreshFailed) });
       }
       return true;
     } catch (reason) {
@@ -350,3 +365,17 @@ useProfileStore.subscribe((state, previous) => {
   )
     useProfileStore.setState({ chat: null });
 });
+
+// The model names the nodes it makes itself, so another language rebuilds it. Node ids stay the same, and the map
+// keeps what is expanded and selected.
+i18n.on('languageChanged', () =>
+  useProfileStore.setState((state) => {
+    if (!state.input) return state;
+    const viewModel = buildModel(filterProfile(state.input, state.view), modelLabels(), state.grouping);
+    return {
+      viewModel,
+      fullModel: buildModel(state.input, modelLabels(), state.grouping),
+      ...navigationFor(state, viewModel),
+    };
+  }),
+);

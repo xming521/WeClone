@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import { useTranslation } from 'react-i18next';
 import { visibleNodes } from '../data';
 import { useProfileStore } from '../store';
 import { AtlasEngine, type AtlasControls, type HoverInfo, type Insets } from './atlasEngine';
@@ -30,6 +31,7 @@ function stopEntrance(ref: RefObject<(() => void) | null>) {
 }
 
 export function GraphCanvas({ atlasRef }: Props) {
+  const { t } = useTranslation();
   const viewModel = useProfileStore((state) => state.viewModel)!;
   const view = useProfileStore((state) => state.view);
   const expandedIds = useProfileStore((state) => state.expandedIds);
@@ -139,7 +141,7 @@ export function GraphCanvas({ atlasRef }: Props) {
   return (
     <>
       <canvas ref={washRef} className="graph-wash" aria-hidden="true" />
-      <div ref={hostRef} className="graph-canvas" role="img" aria-label="可交互的画像知识图谱">
+      <div ref={hostRef} className="graph-canvas" role="img" aria-label={t(($) => $.atlas.canvas)}>
         <canvas ref={canvasRef} />
       </div>
       <div ref={entranceRef} className="graph-entrance" aria-hidden="true" />

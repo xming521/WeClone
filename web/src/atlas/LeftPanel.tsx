@@ -1,7 +1,8 @@
 import type { CSSProperties } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { ChevronLeft, Compass, Fingerprint, Heart, Layers3, Target } from 'lucide-react';
-import { DIMENSIONS, chineseNumeral, dimensionColor, displayProfileText, type DimensionId } from '../data';
+import { Trans, useTranslation } from 'react-i18next';
+import { DIMENSIONS, dimensionColor, displayProfileText, type DimensionId } from '../data';
 import type { Grouping } from '../data';
 import { useProfileStore } from '../store';
 
@@ -24,12 +25,13 @@ export function LeftPanel({
   onInteract: () => void;
   onSelect: () => void;
 }) {
+  const { t } = useTranslation();
   const viewModel = useProfileStore((state) => state.viewModel)!;
   const fullModel = useProfileStore((state) => state.fullModel)!;
   const focusedDimension = useProfileStore((state) => state.focusedDimension);
   const reveal = useProfileStore((state) => state.reveal);
   const byDomain = viewModel.grouping === 'domain';
-  const heading = byDomain ? '画像领域' : '画像维度';
+  const heading = byDomain ? t(($) => $.atlas.left.domainsTitle) : t(($) => $.atlas.left.dimensionsTitle);
   return (
     <aside
       className={`left-panel${open ? '' : ' is-collapsed'}`}
@@ -42,23 +44,21 @@ export function LeftPanel({
         <span>
           WeClone<span className="brand-separator">/</span>Profile Atlas
         </span>
-        <button className="sidebar-close" type="button" aria-label="收起左栏" onClick={onClose}>
+        <button className="sidebar-close" type="button" aria-label={t(($) => $.atlas.left.close)} onClick={onClose}>
           <ChevronLeft size={17} />
         </button>
       </div>
       <div className="intro-block">
         <div className="eyebrow">
-          <span className="eyebrow-line" /> A MAP OF YOU
+          <span className="eyebrow-line" /> {t(($) => $.atlas.left.eyebrow)}
         </div>
         <h1>
-          每一条线索，
-          <br />
-          <em>都更了解你。</em>
+          <Trans i18nKey={($) => $.atlas.left.tagline} components={{ br: <br />, em: <em /> }} />
         </h1>
         <p>
           {byDomain
-            ? `沿着${chineseNumeral(fullModel.dimensionIds.length)}个生活领域，探索你的画像。`
-            : `沿着${chineseNumeral(DIMENSIONS.length)}条生活脉络，探索你的画像。`}
+            ? t(($) => $.atlas.left.domainsIntro, { count: fullModel.dimensionIds.length })
+            : t(($) => $.atlas.left.dimensionsIntro, { count: DIMENSIONS.length })}
         </p>
       </div>
       <div className="nav-heading-row">
@@ -91,7 +91,7 @@ export function LeftPanel({
               </span>
               <span className="dimension-copy">
                 <strong>{node.name}</strong>
-                <small>{node.attributeCount} 项画像属性</small>
+                <small>{t(($) => $.atlas.attributes, { count: node.attributeCount })}</small>
               </span>
             </button>
           );
@@ -99,30 +99,23 @@ export function LeftPanel({
       </nav>
       <div className="left-bottom">
         <div className="data-footnote">
-          <span className="live-dot" /> {viewModel.facts.length} 条画像
+          <span className="live-dot" /> {t(($) => $.review.list.count, { count: viewModel.facts.length })}
         </div>
       </div>
     </aside>
   );
 }
 
-const GROUPINGS: { value: Grouping; label: string }[] = [
-  { value: 'dimension', label: '按维度' },
-  { value: 'domain', label: '按领域' },
-];
+const GROUPINGS: Grouping[] = ['dimension', 'domain'];
 
 function GroupingSwitch({ value }: { value: Grouping }) {
+  const { t } = useTranslation();
   const setGrouping = useProfileStore((state) => state.setGrouping);
   return (
-    <div className="grouping-switch" role="group" aria-label="画像分组方式">
+    <div className="grouping-switch" role="group" aria-label={t(($) => $.atlas.left.grouping)}>
       {GROUPINGS.map((option) => (
-        <button
-          key={option.value}
-          type="button"
-          aria-pressed={value === option.value}
-          onClick={() => setGrouping(option.value)}
-        >
-          {option.label}
+        <button key={option} type="button" aria-pressed={value === option} onClick={() => setGrouping(option)}>
+          {t(($) => $.atlas.left.groupings[option])}
         </button>
       ))}
     </div>

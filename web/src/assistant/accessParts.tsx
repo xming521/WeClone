@@ -1,5 +1,7 @@
 import { useRef, useState, type ReactNode } from 'react';
 import { Check, ClipboardCopy, KeyRound, RefreshCw } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import i18n from '../i18n';
 
 // Parts shared by the pages that let other programs in: personal assistants (MCP) and chat bots (/v1).
 
@@ -11,10 +13,11 @@ export interface TokenState {
 
 export function moment(value: string | number) {
   const date = new Date(typeof value === 'number' ? value * 1000 : value);
-  return date.toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  return date.toLocaleString(i18n.language, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
 export function CopyField({ label, text }: { label: string; text: string }) {
+  const { t } = useTranslation();
   const ref = useRef<HTMLPreElement>(null);
   const [copied, setCopied] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -42,9 +45,9 @@ export function CopyField({ label, text }: { label: string; text: string }) {
       </pre>
       <button type="button" onClick={() => void copy()}>
         {copied ? <Check size={14} /> : <ClipboardCopy size={14} />}
-        {copied ? '已复制' : '复制'}
+        {copied ? t(($) => $.common.copied) : t(($) => $.common.copy)}
       </button>
-      {failed && <small>浏览器不允许直接复制，请选中文字后手动复制</small>}
+      {failed && <small>{t(($) => $.access.copyBlocked)}</small>}
     </div>
   );
 }
@@ -63,28 +66,36 @@ export function TokenCard(props: {
   onWithdraw: () => void;
   children?: ReactNode;
 }) {
+  const { t } = useTranslation();
   const { token } = props;
   return (
-    <section className={`assistant-card${props.created ? ' assistant-created' : ''}`} aria-label="令牌">
+    <section
+      className={`assistant-card${props.created ? ' assistant-created' : ''}`}
+      aria-label={t(($) => $.access.token.title)}
+    >
       <div className="assistant-card-head">
         <h2>
-          <KeyRound size={15} /> 令牌
+          <KeyRound size={15} /> {t(($) => $.access.token.title)}
         </h2>
-        <span className={`assistant-state${token ? ' on' : ''}`}>{token ? '有效' : '未生成'}</span>
+        <span className={`assistant-state${token ? ' on' : ''}`}>
+          {token ? t(($) => $.access.token.active) : t(($) => $.access.token.none)}
+        </span>
       </div>
       <p className="summary-hint">
         {token
-          ? `生成于 ${moment(token.created)} · ${token.last_used ? `最近使用 ${moment(token.last_used)}` : props.unused}`
+          ? `${t(($) => $.access.token.created, { time: moment(token.created) })} · ${
+              token.last_used ? t(($) => $.access.token.lastUsed, { time: moment(token.last_used) }) : props.unused
+            }`
           : props.empty}
       </p>
       <div className="assistant-actions">
         <button className="primary" type="button" disabled={props.busy} onClick={props.onIssue}>
           {token ? <RefreshCw size={14} /> : <KeyRound size={14} />}
-          {token ? '重新生成' : '生成令牌'}
+          {token ? t(($) => $.access.token.reissue) : t(($) => $.access.token.issue)}
         </button>
         {token && (
           <button type="button" disabled={props.busy} onClick={props.onWithdraw}>
-            停用
+            {t(($) => $.access.token.withdraw)}
           </button>
         )}
       </div>

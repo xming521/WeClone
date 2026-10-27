@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { buildModel } from '../src/data.ts';
 import type { ProfileFact, ProfileInput } from '../src/data.ts';
+import { labels } from './modelLabels.ts';
 import { inkStrength, nodeMetrics, supportWidth } from '../src/atlas/atlasMetrics.ts';
 
 function fact(
@@ -61,7 +62,7 @@ const input: ProfileInput = {
   snapshot_sha256: 'fixture',
 };
 
-const metrics = nodeMetrics(buildModel(input));
+const metrics = nodeMetrics(buildModel(input, labels));
 
 test('nodeMetrics averages the scored facts below a node and counts each chat once', () => {
   const attribute = metrics.get('attr-a')!;

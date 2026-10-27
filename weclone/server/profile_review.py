@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Literal
 from uuid import uuid4
 
-from fastapi import APIRouter, FastAPI, HTTPException, Query
+from fastapi import APIRouter, FastAPI, Query
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -18,6 +18,7 @@ from weclone.server import style_view
 from weclone.server.assistant import install_assistant
 from weclone.server.auth import install_auth
 from weclone.server.bots import install_bots
+from weclone.server.errors import ApiError, error_response, install_errors, security_response
 from weclone.server.profile_intro import profile_intro
 from weclone.server.profile_summary import (
     EXTRA_FACTS,
@@ -185,7 +186,7 @@ class ReviewStore:
             (fact_id,),
         ).fetchone()
         if row is None:
-            raise HTTPException(404, "画像记录不存在")
+            raise ApiError(404, "fact_not_found", "画像记录不存在")
         original = json.loads(row["original"])
         return {
             **original,
@@ -226,7 +227,7 @@ class ReviewStore:
             "SELECT * FROM nodes WHERE id=? AND kind IN ('dimension','topic')", (request.group_id,)
         ).fetchone()
         if group is None:
-            raise HTTPException(422, "请选择已有维度或主题")
+            raise ApiError(422, "location_invalid", "请选择已有维度或主题")
         row = db.execute(
             "SELECT id FROM nodes WHERE parent_id=? AND kind='attribute' AND name=?",
             (request.group_id, request.attr),
@@ -264,7 +265,7 @@ class ReviewStore:
             db.execute("BEGIN IMMEDIATE")
             before = self.fact(db, fact_id)
             if before["version"] != request.version:
-                raise HTTPException(409, "记录已被修改，请刷新数据后核对并重试")
+                raise ApiError(409, "fact_changed", "记录已被修改，请刷新数据后核对并重试")
             changed = any(before[key] != getattr(request, key) for key in ("value", "attr", "group_id"))
             status = "approved" if request.approve else "pending" if changed else before["status"]
             if not changed and status == before["status"]:
@@ -283,12 +284,12 @@ class ReviewStore:
 
     def review(self, request):
         if len({item.id for item in request.items}) != len(request.items):
-            raise HTTPException(422, "批量操作不能包含重复记录")
+            raise ApiError(422, "duplicate_facts", "批量操作不能包含重复记录")
         with self.connect() as db:
             db.execute("BEGIN IMMEDIATE")
             before = [self.fact(db, item.id) for item in request.items]
             if any(fact["version"] != item.version for fact, item in zip(before, request.items)):
-                raise HTTPException(409, "记录已被修改，整批操作未保存，请刷新后重试")
+                raise ApiError(409, "batch_changed", "记录已被修改，整批操作未保存，请刷新后重试")
             for fact in before:
                 if fact["status"] != request.status:
                     db.execute(
@@ -315,7 +316,7 @@ class ReviewStore:
             data = json.loads(db.execute("SELECT data FROM snapshot WHERE id=1").fetchone()["data"])
             source = data.get("sources", {}).get(source_id)
         if not isinstance(source, dict):
-            raise HTTPException(404, "来源记录不存在")
+            raise ApiError(404, "source_not_found", "来源记录不存在")
         return source_chat(source_id, source)
 
     def intro(self):
@@ -401,17 +402,17 @@ def create_app(
 ):
     store = ReviewStore(*review_paths(database, source))
     app = FastAPI(title="WeClone")
+    install_errors(app)
     install_auth(app, store.database)
     install_bots(app, inference=inference_router is not None)
 
     @app.exception_handler(secure.SecurityError)
     async def security_error(request, exc):
-        status = 401 if isinstance(exc, secure.StorageLocked) else 409
-        return JSONResponse({"detail": str(exc)}, status_code=status)
+        return security_response(exc, 401 if isinstance(exc, secure.StorageLocked) else 409)
 
     @app.exception_handler(FileNotFoundError)
     async def missing_profile(request, exc):
-        return JSONResponse({"detail": "画像数据尚未生成，请先完成抽取和整理"}, status_code=404)
+        return error_response(404, "profile_missing", "画像数据尚未生成，请先完成抽取和整理")
 
     if inference_router is not None:
         app.include_router(inference_router)
@@ -475,14 +476,16 @@ def create_app(
         # and a style stage that finishes after the server started shows up without a restart.
         run = store.source.parent.parent / "style"
         if not style_view.complete(run):
-            raise HTTPException(
-                404, "这次运行没有抽取说话风格，做分身请运行 weclone-cli build-profile --purpose clone"
+            raise ApiError(
+                404,
+                "style_missing",
+                "这次运行没有抽取说话风格，做分身请运行 weclone-cli build-profile --purpose clone",
             )
         return style_view.build_view(run)
 
     @app.get("/api/{path:path}", include_in_schema=False)
     def unknown_api(path: str):
-        raise HTTPException(404, "接口不存在")
+        raise ApiError(404, "api_not_found", "接口不存在")
 
     static_dir = static_dir or DEFAULT_STATIC_DIR
     if static_dir.is_dir():

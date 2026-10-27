@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ancestors,
   dimensionColor,
@@ -28,6 +29,7 @@ export function NodePreview({
   width: number;
   height: number;
 }) {
+  const { t } = useTranslation();
   const ref = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState({ left: x, top: y });
   const overview = node.kind === 'root' || node.kind === 'dimension';
@@ -37,7 +39,7 @@ export function NodePreview({
     for (const index of current.factIndices) {
       if (previews.length === 2) return;
       const fact = viewModel.facts[index];
-      previews.push(`${fact.attr}：${displayProfileText(fact.value)}`);
+      previews.push(t(($) => $.atlas.preview.fact, { attr: fact.attr, value: displayProfileText(fact.value) }));
     }
     for (const id of current.childIds) {
       if (previews.length === 2) return;
@@ -55,10 +57,20 @@ export function NodePreview({
     .slice(1, -1)
     .map((parent) => parent.name)
     .join(' / ');
+  const attributes = t(($) => $.atlas.attributes, { count: node.attributeCount });
+  const count = node.childIds.length;
+  const children =
+    node.kind !== 'root'
+      ? t(($) => $.atlas.preview.topics, { count })
+      : viewModel.grouping === 'domain'
+        ? t(($) => $.atlas.preview.domains, { count })
+        : t(($) => $.atlas.preview.dimensions, { count });
   const summary =
     node.kind === 'attribute'
-      ? `${facts.length} 条画像`
-      : `${overview ? `${node.childIds.length} 个${node.kind !== 'root' ? '主题' : viewModel.grouping === 'domain' ? '领域' : '维度'} · ` : ''}${node.attributeCount} 项画像属性`;
+      ? t(($) => $.review.list.count, { count: facts.length })
+      : overview
+        ? `${children} · ${attributes}`
+        : attributes;
 
   useLayoutEffect(() => {
     const card = ref.current;
@@ -90,7 +102,7 @@ export function NodePreview({
       <div className="node-preview-scores">
         <Score kind="importance" value={metrics.importance ?? undefined} compact />
         <Score kind="confidence" value={metrics.confidence ?? undefined} compact />
-        <span>{metrics.support} 段聊天支持</span>
+        <span>{t(($) => $.scores.support, { count: metrics.support })}</span>
       </div>
       <div className="node-preview-content">
         {overview ? <p>{previews.join(' · ')}</p> : previews.map((preview, index) => <p key={index}>{preview}</p>)}

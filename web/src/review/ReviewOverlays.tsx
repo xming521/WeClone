@@ -1,8 +1,10 @@
+import { useTranslation } from 'react-i18next';
 import { useProfileStore } from '../store';
 import { FactEditor } from './FactEditor';
 import { SourceChatPanel } from './SourceChatPanel';
 
 export function ReviewOverlays() {
+  const { t } = useTranslation();
   const editing = useProfileStore((state) => state.editing !== null);
   const chat = useProfileStore((state) => state.chat);
   const error = useProfileStore((state) => state.error);
@@ -16,7 +18,7 @@ export function ReviewOverlays() {
         <div className="review-error" role="alert">
           {error}
           <button disabled={busy} onClick={() => void reload()}>
-            刷新数据
+            {t(($) => $.review.refresh)}
           </button>
         </div>
       )}

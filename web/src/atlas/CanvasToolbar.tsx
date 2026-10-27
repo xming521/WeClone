@@ -1,6 +1,7 @@
 import type { RefObject } from 'react';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import { Maximize2, Minus, MoonStar, Plus, RotateCcw } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { levelIsExpanded } from '../data';
 import { useProfileStore } from '../store';
 import type { AtlasControls } from './atlasEngine';
@@ -8,13 +9,13 @@ import { IconButton } from './IconButton';
 import { nightIntroAllowed, replayNightIntro } from './nightIntro';
 
 export function CanvasToolbar({ atlasRef }: { atlasRef: RefObject<AtlasControls | null> }) {
+  const { t } = useTranslation();
   const viewModel = useProfileStore((state) => state.viewModel)!;
   const focusedDimension = useProfileStore((state) => state.focusedDimension);
   const expandedIds = useProfileStore((state) => state.expandedIds);
   const toggleLevel = useProfileStore((state) => state.toggleLevel);
   const reset = useProfileStore((state) => state.reset);
   const byDomain = viewModel.grouping === 'domain';
-  const level1 = byDomain ? '领域' : '维度';
   // Domains hold topics, which hold attributes: there is no third level of groups.
   const levels = byDomain ? ([1, 2] as const) : ([1, 2, 3] as const);
   return (
@@ -24,8 +25,16 @@ export function CanvasToolbar({ atlasRef }: { atlasRef: RefObject<AtlasControls 
           const expanded = levelIsExpanded(viewModel, expandedIds, level, focusedDimension);
           const action =
             focusedDimension === null
-              ? `先点击一个${level1}`
-              : `${expanded ? '收起' : '展开'}当前${level1}的${level}级节点`;
+              ? byDomain
+                ? t(($) => $.atlas.toolbar.pickDomain)
+                : t(($) => $.atlas.toolbar.pickDimension)
+              : byDomain
+                ? expanded
+                  ? t(($) => $.atlas.toolbar.collapseDomain, { level })
+                  : t(($) => $.atlas.toolbar.expandDomain, { level })
+                : expanded
+                  ? t(($) => $.atlas.toolbar.collapseDimension, { level })
+                  : t(($) => $.atlas.toolbar.expandDimension, { level });
           return (
             <Tooltip.Root key={level} delayDuration={250}>
               <Tooltip.Trigger asChild>
@@ -37,7 +46,7 @@ export function CanvasToolbar({ atlasRef }: { atlasRef: RefObject<AtlasControls 
                   aria-pressed={expanded}
                   onClick={() => toggleLevel(level)}
                 >
-                  {level}级
+                  {t(($) => $.atlas.toolbar.level, { level })}
                 </button>
               </Tooltip.Trigger>
               <Tooltip.Portal>
@@ -52,26 +61,26 @@ export function CanvasToolbar({ atlasRef }: { atlasRef: RefObject<AtlasControls 
       </div>
       <span className="toolbar-separator" />
       <div className="view-controls">
-        <IconButton label="放大" onClick={() => atlasRef.current?.zoomBy(1.2)}>
+        <IconButton label={t(($) => $.atlas.toolbar.zoomIn)} onClick={() => atlasRef.current?.zoomBy(1.2)}>
           <Plus size={17} />
         </IconButton>
-        <IconButton label="缩小" onClick={() => atlasRef.current?.zoomBy(0.83)}>
+        <IconButton label={t(($) => $.atlas.toolbar.zoomOut)} onClick={() => atlasRef.current?.zoomBy(0.83)}>
           <Minus size={17} />
         </IconButton>
         <span className="toolbar-separator" />
-        <IconButton label="适应画布" onClick={() => atlasRef.current?.fit()}>
+        <IconButton label={t(($) => $.atlas.toolbar.fit)} onClick={() => atlasRef.current?.fit()}>
           <Maximize2 size={16} />
         </IconButton>
         <span className="toolbar-separator" />
         <button className="reset-button" type="button" onClick={() => reset()}>
           <RotateCcw size={15} />
-          复原
+          {t(($) => $.atlas.toolbar.reset)}
         </button>
         {/* The intro tells the five dimensions apart by colour. */}
         {nightIntroAllowed() && !byDomain && (
           // The map starts over as on a first visit, and the intro plays over it.
           <IconButton
-            label="重放开场动画"
+            label={t(($) => $.atlas.toolbar.replayIntro)}
             onClick={() => {
               replayNightIntro();
               reset();

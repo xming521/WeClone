@@ -1,9 +1,11 @@
 import { useMemo } from 'react';
 import { ArrowUpRight, Search, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { ancestors, dimensionColor, displayProfileText } from '../data';
 import { useProfileStore } from '../store';
 
 export function SearchBox() {
+  const { t } = useTranslation();
   const viewModel = useProfileStore((state) => state.viewModel)!;
   const search = useProfileStore((state) => state.search);
   const setSearch = useProfileStore((state) => state.setSearch);
@@ -40,11 +42,16 @@ export function SearchBox() {
           if (event.key === 'Enter' && results[0]) reveal(results[0].id);
           if (event.key === 'Escape') setSearch('');
         }}
-        placeholder="搜索主题、属性或内容"
-        aria-label="搜索主题、属性或内容"
+        placeholder={t(($) => $.atlas.search.placeholder)}
+        aria-label={t(($) => $.atlas.search.placeholder)}
       />
       {search && (
-        <button className="search-clear" type="button" aria-label="清除搜索" onClick={() => setSearch('')}>
+        <button
+          className="search-clear"
+          type="button"
+          aria-label={t(($) => $.atlas.search.clear)}
+          onClick={() => setSearch('')}
+        >
           <X size={16} />
         </button>
       )}
@@ -67,7 +74,7 @@ export function SearchBox() {
               </button>
             ))
           ) : (
-            <div className="search-empty">没有找到相关画像</div>
+            <div className="search-empty">{t(($) => $.atlas.search.empty)}</div>
           )}
         </div>
       )}

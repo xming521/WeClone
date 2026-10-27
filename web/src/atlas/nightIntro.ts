@@ -6,6 +6,7 @@
 import { api } from '../api';
 import { DIMENSIONS, ROOT_COLOR } from '../data';
 import type { ProfileModel } from '../data';
+import i18n from '../i18n';
 import type { EntranceConfig, EntranceItem } from './entrance';
 import { hexToRgb } from './graphStyle';
 import { canvasDpr, drawEdge, drawLabel, drawNode, type Transform } from './paint';
@@ -612,13 +613,16 @@ function createOverlay() {
   const skip = document.createElement('button');
   skip.type = 'button';
   skip.className = 'night-intro-skip';
-  skip.setAttribute('aria-label', '跳过开场动画');
-  skip.innerHTML = `跳过${SKIP_ICON}`;
+  skip.setAttribute(
+    'aria-label',
+    i18n.t(($) => $.intro.skipLabel),
+  );
+  skip.innerHTML = SKIP_ICON;
+  skip.prepend(i18n.t(($) => $.intro.skip));
   element.append(glCanvas, canvas, title, skip);
   return { element, glCanvas, canvas, title, lines, skip };
 }
 
-const formatCount = (value: number) => value.toLocaleString('en-US');
 const yearOf = (time: string | null | undefined) => (time ? Number(time.slice(0, 4)) || null : null);
 
 /** "2021 — 2025", "你说过 58,516 句话", "其中 1,234 件事被记住了". */
@@ -632,11 +636,16 @@ function fillTitle(lines: HTMLDivElement[], data: IntroData | null, model: Profi
   const last = yearOf(data?.last_time) ?? yearOf(times[times.length - 1]) ?? now;
   lines[0].textContent = first === last ? String(first) : `${first} — ${last}`;
   const total = data?.message_total;
-  lines[1].textContent = typeof total === 'number' && total > 0 ? `你说过 ${formatCount(total)} 句话` : '你说过的话';
+  lines[1].textContent =
+    typeof total === 'number' && total > 0
+      ? i18n.t(($) => $.intro.said, { count: total })
+      : i18n.t(($) => $.intro.saidSomething);
   const kept = model.facts.filter((fact) => fact.status !== 'rejected').length;
   const accent = document.createElement('span');
-  accent.textContent = formatCount(kept);
-  lines[2].replaceChildren('其中 ', accent, ' 件事被记住了');
+  accent.textContent = new Intl.NumberFormat(i18n.language).format(kept);
+  // The count stands apart in the line, so the copy is split where it goes.
+  const [before, after] = i18n.t(($) => $.intro.kept, { count: kept, number: '\u0000' }).split('\u0000');
+  lines[2].replaceChildren(before, accent, after ?? '');
 }
 
 function particleCount(data: IntroData | null, model: ProfileModel): number {

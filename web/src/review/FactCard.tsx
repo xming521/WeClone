@@ -1,11 +1,11 @@
 import { ArrowUpRight, Check, MessageSquare, X } from 'lucide-react';
-import { displayProfileText, factTags } from '../data';
+import { useTranslation } from 'react-i18next';
+import { displayProfileText, factTags, isDimensionId } from '../data';
 import type { ProfileFact } from '../data';
 import { useProfileStore } from '../store';
 import { FactHistory } from './FactHistory';
 import { PrivacyBadge, TagList } from './privacy';
 import { FactScores, SourceScores } from './ProfileScores';
-import { STATUS } from './status';
 
 export function FactCard({
   fact,
@@ -16,6 +16,7 @@ export function FactCard({
   checked: boolean;
   onCheckedChange: (checked: boolean) => void;
 }) {
+  const { t } = useTranslation();
   const sources = useProfileStore((state) => state.input?.sources);
   const busy = useProfileStore((state) => state.busy);
   const review = useProfileStore((state) => state.review);
@@ -23,19 +24,17 @@ export function FactCard({
   const openChat = useProfileStore((state) => state.openChat);
   const chatId = useProfileStore((state) => state.chat?.id);
   // The domain view mixes dimensions under one topic, so each card names its own.
-  const dimensionName = useProfileStore((state) =>
-    state.viewModel?.grouping === 'domain'
-      ? state.input?.dimensions.find((dimension) => dimension.dim === fact.dim)?.name
-      : undefined,
-  );
-  const meta = [dimensionName, fact.origin === 'manual' && '手动添加'].filter(Boolean).join(' · ');
+  const byDomain = useProfileStore((state) => state.viewModel?.grouping === 'domain');
+  const dim = fact.dim;
+  const dimensionName = byDomain && isDimensionId(dim) ? t(($) => $.model.dimensions[dim]) : undefined;
+  const meta = [dimensionName, fact.origin === 'manual' && t(($) => $.review.fact.manual)].filter(Boolean).join(' · ');
   return (
     <article className="fact-card">
       <div className="fact-heading">
         <label>
           <input
             className="review-checkbox"
-            aria-label={`选择 ${fact.attr}`}
+            aria-label={t(($) => $.review.fact.select, { attr: fact.attr })}
             type="checkbox"
             checked={checked}
             onChange={(event) => onCheckedChange(event.target.checked)}
@@ -44,7 +43,7 @@ export function FactCard({
         </label>
         <span className="fact-badges">
           <PrivacyBadge level={fact.sensitivity} />
-          <span className={`status-badge ${fact.status}`}>{STATUS[fact.status]}</span>
+          <span className={`status-badge ${fact.status}`}>{t(($) => $.review.status[fact.status])}</span>
         </span>
       </div>
       <p>{displayProfileText(fact.value)}</p>
@@ -55,26 +54,30 @@ export function FactCard({
         {fact.status !== 'approved' && (
           <button className="adopt" disabled={busy} onClick={() => void review([fact], 'approved')}>
             <Check size={14} aria-hidden="true" />
-            采纳
+            {t(($) => $.review.approve)}
           </button>
         )}
         {fact.status !== 'rejected' && (
           <button disabled={busy} onClick={() => void review([fact], 'rejected')}>
             <X size={14} aria-hidden="true" />
-            不采纳
+            {t(($) => $.review.reject)}
           </button>
         )}
         {fact.status !== 'pending' && (
           <button disabled={busy} onClick={() => void review([fact], 'pending')}>
-            移回待审核
+            {t(($) => $.review.fact.unreview)}
           </button>
         )}
         <button disabled={busy} onClick={() => edit(fact)}>
-          编辑
+          {t(($) => $.review.fact.edit)}
         </button>
       </div>
       <details className="evidence-details">
-        <summary>{fact.origin === 'manual' ? '初始内容' : `原始抽取与 ${fact.source_ids.length} 条证据`}</summary>
+        <summary>
+          {fact.origin === 'manual'
+            ? t(($) => $.review.fact.initial)
+            : t(($) => $.review.fact.evidence, { count: fact.source_ids.length })}
+        </summary>
         <div className="evidence-items">
           <div className="evidence-item">
             <strong>{fact.original.attr}</strong>
@@ -82,7 +85,7 @@ export function FactCard({
           </div>
           {fact.source_ids.map((id, index) => {
             const source = sources?.[id];
-            const label = `来源 ${index + 1}`;
+            const label = t(($) => $.review.fact.source, { n: index + 1 });
             return (
               <div className="evidence-item" key={id}>
                 <div className="evidence-source-header">
@@ -94,19 +97,21 @@ export function FactCard({
                     type="button"
                     className="view-source-chat"
                     disabled={!source}
-                    aria-label={`查看${label}的原始聊天记录`}
+                    aria-label={t(($) => $.review.fact.viewChatLabel, { label })}
                     aria-pressed={chatId === id}
                     onClick={(event) => openChat({ id, label }, event.currentTarget)}
                   >
-                    查看原文
+                    {t(($) => $.review.fact.viewChat)}
                     <ArrowUpRight size={13} aria-hidden="true" />
                   </button>
                 </div>
                 <div className="evidence-meta">
-                  <time className="evidence-time">{source?.sample_time?.slice(0, 10) ?? '未标注时间'}</time>
+                  <time className="evidence-time">
+                    {source?.sample_time?.slice(0, 10) ?? t(($) => $.review.fact.noTime)}
+                  </time>
                   <PrivacyBadge level={source?.sensitivity} />
                 </div>
-                <p>{source?.content ?? '来源正文不可用'}</p>
+                <p>{source?.content ?? t(($) => $.review.fact.noContent)}</p>
                 <TagList tags={source?.tags ?? []} />
                 <SourceScores source={source} />
               </div>

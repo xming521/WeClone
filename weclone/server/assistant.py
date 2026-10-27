@@ -12,7 +12,7 @@ import re
 import sqlite3
 from importlib import metadata
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, ConfigDict, field_validator
 from starlette.concurrency import run_in_threadpool
@@ -20,6 +20,7 @@ from starlette.concurrency import run_in_threadpool
 from weclone.prompts.memory_organization import dimension_name
 from weclone.server import mcp
 from weclone.server.client_access import TokenStore, bearer, local_url
+from weclone.server.errors import ApiError
 from weclone.server.profile_summary import (
     ASSISTANT_LEVELS,
     Level,
@@ -414,7 +415,7 @@ def install_assistant(app: FastAPI, store, summaries):
     @app.post("/api/assistant/access")
     def allow_access(request: AccessGrant):
         if not secure.is_encrypted_mode():
-            raise HTTPException(409, "数据是明文存储的，令牌有效时助手就能读取，不需要打开")
+            raise ApiError(409, "assistant_plaintext", "数据是明文存储的，令牌有效时助手就能读取，不需要打开")
         # The key this request runs with, which is the logged-in session's.
         return {"allowed_until": auth.allow_assistant(secure.get_unlocked_key(), request.hours * 3600)}
 

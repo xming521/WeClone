@@ -1,9 +1,10 @@
 import * as Tooltip from '@radix-ui/react-tooltip';
-import type { ReviewView } from '../data';
+import { useTranslation } from 'react-i18next';
 import { useProfileStore } from '../store';
-import { STATUS, VIEW_ICONS } from './status';
+import { REVIEW_VIEWS, VIEW_ICONS } from './status';
 
 export function ReviewBar() {
+  const { t } = useTranslation();
   const input = useProfileStore((state) => state.input)!;
   const currentView = useProfileStore((state) => state.view);
   const setView = useProfileStore((state) => state.setView);
@@ -11,16 +12,16 @@ export function ReviewBar() {
   input.facts.forEach((fact) => counts[fact.status]++);
   return (
     <div className="review-bar">
-      <nav className="review-tabs" aria-label="审核状态">
-        {(Object.keys(STATUS) as ReviewView[]).map((view, index, views) => {
+      <nav className="review-tabs" aria-label={t(($) => $.review.statusLabel)}>
+        {REVIEW_VIEWS.map((view, index, views) => {
           const Icon = VIEW_ICONS[view];
-          const label = STATUS[view];
+          const label = t(($) => $.review.status[view]);
           return (
             <Tooltip.Root key={view} delayDuration={160}>
               <Tooltip.Trigger asChild>
                 <button
                   type="button"
-                  aria-label={`${label} ${counts[view]} 条画像`}
+                  aria-label={t(($) => $.review.bookmark, { label, count: counts[view] })}
                   aria-pressed={currentView === view}
                   className={`review-bookmark${currentView === view ? ' active' : ''}`}
                   onClick={() => setView(view)}
@@ -44,7 +45,9 @@ export function ReviewBar() {
               </Tooltip.Trigger>
               <Tooltip.Portal>
                 <Tooltip.Content className="tooltip" side="right" sideOffset={12}>
-                  {label} · {counts[view]} 条画像{view === 'approved' && ' · 分身画像'}
+                  {view === 'approved'
+                    ? t(($) => $.review.bookmarkCloneTip, { label, count: counts[view] })
+                    : t(($) => $.review.bookmarkTip, { label, count: counts[view] })}
                   <Tooltip.Arrow className="tooltip-arrow" />
                 </Tooltip.Content>
               </Tooltip.Portal>

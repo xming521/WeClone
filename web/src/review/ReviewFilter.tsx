@@ -1,7 +1,8 @@
 import * as Select from '@radix-ui/react-select';
 import { Check, ChevronDown } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import type { ReviewView } from '../data';
-import { STATUS, VIEW_ICONS } from './status';
+import { REVIEW_VIEWS, VIEW_ICONS } from './status';
 
 export function ReviewFilter({
   value,
@@ -12,16 +13,16 @@ export function ReviewFilter({
   counts: Record<ReviewView, number>;
   onChange: (view: ReviewView) => void;
 }) {
-  const views = Object.keys(STATUS) as ReviewView[];
+  const { t } = useTranslation();
   const Icon = VIEW_ICONS[value];
   return (
     <Select.Root value={value} onValueChange={(view) => onChange(view as ReviewView)}>
       <Select.Trigger
         className="review-filter-trigger"
-        aria-label={`筛选审核状态：${STATUS[value]}，${counts[value]} 条`}
+        aria-label={t(($) => $.review.filterLabel, { label: t(($) => $.review.status[value]), count: counts[value] })}
       >
         <Icon size={15} aria-hidden="true" />
-        <span>{STATUS[value]}</span>
+        <span>{t(($) => $.review.status[value])}</span>
         <span className="review-filter-count">{counts[value]}</span>
         <ChevronDown className="review-filter-chevron" size={14} aria-hidden="true" />
       </Select.Trigger>
@@ -32,18 +33,18 @@ export function ReviewFilter({
           side="bottom"
           align="start"
           sideOffset={7}
-          aria-label="审核状态"
+          aria-label={t(($) => $.review.statusLabel)}
           onEscapeKeyDown={(event) => event.stopPropagation()}
         >
           <Select.Viewport>
-            {views.map((view) => {
+            {REVIEW_VIEWS.map((view) => {
               const OptionIcon = VIEW_ICONS[view];
               return (
                 <Select.Item key={view} value={view} className="review-filter-item">
                   <OptionIcon size={15} aria-hidden="true" />
                   <Select.ItemText asChild>
                     <span className="review-filter-item-text">
-                      <span className="review-filter-name">{STATUS[view]}</span>
+                      <span className="review-filter-name">{t(($) => $.review.status[view])}</span>
                       <span className="review-filter-count">{counts[view]}</span>
                     </span>
                   </Select.ItemText>

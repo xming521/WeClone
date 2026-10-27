@@ -18,11 +18,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal
 
-from fastapi import HTTPException
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from weclone.prompts.memory_organization import dimension_name
 from weclone.prompts.profile_summary import SUMMARY_CHARS, SUMMARY_SCHEMA, summary_prompt
+from weclone.server.errors import ApiError
 from weclone.utils import secure_storage as secure
 from weclone.utils.log import logger
 
@@ -254,8 +254,9 @@ class SummaryStore:
 
     def __init__(self, store):
         self.store = store
-        # Why the last generation of each level left domains without a summary.
-        self.failures: dict[str, str] = {}
+        # How many domains the last generation of each level left without a summary, and why. The reason is empty
+        # when the model calls gave up after their retries.
+        self.failures: dict[str, dict] = {}
 
     @contextmanager
     def connect(self):
@@ -290,7 +291,7 @@ class SummaryStore:
             "level": level,
             "generating": GENERATING.locked(),
             # Shown while the domains it is about still wait for a summary.
-            "error": self.failures.get(level, "") if any(due(item, rows) for item in inputs) else "",
+            "failure": self.failures.get(level) if any(due(item, rows) for item in inputs) else None,
             "limits": {"title": TITLE_CHARS, "summary": SUMMARY_MAX_CHARS[level], "facts": EXTRA_FACTS},
             "domains": domains,
             "text": export_text(exported(inputs, rows), extra),
@@ -300,7 +301,7 @@ class SummaryStore:
         """Generate the domains that are due. The server runs the model calls in a background thread and the view
         shows when they end. build-profile waits for them."""
         if not GENERATING.acquire(blocking=False):
-            raise HTTPException(409, "正在生成领域总结，请稍候")
+            raise ApiError(409, "summary_generating", "正在生成领域总结，请稍候")
         started = False
         try:
             inputs, rows = self.state(level)
@@ -355,11 +356,9 @@ class SummaryStore:
                         runner.close()
             except Exception as exc:
                 logger.warning(f"领域总结生成失败：{type(exc).__name__}: {exc}")
-                failure = f"{len(todo) - len(stored)} 个领域没有生成成功，下次生成只补这些领域。"
                 # A bare RuntimeError is LLMTasks giving up after retries, pointing to a cache that is gone.
-                if type(exc) is not RuntimeError:
-                    failure += f"原因：{str(exc) or type(exc).__name__}"
-                self.failures[level] = failure
+                reason = "" if type(exc) is RuntimeError else str(exc) or type(exc).__name__
+                self.failures[level] = {"failed": len(todo) - len(stored), "reason": reason}
         finally:
             GENERATING.release()
 
@@ -388,11 +387,11 @@ class SummaryStore:
         current = {item["domain"]: item["sha256"] for item in inputs}
         row = rows.get(request.domain)
         if row is None:
-            raise HTTPException(404, "领域总结不存在")
+            raise ApiError(404, "summary_not_found", "领域总结不存在")
         if row["version"] != request.version:
-            raise HTTPException(409, "总结已被修改，请刷新后核对并重试")
+            raise ApiError(409, "summary_changed", "总结已被修改，请刷新后核对并重试")
         if row["input_sha256"] != current.get(request.domain):
-            raise HTTPException(409, "这个领域的画像有变动，请先重新生成总结")
+            raise ApiError(409, "summary_stale", "这个领域的画像有变动，请先重新生成总结")
         changed = (request.title, request.summary) != (row["title"], row["summary"])
         status = "approved" if request.approve else "pending" if changed else row["status"]
         if not changed and status == row["status"]:
@@ -414,7 +413,7 @@ class SummaryStore:
                 ),
             ).rowcount
             if updated != 1:
-                raise HTTPException(409, "总结已被修改，请刷新后核对并重试")
+                raise ApiError(409, "summary_changed", "总结已被修改，请刷新后核对并重试")
             after = db.execute(
                 "SELECT * FROM domain_summaries WHERE level=? AND domain=?", (request.level, request.domain)
             ).fetchone()
@@ -422,7 +421,7 @@ class SummaryStore:
 
     def review(self, request: SummaryReview) -> dict:
         if len({item.domain for item in request.items}) != len(request.items):
-            raise HTTPException(422, "批量操作不能包含重复领域")
+            raise ApiError(422, "duplicate_domains", "批量操作不能包含重复领域")
         inputs, _ = self.state(request.level)
         current = {item["domain"]: item["sha256"] for item in inputs}
         with self.connect() as db:
@@ -433,11 +432,11 @@ class SummaryStore:
                     "SELECT * FROM domain_summaries WHERE level=? AND domain=?", (request.level, item.domain)
                 ).fetchone()
                 if row is None:
-                    raise HTTPException(404, "领域总结不存在")
+                    raise ApiError(404, "summary_not_found", "领域总结不存在")
                 if row["version"] != item.version:
-                    raise HTTPException(409, "总结已被修改，整批操作未保存，请刷新后重试")
+                    raise ApiError(409, "summary_batch_changed", "总结已被修改，整批操作未保存，请刷新后重试")
                 if request.status == "approved" and row["input_sha256"] != current.get(item.domain):
-                    raise HTTPException(409, "有领域的画像已变动，请先重新生成总结再确认")
+                    raise ApiError(409, "summary_batch_stale", "有领域的画像已变动，请先重新生成总结再确认")
                 rows.append(row)
             for row in rows:
                 if row["status"] != request.status:
@@ -462,4 +461,8 @@ def build_summaries(directory: Path) -> str:
         # The profile is already written, so any failure here only leaves the summaries for a later run.
         logger.warning(f"领域总结生成失败：{type(exc).__name__}: {exc}")
         return f"没有生成成功。原因：{str(exc) or type(exc).__name__}"
-    return store.failures.get("full", "")
+    failure = store.failures.get("full")
+    if not failure:
+        return ""
+    note = f"{failure['failed']} 个领域没有生成成功，下次生成只补这些领域。"
+    return note + (f"原因：{failure['reason']}" if failure["reason"] else "")

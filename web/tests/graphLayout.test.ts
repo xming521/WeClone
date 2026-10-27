@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { buildModel, visibleNodes } from '../src/data.ts';
 import type { ProfileInput } from '../src/data.ts';
+import { labels } from './modelLabels.ts';
 import {
   STAGGER_COUNT,
   clusterCenters,
@@ -37,7 +38,7 @@ const input: ProfileInput = {
   snapshot_sha256: 'fixture',
 };
 
-const model = buildModel(input);
+const model = buildModel(input, labels);
 
 test('overviewPositions places every node with the root at the origin', () => {
   const positions = overviewPositions(model);
@@ -161,6 +162,7 @@ test('clusterCenters staggers many domains between an inner and an outer ring wi
       locations: [],
       snapshot_sha256: 'fixture',
     },
+    labels,
     'domain',
   );
   const ids = domainModel.dimensionIds;

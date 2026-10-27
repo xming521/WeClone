@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { Keyboard, MessagesSquare, Smile, Type } from 'lucide-react';
+import { Trans, useTranslation } from 'react-i18next';
 import { api } from '../api';
 import { LogoutButton } from '../Auth';
+import { LanguageSwitch } from '../LanguageSwitch';
 import { ModeSwitch } from '../ModeSwitch';
 import { BubbleField } from './BubbleField';
 import { TraitDetail } from './TraitDetail';
@@ -18,6 +20,7 @@ const GROUP_ICONS: Record<TraitGroupId, LucideIcon> = {
 };
 
 export function StyleApp() {
+  const { t } = useTranslation();
   const [data, setData] = useState<StyleInput | null>(null);
   const [error, setError] = useState('');
   const [selected, setSelected] = useState<string | null>(null);
@@ -52,10 +55,10 @@ export function StyleApp() {
     return (
       <div className="load-state">
         <span>✳</span>
-        <h1>风格结果暂时无法打开</h1>
+        <h1>{t(($) => $.style.loadFailed)}</h1>
         <p>{error}</p>
         <a className="style-back" href="#/">
-          回到人生画像
+          {t(($) => $.style.back)}
         </a>
       </div>
     );
@@ -63,7 +66,7 @@ export function StyleApp() {
     return (
       <div className="load-state">
         <span className="loading-mark">✳</span>
-        <h1>正在读取聊天风格</h1>
+        <h1>{t(($) => $.style.loading)}</h1>
       </div>
     );
 
@@ -83,26 +86,24 @@ export function StyleApp() {
         </div>
         <div className="intro-block">
           <div className="eyebrow">
-            <span className="eyebrow-line" /> HOW YOU TALK
+            <span className="eyebrow-line" /> {t(($) => $.style.eyebrow)}
           </div>
           <h1>
-            你怎么聊天，
-            <br />
-            <em>一眼就能看出来。</em>
+            <Trans i18nKey={($) => $.style.tagline} components={{ br: <br />, em: <em /> }} />
           </h1>
           {traits.length > 0 && (
             <p>
-              最明显的是
-              {traits
-                .slice(0, 3)
-                .map((entry) => `「${entry.title}」`)
-                .join('')}
-              。
+              {t(($) => $.style.highlights, {
+                traits: traits
+                  .slice(0, 3)
+                  .map((entry) => t(($) => $.style.quoted, { title: t(($) => $.style.traits[entry.id].title) }))
+                  .join(t(($) => $.style.quotedSeparator)),
+              })}
             </p>
           )}
         </div>
-        <div className="nav-heading">风格侧面</div>
-        <nav className="dimension-list" aria-label="风格侧面">
+        <div className="nav-heading">{t(($) => $.style.groupsTitle)}</div>
+        <nav className="dimension-list" aria-label={t(($) => $.style.groupsTitle)}>
           {TRAIT_GROUPS.map((group) => {
             const Icon = GROUP_ICONS[group.id];
             const count = traits.filter((entry) => entry.group === group.id).length;
@@ -118,9 +119,9 @@ export function StyleApp() {
                   <Icon size={19} strokeWidth={1.7} />
                 </span>
                 <span className="dimension-copy">
-                  <strong>{group.name}</strong>
+                  <strong>{t(($) => $.style.groups[group.id].name)}</strong>
                   <small>
-                    {count} 个特点 · {group.hint}
+                    {t(($) => $.style.groupCount, { count, hint: t(($) => $.style.groups[group.id].hint) })}
                   </small>
                 </span>
               </button>
@@ -129,7 +130,12 @@ export function StyleApp() {
         </nav>
         <div className="left-bottom">
           <div className="data-footnote">
-            <span className="live-dot" /> {start?.slice(0, 7)} 至 {end?.slice(0, 7)} · {messages} 条消息
+            <span className="live-dot" />{' '}
+            {t(($) => $.style.footnote, {
+              start: start?.slice(0, 7) ?? '',
+              end: end?.slice(0, 7) ?? '',
+              count: messages ?? 0,
+            })}
           </div>
         </div>
       </aside>
@@ -140,28 +146,28 @@ export function StyleApp() {
           <div className="topbar-leading">
             <ModeSwitch mode="style" />
             <div className="topbar-heading">
-              <span className="topbar-divider">/</span> <strong>{focusGroup?.name ?? '主要特点'}</strong>
+              <span className="topbar-divider">/</span>{' '}
+              <strong>{focusGroup ? t(($) => $.style.groups[focusGroup.id].name) : t(($) => $.style.main)}</strong>
             </div>
           </div>
           <div className="topbar-actions">
+            <LanguageSwitch />
             <LogoutButton />
           </div>
         </div>
         {traits.length ? (
           <BubbleField traits={traits} selected={selected} focus={focus} onSelect={setSelected} />
         ) : (
-          <div className="graph-empty">还没有足够明显的风格特点</div>
+          <div className="graph-empty">{t(($) => $.style.empty)}</div>
         )}
         <div className="canvas-help bubble-legend">
           {TIERS.map((tier) => (
             <span key={tier.id}>
               <i className={`legend-swatch tier-${tier.id}`} />
-              {tier.label}
+              {t(($) => $.style.tiers[tier.id])}
             </span>
           ))}
-          <span className="legend-note">
-            泡泡越大越常见 · 只列出每 {Math.round(1 / MIN_RATE)} 条至少出现 1 次的特点 · 点击看详情
-          </span>
+          <span className="legend-note">{t(($) => $.style.legend, { every: Math.round(1 / MIN_RATE) })}</span>
         </div>
       </main>
 

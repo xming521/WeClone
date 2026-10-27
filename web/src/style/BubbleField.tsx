@@ -1,5 +1,6 @@
 import { forceCollide, forceSimulation, forceX, forceY, type SimulationNodeDatum } from 'd3-force';
 import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useTranslation } from 'react-i18next';
 import { TRAIT_GROUPS, formatPercent, tierOf, type Trait, type TraitGroupId } from './traits';
 
 // Each group gathers around its own point, so colours form clusters instead of a mix.
@@ -88,6 +89,7 @@ export function BubbleField({
   focus: TraitGroupId | null;
   onSelect: (key: string | null) => void;
 }) {
+  const { t } = useTranslation();
   const { width, height, left, top, nodes } = useMemo(() => layout(traits), [traits]);
   const bubbles = useMemo(() => makeRoom(nodes, selected), [nodes, selected]);
   const frame = useRef<HTMLDivElement>(null);
@@ -134,7 +136,10 @@ export function BubbleField({
               key={trait.key}
               type="button"
               className={classes.join(' ')}
-              aria-label={`${trait.title}，${formatPercent(trait.rate)}`}
+              aria-label={t(($) => $.style.bubble, {
+                title: t(($) => $.style.traits[trait.id].title),
+                rate: formatPercent(trait.rate),
+              })}
               aria-pressed={trait.key === selected}
               onClick={(event) => {
                 event.stopPropagation();
@@ -156,7 +161,7 @@ export function BubbleField({
             >
               <span className="trait-bubble-float">
                 <span className="trait-bubble-body">
-                  <strong>{trait.title}</strong>
+                  <strong>{t(($) => $.style.traits[trait.id].title)}</strong>
                   <em>{formatPercent(trait.rate)}</em>
                   {r >= 70 && trait.examples.length > 0 && <small>{trait.examples.slice(0, 3).join(' · ')}</small>}
                 </span>

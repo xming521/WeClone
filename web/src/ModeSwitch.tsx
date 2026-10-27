@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next';
+
 export type AppMode = 'profile' | 'style' | 'summary' | 'assistant' | 'bots';
 
 export function modeFromHash(hash: string): AppMode {
@@ -8,22 +10,23 @@ export function modeFromHash(hash: string): AppMode {
 }
 
 export function ModeSwitch({ mode }: { mode: AppMode }) {
+  const { t } = useTranslation();
   return (
-    <nav className="mode-switch" aria-label="页面">
+    <nav className="mode-switch" aria-label={t(($) => $.modes.label)}>
       <a href="#/" aria-current={mode === 'profile' ? 'page' : undefined}>
-        人生画像
+        {t(($) => $.modes.profile)}
       </a>
       <a href="#/style" aria-current={mode === 'style' ? 'page' : undefined}>
-        说话风格
+        {t(($) => $.modes.style)}
       </a>
       <a href="#/summary" aria-current={mode === 'summary' ? 'page' : undefined}>
-        领域总结
+        {t(($) => $.modes.summary)}
       </a>
       <a href="#/assistant" aria-current={mode === 'assistant' ? 'page' : undefined}>
-        助手接入
+        {t(($) => $.modes.assistant)}
       </a>
       <a href="#/bots" aria-current={mode === 'bots' ? 'page' : undefined}>
-        机器人接入
+        {t(($) => $.modes.bots)}
       </a>
     </nav>
   );

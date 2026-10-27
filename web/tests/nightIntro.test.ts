@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { buildModel } from '../src/data.ts';
 import type { ProfileFact, ProfileInput } from '../src/data.ts';
+import { labels } from './modelLabels.ts';
 import {
   WORDS,
   apportion,
@@ -230,7 +231,7 @@ const options = (count: number) => ({
 });
 
 test('planParticles sends a share of the stars to every node and collapses them from the root out', () => {
-  const model = buildModel(input);
+  const model = buildModel(input, labels);
   const T = timeline(true);
   const count = 3000;
   const { particles, timings } = planParticles(model, nodes, options(count));
@@ -273,7 +274,7 @@ test('planParticles sends a share of the stars to every node and collapses them 
 });
 
 test('planParticles hands glyph dots to stars near their line', () => {
-  const model = buildModel(input);
+  const model = buildModel(input, labels);
   const span: WordSpan = {
     text: '一二三四五',
     role: 'line',

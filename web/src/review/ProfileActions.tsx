@@ -1,11 +1,12 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { Download, Plus } from 'lucide-react';
+import { Trans, useTranslation } from 'react-i18next';
 import { exportProfile } from '../data';
 import type { ReviewView } from '../data';
 import { useProfileStore } from '../store';
-import { STATUS } from './status';
 
 export function ProfileActions() {
+  const { t } = useTranslation();
   const input = useProfileStore((state) => state.input);
   const view = useProfileStore((state) => state.view);
   const busy = useProfileStore((state) => state.busy);
@@ -40,7 +41,12 @@ export function ProfileActions() {
   return (
     <>
       <div className="header-review-actions">
-        <button disabled={busy} onClick={() => edit(null)} aria-label="新增画像" title="新增画像">
+        <button
+          disabled={busy}
+          onClick={() => edit(null)}
+          aria-label={t(($) => $.editor.addTitle)}
+          title={t(($) => $.editor.addTitle)}
+        >
           <Plus size={17} />
         </button>
         <button
@@ -49,8 +55,8 @@ export function ProfileActions() {
           onClick={() => {
             if (input) setSelection({ view, profile: exportProfile(input, view) });
           }}
-          aria-label="导出当前视图"
-          title="导出当前视图"
+          aria-label={t(($) => $.export.action)}
+          title={t(($) => $.export.action)}
         >
           <Download size={17} />
         </button>
@@ -67,18 +73,21 @@ export function ProfileActions() {
           }}
         >
           <div className="fact-editor export-confirm">
-            <h2 id={titleId}>导出画像</h2>
+            <h2 id={titleId}>{t(($) => $.export.title)}</h2>
             <p id={descriptionId}>
-              是否导出当前“<strong>{STATUS[selection.view]}</strong>”视图中的{' '}
-              <strong>{selection.profile.facts.length}</strong> 条画像？
+              <Trans
+                i18nKey={($) => $.export.confirm}
+                values={{ view: t(($) => $.review.status[selection.view]), count: selection.profile.facts.length }}
+                components={{ strong: <strong /> }}
+              />
             </p>
-            <p className="editor-hint">导出为 JSON 文件，包含画像层级和关联来源。</p>
+            <p className="editor-hint">{t(($) => $.export.hint)}</p>
             <div className="editor-actions">
               <button type="button" autoFocus onClick={close}>
-                取消
+                {t(($) => $.common.cancel)}
               </button>
               <button className="primary" type="button" onClick={download}>
-                确认导出
+                {t(($) => $.export.submit)}
               </button>
             </div>
           </div>

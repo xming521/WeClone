@@ -14,6 +14,7 @@ from fastapi import HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
+from weclone.server.errors import ApiError, error_response, security_response
 from weclone.utils import secure_storage as secure
 
 SESSION_SECONDS = 2 * 60 * 60
@@ -64,11 +65,11 @@ class AuthStore:
 
     def setup(self, password: str, confirmation: str):
         if password != confirmation:
-            raise HTTPException(422, "两次输入的密码不一致")
+            raise ApiError(422, "password_mismatch", "两次输入的密码不一致")
         with self.connect() as db:
             db.execute("BEGIN IMMEDIATE")
             if secure.is_initialized():
-                raise HTTPException(409, "已设置密码，请使用现有密码登录")
+                raise ApiError(409, "already_set_up", "已设置密码，请使用现有密码登录")
             try:
                 secure.ensure_initialized(password)
             except secure.SecurityError as exc:
@@ -80,7 +81,7 @@ class AuthStore:
 
     def login(self, password: str):
         if not secure.is_initialized():
-            raise HTTPException(409, "请先设置密码")
+            raise ApiError(409, "not_set_up", "请先设置密码")
         now = time.time()
         with self.connect() as db:
             db.execute("BEGIN IMMEDIATE")
@@ -89,7 +90,7 @@ class AuthStore:
                 "SELECT failures, blocked_until FROM auth_state WHERE id=1"
             ).fetchone()
             if blocked_until > now:
-                raise HTTPException(429, "尝试次数过多，请一分钟后再试")
+                raise ApiError(429, "too_many_attempts", "尝试次数过多，请一分钟后再试")
             try:
                 verified_key = secure.unlock_key(password)
             except secure.InvalidPassword:
@@ -99,7 +100,7 @@ class AuthStore:
                     (failures, now + 60 if failures >= 5 else 0),
                 )
                 db.commit()
-                raise HTTPException(401, "密码错误")
+                raise ApiError(401, "password_wrong", "密码错误")
             key = None
             if secure.is_encrypted_mode():
                 key = verified_key
@@ -201,17 +202,17 @@ def install_auth(app, database: Path):
             request.method not in {"GET", "HEAD", "OPTIONS"}
             and request.headers.get("X-WeClone-Request") != "1"
         ):
-            response = JSONResponse({"detail": "请求验证失败"}, status_code=403)
+            response = error_response(403, "request_rejected", "请求验证失败")
         elif path in public:
             response = await call_next(request)
         else:
             token = request.cookies.get(COOKIE, "")
             if not store.expiry(token):
-                response = JSONResponse({"detail": "请先输入访问密码"}, status_code=401)
+                response = error_response(401, "login_required", "请先输入访问密码")
             else:
                 key = store.key(token)
                 if secure.is_encrypted_mode() and key is None:
-                    response = JSONResponse({"detail": "请重新输入密码解锁"}, status_code=401)
+                    response = error_response(401, "unlock_required", "请重新输入密码解锁")
                 elif key is not None:
                     with secure.use_key(key):
                         response = await call_next(request)
@@ -232,7 +233,7 @@ def install_auth(app, database: Path):
             else:
                 response = await authorize(request, call_next)
         except secure.SecurityError as exc:
-            response = JSONResponse({"detail": str(exc)}, status_code=409)
+            response = security_response(exc, 409)
         response.headers["Cache-Control"] = "no-store"
         return response
 

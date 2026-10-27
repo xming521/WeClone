@@ -122,12 +122,15 @@ def test_batch_conflict_is_atomic_and_stale_edit_rejected(setup):
     client, _, _ = setup
     first, second, _ = facts(client)
     review(client, [second], "rejected")
-    assert review(client, [first, second], "approved").status_code == 409
+    conflict = review(client, [first, second], "approved")
+    assert conflict.status_code == 409 and conflict.json()["code"] == "batch_changed"
     assert [f["status"] for f in facts(client)][:2] == ["pending", "rejected"]
     assert client.get(f"/api/facts/{first['id']}/history").json() == []
-    assert edit(client, second, value="过期页面修改").status_code == 409
+    stale = edit(client, second, value="过期页面修改")
+    assert stale.status_code == 409 and stale.json()["code"] == "fact_changed"
     assert facts(client)[1]["value"] == second["value"]
-    assert review(client, [first, first], "approved").status_code == 422
+    duplicate = review(client, [first, first], "approved")
+    assert duplicate.status_code == 422 and duplicate.json()["code"] == "duplicate_facts"
 
 
 def test_manual_fact_and_direct_dimension_export(setup):

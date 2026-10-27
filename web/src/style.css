@@ -145,6 +145,39 @@ summary:focus-visible {
   background: var(--color-surface);
 }
 
+.language-switch {
+  display: flex;
+  flex-shrink: 0;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 9px;
+  background: #edf1eb;
+}
+.language-switch button {
+  min-width: 28px;
+  height: 28px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 7px;
+  color: #71867a;
+  background: transparent;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+.language-switch button:hover {
+  color: var(--color-accent-dark);
+}
+.language-switch button[aria-pressed='true'] {
+  background: var(--color-white);
+  color: #326d5d;
+  box-shadow: 0 2px 8px #294e3610;
+}
+.auth-page > .language-switch {
+  position: absolute;
+  top: 20px;
+  right: 24px;
+}
+
 .app-shell {
   --left-panel-width: 292px;
   --detail-panel-width: 364px;
@@ -305,6 +338,7 @@ summary:focus-visible {
 }
 .dimension-list {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 7px;
 }
 .dimension-item {
@@ -612,6 +646,7 @@ summary:focus-visible {
   display: flex;
   align-items: center;
   gap: 9px;
+  min-width: 0;
   white-space: nowrap;
   color: var(--color-text-meta);
   font-size: 11px;
@@ -619,8 +654,10 @@ summary:focus-visible {
   letter-spacing: 0.02em;
 }
 .topbar-heading strong {
+  overflow: hidden;
   color: var(--color-ink-body);
   font-weight: 700;
+  text-overflow: ellipsis;
 }
 .topbar-dot {
   width: 7px;

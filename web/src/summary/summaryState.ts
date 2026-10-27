@@ -21,8 +21,9 @@ export interface SummaryDomain {
 export interface SummaryView {
   level: SummaryLevel;
   generating: boolean;
-  /** Why the last generation left domains without a summary, while they still wait for one. */
-  error: string;
+  /** How many domains the last generation left without a summary, while they still wait for one, and why. The
+   * reason is the error's own text, empty when the model calls gave up after their retries. */
+  failure: { failed: number; reason: string } | null;
   limits: { title: number; summary: number; facts: number };
   domains: SummaryDomain[];
   text: string;
@@ -32,15 +33,6 @@ export const SUMMARY_LEVELS: SummaryLevel[] = ['public', 'normal', 'full'];
 
 /** Where one domain stands. Only approved summaries reach the export, and generation fills missing and stale ones. */
 export type SummaryState = 'empty' | 'missing' | 'stale' | 'pending' | 'approved' | 'rejected';
-
-export const STATE_LABELS: Record<SummaryState, string> = {
-  empty: '没有可用条目',
-  missing: '未生成',
-  stale: '需重新生成',
-  pending: '待确认',
-  approved: '已确认',
-  rejected: '不导出',
-};
 
 export function summaryState({ facts, summary }: SummaryDomain): SummaryState {
   if (summary?.status === 'rejected') return 'rejected';

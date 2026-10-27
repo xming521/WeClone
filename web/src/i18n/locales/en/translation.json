@@ -1,0 +1,668 @@
+{
+  "common": {
+    "retry": "Retry",
+    "language": "Language",
+    "httpError": "Request failed: HTTP {{status}}",
+    "listSeparator": ", ",
+    "sentenceSeparator": " ",
+    "cancel": "Cancel",
+    "save": "Save",
+    "dismiss": "Dismiss",
+    "copy": "Copy",
+    "copied": "Copied",
+    "copyBlocked": "Your browser blocked copying. Select all the text in the box and copy it by hand"
+  },
+  "errors": {
+    "password_mismatch": "The passwords don't match",
+    "already_set_up": "A password is already set. Log in with it",
+    "not_set_up": "Set a password first",
+    "too_many_attempts": "Too many attempts. Try again in a minute",
+    "password_wrong": "Wrong password",
+    "request_rejected": "Request verification failed",
+    "login_required": "Enter your password first",
+    "unlock_required": "Enter your password again to unlock",
+    "storage_locked": "Your data is locked. Enter your password again",
+    "profile_missing": "No portrait yet. Run extraction and organization first",
+    "fact_not_found": "Entry not found",
+    "location_invalid": "Choose an existing dimension or topic",
+    "fact_changed": "This entry was changed elsewhere. Refresh, check it and try again",
+    "duplicate_facts": "A batch can't contain the same entry twice",
+    "batch_changed": "Some entries were changed elsewhere, so none of the batch was saved. Refresh and try again",
+    "source_not_found": "Source not found",
+    "chat_unavailable": "This source has no saved chat location, so its original chat can't be shown",
+    "chat_missing": "The original chat file is missing or doesn't match the source. Check the source files of this extraction",
+    "style_missing": "This run didn't extract a speaking style. To build a clone, run weclone-cli build-profile --purpose clone",
+    "summary_generating": "Summaries are being generated. Please wait",
+    "summary_not_found": "Summary not found",
+    "summary_changed": "This summary was changed elsewhere. Refresh, check it and try again",
+    "summary_stale": "The portrait of this domain changed. Regenerate the summary first",
+    "duplicate_domains": "A batch can't contain the same domain twice",
+    "summary_batch_changed": "Some summaries were changed elsewhere, so none of the batch was saved. Refresh and try again",
+    "summary_batch_stale": "The portrait of some domains changed. Regenerate their summaries before approving",
+    "assistant_plaintext": "Your data is stored unencrypted, so assistants can read it whenever the token is valid. There is nothing to open",
+    "api_not_found": "No such API endpoint"
+  },
+  "app": {
+    "title": "My portrait · WeClone",
+    "openLeftPanel": "Open the left panel",
+    "domainOverview_one": "Overview of {{count}} domain",
+    "domainOverview_other": "Overview of {{count}} domains",
+    "dimensionOverview_one": "Overview of {{count}} dimension",
+    "dimensionOverview_other": "Overview of {{count}} dimensions",
+    "emptyView": "No entries in this view",
+    "canvasHelp": "Hover to light up a path · Click to expand and focus, click again to collapse · Drag a node to pull the map",
+    "loadFailed": "The portrait map can't be opened right now",
+    "loading": "Unfolding the portrait map"
+  },
+  "modes": {
+    "label": "Pages",
+    "profile": "Portrait",
+    "style": "Style",
+    "summary": "Summaries",
+    "assistant": "Assistants",
+    "bots": "Bots"
+  },
+  "auth": {
+    "logout": "Log out",
+    "checking": "Checking your session",
+    "mismatch": "The passwords don't match",
+    "setupTitle": "Set your password",
+    "loginTitle": "Unlock your memories",
+    "setupEncrypted": "The same password signs you in and encrypts your data. If you forget it, all data has to be extracted again.",
+    "setupPlaintext": "Set a password for the web UI. Your data is currently stored unencrypted.",
+    "loginHint": "Enter the password you set.",
+    "newPassword": "New password",
+    "password": "Password",
+    "confirmPassword": "Enter it again",
+    "verifying": "Verifying…",
+    "setupSubmit": "Set and unlock",
+    "loginSubmit": "Unlock",
+    "sessionNote": "You stay signed in for 2 hours, then need to enter the password again. Use this on your own device."
+  },
+  "model": {
+    "root": "My portrait",
+    "dimensions": {
+      "1": "Demographics and identity",
+      "3": "Needs, motives and goals",
+      "4": "Resources and constraints",
+      "5": "Key plans and commitments",
+      "8": "Interests and preferences"
+    },
+    "unassignedDomain": "No domain",
+    "directTopic": "Direct attributes"
+  },
+  "atlas": {
+    "attributes_one": "{{count}} attribute",
+    "attributes_other": "{{count}} attributes",
+    "left": {
+      "dimensionsTitle": "Dimensions",
+      "domainsTitle": "Domains",
+      "close": "Close the left panel",
+      "eyebrow": "A MAP OF YOU",
+      "tagline": "Every thread<br/><em>tells a little more.</em>",
+      "domainsIntro_one": "Explore your portrait through {{count}} domain of your life.",
+      "domainsIntro_other": "Explore your portrait through {{count}} domains of your life.",
+      "dimensionsIntro_one": "Explore your portrait along {{count}} thread of your life.",
+      "dimensionsIntro_other": "Explore your portrait along {{count}} threads of your life.",
+      "grouping": "Group the portrait by",
+      "groupings": {
+        "dimension": "Dimension",
+        "domain": "Domain"
+      }
+    },
+    "detail": {
+      "close": "Close the right panel",
+      "kicker": "Portrait",
+      "tabs": "Portrait views",
+      "overview": "Overview",
+      "review": "Review",
+      "pending_one": "{{count}} pending review",
+      "pending_other": "{{count}} pending review",
+      "all": "All entries",
+      "attributes": "Attributes",
+      "facts": "Facts",
+      "progress": "Review progress",
+      "reviewed": "Reviewed",
+      "progressCounts": "Pending {{pending}} · Adopted {{approved}} · Rejected {{rejected}}",
+      "explore": "Keep exploring",
+      "domainHint": "Pick a domain on the left to unfold the map level by level.",
+      "dimensionHint": "Pick a dimension on the left to unfold the map level by level.",
+      "footer": "PERSONAL KNOWLEDGE MAP"
+    },
+    "canvas": "Interactive map of your portrait",
+    "toolbar": {
+      "pickDimension": "Click a dimension first",
+      "pickDomain": "Click a domain first",
+      "expandDimension": "Expand level {{level}} of this dimension",
+      "collapseDimension": "Collapse level {{level}} of this dimension",
+      "expandDomain": "Expand level {{level}} of this domain",
+      "collapseDomain": "Collapse level {{level}} of this domain",
+      "level": "L{{level}}",
+      "zoomIn": "Zoom in",
+      "zoomOut": "Zoom out",
+      "fit": "Fit to view",
+      "reset": "Reset",
+      "replayIntro": "Replay the intro"
+    },
+    "search": {
+      "placeholder": "Search the portrait",
+      "clear": "Clear search",
+      "empty": "Nothing matches"
+    },
+    "preview": {
+      "fact": "{{attr}}: {{value}}",
+      "topics_one": "{{count}} topic",
+      "topics_other": "{{count}} topics",
+      "domains_one": "{{count}} domain",
+      "domains_other": "{{count}} domains",
+      "dimensions_one": "{{count}} dimension",
+      "dimensions_other": "{{count}} dimensions"
+    }
+  },
+  "intro": {
+    "skip": "Skip",
+    "skipLabel": "Skip the intro",
+    "said_one": "You've said {{count, number}} thing",
+    "said_other": "You've said {{count, number}} things",
+    "saidSomething": "Everything you've said",
+    "kept_one": "and {{number}} was remembered",
+    "kept_other": "and {{number}} were remembered"
+  },
+  "review": {
+    "refreshFailed": "Saved, but refreshing failed. Click “Refresh” to continue.",
+    "status": {
+      "all": "All",
+      "pending": "Pending review",
+      "approved": "Adopted",
+      "rejected": "Rejected"
+    },
+    "approve": "Adopt",
+    "reject": "Reject",
+    "list": {
+      "count_one": "{{count}} entry",
+      "count_other": "{{count}} entries",
+      "confirmApprove_one": "Adopt the selected entry? It isn't shown in the list yet.",
+      "confirmApprove_other": "Adopt the {{count}} selected entries? {{hidden}} of them aren't shown in the list yet.",
+      "confirmReject_one": "Reject the selected entry? It isn't shown in the list yet.",
+      "confirmReject_other": "Reject the {{count}} selected entries? {{hidden}} of them aren't shown in the list yet.",
+      "selectAll_one": "Select {{count}}",
+      "selectAll_other": "Select all {{count}}",
+      "empty": "No entries in this view.",
+      "more_one": "Show more ({{count}} left)",
+      "more_other": "Show more ({{count}} left)"
+    },
+    "fact": {
+      "manual": "Added by hand",
+      "select": "Select {{attr}}",
+      "unreview": "Move back to pending",
+      "edit": "Edit",
+      "initial": "Original content",
+      "evidence_one": "Original extraction and {{count}} piece of evidence",
+      "evidence_other": "Original extraction and {{count}} pieces of evidence",
+      "source": "Source {{n}}",
+      "viewChatLabel": "View the original chat of {{label}}",
+      "viewChat": "View chat",
+      "noTime": "No time given",
+      "noContent": "Source text unavailable"
+    },
+    "statusLabel": "Review status",
+    "bookmark_one": "{{label}}: {{count}} entry",
+    "bookmark_other": "{{label}}: {{count}} entries",
+    "bookmarkTip_one": "{{label}} · {{count}} entry",
+    "bookmarkTip_other": "{{label}} · {{count}} entries",
+    "bookmarkCloneTip_one": "{{label}} · {{count}} entry · in the clone's portrait",
+    "bookmarkCloneTip_other": "{{label}} · {{count}} entries · in the clone's portrait",
+    "filterLabel_one": "Filter by review status: {{label}}, {{count}} entry",
+    "filterLabel_other": "Filter by review status: {{label}}, {{count}} entries",
+    "refresh": "Refresh"
+  },
+  "history": {
+    "show": "Show edit history",
+    "hide": "Hide edit history",
+    "empty": "No edits yet",
+    "actions": {
+      "review": "Review",
+      "create": "Create",
+      "edit": "Edit"
+    },
+    "new": "New entry",
+    "change": "{{action}}: {{before}} → {{after}}",
+    "before": "Before: {{attr}} · {{value}}",
+    "after": "After: {{attr}} · {{value}}",
+    "moved": "Moved to another location"
+  },
+  "scores": {
+    "confidence": "Confidence",
+    "importance": "Importance",
+    "unrated": "Unrated",
+    "label": "{{label}}: {{score}}",
+    "factLabel": "Average score of the original sources. Edited entries aren't scored again",
+    "support_one": "Backed by {{count}} chat",
+    "support_other": "Backed by {{count}} chats"
+  },
+  "privacy": {
+    "title": "Privacy level",
+    "levels": {
+      "public": {
+        "label": "Public",
+        "hint": "Fine to tell a stranger"
+      },
+      "normal": {
+        "label": "Normal",
+        "hint": "Comes up with people you know"
+      },
+      "private": {
+        "label": "Private",
+        "hint": "Only for people close to you"
+      },
+      "sensitive": {
+        "label": "Sensitive",
+        "hint": "Stays in the chat it came from"
+      },
+      "unrated": {
+        "label": "Unrated",
+        "hint": "No privacy level"
+      }
+    },
+    "badgeTitle": "Privacy level: {{hint}}",
+    "badgeLabel": "Privacy level: {{label}}, {{hint}}",
+    "tags": "Search tags",
+    "overview": "Privacy levels",
+    "levelCount": "{{label}} {{n}}",
+    "privateCount": "Private and sensitive {{n}}",
+    "filter": "Filter by privacy level. None selected shows all"
+  },
+  "editor": {
+    "discard": "Discard your unsaved changes?",
+    "editTitle": "Edit entry",
+    "addTitle": "Add entry",
+    "attr": "Attribute",
+    "location": "Location",
+    "value": "Content",
+    "original": "Show the original content",
+    "hint": "Saved edits go back to pending review and stay out of the clone until adopted. “Save and adopt” adds them to the clone's portrait.",
+    "reloadConfirm": "Reloading from the server discards the changes in this form. Continue?",
+    "reload": "Reload entry",
+    "saveApprove": "Save and adopt"
+  },
+  "export": {
+    "action": "Export this view",
+    "title": "Export portrait",
+    "confirm_one": "Export the <strong>{{count}}</strong> entry in the “<strong>{{view}}</strong>” view?",
+    "confirm_other": "Export the <strong>{{count}}</strong> entries in the “<strong>{{view}}</strong>” view?",
+    "hint": "Exported as a JSON file with the portrait hierarchy and the linked sources.",
+    "submit": "Export"
+  },
+  "chat": {
+    "title": "Original chat",
+    "close": "Close the chat",
+    "loading": "Loading the chat…",
+    "me": "Me",
+    "self": "Me",
+    "peer": "Them",
+    "messages_one": "{{count}} message · the excerpt the entry was extracted from",
+    "messages_other": "{{count}} messages · the excerpt the entry was extracted from",
+    "footer": "Chat",
+    "readOnly": "Read-only"
+  },
+  "style": {
+    "loadFailed": "Style results can't be opened right now",
+    "back": "Back to the portrait",
+    "loading": "Reading your chat style",
+    "eyebrow": "HOW YOU TALK",
+    "tagline": "How you text,<br/><em>at a glance.</em>",
+    "highlights": "What stands out most: {{traits}}.",
+    "quoted": "“{{title}}”",
+    "quotedSeparator": ", ",
+    "groupsTitle": "Facets of style",
+    "groupCount_one": "{{count}} trait · {{hint}}",
+    "groupCount_other": "{{count}} traits · {{hint}}",
+    "footnote_one": "{{start}} to {{end}} · {{count, number}} message",
+    "footnote_other": "{{start}} to {{end}} · {{count, number}} messages",
+    "main": "Main traits",
+    "empty": "No clear style traits yet",
+    "legend": "Bigger bubble, more common · Traits in at least 1 of {{every}} messages · Click for details",
+    "bubble": "{{title}}, {{rate}}",
+    "groups": {
+      "typing": {
+        "name": "Typing habits",
+        "hint": "Punctuation, line breaks, length"
+      },
+      "words": {
+        "name": "Word choice",
+        "hint": "Particles, slang, swearing"
+      },
+      "emotion": {
+        "name": "Feelings",
+        "hint": "Laughter, emoji, snark"
+      },
+      "manner": {
+        "name": "Manner",
+        "hint": "Direct, suggesting, asking"
+      }
+    },
+    "tiers": {
+      "most": "Mostly",
+      "often": "Often",
+      "sometimes": "Sometimes",
+      "rarely": "Now and then"
+    },
+    "when": {
+      "stance": "when taking a stance",
+      "request": "when asking someone to do something"
+    },
+    "units": {
+      "messages_one": "{{count, number}} message",
+      "messages_other": "{{count, number}} messages",
+      "boundaries_one": "{{count, number}} sentence break",
+      "boundaries_other": "{{count, number}} sentence breaks",
+      "bubbles_one": "{{count, number}} chat bubble",
+      "bubbles_other": "{{count, number}} chat bubbles",
+      "stances_one": "{{count, number}} message taking a stance",
+      "stances_other": "{{count, number}} messages taking a stance",
+      "requests_one": "{{count, number}} message asking for something",
+      "requests_other": "{{count, number}} messages asking for something"
+    },
+    "variation": {
+      "relationship_dependent": "Varies a lot with who you're talking to.",
+      "uncertain": "May vary a little with who you're talking to.",
+      "stable": "About the same with everyone."
+    },
+    "detail": {
+      "kicker": "Style trait",
+      "frequency": "<b>{{tier}}</b>: {{rate}}",
+      "frequencyWhen": "<b>{{tier}}</b> {{when}}: {{rate}}",
+      "almostAll": "nearly every message",
+      "outOfTen_one": "about {{count}} in 10",
+      "outOfTen_other": "about {{count}} in 10",
+      "onceEvery": "about 1 in {{every}}",
+      "examples": "Typical examples",
+      "contacts": "By contact",
+      "contactsNote": "The vertical line is the overall level. Each person's figure is adjusted for message length.",
+      "sampled": "Based on a sample of {{amount}}, judged by a model",
+      "counted": "Based on all {{amount}}"
+    },
+    "traits": {
+      "lineBreakPunctuation": {
+        "title": "Line breaks as punctuation",
+        "note": "Starts a new line where a comma or full stop would go"
+      },
+      "noPunctuation": {
+        "title": "No punctuation",
+        "note": "Not a single punctuation mark in the whole message"
+      },
+      "splitMessages": {
+        "title": "Split messages",
+        "note": "One reply sent as several messages in a row"
+      },
+      "shortMessages": {
+        "title": "Short messages",
+        "note": "Replies of 8 characters or fewer"
+      },
+      "modalParticles": {
+        "title": "Modal particles",
+        "note": "Sentences with particles like 啊, 吧 or 嘛"
+      },
+      "repeatedCharacters": {
+        "title": "Repeated characters",
+        "note": "The same character or symbol typed over and over, like 哈哈哈 or ？？？"
+      },
+      "internetSlang": {
+        "title": "Internet slang",
+        "note": "Online slang and memes mixed into the chat"
+      },
+      "jargon": {
+        "title": "Jargon",
+        "note": "Terms from work or study brought straight into the chat"
+      },
+      "degreeWords": {
+        "title": "Intensifiers",
+        "note": "Words like 很, 太 or 挺 that turn a statement up or down"
+      },
+      "reduplication": {
+        "title": "Doubled words",
+        "note": "Words said twice over, like 看看 or 慢慢"
+      },
+      "profanity": {
+        "title": "Swearing",
+        "note": "Swear words, abbreviations and soundalikes included"
+      },
+      "emotional": {
+        "title": "Feelings show",
+        "note": "Joy, resignation or annoyance comes through in the words"
+      },
+      "implicitEmotion": {
+        "title": "Unspoken feelings",
+        "note": "Feelings left unsaid, carried by tone and wording"
+      },
+      "symbolicEmotion": {
+        "title": "Feelings in emoji",
+        "note": "Emoji, symbols or sound words carry the feeling"
+      },
+      "laughter": {
+        "title": "Laughs and interjections",
+        "note": "Laughter, surprise or hesitation typed out"
+      },
+      "grumbling": {
+        "title": "Grumbling",
+        "note": "A few complaints about whatever is bothering you"
+      },
+      "snark": {
+        "title": "Snark",
+        "note": "Mockery or exaggeration to vent displeasure"
+      },
+      "teasing": {
+        "title": "Banter",
+        "note": "Joking about people and things, yourself included"
+      },
+      "direct": {
+        "title": "Straight talk",
+        "note": "Says what you think and plan outright, without beating around the bush"
+      },
+      "matterOfFact": {
+        "title": "Matter-of-fact",
+        "note": "Replies to the matter itself"
+      },
+      "suggestions": {
+        "title": "Suggesting tone",
+        "note": "Asks others to do things in the form of a suggestion"
+      },
+      "questions": {
+        "title": "Questions",
+        "note": "Replies that ask something"
+      },
+      "followUps": {
+        "title": "Follow-up questions",
+        "note": "Keeps asking along what the other person said"
+      },
+      "elaborates": {
+        "title": "Says more",
+        "note": "Goes beyond the answer and keeps talking"
+      },
+      "advice": {
+        "title": "Advice",
+        "note": "Offers suggestions as the chat goes on"
+      },
+      "hedging": {
+        "title": "Hedging",
+        "note": "Leaves room with words like 好像, 应该 or 可能"
+      },
+      "emphasis": {
+        "title": "Emphasis",
+        "note": "Stresses a point with repetition, intensifiers or symbols"
+      },
+      "agreement": {
+        "title": "Agreeing",
+        "note": "Says 对 or 确实 to back what the other person thinks"
+      },
+      "metaphors": {
+        "title": "Metaphors",
+        "note": "Describes one thing through another"
+      }
+    }
+  },
+  "summary": {
+    "loadFailed": "Summaries can't be opened right now",
+    "loading": "Reading the domain summaries",
+    "domains_one": "{{count}} domain",
+    "domains_other": "{{count}} domains",
+    "title": "Background for your personal assistant",
+    "intro": {
+      "full": "One summary per domain of your life, from every entry in it that still holds, private and sensitive ones included. The last step of build-profile generates this level.",
+      "short": "A shorter summary per domain of your life, from identity, goals, circumstances and preferences at or below the chosen privacy level. Plans, commitments and outdated information are left out.",
+      "review": "Only approved summaries go into the export text and to assistants. Once the portrait behind a summary changes, it stops being exported until it is regenerated and approved again."
+    },
+    "level": "Up to privacy level",
+    "full": {
+      "label": "All",
+      "hint": "Every entry that still holds, private and sensitive ones included"
+    },
+    "generating": "Generating…",
+    "generate_one": "Generate {{count}} domain",
+    "generate_other": "Generate {{count}} domains",
+    "generated": "All generated",
+    "approveAll": "Approve all",
+    "approveAllCount_one": "Approve all ({{count}})",
+    "approveAllCount_other": "Approve all ({{count}})",
+    "counts": "Approved {{approved}} · Pending {{pending}} · To generate {{due}} · Not exported {{rejected}}",
+    "generatingHint": "One model call per domain, usually a minute or two, longer when the model is busy. It runs in the background, so you can leave this page.",
+    "failed_one": "{{count}} domain wasn't generated. The next run only fills it in.",
+    "failed_other": "{{count}} domains weren't generated. The next run only fills these in.",
+    "failedReason": "Reason: {{reason}}",
+    "states": {
+      "empty": "No usable entries",
+      "missing": "Not generated",
+      "stale": "Needs regenerating",
+      "pending": "Pending",
+      "approved": "Approved",
+      "rejected": "Not exported"
+    },
+    "editor": {
+      "title": "Title",
+      "summary": "Summary",
+      "saveApprove": "Save and approve"
+    },
+    "card": {
+      "facts_one": "{{count}} usable entry",
+      "facts_other": "{{count}} usable entries",
+      "asOf": "As of {{date}}",
+      "stale": "The portrait changed, so this is no longer exported. Regenerate it, then approve.",
+      "missing": "No summary yet.",
+      "empty": "Nothing in this domain can go into a summary: its entries are above the chosen privacy level, or they are plans, commitments or outdated information.",
+      "emptyFull": "No entry in this domain still holds.",
+      "approve": "Approve",
+      "edit": "Edit",
+      "unapprove": "Withdraw approval",
+      "restore": "Restore",
+      "reject": "Don't export"
+    },
+    "export": {
+      "title": "Export text",
+      "facts": "Entries attached per domain",
+      "factCount_one": "{{count}}",
+      "factCount_other": "{{count}}",
+      "noFacts": "None",
+      "chars_one": "{{count}} character",
+      "chars_other": "{{count}} characters",
+      "confirmFull": "This text has private and sensitive content, and once pasted it can't be taken back. Copy it anyway?",
+      "fullWarning": "This level has private and sensitive content, and once pasted it can't be taken back. To give your assistant less, switch to Normal or Public and generate another set.",
+      "hint": "Paste it into your assistant's “About me”, custom instructions or USER.md. What you paste can't be taken back, so read it over before copying.",
+      "empty": "Approve at least one domain summary, and the text to paste into your personal assistant shows up here."
+    }
+  },
+  "access": {
+    "copyBlocked": "Your browser blocked copying. Select the text and copy it by hand",
+    "token": {
+      "title": "Token",
+      "active": "Active",
+      "none": "Not created",
+      "created": "Created {{time}}",
+      "lastUsed": "Last used {{time}}",
+      "reissue": "Regenerate",
+      "issue": "Create token",
+      "withdraw": "Revoke"
+    }
+  },
+  "assistant": {
+    "confirmReissue": "The old token stops working right away, and every assistant you set up has to be configured again with the new command. Continue?",
+    "confirmWithdraw": "Once it's revoked, no assistant can read WeClone. You can create a new token later. Continue?",
+    "loadFailed": "The assistants page can't be opened right now",
+    "loading": "Reading the assistant settings",
+    "connected": "Connected · {{level}}",
+    "noToken": "No token yet",
+    "title": "Let your personal assistants read your portrait",
+    "intro": "Claude Code, Codex and other assistants with MCP support can connect to this WeClone. weclone_profile returns the domain summaries you approved, and weclone_search looks up entries by keyword or domain. All assistants share one token. The level and domains chosen below decide what they can read, and every call is logged with what it returned.",
+    "address": "MCP address <code>{{url}}</code>",
+    "addressPlaintext": "MCP address <code>{{url}}</code>. Your data is stored unencrypted, so assistants can read it whenever the token is valid",
+    "scope": "What to share",
+    "level": "Privacy level",
+    "levels": {
+      "full": {
+        "label": "All",
+        "hint": "Every entry, private and sensitive ones included. It all goes to the cloud model behind the assistant."
+      },
+      "normal": {
+        "label": "Normal",
+        "hint": "Public and normal entries."
+      },
+      "public": {
+        "label": "Public",
+        "hint": "Public entries only."
+      }
+    },
+    "domains": "Domains",
+    "allDomains": "All of them, including domains that appear later",
+    "someDomains": "{{shared}} of {{total}}. New or renamed domains aren't shared",
+    "resetDomains": "Share all domains again",
+    "sharedDomains": "Shared domains",
+    "domainFacts_one": "{{count}} entry",
+    "domainFacts_other": "{{count}} entries",
+    "domainFactsSummary_one": "{{count}} entry · summarized",
+    "domainFactsSummary_other": "{{count}} entries · summarized",
+    "noDomains": "No portrait yet. Run build-profile and its domains are listed here.",
+    "domainsNote_one": "Unchecked domains share neither their summary nor their entries. Assistants can read {{count}} domain summary right now: one at this level, in a checked domain and approved on the <link>summaries page</link>. Changes apply from the assistant's next call, with no need to set it up again.",
+    "domainsNote_other": "Unchecked domains share neither their summary nor their entries. Assistants can read {{count}} domain summaries right now: those at this level, in the checked domains and approved on the <link>summaries page</link>. Changes apply from the assistant's next call, with no need to set it up again.",
+    "access": {
+      "title": "Allow assistants to read",
+      "until": "Closes on its own at {{time}}",
+      "closed": "Closed",
+      "hint": "Your data is encrypted, so assistants can only read it during the time you allow. Meanwhile the server keeps a copy of the key in memory, cleared when the time is up or the server restarts.",
+      "change": "Change to {{duration}}",
+      "allow": "Allow for {{duration}}",
+      "close": "Close now"
+    },
+    "hours_one": "{{count}} hour",
+    "hours_other": "{{count}} hours",
+    "days_one": "{{count}} day",
+    "days_other": "{{count}} days",
+    "unused": "No assistant has used it yet",
+    "noTokenHint": "Create a token, then run the setup command on the machine where the assistant runs.",
+    "setup": {
+      "once": "The token is shown only this once. Run the matching command on the machine where the assistant runs, and its new sessions can call the WeClone tools.",
+      "clients": "Assistants",
+      "commands": "{{client}} setup command",
+      "other": "Other assistants: use the MCP address above and add the header <code>Authorization: Bearer TOKEN</code>.",
+      "done": "All set, hide this"
+    }
+  },
+  "bots": {
+    "confirmReissue": "The old token stops working right away, and every bot needs the new one. Continue?",
+    "confirmWithdraw": "Once it's revoked, no bot can call the clone. You can create a new token later. Continue?",
+    "loadFailed": "The bots page can't be opened right now",
+    "loading": "Reading the bot settings",
+    "connected": "Connected",
+    "title": "Let chat bots call your clone",
+    "intro": "Bot platforms such as AstrBot and LangBot call the fine-tuned clone model through an OpenAI-compatible API. All bots share one token, entered as the platform's API key.",
+    "address": "API address <code>{{url}}</code>",
+    "tokenLife": "A token stays valid once created, server restarts included, until you regenerate or revoke it.",
+    "encrypted": "Your data is encrypted. When a token is created, the data key is encrypted with it and stored in bots.sqlite3 on this machine. Bots unlock it with the token when they call, without you logging in. Anyone holding both the token and this file can decrypt all your data, so guard the token like a password. Changing your password doesn't affect the token. If you suspect a leak, regenerate it.",
+    "noInference": "The server hasn't loaded the clone model. Start it with <code>weclone-cli server --inference</code> before bots can call it.",
+    "unused": "No bot has used it yet",
+    "noTokenHint": "Create a token, then enter it as the API key on your bot platform.",
+    "setup": {
+      "once": "The token is shown only this once. On your bot platform, add an OpenAI-type model provider with this API base URL:",
+      "key": "API key:",
+      "model": "Any model name works, for example gpt-3.5-turbo. The fine-tuned model doesn't call tools, so turn off tools and plugins on the platform. If the bot platform runs in Docker, replace 127.0.0.1 in the address with the host's address on the Docker network (for example 172.17.0.1) and start the server with --host set to that address."
+    }
+  }
+}

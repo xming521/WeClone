@@ -1,5 +1,6 @@
 import { Flag, ShieldCheck } from 'lucide-react';
 import type { CSSProperties } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { ProfileFact, ProfileSource } from '../data';
 
 // 量表来源：weclone/prompts/distill_memory.py（importance 1-4、confidence 2-4）及 weclone/data/agent/distill_windows.py 的 validate_memory。
@@ -19,16 +20,17 @@ export function Score({
   value?: number;
   compact?: boolean;
 }) {
-  const label = kind === 'confidence' ? '可信度' : '重要度';
+  const { t } = useTranslation();
+  const label = kind === 'confidence' ? t(($) => $.scores.confidence) : t(($) => $.scores.importance);
   const Icon = kind === 'confidence' ? ShieldCheck : Flag;
   const { min, max } = SCORE_RANGES[kind];
   const valid = typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max;
   const score = valid ? value : null;
-  const shown = score === null ? '未评分' : score.toFixed(compact && Number.isInteger(score) ? 0 : 1);
+  const shown = score === null ? t(($) => $.scores.unrated) : score.toFixed(compact && Number.isInteger(score) ? 0 : 1);
   return (
     <div
       className={`profile-score ${kind}${compact ? ' compact' : ''}`}
-      aria-label={`${label}：${score === null ? '未评分' : `${shown} / ${max}`}`}
+      aria-label={t(($) => $.scores.label, { label, score: score === null ? shown : `${shown} / ${max}` })}
     >
       <span className="score-label">
         {!compact && <Icon size={14} aria-hidden="true" />}
@@ -37,7 +39,7 @@ export function Score({
       {!compact && (
         <div className="score-value">
           {score === null ? (
-            <span className="score-missing">未评分</span>
+            <span className="score-missing">{t(($) => $.scores.unrated)}</span>
           ) : (
             <>
               <strong>{score.toFixed(1)}</strong>
@@ -61,14 +63,15 @@ export function Score({
 }
 
 export function FactScores({ fact }: { fact: ProfileFact }) {
+  const { t } = useTranslation();
   return (
-    <div className="fact-scores" aria-label="原始来源的平均评分，编辑画像后不会重新评分">
+    <div className="fact-scores" aria-label={t(($) => $.scores.factLabel)}>
       <div className="fact-score-grid">
         <Score kind="confidence" value={fact.origin === 'manual' ? undefined : fact.source_confidence_mean} />
         <Score kind="importance" value={fact.origin === 'manual' ? undefined : fact.source_importance_mean} />
       </div>
       {typeof fact.support_count === 'number' && fact.support_count > 0 && (
-        <div className="score-support">{fact.support_count} 段聊天支持</div>
+        <div className="score-support">{t(($) => $.scores.support, { count: fact.support_count })}</div>
       )}
     </div>
   );

@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Lock, LockOpen } from 'lucide-react';
+import { Trans, useTranslation } from 'react-i18next';
 import { api } from '../api';
 import { LogoutButton } from '../Auth';
+import { LanguageSwitch } from '../LanguageSwitch';
 import { ModeSwitch } from '../ModeSwitch';
 import '../summary/summary.css';
 import { CopyField, TokenCard, moment, type TokenState } from './accessParts';
@@ -36,17 +38,9 @@ interface AssistantView {
   token: TokenState | null;
 }
 
-const LEVELS: { level: Level; label: string; hint: string }[] = [
-  { level: 'full', label: '全部', hint: '所有条目，包括私密和敏感的。这些内容会交给助手背后的云端模型' },
-  { level: 'normal', label: '普通', hint: '公开和普通条目' },
-  { level: 'public', label: '公开', hint: '只有公开条目' },
-];
+const LEVELS: Level[] = ['full', 'normal', 'public'];
 const CLIENTS = ['Claude Code', 'Codex'] as const;
 type Client = (typeof CLIENTS)[number];
-
-function hoursLabel(hours: number) {
-  return hours % 24 ? `${hours} 小时` : `${hours / 24} 天`;
-}
 
 /** Commands that give a client the token. They replace an earlier WeClone entry, so they can run again. */
 function setupCommands(client: Client, url: string, token: string) {
@@ -67,6 +61,9 @@ function setupCommands(client: Client, url: string, token: string) {
 }
 
 export function AssistantApp() {
+  const { t } = useTranslation();
+  const duration = (hours: number) =>
+    hours % 24 ? t(($) => $.assistant.hours, { count: hours }) : t(($) => $.assistant.days, { count: hours / 24 });
   const [view, setView] = useState<AssistantView | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -117,13 +114,12 @@ export function AssistantApp() {
   }
 
   function issue() {
-    if (view?.token && !window.confirm('重新生成后旧令牌立即失效，已经配置好的助手都要用新的命令再配置一次。继续吗？'))
-      return;
+    if (view?.token && !window.confirm(t(($) => $.assistant.confirmReissue))) return;
     void run(async () => setCreated((await api.post<{ token: string }>('assistant/token')).token));
   }
 
   function withdraw() {
-    if (!window.confirm('停用后所有助手都读不到 WeClone，之后可以重新生成令牌。继续吗？')) return;
+    if (!window.confirm(t(($) => $.assistant.confirmWithdraw))) return;
     void run(async () => {
       await api.delete('assistant/token');
       setCreated('');
@@ -134,21 +130,20 @@ export function AssistantApp() {
     return (
       <div className="load-state">
         <span>✳</span>
-        <h1>助手接入页暂时无法打开</h1>
+        <h1>{t(($) => $.assistant.loadFailed)}</h1>
         <p>{error}</p>
-        <button onClick={() => void load()}>重试</button>
+        <button onClick={() => void load()}>{t(($) => $.common.retry)}</button>
       </div>
     );
   if (!view)
     return (
       <div className="load-state">
         <span className="loading-mark">✳</span>
-        <h1>正在读取助手接入设置</h1>
+        <h1>{t(($) => $.assistant.loading)}</h1>
       </div>
     );
 
   const allowed = view.allowed_until != null;
-  const chosen = LEVELS.find((item) => item.level === view.level)!;
   const sharedCount = view.catalog.filter((item) => item.shared).length;
 
   return (
@@ -158,104 +153,115 @@ export function AssistantApp() {
           <ModeSwitch mode="assistant" />
           <div className="topbar-heading">
             <span className="topbar-divider">/</span>{' '}
-            <strong>{view.token ? `已接入 · ${chosen.label}` : '还没有令牌'}</strong>
+            <strong>
+              {view.token
+                ? t(($) => $.assistant.connected, { level: t(($) => $.assistant.levels[view.level].label) })
+                : t(($) => $.assistant.noToken)}
+            </strong>
           </div>
         </div>
         <div className="topbar-actions">
+          <LanguageSwitch />
           <LogoutButton />
         </div>
       </header>
       <main className="summary-main assistant-main">
         <section className="summary-intro">
-          <h1>让个人助手读取画像</h1>
-          <p>
-            Claude Code、Codex 等支持 MCP 的助手可以连接这里的 WeClone：weclone_profile
-            返回你确认过的领域总结，weclone_search
-            按关键词或领域查画像条目。所有助手共用一个令牌，读到哪些内容由下面选的级别和领域决定，每次调用都会记下返回了什么。
-          </p>
+          <h1>{t(($) => $.assistant.title)}</h1>
+          <p>{t(($) => $.assistant.intro)}</p>
           <p className="assistant-address">
-            MCP 地址 <code>{view.mcp_url}</code>
-            {!view.encrypted && '。数据是明文存储的，令牌有效时助手随时可以读取'}
+            <Trans
+              i18nKey={view.encrypted ? ($) => $.assistant.address : ($) => $.assistant.addressPlaintext}
+              values={{ url: view.mcp_url }}
+              components={{ code: <code /> }}
+            />
           </p>
           {error && (
             <div className="summary-error" role="alert">
               <span>{error}</span>
               <button type="button" onClick={() => setError('')}>
-                知道了
+                {t(($) => $.common.dismiss)}
               </button>
             </div>
           )}
         </section>
 
-        <section className="assistant-card" aria-label="提供哪些信息">
+        <section className="assistant-card" aria-label={t(($) => $.assistant.scope)}>
           <div className="assistant-card-head">
-            <h2>提供哪些信息</h2>
+            <h2>{t(($) => $.assistant.scope)}</h2>
           </div>
-          <div className="summary-levels" role="radiogroup" aria-label="隐私级别">
-            <span>隐私级别</span>
-            {LEVELS.map((item) => (
+          <div className="summary-levels" role="radiogroup" aria-label={t(($) => $.assistant.level)}>
+            <span>{t(($) => $.assistant.level)}</span>
+            {LEVELS.map((level) => (
               <button
-                key={item.level}
+                key={level}
                 type="button"
                 role="radio"
-                aria-checked={item.level === view.level}
+                aria-checked={level === view.level}
                 disabled={busy}
-                onClick={() =>
-                  item.level !== view.level && void run(() => api.patch('assistant', { level: item.level }))
-                }
+                onClick={() => level !== view.level && void run(() => api.patch('assistant', { level }))}
               >
-                {item.label}
+                {t(($) => $.assistant.levels[level].label)}
               </button>
             ))}
           </div>
-          <p className={`summary-hint${view.level === 'full' ? ' summary-warning' : ''}`}>{chosen.hint}。</p>
+          <p className={`summary-hint${view.level === 'full' ? ' summary-warning' : ''}`}>
+            {t(($) => $.assistant.levels[view.level].hint)}
+          </p>
           <div className="assistant-domains-head">
-            <h3>领域</h3>
+            <h3>{t(($) => $.assistant.domains)}</h3>
             <span>
               {view.domains === null
-                ? '全部提供，以后新出现的领域也提供'
-                : `提供 ${sharedCount}/${view.catalog.length} 个，以后新出现或改名的领域不提供`}
+                ? t(($) => $.assistant.allDomains)
+                : t(($) => $.assistant.someDomains, { shared: sharedCount, total: view.catalog.length })}
             </span>
             {view.domains !== null && (
               <button type="button" disabled={busy} onClick={() => share(null)}>
-                改回全部领域
+                {t(($) => $.assistant.resetDomains)}
               </button>
             )}
           </div>
           {view.catalog.length ? (
-            <ul className="assistant-domains" aria-label="提供的领域">
+            <ul className="assistant-domains" aria-label={t(($) => $.assistant.sharedDomains)}>
               {view.catalog.map((item) => (
                 <li key={item.name}>
                   <label className={item.shared ? 'shared' : undefined}>
                     <input type="checkbox" checked={item.shared} disabled={busy} onChange={() => toggle(item)} />
                     <span>{item.name}</span>
                     <small>
-                      {item.facts} 条{item.summary ? ' · 有总结' : ''}
+                      {item.summary
+                        ? t(($) => $.assistant.domainFactsSummary, { count: item.facts })
+                        : t(($) => $.assistant.domainFacts, { count: item.facts })}
                     </small>
                   </label>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="summary-placeholder">还没有画像，运行 build-profile 之后这里会列出各个领域。</p>
+            <p className="summary-placeholder">{t(($) => $.assistant.noDomains)}</p>
           )}
           <p className="summary-hint">
-            勾掉的领域，总结和条目都不给助手。助手现在能读到 {view.summaries} 段领域总结：这个级别、勾选的领域里、在
-            <a href="#/summary">领域总结页</a>确认过的。改了从助手的下一次调用起生效，不用重新配置。
+            <Trans
+              i18nKey={($) => $.assistant.domainsNote}
+              count={view.summaries}
+              components={{ link: <a href="#/summary" /> }}
+            />
           </p>
         </section>
 
         {view.encrypted && (
-          <section className="assistant-card" aria-label="允许助手读取">
+          <section className="assistant-card" aria-label={t(($) => $.assistant.access.title)}>
             <div className="assistant-card-head">
-              <h2>{allowed ? <LockOpen size={15} /> : <Lock size={15} />} 允许助手读取</h2>
+              <h2>
+                {allowed ? <LockOpen size={15} /> : <Lock size={15} />} {t(($) => $.assistant.access.title)}
+              </h2>
               <span className={`assistant-state${allowed ? ' on' : ''}`}>
-                {allowed ? `到 ${moment(view.allowed_until!)} 自动关闭` : '已关闭'}
+                {allowed
+                  ? t(($) => $.assistant.access.until, { time: moment(view.allowed_until!) })
+                  : t(($) => $.assistant.access.closed)}
               </span>
             </div>
-            <p className="summary-hint">
-              数据是加密的，助手只能在你允许的时间里读取。允许期间服务在内存里保留一份密钥，到时间或服务重启就清除。
-            </p>
+            <p className="summary-hint">{t(($) => $.assistant.access.hint)}</p>
             <div className="assistant-actions">
               {view.hours.map((hours) => (
                 <button
@@ -264,12 +270,14 @@ export function AssistantApp() {
                   disabled={busy}
                   onClick={() => void run(() => api.post('assistant/access', { hours }))}
                 >
-                  {allowed ? '改为' : '允许'} {hoursLabel(hours)}
+                  {allowed
+                    ? t(($) => $.assistant.access.change, { duration: duration(hours) })
+                    : t(($) => $.assistant.access.allow, { duration: duration(hours) })}
                 </button>
               ))}
               {allowed && (
                 <button type="button" disabled={busy} onClick={() => void run(() => api.delete('assistant/access'))}>
-                  立即关闭
+                  {t(($) => $.assistant.access.close)}
                 </button>
               )}
             </div>
@@ -280,17 +288,15 @@ export function AssistantApp() {
           token={view.token}
           created={Boolean(created)}
           busy={busy}
-          unused="还没有助手用过"
-          empty="生成令牌后，在运行助手的机器上执行配置命令。"
+          unused={t(($) => $.assistant.unused)}
+          empty={t(($) => $.assistant.noTokenHint)}
           onIssue={issue}
           onWithdraw={withdraw}
         >
           {created && (
             <div className="assistant-setup">
-              <p className="summary-hint">
-                令牌只显示这一次。在运行助手的机器上执行对应的命令，之后新开的会话就能调用 WeClone 的工具。
-              </p>
-              <div className="summary-levels" role="radiogroup" aria-label="助手">
+              <p className="summary-hint">{t(($) => $.assistant.setup.once)}</p>
+              <div className="summary-levels" role="radiogroup" aria-label={t(($) => $.assistant.setup.clients)}>
                 {CLIENTS.map((item) => (
                   <button
                     key={item}
@@ -303,13 +309,16 @@ export function AssistantApp() {
                   </button>
                 ))}
               </div>
-              <CopyField label={`${client} 配置命令`} text={setupCommands(client, view.mcp_url, created)} />
+              <CopyField
+                label={t(($) => $.assistant.setup.commands, { client })}
+                text={setupCommands(client, view.mcp_url, created)}
+              />
               <p className="summary-hint">
-                其他助手：地址填上面的 MCP 地址，请求头加 <code>Authorization: Bearer 令牌</code>。
+                <Trans i18nKey={($) => $.assistant.setup.other} components={{ code: <code /> }} />
               </p>
-              <CopyField label="令牌" text={created} />
+              <CopyField label={t(($) => $.access.token.title)} text={created} />
               <button className="assistant-done" type="button" onClick={() => setCreated('')}>
-                都配置好了，收起
+                {t(($) => $.assistant.setup.done)}
               </button>
             </div>
           )}

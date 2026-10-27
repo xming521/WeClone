@@ -2,12 +2,14 @@ import { useEffect, useRef } from 'react';
 import type { CSSProperties } from 'react';
 import * as Tabs from '@radix-ui/react-tabs';
 import { ChevronRight, Sparkles, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { ancestors, collectFacts, dimensionColor, displayProfileText } from '../data';
 import { useProfileStore } from '../store';
 import { PrivacyOverview } from '../review/privacy';
 import { ReviewPanel } from '../review/ReviewPanel';
 
 export function DetailPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { t } = useTranslation();
   const viewModel = useProfileStore((state) => state.viewModel)!;
   const fullModel = useProfileStore((state) => state.fullModel)!;
   const selectedId = useProfileStore((state) => state.selectedId);
@@ -34,20 +36,20 @@ export function DetailPanel({ open, onClose }: { open: boolean; onClose: () => v
         aria-hidden={!open}
         style={{ '--detail-accent': color } as CSSProperties}
       >
-        <button className="detail-close" type="button" aria-label="关闭右侧栏" onClick={onClose}>
+        <button className="detail-close" type="button" aria-label={t(($) => $.atlas.detail.close)} onClick={onClose}>
           <X size={17} />
         </button>
         <div className="detail-topline">
           <span className="detail-kicker">
-            <Sparkles size={14} /> 画像档案
+            <Sparkles size={14} /> {t(($) => $.atlas.detail.kicker)}
           </span>
           <span className="detail-serial">WECLONE / 2026</span>
         </div>
-        <Tabs.List className="detail-tabbar" aria-label="画像档案视图">
-          <Tabs.Trigger value="overview">总览</Tabs.Trigger>
+        <Tabs.List className="detail-tabbar" aria-label={t(($) => $.atlas.detail.tabs)}>
+          <Tabs.Trigger value="overview">{t(($) => $.atlas.detail.overview)}</Tabs.Trigger>
           <Tabs.Trigger value="review">
-            画像审核
-            <span className="detail-pending-count" aria-label={`${pending} 条待审核`}>
+            {t(($) => $.atlas.detail.review)}
+            <span className="detail-pending-count" aria-label={t(($) => $.atlas.detail.pending, { count: pending })}>
               {pending}
             </span>
           </Tabs.Trigger>
@@ -64,24 +66,24 @@ export function DetailPanel({ open, onClose }: { open: boolean; onClose: () => v
                 ))}
               </div>
             )}
-            <h2>{selected.kind === 'root' ? '全部画像' : selected.name}</h2>
+            <h2>{selected.kind === 'root' ? t(($) => $.atlas.detail.all) : selected.name}</h2>
             {selected.description && <p className="detail-description">{displayProfileText(selected.description)}</p>}
           </div>
           <Tabs.Content value="overview" forceMount hidden={tab !== 'overview'}>
             <div className="detail-metrics">
               <div>
                 <strong>{selected.attributeCount}</strong>
-                <span>画像属性</span>
+                <span>{t(($) => $.atlas.detail.attributes)}</span>
               </div>
               <div>
                 <strong>{facts.length}</strong>
-                <span>画像事实</span>
+                <span>{t(($) => $.atlas.detail.facts)}</span>
               </div>
             </div>
 
-            <section className="overview-review-progress" aria-label="审核进度">
+            <section className="overview-review-progress" aria-label={t(($) => $.atlas.detail.progress)}>
               <div>
-                <span>审核进度</span>
+                <span>{t(($) => $.atlas.detail.progress)}</span>
                 <span>
                   {reviewed} / {facts.length}
                 </span>
@@ -89,7 +91,7 @@ export function DetailPanel({ open, onClose }: { open: boolean; onClose: () => v
               <div
                 className="overview-progress-track"
                 role="progressbar"
-                aria-label="已审核画像"
+                aria-label={t(($) => $.atlas.detail.reviewed)}
                 aria-valuemin={0}
                 aria-valuemax={facts.length || 1}
                 aria-valuenow={reviewed}
@@ -97,7 +99,11 @@ export function DetailPanel({ open, onClose }: { open: boolean; onClose: () => v
                 <span style={{ width: `${facts.length ? (reviewed / facts.length) * 100 : 0}%` }} />
               </div>
               <p>
-                待审核 {pending} · 已采纳 {approved} · 未采纳 {reviewed - approved}
+                {t(($) => $.atlas.detail.progressCounts, {
+                  pending,
+                  approved,
+                  rejected: reviewed - approved,
+                })}
               </p>
             </section>
 
@@ -106,7 +112,7 @@ export function DetailPanel({ open, onClose }: { open: boolean; onClose: () => v
             {selected.kind !== 'attribute' && (
               <section className="detail-section">
                 <div className="section-heading">
-                  <h3>继续探索</h3>
+                  <h3>{t(($) => $.atlas.detail.explore)}</h3>
                   <span>{children.length.toString().padStart(2, '0')}</span>
                 </div>
                 <div className="detail-children">
@@ -121,7 +127,9 @@ export function DetailPanel({ open, onClose }: { open: boolean; onClose: () => v
                 </div>
                 {selected.kind === 'root' && (
                   <p className="detail-hint">
-                    选择左侧{fullModel.grouping === 'domain' ? '领域' : '维度'}，逐层展开画像地图。
+                    {fullModel.grouping === 'domain'
+                      ? t(($) => $.atlas.detail.domainHint)
+                      : t(($) => $.atlas.detail.dimensionHint)}
                   </p>
                 )}
               </section>
@@ -132,7 +140,7 @@ export function DetailPanel({ open, onClose }: { open: boolean; onClose: () => v
           </Tabs.Content>
         </div>
         <div className="detail-footer">
-          <span>PERSONAL KNOWLEDGE MAP</span>
+          <span>{t(($) => $.atlas.detail.footer)}</span>
           <span>✳</span>
         </div>
       </aside>

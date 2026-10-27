@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { buildModel } from '../src/data.ts';
 import type { ProfileFact, ProfileInput } from '../src/data.ts';
+import { labels } from './modelLabels.ts';
 import { TIMING, buildEntrancePlan, nodeFrame } from '../src/atlas/entrancePlan.ts';
 import type { EntranceInput, NodeFrame } from '../src/atlas/entrancePlan.ts';
 import { nodeLooks } from '../src/atlas/nodeLook.ts';
@@ -65,7 +66,7 @@ const input: ProfileInput = {
 };
 
 test('nodeLooks sizes nodes by log salience per level and fades low-confidence ones', () => {
-  const looks = nodeLooks(buildModel(input));
+  const looks = nodeLooks(buildModel(input, labels));
   // importance weighted by support: (4·3 + 2·1) / 4 = 3.5, salience 3.5 · ln 5; the solid attribute adds 3 · ln 2
   // The weak topic: 1 · ln 2. The manual topic: lowest importance, 1 · ln 2, and full confidence.
   const strong = looks.get('strong')!;

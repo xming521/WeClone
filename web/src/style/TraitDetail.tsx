@@ -1,28 +1,32 @@
 import { useState, type CSSProperties } from 'react';
 import { Sparkles, X } from 'lucide-react';
-import { TRAIT_GROUPS, VARIATION_TEXT, formatPercent, frequencyText, tierOf, type Trait } from './traits';
+import { Trans, useTranslation } from 'react-i18next';
+import { TRAIT_GROUPS, formatPercent, tierOf, type Trait } from './traits';
+import type { VariationClass } from './types';
 
 export function TraitDetail({ trait: open, onClose }: { trait: Trait | null; onClose: () => void }) {
+  const { t } = useTranslation();
   // Keep the last trait on screen while the panel slides out.
   const [shown, setShown] = useState(open);
   if (open && open !== shown) setShown(open);
   const trait = open ?? shown;
   const group = TRAIT_GROUPS.find((entry) => entry.id === trait?.group);
   const tier = trait ? tierOf(trait.rate) : null;
+  const amount = trait ? t(($) => $.style.units[trait.unit ?? 'messages'], { count: trait.messages }) : '';
   return (
     <aside
       className={`detail-panel trait-detail${open ? ' is-open' : ''}`}
       aria-hidden={!open}
       style={{ '--bubble-color': group?.color } as CSSProperties}
     >
-      <button className="detail-close" type="button" aria-label="关闭右侧栏" onClick={onClose}>
+      <button className="detail-close" type="button" aria-label={t(($) => $.atlas.detail.close)} onClick={onClose}>
         <X size={17} />
       </button>
       <div className="detail-topline">
         <span className="detail-kicker">
-          <Sparkles size={14} /> 风格特点
+          <Sparkles size={14} /> {t(($) => $.style.detail.kicker)}
         </span>
-        <span className="detail-serial">{group?.name}</span>
+        <span className="detail-serial">{group && t(($) => $.style.groups[group.id].name)}</span>
       </div>
       {trait && (
         <div className="detail-content">
@@ -34,19 +38,30 @@ export function TraitDetail({ trait: open, onClose }: { trait: Trait | null; onC
               </span>
             </div>
             <div>
-              <h2 className="trait-title">{trait.title}</h2>
-              <p className="trait-note">{trait.note}</p>
+              <h2 className="trait-title">{t(($) => $.style.traits[trait.id].title)}</h2>
+              <p className="trait-note">{t(($) => $.style.traits[trait.id].note)}</p>
             </div>
           </div>
           <p className="trait-frequency">
-            <b>{tier?.label}</b>
-            {trait.when ? `${trait.when}，` : ''}
-            {frequencyText(trait.rate)}
+            <Trans
+              i18nKey={trait.when ? ($) => $.style.detail.frequencyWhen : ($) => $.style.detail.frequency}
+              values={{
+                tier: tier ? t(($) => $.style.tiers[tier.id]) : '',
+                when: trait.when ? t(($) => $.style.when[trait.when!]) : '',
+                rate:
+                  trait.rate >= 0.95
+                    ? t(($) => $.style.detail.almostAll)
+                    : trait.rate >= 0.3
+                      ? t(($) => $.style.detail.outOfTen, { count: Math.round(trait.rate * 10) })
+                      : t(($) => $.style.detail.onceEvery, { every: Math.round(1 / trait.rate) }),
+              }}
+              components={{ b: <b /> }}
+            />
           </p>
 
           {trait.examples.length > 0 && (
             <section className="trait-section">
-              <h3>常见写法</h3>
+              <h3>{t(($) => $.style.detail.examples)}</h3>
               <div className="trait-examples">
                 {trait.examples.map((example) => (
                   <span key={example}>{example}</span>
@@ -57,9 +72,11 @@ export function TraitDetail({ trait: open, onClose }: { trait: Trait | null; onC
 
           {trait.contacts.length > 1 && (
             <section className="trait-section">
-              <h3>跟谁聊的时候</h3>
-              {trait.variation && VARIATION_TEXT[trait.variation] && (
-                <p className="trait-variation">{VARIATION_TEXT[trait.variation]}</p>
+              <h3>{t(($) => $.style.detail.contacts)}</h3>
+              {trait.variation && trait.variation !== 'insufficient' && (
+                <p className="trait-variation">
+                  {t(($) => $.style.variation[trait.variation as Exclude<VariationClass, 'insufficient'>])}
+                </p>
               )}
               <div className="trait-contacts">
                 {trait.contacts.map(({ contact, rate }) => (
@@ -75,14 +92,14 @@ export function TraitDetail({ trait: open, onClose }: { trait: Trait | null; onC
                   </div>
                 ))}
               </div>
-              <p className="trait-source">竖线是整体水平。各人的数字已按消息长短校正。</p>
+              <p className="trait-source">{t(($) => $.style.detail.contactsNote)}</p>
             </section>
           )}
 
           <p className="trait-source">
             {trait.sampled
-              ? `依据：抽样的 ${trait.messages} ${trait.unit ?? '条消息'}，由模型判断`
-              : `依据：全部 ${trait.messages} ${trait.unit ?? '条消息'}`}
+              ? t(($) => $.style.detail.sampled, { amount })
+              : t(($) => $.style.detail.counted, { amount })}
           </p>
         </div>
       )}

@@ -1,20 +1,23 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { LogOut } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { api } from './api';
+import { LanguageSwitch } from './LanguageSwitch';
 import { useProfileStore } from './store';
 
 const AuthContext = createContext<() => Promise<void>>(async () => {});
 
 export function LogoutButton() {
+  const { t } = useTranslation();
   const logout = useContext(AuthContext);
   return (
     <button
       type="button"
       className="logout-button"
       onClick={() => void logout()}
-      title="退出登录"
-      aria-label="退出登录"
+      title={t(($) => $.auth.logout)}
+      aria-label={t(($) => $.auth.logout)}
     >
       <LogOut size={17} />
     </button>
@@ -22,6 +25,7 @@ export function LogoutButton() {
 }
 
 export function AuthGate({ children }: { children: ReactNode }) {
+  const { t } = useTranslation();
   const [expires, setExpires] = useState<number | null>(null);
   const [checking, setChecking] = useState(true);
   const [initialized, setInitialized] = useState<boolean | null>(null);
@@ -98,7 +102,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
     return (
       <div className="load-state">
         <span className="loading-mark">✳</span>
-        <h1>正在验证登录状态</h1>
+        <h1>{t(($) => $.auth.checking)}</h1>
       </div>
     );
   if (expires !== null)
@@ -115,12 +119,13 @@ export function AuthGate({ children }: { children: ReactNode }) {
   const setup = initialized === false;
   return (
     <main className="auth-page">
+      <LanguageSwitch />
       <form
         className="auth-card"
         onSubmit={async (event) => {
           event.preventDefault();
           if (setup && password !== confirmation) {
-            setError('两次输入的密码不一致');
+            setError(t(($) => $.auth.mismatch));
             return;
           }
           setBusy(true);
@@ -143,15 +148,15 @@ export function AuthGate({ children }: { children: ReactNode }) {
       >
         <span className="brand-symbol">✳</span>
         <p className="auth-brand">WeClone</p>
-        <h1>{setup ? '设置个人密码' : '解锁个人记忆'}</h1>
+        <h1>{setup ? t(($) => $.auth.setupTitle) : t(($) => $.auth.loginTitle)}</h1>
         <p>
           {setup
             ? mode === 'encrypted'
-              ? '同一个密码用于网页访问和数据加密。忘记密码后需要重新抽取全部数据。'
-              : '设置用于网页访问的密码。当前数据采用明文存储。'
-            : '输入你设置的密码。'}
+              ? t(($) => $.auth.setupEncrypted)
+              : t(($) => $.auth.setupPlaintext)
+            : t(($) => $.auth.loginHint)}
         </p>
-        <label htmlFor="access-password">{setup ? '设置密码' : '访问密码'}</label>
+        <label htmlFor="access-password">{setup ? t(($) => $.auth.newPassword) : t(($) => $.auth.password)}</label>
         <input
           id="access-password"
           name="password"
@@ -165,7 +170,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
         />
         {setup && (
           <>
-            <label htmlFor="confirm-password">再次输入密码</label>
+            <label htmlFor="confirm-password">{t(($) => $.auth.confirmPassword)}</label>
             <input
               id="confirm-password"
               name="confirmation"
@@ -184,9 +189,9 @@ export function AuthGate({ children }: { children: ReactNode }) {
           </p>
         )}
         <button type="submit" disabled={busy || initialized === null || !password || (setup && !confirmation)}>
-          {busy ? '正在验证…' : setup ? '设置并解锁' : '解锁'}
+          {busy ? t(($) => $.auth.verifying) : setup ? t(($) => $.auth.setupSubmit) : t(($) => $.auth.loginSubmit)}
         </button>
-        <small>登录有效期为 2 小时，到期后需重新输入密码。请在自己的设备上使用。</small>
+        <small>{t(($) => $.auth.sessionNote)}</small>
       </form>
     </main>
   );

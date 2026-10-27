@@ -2,8 +2,7 @@
 
 from pathlib import Path
 
-from fastapi import HTTPException
-
+from weclone.server.errors import ApiError
 from weclone.utils import secure_storage as secure
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -44,7 +43,7 @@ def source_chat(source_id: str, source: dict) -> dict:
     # Paths come only from the authenticated snapshot, never from URL/query parameters.
     origins = source.get("origins")
     if not isinstance(origins, list) or not origins:
-        raise HTTPException(404, "该来源未保存聊天定位信息，无法查看原文")
+        raise ApiError(404, "chat_unavailable", "该来源未保存聊天定位信息，无法查看原文")
     for origin in origins:
         if not isinstance(origin, dict) or not isinstance(origin.get("file"), str):
             continue
@@ -72,7 +71,7 @@ def source_chat(source_id: str, source: dict) -> dict:
         if not isinstance(raw_messages, list):
             continue
         messages = []
-        peer = str(sample.get("chat_with") or "对方")
+        # Who said what is named by the page: `role` tells the owner from the peer, and `chat_with` may be empty.
         for index, message in enumerate(raw_messages):
             if not isinstance(message, dict) or message.get("role") not in {"user", "assistant"}:
                 continue
@@ -87,7 +86,6 @@ def source_chat(source_id: str, source: dict) -> dict:
                     {
                         "id": f"{index}:{part_index}",
                         "role": message["role"],
-                        "speaker": "本人" if message["role"] == "assistant" else peer,
                         "content": part,
                         "time": message.get("time") if isinstance(message.get("time"), str) else None,
                     }
@@ -96,8 +94,8 @@ def source_chat(source_id: str, source: dict) -> dict:
             return {
                 "source_id": source_id,
                 "sample_id": str(origin["sample_id"]),
-                "chat_with": peer,
+                "chat_with": str(sample.get("chat_with") or ""),
                 "sample_time": sample.get("time") if isinstance(sample.get("time"), str) else None,
                 "messages": messages,
             }
-    raise HTTPException(404, "原始聊天文件不存在或与来源记录不一致，请检查本次抽取的来源文件")
+    raise ApiError(404, "chat_missing", "原始聊天文件不存在或与来源记录不一致，请检查本次抽取的来源文件")

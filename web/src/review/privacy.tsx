@@ -1,22 +1,26 @@
 import { Lock, LockOpen } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { privacyLevel, SENSITIVITY_LEVELS } from '../data';
 import type { PrivacyLevel, ProfileFact, Sensitivity } from '../data';
 
-// Labels for the four levels of SENSITIVITY_RULES in weclone/prompts/memory_organization.py, least private first.
-export const SENSITIVITY: Record<Sensitivity, { label: string; hint: string }> = {
-  public: { label: '公开', hint: '对陌生人也会说' },
-  normal: { label: '普通', hint: '熟人之间会聊' },
-  private: { label: '私密', hint: '只对亲近的人说' },
-  sensitive: { label: '敏感', hint: '只留在原来的聊天里' },
-};
+// The catalog labels the four levels of SENSITIVITY_RULES in weclone/prompts/memory_organization.py.
+function isLevel(level: string | undefined): level is Sensitivity {
+  return SENSITIVITY_LEVELS.includes(level as Sensitivity);
+}
 
 /** The privacy level of a fact or a source; nothing for profiles built before levels existed. */
 export function PrivacyBadge({ level }: { level?: Sensitivity }) {
-  if (!level || !(level in SENSITIVITY)) return null;
-  const { label, hint } = SENSITIVITY[level];
+  const { t } = useTranslation();
+  if (!isLevel(level)) return null;
+  const label = t(($) => $.privacy.levels[level].label);
+  const hint = t(($) => $.privacy.levels[level].hint);
   const Icon = level === 'public' ? LockOpen : Lock;
   return (
-    <span className={`privacy-badge ${level}`} title={`隐私度：${hint}`} aria-label={`隐私度：${label}，${hint}`}>
+    <span
+      className={`privacy-badge ${level}`}
+      title={t(($) => $.privacy.badgeTitle, { hint })}
+      aria-label={t(($) => $.privacy.badgeLabel, { label, hint })}
+    >
       <Icon size={10} aria-hidden="true" />
       {label}
     </span>
@@ -25,15 +29,16 @@ export function PrivacyBadge({ level }: { level?: Sensitivity }) {
 
 /** Tag chips, at most `limit` of them and a count of the rest. */
 export function TagList({ tags, limit = Infinity }: { tags: string[]; limit?: number }) {
+  const { t } = useTranslation();
   if (!tags.length) return null;
   const rest = tags.length - limit;
   return (
-    <ul className="tag-list" aria-label="检索标签">
+    <ul className="tag-list" aria-label={t(($) => $.privacy.tags)}>
       {tags.slice(0, limit).map((tag) => (
         <li key={tag}>{tag}</li>
       ))}
       {rest > 0 && (
-        <li className="tag-more" title={tags.slice(limit).join('、')}>
+        <li className="tag-more" title={tags.slice(limit).join(t(($) => $.common.listSeparator))}>
           +{rest}
         </li>
       )}
@@ -43,23 +48,31 @@ export function TagList({ tags, limit = Infinity }: { tags: string[]; limit?: nu
 
 /** How the facts in scope spread over the levels; nothing when none of them has a level. */
 export function PrivacyOverview({ facts }: { facts: ProfileFact[] }) {
+  const { t } = useTranslation();
   const counts = new Map<Sensitivity, number>();
   for (const fact of facts) {
-    if (fact.sensitivity && fact.sensitivity in SENSITIVITY) {
+    if (isLevel(fact.sensitivity)) {
       counts.set(fact.sensitivity, (counts.get(fact.sensitivity) ?? 0) + 1);
     }
   }
   const levelled = [...counts.values()].reduce((sum, count) => sum + count, 0);
   if (!levelled) return null;
-  const parts = SENSITIVITY_LEVELS.filter((level) => counts.get(level)).map(
-    (level) => `${SENSITIVITY[level].label} ${counts.get(level)}`,
+  const parts = SENSITIVITY_LEVELS.filter((level) => counts.get(level)).map((level) =>
+    t(($) => $.privacy.levelCount, { label: t(($) => $.privacy.levels[level].label), n: counts.get(level) ?? 0 }),
   );
-  if (facts.length > levelled) parts.push(`未分级 ${facts.length - levelled}`);
+  if (facts.length > levelled)
+    parts.push(
+      t(($) => $.privacy.levelCount, { label: t(($) => $.privacy.levels.unrated.label), n: facts.length - levelled }),
+    );
   return (
-    <section className="overview-privacy" aria-label="隐私度分布">
+    <section className="overview-privacy" aria-label={t(($) => $.privacy.overview)}>
       <div>
-        <span>隐私度</span>
-        <span>私密及敏感 {(counts.get('private') ?? 0) + (counts.get('sensitive') ?? 0)}</span>
+        <span>{t(($) => $.privacy.title)}</span>
+        <span>
+          {t(($) => $.privacy.privateCount, {
+            n: (counts.get('private') ?? 0) + (counts.get('sensitive') ?? 0),
+          })}
+        </span>
       </div>
       <div className="privacy-track" aria-hidden="true">
         {SENSITIVITY_LEVELS.map((level) =>
@@ -84,6 +97,7 @@ export function PrivacyFilter({
   value: PrivacyLevel[];
   onToggle: (level: PrivacyLevel) => void;
 }) {
+  const { t } = useTranslation();
   const counts = new Map<PrivacyLevel, number>();
   for (const fact of facts) counts.set(privacyLevel(fact), (counts.get(privacyLevel(fact)) ?? 0) + 1);
   const levels = [...SENSITIVITY_LEVELS, 'unrated' as const].filter(
@@ -91,21 +105,20 @@ export function PrivacyFilter({
   );
   if (!value.length && levels.every((level) => level === 'unrated')) return null;
   return (
-    <div className="privacy-filter" role="group" aria-label="按隐私度筛选，不选显示全部">
-      <span>隐私度</span>
+    <div className="privacy-filter" role="group" aria-label={t(($) => $.privacy.filter)}>
+      <span>{t(($) => $.privacy.title)}</span>
       {levels.map((level) => {
         const pressed = value.includes(level);
-        const { label, hint } = level === 'unrated' ? { label: '未分级', hint: '没有隐私度' } : SENSITIVITY[level];
         return (
           <button
             key={level}
             type="button"
             className={`privacy-chip ${level}`}
             aria-pressed={pressed}
-            title={hint}
+            title={t(($) => $.privacy.levels[level].hint)}
             onClick={() => onToggle(level)}
           >
-            {label}
+            {t(($) => $.privacy.levels[level].label)}
             <span>{counts.get(level) ?? 0}</span>
           </button>
         );
