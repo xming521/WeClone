@@ -7,7 +7,7 @@ import secrets
 import sqlite3
 import threading
 import time
-from contextlib import contextmanager
+from contextlib import asynccontextmanager, contextmanager
 from pathlib import Path
 
 from fastapi import HTTPException, Request
@@ -285,18 +285,21 @@ def install_auth(app, database: Path):
             except secure.SecurityError:
                 store.forget_keys()
 
-    async def start_key_cleanup():
-        app.state.key_cleanup_task = asyncio.create_task(clear_expired_keys())
+    # Wraps whatever lifespan the app already has. Routers included later, such as inference, nest inside it.
+    previous_lifespan = app.router.lifespan_context
 
-    async def stop_key_cleanup():
-        task = getattr(app.state, "key_cleanup_task", None)
-        if task:
+    @asynccontextmanager
+    async def key_cleanup(running_app):
+        task = asyncio.create_task(clear_expired_keys())
+        try:
+            async with previous_lifespan(running_app) as state:
+                yield state
+        finally:
             task.cancel()
             try:
                 await task
             except asyncio.CancelledError:
                 pass
-        store.forget_keys()
+            store.forget_keys()
 
-    app.add_event_handler("startup", start_key_cleanup)
-    app.add_event_handler("shutdown", stop_key_cleanup)
+    app.router.lifespan_context = key_cleanup

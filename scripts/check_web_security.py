@@ -13,7 +13,6 @@ from unittest.mock import Mock, patch
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
 from fastapi.testclient import TestClient
-from httpx import Cookies
 
 from weclone.server import api_service, auth
 from weclone.server.app import create_app
@@ -129,12 +128,13 @@ class WebSecurityChecks(unittest.TestCase):
             self.assertTrue(ciphertext.startswith(secure.MAGIC))
             self.assertNotIn(b"synthetic-private", ciphertext)
             self.assertNotIn(b"synthetic-private", self.database.with_suffix(".auth.sqlite3").read_bytes())
-            cookies = Cookies(client.cookies)
+            # The client's own Cookies class: Starlette 1.x test clients use httpx2, older ones httpx.
+            cookies = type(client.cookies)(client.cookies)
             self.assertEqual(client.post("/api/auth/logout", json={}).status_code, 200)
             client.cookies.update(cookies)
             self.assertEqual(client.get("/api/profile").status_code, 401)
             self.assertEqual(client.post("/api/auth/login", json={"password": "x"}).status_code, 200)
-            cookies = Cookies(client.cookies)
+            cookies = type(client.cookies)(client.cookies)
         secure.encrypted_path(self.source).unlink()
         with TestClient(create_app(**self.options)) as restarted:
             restarted.headers.update(self.headers)

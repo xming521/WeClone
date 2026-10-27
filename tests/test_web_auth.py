@@ -1,4 +1,5 @@
 import json
+import time
 
 import pytest
 from fastapi.testclient import TestClient
@@ -31,3 +32,15 @@ def test_private_routes_reject_anonymous(web, method, path):
     response = web.request(method, path, headers=HEADERS)
     assert response.status_code == 401
     assert response.headers["cache-control"] == "no-store"
+
+
+def test_running_server_prunes_expired_access_and_forgets_it_on_shutdown(web):
+    store = web.app.state.auth_store
+    with web:
+        store.allow_assistant(None, -1)
+        deadline = time.monotonic() + 5
+        while store._assistant is not None and time.monotonic() < deadline:
+            time.sleep(0.1)
+        assert store._assistant is None
+        store.allow_assistant(None, 3600)
+    assert store._assistant is None
