@@ -132,7 +132,9 @@ def parse_args(argv=None):
         default="all",
     )
     parser.add_argument("--format", choices=("canonical", "chat"), default="chat")
-    parser.add_argument("--input-dir", type=Path, default=ROOT / "dataset/res_csv/agent/people")
+    parser.add_argument(
+        "--input-dir", type=Path, required=True, help="Chat snapshot, such as the people directory of a run"
+    )
     parser.add_argument("--output", "--output-dir", type=Path, default=None)
     parser.add_argument("--cache", type=Path, default=ROOT / "dataset/res_csv/agent/distill/style_cache")
     parser.add_argument("--ltp-model", type=Path, default=ROOT / "models/LTPbase")

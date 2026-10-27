@@ -7,19 +7,19 @@ from weclone.server.profile_review import create_app as create_profile_app
 
 def create_app(
     *,
-    database: Path | None = None,
-    source: Path | None = None,
+    run: Path | None = None,
     static_dir: Path | None = None,
     inference: bool = False,
 ):
+    """Serve one build-profile run, the newest one when run is None."""
     inference_app = None
     if inference:
         from weclone.server.api_service import create_inference_app
 
         inference_app = create_inference_app()
     app = create_profile_app(
-        database,
-        source,
+        None,
+        run / "profile_hierarchy" / "profile_hierarchy.json" if run is not None else None,
         static_dir,
         inference_router=inference_app.router if inference_app is not None else None,
     )
@@ -28,8 +28,8 @@ def create_app(
     return app
 
 
-def serve(*, host="127.0.0.1", port=5175, database=None, source=None, inference=False):
+def serve(*, host="127.0.0.1", port=5175, run=None, inference=False):
     import uvicorn
 
-    app = create_app(database=database, source=source, inference=inference)
+    app = create_app(run=run, inference=inference)
     uvicorn.run(app, host=host, port=port)

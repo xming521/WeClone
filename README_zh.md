@@ -152,14 +152,14 @@ weclone-cli make-dataset
 ```bash
 weclone-cli build-profile
 ```
-执行时选择仅抽取画像（默认）或同时抽取事件。两者信息可能重叠，Token 预算有限时建议仅抽取画像；也可直接指定：
+执行时选择用途：给个人助理用时抽取画像记忆和事件，做分身时另外抽取说话风格，需要先安装 `ltp` 包，并把 LTP 模型放在 `models/LTPbase`。也可直接指定：
 ```bash
-weclone-cli build-profile --profile-only
-weclone-cli build-profile --with-events
+weclone-cli build-profile --purpose assistant
+weclone-cli build-profile --purpose clone
 ```
 结果默认保存在 `dataset/res_csv/agent/profile_runs/`，完成后打印画像文件路径。可用 `--output-dir <新目录>` 指定结果目录；API 模型需用 `--max-context-tokens <上限>` 指定输入 Token 上限。
 
-运行 `weclone-cli server` 查看和审核画像；指定画像使用 `weclone-cli server --source <画像文件路径>`。
+运行 `weclone-cli server` 查看和审核最新的画像，指定某次结果使用 `weclone-cli server --run <结果目录>`。
 
 ### 数据加密与密码
 

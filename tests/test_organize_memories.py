@@ -72,7 +72,7 @@ def test_prompt_record_limits_metadata_without_changing_source(content, expected
 
 def write_input(root):
     sample = {
-        "id": "sample1", "local_id": "0", "chat_with_id": "peer1", "time": "2025-01-01",
+        "id": "sample1", "local_id": "0", "chat_with_id": "P1", "time": "2025-01-01",
         "messages": [{"role": "assistant", "content": "RAW_CHAT_MUST_NOT_ENTER_PROMPTS"}],
     }
     profile = {**sample, "state_memories": [
@@ -115,15 +115,21 @@ def test_reader_excludes_raw_chat_deduplicates_auxiliary_and_retains_origins(tmp
     assert len(rows) == 2
     assert "RAW_CHAT" not in json.dumps(rows)
     assert len(next(row for row in rows if row["kind"] == "S")["origins"]) == 2
-    assert list(peers.values()) == [{"chat_with_id": "peer1", "chat_with": None}]
-    other = {**profile, "chat_with_id": "peer2", "chat_with": "同学"}
+    assert peers == {"P1": {"chat_with": None}}
+    other = {**profile, "chat_with_id": "P3", "chat_with": "同学"}
     (tmp_path / "state_people" / "other.json").write_text(json.dumps([other], ensure_ascii=False))
     rows, peers = organize.read_memories(tmp_path)
     assert len(rows) == 3
-    assert sorted(peers.values(), key=lambda peer: peer["chat_with_id"]) == [
-        {"chat_with_id": "peer1", "chat_with": None}, {"chat_with_id": "peer2", "chat_with": "同学"},
-    ]
+    assert peers == {"P1": {"chat_with": None}, "P3": {"chat_with": "同学"}}
     assert {peers[row["peer"]]["chat_with"] for row in rows if row["origins"][0]["file"].endswith("other.json")} == {"同学"}
+
+
+@pytest.mark.parametrize("chat_with_id", ["chat_with_0003", "P0", None])
+def test_reader_rejects_samples_without_a_contact_id(tmp_path, chat_with_id):
+    _, profile = write_input(tmp_path)
+    (tmp_path / "state_people" / "peer.json").write_text(json.dumps([{**profile, "chat_with_id": chat_with_id}]))
+    with pytest.raises(ValueError, match="contact id"):
+        organize.read_memories(tmp_path)
 
 
 @pytest.mark.parametrize("kind,type_,dims", [
@@ -597,7 +603,7 @@ def test_full_pipeline_keeps_inputs_and_joins_profile_goals_with_events(tmp_path
     input_dir, output_dir = tmp_path / "input", tmp_path / "output"
     _, profile = write_input(input_dir)
     if extra_sample:
-        extra = {**profile, "id": "sample2"} if extra_sample == "same_peer" else {**profile, "chat_with_id": "peer2"}
+        extra = {**profile, "id": "sample2"} if extra_sample == "same_peer" else {**profile, "chat_with_id": "P2"}
         organize.save(input_dir / "state_people" / "peer.json", [profile, extra])
     before = {p: p.read_bytes() for p in input_dir.rglob("*.json")}
     seen = []
@@ -626,9 +632,7 @@ def test_full_pipeline_keeps_inputs_and_joins_profile_goals_with_events(tmp_path
     assert output["unused"] == [] and output["unassigned_ids"] == []
     assert output["domains"] == DOMAINS
     assert {row["kind"] for row in output["sources"].values()} == {"S", "ES"}
-    assert sorted(peer["chat_with_id"] for peer in output["peers"].values()) == (
-        ["peer1", "peer2"] if extra_sample == "other_peer" else ["peer1"]
-    )
+    assert sorted(output["peers"]) == (["P1", "P2"] if extra_sample == "other_peer" else ["P1"])
     assert {row["peer"] for row in output["sources"].values()} <= set(output["peers"])
     assert fact["sensitivity"] == "normal"
     assert fact["time_scope"] == "current"
@@ -647,7 +651,7 @@ def test_full_pipeline_keeps_inputs_and_joins_profile_goals_with_events(tmp_path
 def test_pipeline_keeps_relations_per_peer_and_events_per_domain(tmp_path, monkeypatch):
     input_dir, output_dir = tmp_path / "input", tmp_path / "output"
     sample, profile = write_input(input_dir)
-    organize.save(input_dir / "state_people" / "peer.json", [profile, {**profile, "chat_with_id": "peer2"}])
+    organize.save(input_dir / "state_people" / "peer.json", [profile, {**profile, "chat_with_id": "P2"}])
     events = [{"surface_event": text, "event_types": ["state_event"], "tags": ["出行旅行"], "importance": 2,
                "confidence": 3} for text in ("周末下雨。", "地铁停运。")]
     organize.save(input_dir / "event_people" / "peer.json",
@@ -756,7 +760,7 @@ def test_peer_relations_reach_classify_prompts_and_organized_peers(tmp_path, mon
     profile["state_memories"].append(
         {"type": "goal", "content": "B打算和大学同学A一起去郊游。", "tags": ["出行旅行"], "importance": 2, "confidence": 3}
     )
-    organize.save(input_dir / "state_people" / "peer.json", [profile, {**profile, "chat_with_id": "peer2",
+    organize.save(input_dir / "state_people" / "peer.json", [profile, {**profile, "chat_with_id": "P2",
                                                                        "state_memories": profile["state_memories"][:1]}])
     seen = []
     monkeypatch.setattr(organize, "LLMTasks", fake_runner(lambda rid: [field(5, "出行安排")], seen))

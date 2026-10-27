@@ -5,8 +5,6 @@ from pathlib import Path
 from weclone.data.agent.distill_style.variation import RATE_KEYS, collect
 from weclone.utils import secure_storage as secure
 
-ROOT = Path(__file__).resolve().parents[2]
-STYLE_ROOT = ROOT / "dataset/res_csv/agent/distill/style"
 PRIMARY = "person"
 # Counters keep only their most frequent entries; the full counts stay in the run directory.
 TOP_ENTRIES = 12
@@ -40,23 +38,6 @@ TEST_KEYS = (
 
 def complete(run: Path) -> bool:
     return secure.file_exists(run / "manifest.json") and secure.file_exists(run / "person" / "metrics.json")
-
-
-def style_run_dir(path: Path | None = None) -> Path | None:
-    """The given run, else the newest complete run that is neither a smoke test nor a --limit run."""
-    if path is not None:
-        return path if complete(path) else None
-    runs = (
-        sorted((run for run in STYLE_ROOT.iterdir() if run.is_dir()), reverse=True)
-        if STYLE_ROOT.is_dir()
-        else []
-    )
-    for run in runs:
-        if complete(run):
-            manifest = secure.read_json(run / "manifest.json")
-            if not manifest.get("engineering_smoke_test") and manifest.get("limit") is None:
-                return run
-    return None
 
 
 def rate_node(measurements: dict, path: str):

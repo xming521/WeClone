@@ -173,8 +173,8 @@ def main(argv: list[str] | None = None):
         "--output-dir",
         type=Path,
         required=True,
-        help="Directory for profile_hierarchy.json; the review server reads the newest "
-        "dataset/res_csv/agent/profile_runs/<run>/profile_hierarchy",
+        help="Directory for profile_hierarchy.json; the review server reads <run>/profile_hierarchy of the run "
+        "given by server --run, by default the newest one in dataset/res_csv/agent/profile_runs",
     )
     parser.add_argument("--config-path", type=Path, default=Path("settings.jsonc"))
     parser.add_argument("--llm-provider", choices=("api", "codex_exec"))

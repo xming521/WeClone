@@ -7,9 +7,9 @@ source .venv2/bin/activate
 weclone-cli server
 ```
 
-By default, the service keeps using an existing profile or review database in `dataset/res_csv/agent/memory_organization/`. Otherwise, it selects the newest timestamped run in `dataset/res_csv/agent/profile_runs/` that has a `profile_hierarchy/profile_hierarchy.json` file (`.json.enc` in encrypted mode) or a saved review database. Incomplete runs are skipped. Selection occurs at service startup.
+By default, the service selects the newest timestamped run in `dataset/res_csv/agent/profile_runs/` that has a `profile_hierarchy/profile_hierarchy.json` file (`.json.enc` in encrypted mode) or a saved review database. Incomplete runs are skipped. Selection occurs at service startup.
 
-The service initializes `profile_review.sqlite3` alongside the selected profile (`.sqlite3.enc` in encrypted mode). Later starts use that database's snapshot and do not re-import the source file. The database stores review statuses, edits, sources, and history; include it in backups. Use `weclone-cli server --source <profile_hierarchy.json.enc>` to select a different profile, including results generated with `build-profile --output-dir`. Its review database is stored alongside that source unless `--database` is specified.
+The service initializes `profile_review.sqlite3` alongside the selected profile (`.sqlite3.enc` in encrypted mode). Later starts use that database's snapshot and do not re-import the source file. The database stores review statuses, edits, sources, and history; include it in backups. Use `weclone-cli server --run <run-directory>` to serve a different run, including one generated with `build-profile --output-dir`. Its review database is stored in that run's `profile_hierarchy/` directory. The style page shows the same run's `style/` directory.
 
 For frontend development:
 

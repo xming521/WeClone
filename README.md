@@ -141,14 +141,14 @@ Run from the project root:
 ```bash
 weclone-cli build-profile
 ```
-Choose profiles only (the default) or include events. The results may overlap; choose profiles only to save tokens. You can also select the mode directly:
+It asks what the profile is for. For a personal assistant, it extracts profile memories and events. For a clone, it also extracts speaking style, which needs the `ltp` package and an LTP model in `models/LTPbase`. You can also pass the choice directly:
 ```bash
-weclone-cli build-profile --profile-only
-weclone-cli build-profile --with-events
+weclone-cli build-profile --purpose assistant
+weclone-cli build-profile --purpose clone
 ```
 Results are saved under `dataset/res_csv/agent/profile_runs/`, and the profile path is printed on completion. Use `--output-dir <new-directory>` to choose the result directory. API models require `--max-context-tokens <limit>` to set the input token limit.
 
-Run `weclone-cli server` to view and review profiles, or `weclone-cli server --source <profile-path>` to select a profile.
+Run `weclone-cli server` to view and review the newest profile, or `weclone-cli server --run <result-directory>` to select a run.
 
 ### Data Encryption and Passwords
 

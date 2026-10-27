@@ -1,6 +1,7 @@
 """Organize extracted profile/event memories by life domain, topic and dimension without reading chat messages.
 
-Stages: prepare reads the extracted memories and notes which chat each peer id (P1, P2, ...) stands for. domains induces the person's life domains from extraction tags
+Stages: prepare reads the extracted memories and notes which chat each peer id stands for (the stable contact id,
+P1, P2, ..., from the people files). domains induces the person's life domains from extraction tags
 and maps the tags to them. peers writes one line per chat peer on how they relate to B, from the memories that
 mention them. classify assigns each memory a dimension, a domain and an attribute name, in batches grouped by the
 tags' domains, places what passes between B and a peer by that relation, and gives every memory a privacy level.
@@ -27,6 +28,7 @@ from statistics import fmean
 from typing import Any
 
 from weclone.data.agent import distill_profile
+from weclone.data.agent.contacts import CONTACT_ID
 from weclone.prompts.memory_organization import (
     BATCH_SUMMARY_SCHEMA,
     CLASSIFY_SCHEMA,
@@ -106,9 +108,8 @@ def allowed_dimensions(record: dict) -> tuple[int, ...]:
 
 
 def read_memories(input_dir: Path) -> tuple[list[dict], dict[str, dict]]:
-    """Memories passing the score filters, and the chat_with_id and chat_with behind each peer id."""
+    """Memories passing the score filters, and the chat_with name behind each peer id."""
     records: dict[str, dict] = {}
-    peer_ids: dict[str, str] = {}
     peers: dict[str, dict] = {}
     sample_ids: dict[str, str] = {}
     for directory, field in (("state_people", "state_memories"), ("event_people", "event_memories")):
@@ -120,9 +121,10 @@ def read_memories(input_dir: Path) -> tuple[list[dict], dict[str, dict]]:
                 raise ValueError(f"Expected sample array: {path}")
             for index, sample in enumerate(samples):
                 sid = distill_profile.sample_id_for(sample, index)
-                peer_key = digest(sample["chat_with_id"])
-                peer = peer_ids.setdefault(peer_key, f"P{len(peer_ids) + 1}")
-                peers.setdefault(peer, {key: sample.get(key) for key in ("chat_with_id", "chat_with")})
+                peer = sample.get("chat_with_id")
+                if not isinstance(peer, str) or not CONTACT_ID.fullmatch(peer):
+                    raise ValueError(f"chat_with_id must be a contact id such as P3: {path}, sample {sid}")
+                peers.setdefault(peer, {"chat_with": sample.get("chat_with")})
                 sample_key = sample_ids.setdefault(
                     digest([peer, sid, sample.get("time", "")]),
                     f"C{len(sample_ids) + 1}",
@@ -1141,10 +1143,10 @@ def main(argv: list[str] | None = None) -> None:
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument("--stage", choices=(*STAGES, "all"), default="all")
-    parser.add_argument("--input-dir", type=Path, default=Path("dataset/res_csv/agent/distill"))
     parser.add_argument(
-        "--output-dir", type=Path, default=Path("dataset/res_csv/agent/memory_organization")
+        "--input-dir", type=Path, required=True, help="distill directory of a build-profile run"
     )
+    parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--config-path", type=Path, default=Path("settings.jsonc"))
     parser.add_argument("--llm-provider", choices=("api", "codex_exec"))
     parser.add_argument(

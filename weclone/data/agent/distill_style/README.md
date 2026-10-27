@@ -1,16 +1,16 @@
 # 风格抽取
 
 ```bash
-python -m weclone.data.agent.distill_style
+python -m weclone.data.agent.distill_style --input-dir <运行目录>/people
 # 或
-weclone-cli distill-style
+weclone-cli distill-style --input-dir <运行目录>/people
 ```
 
 只抽取本人回复的风格特征，不读入也不比较模型回复。
 
-默认输入与画像抽取相同：`dataset/res_csv/agent/people/*.json`（跳过 manifest），复用画像的聊天读取规则。每条源记录作为一个完整对话段，抽取其中全部 B 发言，不会将一段拆成多个前缀样本。模型、并发、批量配置沿用现有设置。
+输入是 build-profile 运行目录下的聊天快照 `<运行目录>/people/*.json`（跳过 manifest），用 `--input-dir` 指定，复用画像的聊天读取规则。build-profile 选择做分身（`--purpose clone`）时，最后一步自动运行风格抽取，结果写入 `<运行目录>/style/`，网页的风格页读取同一运行目录。每条源记录作为一个完整对话段，抽取其中全部 B 发言，不会将一段拆成多个前缀样本。模型、并发、批量配置沿用现有设置。
 
-可用 `--input-dir` 指定输入目录或文件，`--output-dir` 指定新输出目录；默认输出到 `dataset/res_csv/agent/distill/style/` 下的新运行目录，缓存放在相邻的 `style_cache/`。本地 LTP 模型默认位于 `models/LTPbase`，可用 `--ltp-model` 覆盖。`--limit` 在时间窗之后取前 N 个聊天段，`--no-llm` 只运行本地统计；默认语义抽样数量保持原来的 2000，`--llm-samples 0` 使用全部聊天段。时间窗（`--window-days`，默认 365）、统计单元和联系人分组见“统计单元、时间窗与联系人分组”。
+`--input-dir` 也可以是单个文件。`--output-dir` 指定新输出目录，单独运行时默认输出到 `dataset/res_csv/agent/distill/style/` 下的新运行目录，缓存放在相邻的 `style_cache/`。本地 LTP 模型默认位于 `models/LTPbase`，可用 `--ltp-model` 覆盖。`--limit` 在时间窗之后取前 N 个聊天段，`--no-llm` 只运行本地统计；默认语义抽样数量保持原来的 2000，`--llm-samples 0` 使用全部聊天段。时间窗（`--window-days`，默认 365）、统计单元和联系人分组见“统计单元、时间窗与联系人分组”。
 
 # 指标说明
 
@@ -43,23 +43,25 @@ weclone-cli distill-style
 
 ```bash
 source .venv2/bin/activate
+# 输入是某次 build-profile 的聊天快照
+IN=dataset/res_csv/agent/profile_runs/<运行目录>/people
 # 前 20 个聊天段验证全部类别
-python weclone/data/agent/distill_style/run.py --chapter all --limit 20
+python weclone/data/agent/distill_style/run.py --input-dir "$IN" --chapter all --limit 20
 
 # 只验证基础统计，不调用 LLM
-python weclone/data/agent/distill_style/run.py --no-llm
+python weclone/data/agent/distill_style/run.py --input-dir "$IN" --no-llm
 
 # 少量聊天段验证真实标注链路，并复抽 2 条检查稳定性
-python weclone/data/agent/distill_style/run.py --limit 20 --qa-samples 2
+python weclone/data/agent/distill_style/run.py --input-dir "$IN" --limit 20 --qa-samples 2
 
 # 语法类；同样支持 --no-llm、--limit 和 --qa-samples
-python weclone/data/agent/distill_style/run.py --chapter syntactic_style
+python weclone/data/agent/distill_style/run.py --input-dir "$IN" --chapter syntactic_style
 
 # 发现个人惯用表达（004、006），默认读取同一批聊天；输出目录必须是新目录
-python weclone/data/agent/distill_style/run.py discover --output /path/to/discovery
+python weclone/data/agent/distill_style/run.py --input-dir "$IN" discover --output /path/to/discovery
 
 # 用发现的表达集合统计 004、006
-python weclone/data/agent/distill_style/run.py \
+python weclone/data/agent/distill_style/run.py --input-dir "$IN" \
   --frozen /path/to/discovery/frozen_expressions.json
 ```
 
@@ -107,7 +109,7 @@ python weclone/data/agent/distill_style/run.py \
 
 `--window-days` 默认 365，只保留最新一条记录之前 365 天内的窗口，0 表示使用全部历史。`--limit` 在时间窗之后取前 N 段。
 
-联系人分组默认开启。时间窗内非空消息数不少于 `--min-group-messages`（默认 300）的联系人各自成为一个语料 `group-<chat_with_id>`，与全体语料 `person` 并列输出，`--no-groups` 关闭。`--contact-groups map.json` 可以把 `chat_with_id` 映射到关系标签（如 `{"chat_with_0016": "partner"}`），同一标签的联系人合并成一组，未映射的联系人仍各自成组。
+联系人分组默认开启。时间窗内非空消息数不少于 `--min-group-messages`（默认 300）的联系人各自成为一个语料 `group-<chat_with_id>`，与全体语料 `person` 并列输出，`--no-groups` 关闭。`--contact-groups map.json` 可以把 `chat_with_id`（稳定联系人编号，见 `weclone/data/agent/contacts.py`）映射到关系标签（如 `{"P16": "partner"}`），同一标签的联系人合并成一组，未映射的联系人仍各自成组。
 
 语义抽样在 `--llm-samples` 预算之内完成。先按“联系人×月份”比例抽取 `person` 语料，它对本人全体窗口自加权，可直接当作全体估计。再在每个组内按同一哈希顺序补足到 `--group-floor`（默认 100 个窗口），补足的窗口只进入组语料。下限最多占预算的一半，组多时自动降低，实际值记在 `sampling.json` 的 `group_floor`。同一窗口出现在多个语料时只标注一次。`--qa-samples` 只在 `person` 语料上复抽。
 
@@ -221,10 +223,10 @@ POS 分组遵循 [LTP 的 863 标签表](https://ltp.ai/docs/appendix.html)。�
 
 ```bash
 # 规则/解析器指标 + 上下文句法标注
-python weclone/data/agent/distill_style/run.py --chapter syntactic_style
+python weclone/data/agent/distill_style/run.py --input-dir "$IN" --chapter syntactic_style
 
 # 数值链路验证
-python weclone/data/agent/distill_style/run.py --chapter syntactic_style --no-llm --limit 20
+python weclone/data/agent/distill_style/run.py --input-dir "$IN" --chapter syntactic_style --no-llm --limit 20
 ```
 
 每个语料的 `syntactic_style.json` 保存按编号组织的指标、逐句段原文及结构、消息/窗口长度、分句连接证据。LLM 的 `annotations.json` 保存语义句段、语法完整度、句式和交际用法，`semantic.json` 汇总有效数量、未知和失败。
@@ -262,8 +264,8 @@ LLM 一次共享调用同时覆盖 043、051–054、056、060，不重复抽取
 
 ```bash
 source .venv2/bin/activate
-python weclone/data/agent/distill_style/run.py --chapter orthographic_style
-python weclone/data/agent/distill_style/run.py --chapter orthographic_style --no-llm
+python weclone/data/agent/distill_style/run.py --input-dir "$IN" --chapter orthographic_style
+python weclone/data/agent/distill_style/run.py --input-dir "$IN" --chapter orthographic_style --no-llm
 ```
 
 每个语料输出 `orthographic_style.json`（按编号保存指标，`messages` 保存原文偏移和逐消息观察）、`records.json`；本模块不再生成 LLM 标注。`manifest.json` 保存输入、代码、提示词、Unicode/regex 版本及统计协议。
@@ -301,8 +303,8 @@ python weclone/data/agent/distill_style/run.py --chapter orthographic_style --no
 
 ```bash
 source .venv2/bin/activate
-python weclone/data/agent/distill_style/run.py --chapter orthographic_style
-python weclone/data/agent/distill_style/run.py --chapter orthographic_style --no-llm
+python weclone/data/agent/distill_style/run.py --input-dir "$IN" --chapter orthographic_style
+python weclone/data/agent/distill_style/run.py --input-dir "$IN" --chapter orthographic_style --no-llm
 ```
 
 默认输出 `dataset/res_csv/agent/distill/style/<时间>_<类别>/extractors/<模块>`。每个语料有 `paralinguistic_style.json`（词类、重复、完整 Emoji 与逐窗口观察）、`records.json`；开启 LLM 后另有 `annotations.json`、`semantic.json`。清单记录代码/输入/提示词、解析器及 Emoji 数据摘要。默认 `--limit` 表示在时间窗内按原顺序取前 N 段工程验证样本。
@@ -341,9 +343,9 @@ python weclone/data/agent/distill_style/run.py --chapter orthographic_style --no
 
 ```bash
 source .venv2/bin/activate
-python weclone/data/agent/distill_style/run.py --chapter pragmatic_style
-python weclone/data/agent/distill_style/run.py --chapter pragmatic_style --limit 20
-python weclone/data/agent/distill_style/run.py --chapter pragmatic_style --no-llm
+python weclone/data/agent/distill_style/run.py --input-dir "$IN" --chapter pragmatic_style
+python weclone/data/agent/distill_style/run.py --input-dir "$IN" --chapter pragmatic_style --limit 20
+python weclone/data/agent/distill_style/run.py --input-dir "$IN" --chapter pragmatic_style --no-llm
 ```
 
 默认输出 `dataset/res_csv/agent/distill/style/<时间>_<类别>/extractors/<模块>`。`pragmatic_style.json` 保存原文字符数、词数、重复、标点和大小写；开启 LLM 后生成逐条 `annotations.json` 和聚合 `semantic.json`。不启用 LLM 时，146–150 只有形式观察、标记 partial，其余为 not_run，不能将形式频次当作语用功能。
@@ -378,9 +380,9 @@ python weclone/data/agent/distill_style/run.py --chapter pragmatic_style --no-ll
 
 ```bash
 source .venv2/bin/activate
-python weclone/data/agent/distill_style/run.py --chapter affective_style
-python weclone/data/agent/distill_style/run.py --chapter affective_style --limit 20
-python weclone/data/agent/distill_style/run.py --chapter affective_style --no-llm
+python weclone/data/agent/distill_style/run.py --input-dir "$IN" --chapter affective_style
+python weclone/data/agent/distill_style/run.py --input-dir "$IN" --chapter affective_style --limit 20
+python weclone/data/agent/distill_style/run.py --input-dir "$IN" --chapter affective_style --no-llm
 ```
 
 输出位于 `dataset/res_csv/agent/distill/style/<时间>_<类别>/extractors/<模块>`：`conditions.json` 保存回复前条件，各语料的 `affective_style.json` 保存原文形式和 LTP 程度证据，`annotations.json`、`semantic.json` 保存共享情感标注与统计。155 适用时保存复用`paralinguistic_style`的 `laughter_annotations.json`，其中保留原始及修复缓存键。
@@ -418,9 +420,9 @@ python weclone/data/agent/distill_style/run.py --chapter affective_style --no-ll
 
 ```bash
 source .venv2/bin/activate
-python weclone/data/agent/distill_style/run.py --chapter rhetorical_devices
+python weclone/data/agent/distill_style/run.py --input-dir "$IN" --chapter rhetorical_devices
 # 前 20 个聊天段验证标注链路
-python weclone/data/agent/distill_style/run.py --chapter rhetorical_devices --limit 20
+python weclone/data/agent/distill_style/run.py --input-dir "$IN" --chapter rhetorical_devices --limit 20
 ```
 
 默认输出至 `dataset/res_csv/agent/distill/style/<时间>_<类别>/extractors/<模块>`。使用可见前文与目标消息做一次共享 LLM 抽取，不需要加载 LTP；最多一次结构修复，保留原始输出缓存和逐项来源。`--no-llm` 仅保存输入及字符/消息数量，语义项均为 `not_run`。
@@ -442,9 +444,9 @@ python weclone/data/agent/distill_style/run.py --chapter rhetorical_devices --li
 
 ```bash
 source .venv2/bin/activate
-python weclone/data/agent/distill_style/run.py --chapter interactional_style
+python weclone/data/agent/distill_style/run.py --input-dir "$IN" --chapter interactional_style
 # 工程抽样与长消息阈值覆盖
-python weclone/data/agent/distill_style/run.py --chapter interactional_style --limit 20 --long-characters 200
+python weclone/data/agent/distill_style/run.py --input-dir "$IN" --chapter interactional_style --limit 20 --long-characters 200
 ```
 
 默认输出至 `dataset/res_csv/agent/distill/style/<时间>_<类别>/extractors/<模块>`。按当前精简版清单实现以下 11 项；高难度 220 真实等待行为暂缓。原清单已删去的长度指标不另行恢复编号。`--no-llm` 可运行连发形式与原始长度统计；218 标为 `partial`，其余语义项为 `not_run`。该抽取模块不加载 LTP；类别中的其他共用模块按需解析。
@@ -470,8 +472,8 @@ python weclone/data/agent/distill_style/run.py --chapter interactional_style --l
 
 ```bash
 source .venv2/bin/activate
-python weclone/data/agent/distill_style/run.py --chapter register_style
-python weclone/data/agent/distill_style/run.py --chapter register_style --limit 20
+python weclone/data/agent/distill_style/run.py --input-dir "$IN" --chapter register_style
+python weclone/data/agent/distill_style/run.py --input-dir "$IN" --chapter register_style --limit 20
 ```
 
 默认输出至 `dataset/res_csv/agent/distill/style/<时间>_<类别>/extractors/<模块>`。共享抽取 233、234、244、245 四项，其中 245 归词汇类；237 年龄代际、246 攻击性语言保留为 `deferred`。`--no-llm` 仅检查输入并统计字符、LTP 词和消息数量，四项语义抽取均为 `not_run`。
@@ -493,8 +495,8 @@ python weclone/data/agent/distill_style/run.py --chapter register_style --limit 
 
 ```bash
 source .venv2/bin/activate
-python weclone/data/agent/distill_style/run.py --chapter discourse_style
-python weclone/data/agent/distill_style/run.py --chapter discourse_style --limit 20
+python weclone/data/agent/distill_style/run.py --input-dir "$IN" --chapter discourse_style
+python weclone/data/agent/distill_style/run.py --input-dir "$IN" --chapter discourse_style --limit 20
 ```
 
 默认输出至 `dataset/res_csv/agent/distill/style/<时间>_<类别>/extractors/<模块>`。256 在一次请求中抽取建议单元及其与对方需求的关系，结构错误最多修复一次。263 依赖省略、冗余等未完成的综合输入，保留 `deferred`。该抽取模块不加载 LTP；`--no-llm` 只保存输入和字符/消息数量，256 为 `not_run`。

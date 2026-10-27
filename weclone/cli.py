@@ -131,22 +131,9 @@ def qa_generator():
     processor.main()
 
 
-@cli.command("distill-profile", help="Extract profile memories from chat samples.")
-@click.option("--input-dir", type=click.Path(path_type=Path, file_okay=False))
-@click.option("--output-dir", type=click.Path(path_type=Path, file_okay=False))
-@click.pass_context
-def distill_profile(ctx: click.Context, input_dir: Path | None, output_dir: Path | None):
-    from weclone.data.agent import distill_profile as extractor
-
-    config_path = ctx.parent.params.get("config_path") if ctx.parent else None
-    extractor.main(
-        input_dir=input_dir, output_dir=output_dir, config_path=Path(config_path) if config_path else None
-    )
-
-
 @cli.command(
     "distill-style",
-    help="Extract speaking style from the profile chat data.",
+    help="Extract speaking style from a chat snapshot, such as the people directory of a build-profile run.",
     context_settings={"ignore_unknown_options": True, "allow_extra_args": True},
     add_help_option=False,
 )
@@ -159,24 +146,13 @@ def distill_style(ctx: click.Context):
     main(argv + ctx.args)
 
 
-@cli.command("distill-event", help="Extract event memories from chat samples.")
-@click.option("--input-dir", type=click.Path(path_type=Path, file_okay=False))
-@click.option("--output-dir", type=click.Path(path_type=Path, file_okay=False))
-@click.pass_context
-def distill_event(ctx: click.Context, input_dir: Path | None, output_dir: Path | None):
-    from weclone.data.agent import distill_event as extractor
-
-    config_path = ctx.parent.params.get("config_path") if ctx.parent else None
-    extractor.main(
-        input_dir=input_dir, output_dir=output_dir, config_path=Path(config_path) if config_path else None
-    )
-
-
-@cli.command("build-profile", help="从聊天数据依次完成数据准备、记忆抽取、整理和画像生成。")
+@cli.command(
+    "build-profile", help="从聊天数据依次完成数据准备、记忆抽取、整理和画像生成，做分身时另外抽取说话风格。"
+)
 @click.option(
-    "--with-events/--profile-only",
-    default=None,
-    help="仅抽取画像或同时抽取画像与事件；两类结果可能存在信息重叠，Token 预算有限时建议仅抽取画像。未指定时交互选择。",
+    "--purpose",
+    type=click.Choice(["assistant", "clone"]),
+    help="assistant：给个人助理用，抽取画像和事件。clone：做分身，另外抽取说话风格，需要 ltp 包和 LTP 模型。未指定时交互选择。",
 )
 @click.option(
     "--output-dir",
@@ -189,17 +165,17 @@ def distill_event(ctx: click.Context, input_dir: Path | None, output_dir: Path |
     help="记忆整理和画像生成的输入 token 上限；默认读取 Codex 上下文长度，API 模型需要显式指定。",
 )
 @apply_common_decorators()
-def build_profile(with_events: bool | None, output_dir: Path | None, max_context_tokens: int | None):
+def build_profile(purpose: str | None, output_dir: Path | None, max_context_tokens: int | None):
     from weclone.data.agent.profile_pipeline import run
 
-    click.echo("画像与事件的抽取结果可能存在信息重叠。Token 预算有限时，建议仅抽取画像。")
-    if with_events is None:
-        click.echo("1. 仅抽取画像（推荐）\n2. 同时抽取画像与事件")
-        with_events = click.prompt("请选择抽取模式", type=click.Choice(["1", "2"]), default="1") == "2"
+    if purpose is None:
+        click.echo("1. 给个人助理用：抽取画像和事件\n2. 做分身：另外抽取说话风格，需要 ltp 包和 LTP 模型")
+        choice = click.prompt("请选择用途", type=click.Choice(["1", "2"]), default="1")
+        purpose = "clone" if choice == "2" else "assistant"
     config_path = Path(os.environ.get("WECLONE_CONFIG_PATH", "settings.jsonc"))
     try:
         result = run(
-            with_events=with_events,
+            with_style=purpose == "clone",
             output_dir=output_dir,
             config_path=config_path,
             max_context_tokens=max_context_tokens,
@@ -314,16 +290,20 @@ def decrypt(input_path: Path, output_path: Path):
 @cli.command("server", help="Start the WeClone server, optionally with model inference.")
 @click.option("--host", default="127.0.0.1", show_default=True)
 @click.option("--port", type=click.IntRange(1, 65535), default=5175, envvar="API_PORT", show_default=True)
-@click.option("--database", type=click.Path(path_type=Path, dir_okay=False))
-@click.option("--source", type=click.Path(path_type=Path, dir_okay=False))
+@click.option(
+    "--run",
+    "run_dir",
+    type=click.Path(path_type=Path, exists=True, file_okay=False),
+    help="build-profile result directory to serve; defaults to the newest one.",
+)
 @click.option(
     "--inference", is_flag=True, help="Load the configured model and enable /v1 inference endpoints."
 )
 @clear_argv
-def server(host: str, port: int, database: Path | None, source: Path | None, inference: bool):
+def server(host: str, port: int, run_dir: Path | None, inference: bool):
     from weclone.server.app import serve
 
-    serve(host=host, port=port, database=database, source=source, inference=inference)
+    serve(host=host, port=port, run=run_dir, inference=inference)
 
 
 @cli.command("dev", help="Start the backend and frontend development server.")

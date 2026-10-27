@@ -1,9 +1,8 @@
-import importlib
 import json
 from pathlib import Path
-from types import SimpleNamespace
 from unittest.mock import Mock
 
+import click
 import pytest
 from click.testing import CliRunner
 
@@ -53,21 +52,11 @@ def test_api_provider_does_not_require_codex_exec_settings(tmp_path):
     assert resolved.codex_command is None
 
 
-@pytest.mark.parametrize(
-    "command,module",
-    [("distill-profile", distill_profile), ("distill-event", distill_event)],
-)
+@pytest.mark.parametrize("module", [distill_profile, distill_event])
 @pytest.mark.parametrize("answer,approved", [("", False), ("\n", False), ("n\n", False), ("y\n", True)])
 def test_distillation_requires_consent_before_writes_or_model_calls(
-    tmp_path, monkeypatch, command, module, answer, approved,
+    tmp_path, monkeypatch, module, answer, approved,
 ):
-    cli_module = importlib.import_module("weclone.cli")
-    monkeypatch.setattr(cli_module, "_check_project_root", lambda: None)
-    monkeypatch.setattr(cli_module, "_check_versions", lambda: None)
-    monkeypatch.setattr(cli_module, "load_config", lambda **_: SimpleNamespace(full_log=False))
-    monkeypatch.setattr(cli_module, "configure_log_level_from_config", lambda: None)
-    monkeypatch.setenv("WECLONE_CONFIG_PATH", "settings.jsonc")
-
     config_path = tmp_path / "settings.jsonc"
     config_path.write_text(json.dumps({
         "codex_exec_args": {
@@ -87,12 +76,11 @@ def test_distillation_requires_consent_before_writes_or_model_calls(
     monkeypatch.setattr(llm_client, "build_llm_client", build_client)
     monkeypatch.setattr(module, "process_file", process_file)
 
-    result = CliRunner().invoke(
-        cli_module.cli,
-        ["--config-path", str(config_path), command,
-         "--input-dir", str(input_dir), "--output-dir", str(output_dir)],
-        input=answer,
-    )
+    @click.command()
+    def distill():
+        module.main(input_dir=input_dir, output_dir=output_dir, config_path=config_path)
+
+    result = CliRunner().invoke(distill, input=answer)
 
     assert "聊天内容可能包含身份、联系方式和私密对话" in result.output
     assert "overwrite=true" in result.output
