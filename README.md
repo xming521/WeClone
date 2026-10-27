@@ -68,7 +68,7 @@
 
 ### Hardware Requirements
 
-The project uses Qwen2.5-VL-7B-Instruct model by default with LoRA method for SFT stage fine-tuning. You can also use other models and methods supported by [LLaMA Factory](https://github.com/hiyouga/LLaMA-Factory/tree/main#supported-models).
+The project uses Qwen2.5-7B-Instruct model by default with LoRA method for SFT stage fine-tuning. You can also use other models and methods supported by [LLaMA Factory](https://github.com/hiyouga/LLaMA-Factory/tree/main#supported-models).
 
 Estimated VRAM requirements: 
 | Method                          | Precision |   7B  |  14B  |  30B  |   70B  |   `x`B  |
@@ -95,8 +95,10 @@ uv pip install --group main -e .
 3. Copy the configuration file template and rename it to `settings.jsonc`, and make subsequent configuration changes in this file:
 
 ```bash
-cp examples/tg.template.jsonc settings.jsonc
+cp settings.template.jsonc settings.jsonc
 ```
+- For chats in English, also translate `default_system` and set `test_model_args.test_data_path` to `dataset/eval/test_data-en.json`.
+- To fine-tune a **multimodal model**, set `model_name_or_path` to a vision-language model such as `./models/Qwen2.5-VL-7B-Instruct`, set `template` to `qwen2_vl`, add `"image"` to `include_type`, and append `,visual.merger.mlp.0,visual.merger.mlp.2` to `lora_target`.
 
 > [!NOTE]
 > Training and inference related configurations are unified in the file `settings.jsonc`
@@ -112,7 +114,7 @@ cp examples/tg.template.jsonc settings.jsonc
 It is recommended to use [Hugging Face](https://huggingface.co/docs/hub/models-downloading) to download models, or use the following command:
 ```bash
 git lfs install
-git clone https://huggingface.co/Qwen/Qwen2.5-VL-7B-Instruct models/Qwen2.5-VL-7B-Instruct
+git clone https://huggingface.co/Qwen/Qwen2.5-7B-Instruct models/Qwen2.5-7B-Instruct
 ```
 
 ## Data Preparation

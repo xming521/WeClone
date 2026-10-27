@@ -109,7 +109,8 @@ uv pip install https://github.com/explosion/spacy-models/releases/download/zh_co
 ```bash
 cp settings.template.jsonc settings.jsonc
 ```
-- 微调**多模态模型**时，请使用[examples/mllm.template.jsonc](https://github.com/xming521/WeClone/blob/master/examples/mllm.template.jsonc)作为配置文件。
+- 聊天以英文为主时，另把 `default_system` 改成英文，`test_model_args.test_data_path` 改为 `dataset/eval/test_data-en.json`。
+- 微调**多模态模型**时，把 `model_name_or_path` 换成视觉语言模型（例如 `./models/Qwen2.5-VL-7B-Instruct`），`template` 改为 `qwen2_vl`，`include_type` 加上 `"image"`，`lora_target` 末尾加上 `,visual.merger.mlp.0,visual.merger.mlp.2`。
 
 > [!NOTE]
 > 训练以及推理相关配置统一在文件`settings.jsonc`
