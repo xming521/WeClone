@@ -6,7 +6,7 @@ CURRENT_STATE_SECTION = """4. 最近状态 current_state
    例如：最近工作较忙、刚开完题、最近有些疲惫、最近在休假
 """
 
-STATE_EXTRACT_PROMPT_TEMPLATE = """
+STATE_RULES_TEMPLATE = """
 你是一个用于个人记忆构建的用户画像抽取器。你的任务是从一段聊天记录（只包含A、B角色）中，抽取有聊天证据支持的“B”的画像记忆。
 
 你需要抽取以下类型的信息：
@@ -73,27 +73,9 @@ confidence 只衡量该记忆是否被当前聊天记录充分支持，不衡量
 3：强上下文支持，需要少量补全。B没有完整说出标准事实句，但通过省略、指代、上下文承接等少量推断，可以基本确定该画像信息。
 4：直接支持，无任何歧义。B以认真、肯定、非假设、非玩笑、非转述的方式明确表达该画像信息；或 B 明确确认了 A 对该信息的描述。
 
-只输出 JSON，不要输出解释文字。没有可抽取记忆时输出 {"memories": []}。
-JSON Schema：
-{
-  "memories": [
-    {
-      "type": "{{STATE_MEMORY_TYPE_ENUM}}",
-      "preference_type(optional)": "like | dislike | emotional_preference",
-      "content": "记忆内容",
-      "tags": ["tag1", "tag2", "tag3"],
-      "importance": 1,
-      "confidence": 2,
-      "status(optional)": "historical | active"
-    }
-  ]
-}
-
-待抽取聊天记录：
-{{CHAT_JSON}}
 """
 
-EVENT_EXTRACT_PROMPT = """
+EVENT_RULES = """
 你是一个聊天记录事件抽取器。你的任务是从一段聊天记录（只包含A、B角色）中，抽取和“B”相关的事件。“事件”分两层：
 
 1. 表层事件 surface_event：用一条摘要记录这段聊天显式围绕什么展开、聊了什么。它不是原子事件列表，而是对本段聊天表层内容的概括性总结。它可以概括：
@@ -151,7 +133,7 @@ tag 也必须满足“脱离原聊天可独立检索”。不要把一句事件�
 7. 输出 inferred_event 前先和 surface_event 对照：如果二者指向同一件事，且 inferred_event 没有新增可检索事实，只输出 surface_event。
 8. 输出每条事件前自检：把 surface_event 或 inferred_event 当作未来检索 query 时，是否能检索到一类明确事件？如果只能搜到“当前话题/某个事项/相关内容/沟通进展”这类空泛结果，应丢弃。
 9. 不要输出重复事件。如果同一事件在聊天记录中重复出现，只保留一条。
-10. 只输出 JSON，不要解释。没有对应事件时，不输出对应顶层字段。事件对象内没有值的可选字段也直接省略，不要输出空字符串、空数组或 null。
+10. 没有对应事件时，在 event_memories 内省略对应事件数组。事件对象内没有值的可选字段直接省略，不输出空字符串、空数组或 null。
 
 重要程度 importance 取值：
 1：低，普通生活流水账或简单话题，有一定记录价值但后续影响很小。
@@ -176,59 +158,7 @@ event_time 格式：
 }
 
 
-输出 JSON：
-{
-  "surface_events": [
-    {
-      "event_types": ["commitment_event", "holiday_event","emotional_event"],
-      "surface_event": "对这段聊天表层内容的一条摘要，概括主要聊了什么/围绕什么交流",
-      "locations": ["相关地点"],
-      "people": ["相关人物"],
-      "tags": ["检索标签"],
-      "importance": 0,
-      "confidence": 0
-    }
-  ],
-  "inferred_events": [
-    {
-      "event_types": ["other_event"],
-      "inferred_event": "根据上下文推测的现实事件",
-      "event_time": {
-        "time_text": "原文中的关于事件发生的时间表达",
-        "time_normalized": "YYYY-MM-DD"
-      },
-      "locations": ["相关地点"],
-      "people": ["相关人物"],
-      "tags": ["检索标签"],
-      "importance": 0,
-      "confidence": 0
-    }
-  ]
-}
-若没有任何事件，输出 {}。若只有 surface_events，不输出 inferred_events。
-待抽取聊天记录可能包含 sample_time，表示这段聊天样本时间，可用于把“明天/昨天/上周”等相对时间解析为 time_normalized。
-待抽取聊天记录：
-{{CHAT_JSON}}
 """
-
-
-def build_state_extract_prompt(*, include_current_state: bool = True) -> str:
-    return (
-        STATE_EXTRACT_PROMPT_TEMPLATE.replace(
-            "{{CURRENT_STATE_SECTION}}",
-            CURRENT_STATE_SECTION if include_current_state else "",
-        )
-        .replace(
-            "{{CURRENT_STATE_ACTION_SUFFIX}}",
-            "或有后续对话价值的当前状态" if include_current_state else "",
-        )
-        .replace(
-            "{{STATE_MEMORY_TYPE_ENUM}}",
-            "stable_fact | preference | goal | current_state"
-            if include_current_state
-            else "stable_fact | preference | goal",
-        )
-    )
 
 
 def build_window_extract_prompt(task: str, *, include_current_state: bool = True) -> str:
@@ -237,19 +167,48 @@ def build_window_extract_prompt(task: str, *, include_current_state: bool = True
 
 """
     if task == "state":
-        template = build_state_extract_prompt(include_current_state=include_current_state)
-        rules = template.split("只输出 JSON，不要输出解释文字。", 1)[0]
-        schema = json.loads(template.split("JSON Schema：\n", 1)[1].split("\n待抽取聊天记录：", 1)[0])
-        example = {"sample_id": "输入样本ID", "state_memories": schema["memories"]}
+        rules = STATE_RULES_TEMPLATE.replace(
+            "{{CURRENT_STATE_SECTION}}", CURRENT_STATE_SECTION if include_current_state else ""
+        ).replace(
+            "{{CURRENT_STATE_ACTION_SUFFIX}}", "或有后续对话价值的当前状态" if include_current_state else ""
+        )
+        memory = {
+            "type": "stable_fact | preference | goal" + (" | current_state" if include_current_state else ""),
+            "preference_type(optional)": "like | dislike | emotional_preference",
+            "content": "记忆内容",
+            "tags": ["tag1", "tag2", "tag3"],
+            "importance": 1,
+            "confidence": 2,
+            "status(optional)": "historical | active",
+        }
+        example = {"sample_id": "输入样本ID", "state_memories": [memory]}
         field_rules = "每个结果对象包含 sample_id、state_memories 两个字段。state_memories 是该样本的画像数组，无画像时为 []。画像对象各字段遵循上述定义。"
         suffix = ""
     elif task == "event":
-        rules = EVENT_EXTRACT_PROMPT.split("输出 JSON：\n", 1)[0].replace(
-            "10. 只输出 JSON，不要解释。没有对应事件时，不输出对应顶层字段。事件对象内没有值的可选字段也直接省略，不要输出空字符串、空数组或 null。",
-            "10. 没有对应事件时，在 event_memories 内省略对应事件数组。事件对象内没有值的可选字段直接省略，不输出空字符串、空数组或 null。",
-        )
-        schema = json.loads(EVENT_EXTRACT_PROMPT.split("输出 JSON：\n", 1)[1].split("\n若没有任何事件", 1)[0])
-        example = {"sample_id": "输入样本ID", "event_memories": schema}
+        rules = EVENT_RULES
+        surface = {
+            "event_types": ["commitment_event", "holiday_event", "emotional_event"],
+            "surface_event": "对这段聊天表层内容的一条摘要，概括主要聊了什么/围绕什么交流",
+            "locations": ["相关地点"],
+            "people": ["相关人物"],
+            "tags": ["检索标签"],
+            "importance": 0,
+            "confidence": 0,
+        }
+        inferred = {
+            "event_types": ["other_event"],
+            "inferred_event": "根据上下文推测的现实事件",
+            "event_time": {"time_text": "原文中的关于事件发生的时间表达", "time_normalized": "YYYY-MM-DD"},
+            "locations": ["相关地点"],
+            "people": ["相关人物"],
+            "tags": ["检索标签"],
+            "importance": 0,
+            "confidence": 0,
+        }
+        example = {
+            "sample_id": "输入样本ID",
+            "event_memories": {"surface_events": [surface], "inferred_events": [inferred]},
+        }
         field_rules = "每个结果对象包含 sample_id、event_memories 两个字段。event_memories 是该样本的事件对象，无事件时为 {}。其中 surface_events 为表层摘要数组，inferred_events 为深层事件数组；没有对应事件时省略该数组。surface_event、inferred_event 为对应事件内容；people、locations 是相关人物、地点数组，有值才输出。其他字段按上述定义。"
         suffix = "\ntime 是该样本的聊天时间，用于事件相对时间解析。"
     else:

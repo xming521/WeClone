@@ -15,11 +15,7 @@ from weclone.data.agent.distill_windows import (
     split_window_response,
 )
 from weclone.data.agent.llm_cache import LLMCache
-from weclone.prompts.distill_memory import (
-    EVENT_EXTRACT_PROMPT,
-    build_state_extract_prompt,
-    build_window_extract_prompt,
-)
+from weclone.prompts.distill_memory import build_window_extract_prompt
 
 
 def sample(sid, size=20, recent=False):
@@ -80,16 +76,12 @@ def test_plain_format_counts_only_normalized_chat_content():
 
 
 @pytest.mark.parametrize("recent", [False, True])
-def test_window_prompt_preserves_original_rules(recent):
-    state_rules = build_state_extract_prompt(include_current_state=recent).split(
-        "只输出 JSON，不要输出解释文字。", 1
-    )[0]
-    assert state_rules in build_window_extract_prompt("state", include_current_state=recent)
-    event_rules = EVENT_EXTRACT_PROMPT.split("输出 JSON：\n", 1)[0].replace(
-        "10. 只输出 JSON，不要解释。没有对应事件时，不输出对应顶层字段。事件对象内没有值的可选字段也直接省略，不要输出空字符串、空数组或 null。",
-        "10. 没有对应事件时，在 event_memories 内省略对应事件数组。事件对象内没有值的可选字段直接省略，不输出空字符串、空数组或 null。",
-    )
-    assert event_rules in build_window_extract_prompt("event")
+def test_window_prompt_fills_placeholders(recent):
+    state = build_window_extract_prompt("state", include_current_state=recent)
+    event = build_window_extract_prompt("event")
+    for prompt in (state, event):
+        assert prompt.count("{{") == 1 and prompt.endswith("{{CHAT_SAMPLES}}")
+    assert ("current_state" in state) == recent
 
 
 @pytest.mark.parametrize("defect", ["duplicate", "missing", "unknown", "tags", "type", "recent", "truncated"])
