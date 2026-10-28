@@ -309,7 +309,7 @@ summary:focus-visible {
   font-weight: 700;
   letter-spacing: 0.13em;
 }
-/* 按维度与按领域的切换 */
+/* 按维度与按板块的切换 */
 .grouping-switch {
   display: flex;
   flex-shrink: 0;
@@ -387,7 +387,7 @@ summary:focus-visible {
   font-weight: 700;
   line-height: 1;
 }
-/* 十几个领域时列表收紧，免得左栏一屏放不下 */
+/* 十几个板块时列表收紧，免得左栏一屏放不下 */
 .dimension-list.is-compact {
   gap: 3px;
 }

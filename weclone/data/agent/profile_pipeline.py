@@ -94,7 +94,7 @@ def run(
             input_dir=people_dir, output_dir=distill_dir, config_path=config_path, confirmed=True
         )
 
-    with _stage(f"[3/{stages}] 归纳领域、分类、分主题和汇总记忆"):
+    with _stage(f"[3/{stages}] 划分板块、分类、分主题和汇总记忆"):
         organize_memories.main(
             [
                 "--stage",
@@ -128,12 +128,12 @@ def run(
             raise FileNotFoundError(f"没有生成画像文件：{result}")
 
     # The profile is done by now, so domains left without a summary only get a note.
-    with _stage(f"[5/{stages}] 生成领域总结"):
+    with _stage(f"[5/{stages}] 生成板块总结"):
         from weclone.server.profile_summary import build_summaries
 
         missing = build_summaries(hierarchy_dir)
     if missing:
-        click.echo(f"领域总结：{missing}")
+        click.echo(f"板块总结：{missing}")
 
     if with_style:
         with _stage("[6/6] 抽取说话风格"):

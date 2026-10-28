@@ -301,7 +301,7 @@ class SummaryStore:
         """Generate the domains that are due. The server runs the model calls in a background thread and the view
         shows when they end. build-profile waits for them."""
         if not GENERATING.acquire(blocking=False):
-            raise ApiError(409, "summary_generating", "正在生成领域总结，请稍候")
+            raise ApiError(409, "summary_generating", "正在生成板块总结，请稍候")
         started = False
         try:
             inputs, rows = self.state(level)
@@ -355,7 +355,7 @@ class SummaryStore:
                     finally:
                         runner.close()
             except Exception as exc:
-                logger.warning(f"领域总结生成失败：{type(exc).__name__}: {exc}")
+                logger.warning(f"板块总结生成失败：{type(exc).__name__}: {exc}")
                 # A bare RuntimeError is LLMTasks giving up after retries, pointing to a cache that is gone.
                 reason = "" if type(exc) is RuntimeError else str(exc) or type(exc).__name__
                 self.failures[level] = {"failed": len(todo) - len(stored), "reason": reason}
@@ -387,11 +387,11 @@ class SummaryStore:
         current = {item["domain"]: item["sha256"] for item in inputs}
         row = rows.get(request.domain)
         if row is None:
-            raise ApiError(404, "summary_not_found", "领域总结不存在")
+            raise ApiError(404, "summary_not_found", "板块总结不存在")
         if row["version"] != request.version:
             raise ApiError(409, "summary_changed", "总结已被修改，请刷新后核对并重试")
         if row["input_sha256"] != current.get(request.domain):
-            raise ApiError(409, "summary_stale", "这个领域的画像有变动，请先重新生成总结")
+            raise ApiError(409, "summary_stale", "这个板块的画像有变动，请先重新生成总结")
         changed = (request.title, request.summary) != (row["title"], row["summary"])
         status = "approved" if request.approve else "pending" if changed else row["status"]
         if not changed and status == row["status"]:
@@ -421,7 +421,7 @@ class SummaryStore:
 
     def review(self, request: SummaryReview) -> dict:
         if len({item.domain for item in request.items}) != len(request.items):
-            raise ApiError(422, "duplicate_domains", "批量操作不能包含重复领域")
+            raise ApiError(422, "duplicate_domains", "批量操作不能包含重复板块")
         inputs, _ = self.state(request.level)
         current = {item["domain"]: item["sha256"] for item in inputs}
         with self.connect() as db:
@@ -432,11 +432,11 @@ class SummaryStore:
                     "SELECT * FROM domain_summaries WHERE level=? AND domain=?", (request.level, item.domain)
                 ).fetchone()
                 if row is None:
-                    raise ApiError(404, "summary_not_found", "领域总结不存在")
+                    raise ApiError(404, "summary_not_found", "板块总结不存在")
                 if row["version"] != item.version:
                     raise ApiError(409, "summary_batch_changed", "总结已被修改，整批操作未保存，请刷新后重试")
                 if request.status == "approved" and row["input_sha256"] != current.get(item.domain):
-                    raise ApiError(409, "summary_batch_stale", "有领域的画像已变动，请先重新生成总结再确认")
+                    raise ApiError(409, "summary_batch_stale", "有板块的画像已变动，请先重新生成总结再确认")
                 rows.append(row)
             for row in rows:
                 if row["status"] != request.status:
@@ -459,10 +459,10 @@ def build_summaries(directory: Path) -> str:
         store.generate("full", wait=True)
     except Exception as exc:
         # The profile is already written, so any failure here only leaves the summaries for a later run.
-        logger.warning(f"领域总结生成失败：{type(exc).__name__}: {exc}")
+        logger.warning(f"板块总结生成失败：{type(exc).__name__}: {exc}")
         return f"没有生成成功。原因：{str(exc) or type(exc).__name__}"
     failure = store.failures.get("full")
     if not failure:
         return ""
-    note = f"{failure['failed']} 个领域没有生成成功，下次生成只补这些领域。"
+    note = f"{failure['failed']} 个板块没有生成成功，下次生成只补这些板块。"
     return note + (f"原因：{failure['reason']}" if failure["reason"] else "")

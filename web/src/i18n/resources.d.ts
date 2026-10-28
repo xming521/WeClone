@@ -17,7 +17,7 @@ export default interface Resources {
     "app": {
       "canvasHelp": "悬停点亮归属路径 · 点击展开并聚焦，再点一次收起 · 拖动节点牵动图谱",
       "dimensionOverview": "{{count, zhNumeral}}维总览",
-      "domainOverview": "{{count, zhNumeral}}个领域总览",
+      "domainOverview": "{{count, zhNumeral}}个板块总览",
       "emptyView": "当前视图没有画像记录",
       "loadFailed": "画像地图暂时无法打开",
       "loading": "正在展开画像地图",
@@ -36,17 +36,17 @@ export default interface Resources {
       },
       "address": "MCP 地址 <code>{{url}}</code>",
       "addressPlaintext": "MCP 地址 <code>{{url}}</code>。数据是明文存储的，令牌有效时助手随时可以读取",
-      "allDomains": "全部提供，以后新出现的领域也提供",
+      "allDomains": "全部提供，以后新出现的板块也提供",
       "confirmReissue": "重新生成后旧令牌立即失效，已经配置好的助手都要用新的命令再配置一次。继续吗？",
       "confirmWithdraw": "停用后所有助手都读不到 WeClone，之后可以重新生成令牌。继续吗？",
       "connected": "已接入 · {{level}}",
       "days": "{{count}} 天",
       "domainFacts": "{{count}} 条",
       "domainFactsSummary": "{{count}} 条 · 有总结",
-      "domains": "领域",
-      "domainsNote": "勾掉的领域，总结和条目都不给助手。助手现在能读到 {{count}} 段领域总结：这个级别、勾选的领域里、在<link>领域总结页</link>确认过的。改了从助手的下一次调用起生效，不用重新配置。",
+      "domains": "板块",
+      "domainsNote": "勾掉的板块，总结和条目都不给助手。助手现在能读到 {{count}} 段板块总结：这个级别、勾选的板块里、在<link>板块总结页</link>确认过的。改了从助手的下一次调用起生效，不用重新配置。",
       "hours": "{{count}} 小时",
-      "intro": "Claude Code、Codex 等支持 MCP 的助手可以连接这里的 WeClone：weclone_profile 返回你确认过的领域总结，weclone_search 按关键词或领域查画像条目。所有助手共用一个令牌，读到哪些内容由下面选的级别和领域决定，每次调用都会记下返回了什么。",
+      "intro": "Claude Code、Codex 等支持 MCP 的助手可以连接这里的 WeClone：weclone_profile 返回你确认过的板块总结，weclone_search 按关键词或板块查画像条目。所有助手共用一个令牌，读到哪些内容由下面选的级别和板块决定，每次调用都会记下返回了什么。",
       "level": "隐私级别",
       "levels": {
         "full": {
@@ -64,10 +64,10 @@ export default interface Resources {
       },
       "loadFailed": "助手接入页暂时无法打开",
       "loading": "正在读取助手接入设置",
-      "noDomains": "还没有画像，运行 build-profile 之后这里会列出各个领域。",
+      "noDomains": "还没有画像，运行 build-profile 之后这里会列出各个板块。",
       "noToken": "还没有令牌",
       "noTokenHint": "生成令牌后，在运行助手的机器上执行配置命令。",
-      "resetDomains": "改回全部领域",
+      "resetDomains": "改回全部板块",
       "scope": "提供哪些信息",
       "setup": {
         "clients": "助手",
@@ -76,8 +76,8 @@ export default interface Resources {
         "once": "令牌只显示这一次。在运行助手的机器上执行对应的命令，之后新开的会话就能调用 WeClone 的工具。",
         "other": "其他助手：地址填上面的 MCP 地址，请求头加 <code>Authorization: Bearer 令牌</code>。"
       },
-      "sharedDomains": "提供的领域",
-      "someDomains": "提供 {{shared}}/{{total}} 个，以后新出现或改名的领域不提供",
+      "sharedDomains": "提供的板块",
+      "someDomains": "提供 {{shared}}/{{total}} 个，以后新出现或改名的板块不提供",
       "title": "让个人助手读取画像",
       "unused": "还没有助手用过"
     },
@@ -89,7 +89,7 @@ export default interface Resources {
         "attributes": "画像属性",
         "close": "关闭右侧栏",
         "dimensionHint": "选择左侧维度，逐层展开画像地图。",
-        "domainHint": "选择左侧领域，逐层展开画像地图。",
+        "domainHint": "选择左侧板块，逐层展开画像地图。",
         "explore": "继续探索",
         "facts": "画像事实",
         "footer": "PERSONAL KNOWLEDGE MAP",
@@ -106,19 +106,19 @@ export default interface Resources {
         "close": "收起左栏",
         "dimensionsIntro": "沿着{{count, zhNumeral}}条生活脉络，探索你的画像。",
         "dimensionsTitle": "画像维度",
-        "domainsIntro": "沿着{{count, zhNumeral}}个生活领域，探索你的画像。",
-        "domainsTitle": "画像领域",
+        "domainsIntro": "走进{{count, zhNumeral}}个生活板块，探索你的画像。",
+        "domainsTitle": "画像板块",
         "eyebrow": "A MAP OF YOU",
         "grouping": "画像分组方式",
         "groupings": {
           "dimension": "按维度",
-          "domain": "按领域"
+          "domain": "按板块"
         },
         "tagline": "每一条线索，<br/><em>都更了解你。</em>"
       },
       "preview": {
         "dimensions": "{{count}} 个维度",
-        "domains": "{{count}} 个领域",
+        "domains": "{{count}} 个板块",
         "fact": "{{attr}}：{{value}}",
         "topics": "{{count}} 个主题"
       },
@@ -129,13 +129,13 @@ export default interface Resources {
       },
       "toolbar": {
         "collapseDimension": "收起当前维度的{{level}}级节点",
-        "collapseDomain": "收起当前领域的{{level}}级节点",
+        "collapseDomain": "收起当前板块的{{level}}级节点",
         "expandDimension": "展开当前维度的{{level}}级节点",
-        "expandDomain": "展开当前领域的{{level}}级节点",
+        "expandDomain": "展开当前板块的{{level}}级节点",
         "fit": "适应画布",
         "level": "{{level}}级",
         "pickDimension": "先点击一个维度",
-        "pickDomain": "先点击一个领域",
+        "pickDomain": "先点击一个板块",
         "replayIntro": "重放开场动画",
         "reset": "复原",
         "zoomIn": "放大",
@@ -223,7 +223,7 @@ export default interface Resources {
       "batch_changed": "记录已被修改，整批操作未保存，请刷新后重试",
       "chat_missing": "原始聊天文件不存在或与来源记录不一致，请检查本次抽取的来源文件",
       "chat_unavailable": "该来源未保存聊天定位信息，无法查看原文",
-      "duplicate_domains": "批量操作不能包含重复领域",
+      "duplicate_domains": "批量操作不能包含重复板块",
       "duplicate_facts": "批量操作不能包含重复记录",
       "fact_changed": "记录已被修改，请刷新数据后核对并重试",
       "fact_not_found": "画像记录不存在",
@@ -238,11 +238,11 @@ export default interface Resources {
       "storage_locked": "数据尚未解锁，请重新输入密码",
       "style_missing": "这次运行没有抽取说话风格，做分身请运行 weclone-cli build-profile --purpose clone",
       "summary_batch_changed": "总结已被修改，整批操作未保存，请刷新后重试",
-      "summary_batch_stale": "有领域的画像已变动，请先重新生成总结再确认",
+      "summary_batch_stale": "有板块的画像已变动，请先重新生成总结再确认",
       "summary_changed": "总结已被修改，请刷新后核对并重试",
-      "summary_generating": "正在生成领域总结，请稍候",
-      "summary_not_found": "领域总结不存在",
-      "summary_stale": "这个领域的画像有变动，请先重新生成总结",
+      "summary_generating": "正在生成板块总结，请稍候",
+      "summary_not_found": "板块总结不存在",
+      "summary_stale": "这个板块的画像有变动，请先重新生成总结",
       "too_many_attempts": "尝试次数过多，请一分钟后再试",
       "unlock_required": "请重新输入密码解锁"
     },
@@ -285,7 +285,7 @@ export default interface Resources {
       },
       "directTopic": "直属属性",
       "root": "我的画像",
-      "unassignedDomain": "未归入领域"
+      "unassignedDomain": "未归入板块"
     },
     "modes": {
       "assistant": "助手接入",
@@ -293,7 +293,7 @@ export default interface Resources {
       "label": "页面",
       "profile": "人生画像",
       "style": "说话风格",
-      "summary": "领域总结"
+      "summary": "板块总结"
     },
     "privacy": {
       "badgeLabel": "隐私度：{{label}}，{{hint}}",
@@ -568,8 +568,8 @@ export default interface Resources {
         "approve": "确认",
         "asOf": "截至 {{date}}",
         "edit": "编辑",
-        "empty": "这个领域没有能写进总结的条目：要么高于所选隐私度，要么是计划承诺或已过时的信息。",
-        "emptyFull": "这个领域没有还成立的条目。",
+        "empty": "这个板块没有能写进总结的条目：要么高于所选隐私度，要么是计划承诺或已过时的信息。",
+        "emptyFull": "这个板块没有还成立的条目。",
         "facts": "{{count}} 条可用",
         "missing": "还没有生成总结。",
         "reject": "不导出",
@@ -578,7 +578,7 @@ export default interface Resources {
         "unapprove": "撤回确认"
       },
       "counts": "已确认 {{approved}} · 待确认 {{pending}} · 需生成 {{due}} · 不导出 {{rejected}}",
-      "domains": "{{count, zhNumeral}}个领域",
+      "domains": "{{count, zhNumeral}}个板块",
       "editor": {
         "saveApprove": "保存并确认",
         "summary": "总结",
@@ -587,32 +587,32 @@ export default interface Resources {
       "export": {
         "chars": "{{count}} 字",
         "confirmFull": "这份文本含私密和敏感的内容，贴出去就收不回来。确定复制吗？",
-        "empty": "确认至少一个领域的总结后，这里会出现可以粘贴给个人助理的文本。",
+        "empty": "确认至少一个板块的总结后，这里会出现可以粘贴给个人助理的文本。",
         "factCount": "{{count}} 条",
-        "facts": "每个领域附原始条目",
+        "facts": "每个板块附原始条目",
         "fullWarning": "这一级含私密和敏感的内容，贴出去就收不回来。只想给助理少一些，可以切到普通或公开再生成一份。",
         "hint": "可以粘贴到个人助理的“关于我”、自定义指令或 USER.md。贴出去的内容收不回来，复制前请再看一遍。",
         "noFacts": "不附",
         "title": "导出文本"
       },
-      "failed": "{{count}} 个领域没有生成成功，下次生成只补这些领域。",
+      "failed": "{{count}} 个板块没有生成成功，下次生成只补这些板块。",
       "failedReason": "原因：{{reason}}",
       "full": {
         "hint": "所有还成立的条目，包括私密和敏感的",
         "label": "全部"
       },
-      "generate": "生成 {{count}} 个领域",
+      "generate": "生成 {{count}} 个板块",
       "generated": "都已生成",
       "generating": "正在生成…",
-      "generatingHint": "每个领域调用一次模型，通常一两分钟，模型繁忙时会更久。生成在后台进行，可以先离开这个页面。",
+      "generatingHint": "每个板块调用一次模型，通常一两分钟，模型繁忙时会更久。生成在后台进行，可以先离开这个页面。",
       "intro": {
-        "full": "每个生活领域写一段总结，用这个领域所有还成立的条目，包括私密和敏感的。build-profile 最后一步会生成这一级。",
+        "full": "每个板块写一段总结，用这个板块所有还成立的条目，包括私密和敏感的。build-profile 最后一步会生成这一级。",
         "review": "确认过的总结才会进入导出文本和助手接入，所依据的画像一改动就停止导出，等重新生成并确认。",
-        "short": "每个生活领域写一段较短的总结，只用隐私度不高于所选级别的身份、目标、条件和偏好，不用计划承诺和已过时的信息。"
+        "short": "每个板块写一段较短的总结，只用隐私度不高于所选级别的身份、目标、条件和偏好，不用计划承诺和已过时的信息。"
       },
       "level": "隐私度上限",
-      "loadFailed": "领域总结暂时无法打开",
-      "loading": "正在读取领域总结",
+      "loadFailed": "板块总结暂时无法打开",
+      "loading": "正在读取板块总结",
       "states": {
         "approved": "已确认",
         "empty": "没有可用条目",

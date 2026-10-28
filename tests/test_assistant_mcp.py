@@ -317,7 +317,7 @@ def test_domains_left_out_are_neither_summarised_nor_searched(owner):
     assert agent.call("weclone_search", keywords=["身份"]) == (assistant.NOT_FOUND, False)
     assert "[d2] 口味偏好：爱吃辣" in agent.call("weclone_search", keywords=["辣"])[0]
     text, failed = agent.call("weclone_search", domain="d1")
-    assert failed and text.startswith("没有领域 d1")
+    assert failed and text.startswith("没有板块 d1")
 
     # Domains that come after a list was chosen stay out. Without a list every domain is in.
     assert share(["学业", "生活"]) == ["学业", "生活"]
@@ -341,7 +341,7 @@ def test_search_limits_and_explains_unusable_arguments(owner):
         ({}, "请至少给出 keywords 或 domain"),
         ({"keywords": [1]}, "keywords 要是字符串列表"),
         ({"domain": "学业"}, "domain 要是"),
-        ({"domain": "d9"}, "没有领域 d9"),
+        ({"domain": "d9"}, "没有板块 d9"),
         ({"keywords": ["辣"], "limit": 0}, "limit 要是"),
     ]:
         text, failed = agent.call("weclone_search", **arguments)

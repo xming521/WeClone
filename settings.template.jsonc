@@ -42,7 +42,7 @@
         "profile_context": {
             // 回复前从画像里选出要放进上下文的条目：路由到主题 → 取至多 fact_budget 条 → LLM 过滤
             "profile_path": null, // null：最新一次 build-profile 的 profile_hierarchy.json
-            "router": "jev", // jev：systemone 接口两段选择（先领域后主题）；llm：一次 LLM 调用选主题，更准但更慢
+            "router": "jev", // jev：systemone 接口两段选择（先板块后主题）；llm：一次 LLM 调用选主题，更准但更慢
             "jev_url": "http://127.0.0.1:8741/v1/systemone",
             "jev_api_key": null, // 有值时作为 Bearer token 发送
             "jev_top_domains": 3,

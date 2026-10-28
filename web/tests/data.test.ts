@@ -365,7 +365,7 @@ test('domain grouping merges topics across dimensions and keeps the stored attri
   assert.equal(model.grouping, 'domain');
   assert.deepEqual(
     model.dimensionIds.map((id) => model.nodes.get(id)!.name),
-    ['工作', '兴趣', '未归入领域'],
+    ['工作', '兴趣', '未归入板块'],
   );
   const work = model.nodes.get(model.dimensionIds[0])!;
   assert.equal(work.kind, 'dimension');

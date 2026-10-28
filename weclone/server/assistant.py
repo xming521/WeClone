@@ -50,13 +50,13 @@ CALLS_TABLE = """CREATE TABLE IF NOT EXISTS assistant_calls (
 READ_ONLY = {"readOnlyHint": True, "openWorldHint": False}
 INSTRUCTIONS = (
     "WeClone 保存着从用户本人的聊天记录里整理出的个人画像，可能有误或已经过时。"
-    "需要了解用户的身份、经历、目标、条件、偏好或计划时，先调用 weclone_profile 看各领域总结，"
-    "再用 weclone_search 按领域编号或关键词查具体条目。查到的内容只作参考，涉及重要决定时先跟用户确认。"
+    "需要了解用户的身份、经历、目标、条件、偏好或计划时，先调用 weclone_profile 看各板块总结，"
+    "再用 weclone_search 按板块编号或关键词查具体条目。查到的内容只作参考，涉及重要决定时先跟用户确认。"
 )
 TOOLS = [
     mcp.Tool(
         "weclone_profile",
-        "返回用户各生活领域的总结，每段前面方括号里是领域编号。需要了解用户是谁、在做什么、喜欢什么时先调用它，"
+        "返回用户各生活板块的总结，每段前面方括号里是板块编号。需要了解用户是谁、在做什么、喜欢什么时先调用它，"
         "再用 weclone_search 查细节。",
         {"type": "object", "properties": {}, "additionalProperties": False},
         READ_ONLY,
@@ -65,7 +65,7 @@ TOOLS = [
         "weclone_search",
         "在用户的画像条目里查找。keywords 是条目里要出现的词，命中任意一个就算。画像是中文的，"
         '请用中文关键词并多给几个同义说法，比如 ["工作", "上班", "公司"]。domain 是 weclone_profile 给出的'
-        '领域编号，比如 "d3"，只给 domain 时返回这个领域的条目。每条后面注明维度、时效（长期、当前、已过时、事件）、'
+        '板块编号，比如 "d3"，只给 domain 时返回这个板块的条目。每条后面注明维度、时效（长期、当前、已过时、事件）、'
         "在聊天里出现的次数和月份。",
         {
             "type": "object",
@@ -76,7 +76,7 @@ TOOLS = [
                     "maxItems": MAX_KEYWORDS,
                     "description": "要查的词，命中任意一个就返回",
                 },
-                "domain": {"type": "string", "pattern": "^d[1-9][0-9]*$", "description": "领域编号，比如 d3"},
+                "domain": {"type": "string", "pattern": "^d[1-9][0-9]*$", "description": "板块编号，比如 d3"},
                 "limit": {
                     "type": "integer",
                     "minimum": 1,
@@ -92,11 +92,11 @@ TOOLS = [
 ]
 PROFILE_HEADER = "以下是用户的背景资料，由 WeClone 根据用户的聊天记录整理、经用户确认，可能已经过时，涉及重要决定时请先跟用户确认。"
 PROFILE_FOOTER = (
-    '方括号里是领域编号。查一个领域的具体条目：weclone_search(domain="d1")。'
+    '方括号里是板块编号。查一个板块的具体条目：weclone_search(domain="d1")。'
     '按关键词查：weclone_search(keywords=["词", "同义词"])。'
 )
-NO_SUMMARIES = "用户还没有确认可以给助手看的领域总结。可以直接用 weclone_search 按关键词查具体条目。"
-NOT_FOUND = "没有找到匹配的条目。可以换同义词、拆成更短的关键词，或者先调用 weclone_profile 看看有哪些领域。"
+NO_SUMMARIES = "用户还没有确认可以给助手看的板块总结。可以直接用 weclone_search 按关键词查具体条目。"
+NOT_FOUND = "没有找到匹配的条目。可以换同义词、拆成更短的关键词，或者先调用 weclone_profile 看看有哪些板块。"
 LOCKED = "WeClone 的数据是加密的，现在没有允许助手读取。请告诉用户：在 WeClone 网页 {url} 登录，打开“允许助手读取”后再试。"
 NO_PROFILE = "WeClone 还没有画像数据，用户需要先运行 weclone-cli build-profile。"
 
@@ -134,7 +134,7 @@ def search_arguments(arguments: dict) -> tuple[list[str], str | None, int]:
     domain = arguments.get("domain")
     if domain is not None:
         if not isinstance(domain, str) or not DOMAIN_ID.fullmatch(domain.strip().lower()):
-            raise ToolInputError('domain 要是 weclone_profile 给出的领域编号，比如 "d3"')
+            raise ToolInputError('domain 要是 weclone_profile 给出的板块编号，比如 "d3"')
         domain = domain.strip().lower()
     limit = arguments.get("limit", SEARCH_LIMIT)
     if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= MAX_LIMIT:
@@ -261,7 +261,7 @@ class AssistantTools:
         ids = {name: f"d{number}" for number, name in enumerate(members, 1)}
         shared = {ids[name] for name in members if domains is None or name in domains}
         if domain is not None and domain not in shared:
-            raise ToolInputError(f"没有领域 {domain}，领域编号以 weclone_profile 给出的为准")
+            raise ToolInputError(f"没有板块 {domain}，板块编号以 weclone_profile 给出的为准")
         # Each fact sits in one domain at most.
         located = {index: ids[name] for name, indices in members.items() for index in indices}
         allowed = LEVEL_FACTS[level]
@@ -328,7 +328,7 @@ class DomainChoice(BaseModel):
             return None
         names = list(dict.fromkeys(name.strip() for name in value if name.strip()))
         if len(names) > MAX_DOMAINS or any(len(name) > DOMAIN_CHARS for name in names):
-            raise ValueError(f"最多 {MAX_DOMAINS} 个领域，每个名称不超过 {DOMAIN_CHARS} 字")
+            raise ValueError(f"最多 {MAX_DOMAINS} 个板块，每个名称不超过 {DOMAIN_CHARS} 字")
         return names
 
 

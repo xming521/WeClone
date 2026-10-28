@@ -26,7 +26,7 @@ cp settings.template.jsonc settings.jsonc
 
 ## 配置模型后端
 
-抽取画像、整理记忆和生成领域总结都调用 API 模型，由 `agent_distill_args.llm_provider` 选择后端：
+抽取画像、整理记忆和生成板块总结都调用 API 模型，由 `agent_distill_args.llm_provider` 选择后端：
 
 - `codex_exec`（默认）：通过本机的 [Codex CLI](https://github.com/openai/codex) 调用模型，需要先安装并登录。模型和推理强度在 `codex_exec_args` 中设置。
 - `api`：任意 OpenAI 兼容接口。地址、密钥和模型名填在 `make_dataset_args` 的 `base_url`、`llm_api_key`、`model_name`，并发数、超时和输出上限在 `agent_distill_args` 的 `batch_size`、`timeout`、`max_tokens` 中设置。运行 `build-profile` 时必须用 `--max-context-tokens` 指定模型的输入上限。

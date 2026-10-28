@@ -32,20 +32,20 @@
     "chat_unavailable": "该来源未保存聊天定位信息，无法查看原文",
     "chat_missing": "原始聊天文件不存在或与来源记录不一致，请检查本次抽取的来源文件",
     "style_missing": "这次运行没有抽取说话风格，做分身请运行 weclone-cli build-profile --purpose clone",
-    "summary_generating": "正在生成领域总结，请稍候",
-    "summary_not_found": "领域总结不存在",
+    "summary_generating": "正在生成板块总结，请稍候",
+    "summary_not_found": "板块总结不存在",
     "summary_changed": "总结已被修改，请刷新后核对并重试",
-    "summary_stale": "这个领域的画像有变动，请先重新生成总结",
-    "duplicate_domains": "批量操作不能包含重复领域",
+    "summary_stale": "这个板块的画像有变动，请先重新生成总结",
+    "duplicate_domains": "批量操作不能包含重复板块",
     "summary_batch_changed": "总结已被修改，整批操作未保存，请刷新后重试",
-    "summary_batch_stale": "有领域的画像已变动，请先重新生成总结再确认",
+    "summary_batch_stale": "有板块的画像已变动，请先重新生成总结再确认",
     "assistant_plaintext": "数据是明文存储的，令牌有效时助手就能读取，不需要打开",
     "api_not_found": "接口不存在"
   },
   "app": {
     "title": "我的画像 · WeClone",
     "openLeftPanel": "展开左栏",
-    "domainOverview_other": "{{count, zhNumeral}}个领域总览",
+    "domainOverview_other": "{{count, zhNumeral}}个板块总览",
     "dimensionOverview_other": "{{count, zhNumeral}}维总览",
     "emptyView": "当前视图没有画像记录",
     "canvasHelp": "悬停点亮归属路径 · 点击展开并聚焦，再点一次收起 · 拖动节点牵动图谱",
@@ -56,7 +56,7 @@
     "label": "页面",
     "profile": "人生画像",
     "style": "说话风格",
-    "summary": "领域总结",
+    "summary": "板块总结",
     "assistant": "助手接入",
     "bots": "机器人接入"
   },
@@ -86,23 +86,23 @@
       "5": "重要计划与承诺",
       "8": "兴趣与偏好"
     },
-    "unassignedDomain": "未归入领域",
+    "unassignedDomain": "未归入板块",
     "directTopic": "直属属性"
   },
   "atlas": {
     "attributes_other": "{{count}} 项画像属性",
     "left": {
       "dimensionsTitle": "画像维度",
-      "domainsTitle": "画像领域",
+      "domainsTitle": "画像板块",
       "close": "收起左栏",
       "eyebrow": "A MAP OF YOU",
       "tagline": "每一条线索，<br/><em>都更了解你。</em>",
-      "domainsIntro_other": "沿着{{count, zhNumeral}}个生活领域，探索你的画像。",
+      "domainsIntro_other": "走进{{count, zhNumeral}}个生活板块，探索你的画像。",
       "dimensionsIntro_other": "沿着{{count, zhNumeral}}条生活脉络，探索你的画像。",
       "grouping": "画像分组方式",
       "groupings": {
         "dimension": "按维度",
-        "domain": "按领域"
+        "domain": "按板块"
       }
     },
     "detail": {
@@ -119,18 +119,18 @@
       "reviewed": "已审核画像",
       "progressCounts": "待审核 {{pending}} · 已采纳 {{approved}} · 未采纳 {{rejected}}",
       "explore": "继续探索",
-      "domainHint": "选择左侧领域，逐层展开画像地图。",
+      "domainHint": "选择左侧板块，逐层展开画像地图。",
       "dimensionHint": "选择左侧维度，逐层展开画像地图。",
       "footer": "PERSONAL KNOWLEDGE MAP"
     },
     "canvas": "可交互的画像知识图谱",
     "toolbar": {
       "pickDimension": "先点击一个维度",
-      "pickDomain": "先点击一个领域",
+      "pickDomain": "先点击一个板块",
       "expandDimension": "展开当前维度的{{level}}级节点",
       "collapseDimension": "收起当前维度的{{level}}级节点",
-      "expandDomain": "展开当前领域的{{level}}级节点",
-      "collapseDomain": "收起当前领域的{{level}}级节点",
+      "expandDomain": "展开当前板块的{{level}}级节点",
+      "collapseDomain": "收起当前板块的{{level}}级节点",
       "level": "{{level}}级",
       "zoomIn": "放大",
       "zoomOut": "缩小",
@@ -146,7 +146,7 @@
     "preview": {
       "fact": "{{attr}}：{{value}}",
       "topics_other": "{{count}} 个主题",
-      "domains_other": "{{count}} 个领域",
+      "domains_other": "{{count}} 个板块",
       "dimensions_other": "{{count}} 个维度"
     }
   },
@@ -470,13 +470,13 @@
     }
   },
   "summary": {
-    "loadFailed": "领域总结暂时无法打开",
-    "loading": "正在读取领域总结",
-    "domains_other": "{{count, zhNumeral}}个领域",
+    "loadFailed": "板块总结暂时无法打开",
+    "loading": "正在读取板块总结",
+    "domains_other": "{{count, zhNumeral}}个板块",
     "title": "给个人助理的背景资料",
     "intro": {
-      "full": "每个生活领域写一段总结，用这个领域所有还成立的条目，包括私密和敏感的。build-profile 最后一步会生成这一级。",
-      "short": "每个生活领域写一段较短的总结，只用隐私度不高于所选级别的身份、目标、条件和偏好，不用计划承诺和已过时的信息。",
+      "full": "每个板块写一段总结，用这个板块所有还成立的条目，包括私密和敏感的。build-profile 最后一步会生成这一级。",
+      "short": "每个板块写一段较短的总结，只用隐私度不高于所选级别的身份、目标、条件和偏好，不用计划承诺和已过时的信息。",
       "review": "确认过的总结才会进入导出文本和助手接入，所依据的画像一改动就停止导出，等重新生成并确认。"
     },
     "level": "隐私度上限",
@@ -485,13 +485,13 @@
       "hint": "所有还成立的条目，包括私密和敏感的"
     },
     "generating": "正在生成…",
-    "generate_other": "生成 {{count}} 个领域",
+    "generate_other": "生成 {{count}} 个板块",
     "generated": "都已生成",
     "approveAll": "全部确认",
     "approveAllCount_other": "全部确认（{{count}}）",
     "counts": "已确认 {{approved}} · 待确认 {{pending}} · 需生成 {{due}} · 不导出 {{rejected}}",
-    "generatingHint": "每个领域调用一次模型，通常一两分钟，模型繁忙时会更久。生成在后台进行，可以先离开这个页面。",
-    "failed_other": "{{count}} 个领域没有生成成功，下次生成只补这些领域。",
+    "generatingHint": "每个板块调用一次模型，通常一两分钟，模型繁忙时会更久。生成在后台进行，可以先离开这个页面。",
+    "failed_other": "{{count}} 个板块没有生成成功，下次生成只补这些板块。",
     "failedReason": "原因：{{reason}}",
     "states": {
       "empty": "没有可用条目",
@@ -511,8 +511,8 @@
       "asOf": "截至 {{date}}",
       "stale": "画像有变动，这段已不再导出，重新生成后再确认。",
       "missing": "还没有生成总结。",
-      "empty": "这个领域没有能写进总结的条目：要么高于所选隐私度，要么是计划承诺或已过时的信息。",
-      "emptyFull": "这个领域没有还成立的条目。",
+      "empty": "这个板块没有能写进总结的条目：要么高于所选隐私度，要么是计划承诺或已过时的信息。",
+      "emptyFull": "这个板块没有还成立的条目。",
       "approve": "确认",
       "edit": "编辑",
       "unapprove": "撤回确认",
@@ -521,14 +521,14 @@
     },
     "export": {
       "title": "导出文本",
-      "facts": "每个领域附原始条目",
+      "facts": "每个板块附原始条目",
       "factCount_other": "{{count}} 条",
       "noFacts": "不附",
       "chars_other": "{{count}} 字",
       "confirmFull": "这份文本含私密和敏感的内容，贴出去就收不回来。确定复制吗？",
       "fullWarning": "这一级含私密和敏感的内容，贴出去就收不回来。只想给助理少一些，可以切到普通或公开再生成一份。",
       "hint": "可以粘贴到个人助理的“关于我”、自定义指令或 USER.md。贴出去的内容收不回来，复制前请再看一遍。",
-      "empty": "确认至少一个领域的总结后，这里会出现可以粘贴给个人助理的文本。"
+      "empty": "确认至少一个板块的总结后，这里会出现可以粘贴给个人助理的文本。"
     }
   },
   "access": {
@@ -552,7 +552,7 @@
     "connected": "已接入 · {{level}}",
     "noToken": "还没有令牌",
     "title": "让个人助手读取画像",
-    "intro": "Claude Code、Codex 等支持 MCP 的助手可以连接这里的 WeClone：weclone_profile 返回你确认过的领域总结，weclone_search 按关键词或领域查画像条目。所有助手共用一个令牌，读到哪些内容由下面选的级别和领域决定，每次调用都会记下返回了什么。",
+    "intro": "Claude Code、Codex 等支持 MCP 的助手可以连接这里的 WeClone：weclone_profile 返回你确认过的板块总结，weclone_search 按关键词或板块查画像条目。所有助手共用一个令牌，读到哪些内容由下面选的级别和板块决定，每次调用都会记下返回了什么。",
     "address": "MCP 地址 <code>{{url}}</code>",
     "addressPlaintext": "MCP 地址 <code>{{url}}</code>。数据是明文存储的，令牌有效时助手随时可以读取",
     "scope": "提供哪些信息",
@@ -571,15 +571,15 @@
         "hint": "只有公开条目。"
       }
     },
-    "domains": "领域",
-    "allDomains": "全部提供，以后新出现的领域也提供",
-    "someDomains": "提供 {{shared}}/{{total}} 个，以后新出现或改名的领域不提供",
-    "resetDomains": "改回全部领域",
-    "sharedDomains": "提供的领域",
+    "domains": "板块",
+    "allDomains": "全部提供，以后新出现的板块也提供",
+    "someDomains": "提供 {{shared}}/{{total}} 个，以后新出现或改名的板块不提供",
+    "resetDomains": "改回全部板块",
+    "sharedDomains": "提供的板块",
     "domainFacts_other": "{{count}} 条",
     "domainFactsSummary_other": "{{count}} 条 · 有总结",
-    "noDomains": "还没有画像，运行 build-profile 之后这里会列出各个领域。",
-    "domainsNote_other": "勾掉的领域，总结和条目都不给助手。助手现在能读到 {{count}} 段领域总结：这个级别、勾选的领域里、在<link>领域总结页</link>确认过的。改了从助手的下一次调用起生效，不用重新配置。",
+    "noDomains": "还没有画像，运行 build-profile 之后这里会列出各个板块。",
+    "domainsNote_other": "勾掉的板块，总结和条目都不给助手。助手现在能读到 {{count}} 段板块总结：这个级别、勾选的板块里、在<link>板块总结页</link>确认过的。改了从助手的下一次调用起生效，不用重新配置。",
     "access": {
       "title": "允许助手读取",
       "until": "到 {{time}} 自动关闭",

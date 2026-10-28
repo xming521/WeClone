@@ -381,7 +381,7 @@ def test_build_profile_ends_with_the_full_summary_of_every_domain(setup, tmp_pat
 def test_build_profile_notes_domains_left_without_a_summary(setup, tmp_path, monkeypatch):
     monkeypatch.setattr(profile_summary, "summary_runner", Failing)
     note = profile_summary.build_summaries(tmp_path)
-    assert note == "3 个领域没有生成成功，下次生成只补这些领域。原因：codex not found"
+    assert note == "3 个板块没有生成成功，下次生成只补这些板块。原因：codex not found"
 
 
 def test_build_profile_notes_a_failure_outside_the_model_run_and_frees_the_lock(setup, tmp_path, monkeypatch):
