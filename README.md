@@ -29,12 +29,12 @@ WeClone distills your identity, goals, preferences and current situation from yo
 
 ## ✨ Core Features
 
-- 🧠 **MCP access for AI assistants**: Claude Code, Codex and other assistants read your portrait and domain summaries over MCP. You choose which domains and privacy levels they can read.
-- 🎭 **Your own AI clone**: fine-tune an open model on your chat history and deploy it to Telegram, Discord, Slack, Feishu and more through AstrBot or LangBot. Training data is filtered for personal information.
-- 🗣️ **Speaking style analysis**: 179 style features in ten categories, covering vocabulary, syntax, tone, emotion, rhetoric and conversational rhythm.
 - 🗺️ **Interactive life portrait**: your portrait is organized by domain and topic. Every fact traces back to its source and can be reviewed and edited. Extraction runs through Codex or any OpenAI-compatible API.
-- 🔒 **Privacy first**: encrypted local storage by default, a privacy level on every fact, and full control over what is exported and shared.
+- 🎭 **Your own AI clone**: fine-tune an open model on your chat history and deploy it to Telegram, Discord, Slack, Feishu and more through AstrBot or LangBot. Training data is filtered for personal information.
+- 🧠 **Connect AI assistants**: Claude Code, Codex and other assistants read your portrait and domain summaries over MCP. You choose which domains and privacy levels they can read.
+- 🗣️ **Speaking style analysis**: 179 style features in ten categories, covering vocabulary, syntax, tone, emotion, rhetoric and conversational rhythm.
 - 🤖 **Agent clone** (in development): no training required. A large model drives the clone in real time from your portrait, memories and speaking style.
+- 🔒 **Privacy first**: encrypted local storage by default, a privacy level on every fact, and full control over what is exported and shared.
 
 > [!NOTE]
 > WeClone now goes beyond fine-tuned clones. The original fine-tuning workflow remains fully supported, see [Fine-tuned clone](docs/en/finetune.md).

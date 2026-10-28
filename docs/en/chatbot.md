@@ -21,8 +21,7 @@ Bot platforms call the [fine-tuned clone](finetune.md) through the OpenAI-compat
    If the bot platform runs in Docker, add `--host 172.17.0.1` (the host's address on the Docker network) so the container can reach the server.
 2. Open the Bots page (`#/bots`) in the web UI and generate a token. The page shows the API Base URL and API Key.
    - All bots share this one token, and it keeps working across server restarts. Regenerating or withdrawing it stops the old one at once.
-   - In encrypted mode the data key is stored on this machine encrypted under the token, so bots are served without anyone logged in.
-   - Keep the token as safe as the password. Together with `.weclone/bots.sqlite3` it decrypts all data.
+   - Keep the token as safe as the password, see [Security](security.md#keys-and-tokens).
 
 ## AstrBot
 
