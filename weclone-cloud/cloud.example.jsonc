@@ -1,30 +1,32 @@
 {
   // ---------------------------------------------------------------------------
-  // weclone-cloud 配置（DeepSeek 版）
+  // weclone-cloud configuration with MiniMax defaults
   // 密钥只放在环境变量里；文件里出现的 api_key 仅供临时实验，doctor 会提示。
-  // 官方文档：https://api-docs.deepseek.com/zh-cn/quick_start/pricing/
+  // Models: https://platform.minimax.io/docs/guides/models-intro.md
   // ---------------------------------------------------------------------------
   "api": {
-    // 官方 OpenAI 格式地址；加不加 /v1 都兼容
-    "base_url": "https://api.deepseek.com",
-    // 2026-10 起：deepseek-flash（快、便宜） / deepseek-v4-pro（强、贵）
-    "model": "deepseek-flash",
+    // Use cn_zh for the https://api.minimaxi.com/v1 regional endpoint.
+    "provider": "minimax",
+    "region": "global_en",
+    "base_url": "https://api.minimax.io/v1",
+    // MiniMax-M3 is also available in the provider model registry.
+    "model": "MiniMax-M3.1-Flash",
     "api_key_env": "WECLONE_API_KEY",
     "temperature": 0,
     // 打分只要 60 字左右；调大能防截断，但思考模式会先吃掉 token
     "max_tokens": 400,
     "timeout": 60,
-    // flash 并发上限 2500，先保守给 8，稳定后再加
+    // Start with conservative concurrency and raise it after observing workload limits.
     "max_concurrency": 8,
     "max_retries": 5,
-    // DeepSeek 只支持 json_object（不支持 json_schema 强约束）
+    // Request JSON objects for scoring responses.
     "json_mode": "object",
-    // 思考模式默认开启且更贵更慢；auto = 命中 deepseek 时关闭，服务端如需更强推理改 "enabled"
+    // The provider preset sends the model's default reasoning effort.
     "thinking": "auto",
-    // 价格只用于成本估算（人民币 / 百万 token）：此处为 flash 高峰价，空闲时段减半
-    "price_input_per_million": 2,
-    "price_output_per_million": 8,
-    "price_currency": "CNY"
+    // Prices are in USD per million tokens and are used only for estimates.
+    "price_input_per_million": 0.15,
+    "price_output_per_million": 0.60,
+    "price_currency": "USD"
   },
 
   "scoring": {

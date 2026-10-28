@@ -12,9 +12,10 @@ from pathlib import Path
 from typing import Any, Literal
 
 import pyjson5
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from .errors import ConfigError
+from .providers import API_PROVIDER_REGISTRY, MINIMAX_PROVIDER
 
 DEFAULT_CONFIG_NAME = "cloud.jsonc"
 
@@ -26,8 +27,10 @@ class _Section(BaseModel):
 class ApiSettings(_Section):
     """OpenAI-compatible chat endpoint used for scoring / rewriting / any LLM step."""
 
-    base_url: str = "https://api.deepseek.com"
-    model: str = "deepseek-flash"
+    provider: str = MINIMAX_PROVIDER
+    region: str = "global_en"
+    base_url: str = "https://api.minimax.io/v1"
+    model: str = "MiniMax-M3.1-Flash"
     api_key_env: str = "WECLONE_API_KEY"
     api_key: str | None = None
     temperature: float = 0.0
@@ -46,6 +49,42 @@ class ApiSettings(_Section):
     price_input_per_million: float | None = None
     price_output_per_million: float | None = None
     price_currency: str = "CNY"
+
+    @model_validator(mode="before")
+    @classmethod
+    def _apply_provider_defaults(cls, value: Any) -> Any:
+        if not isinstance(value, dict):
+            return value
+        data = dict(value)
+        if "provider" not in data and ("base_url" in data or "model" in data):
+            data["provider"] = "custom"
+            return data
+        provider = str(data.get("provider") or MINIMAX_PROVIDER)
+        preset = API_PROVIDER_REGISTRY.get(provider)
+        if preset is None:
+            return data
+        region = str(data.get("region") or preset["default_region"])
+        endpoint = preset["endpoints"].get(region)
+        if endpoint is None:
+            supported = ", ".join(sorted(preset["endpoints"]))
+            raise ValueError(f"Unsupported {provider} region {region!r}; choose one of: {supported}")
+        data.setdefault("provider", provider)
+        data.setdefault("region", region)
+        data.setdefault("base_url", endpoint)
+        data.setdefault("model", preset["default_model"])
+
+        model = preset["models"].get(data["model"])
+        if model is not None:
+            pricing = model["pricing_usd_per_million_tokens"]
+            data.setdefault("price_input_per_million", pricing["input"])
+            data.setdefault("price_output_per_million", pricing["output"])
+            data.setdefault("price_currency", "USD")
+            effort = model.get("reasoning_effort_default")
+            if effort:
+                extra_body = dict(data.get("extra_body") or {})
+                extra_body.setdefault("reasoning_effort", effort)
+                data["extra_body"] = extra_body
+        return data
 
     @field_validator("base_url")
     @classmethod
