@@ -106,7 +106,7 @@ export default interface Resources {
         "close": "收起左栏",
         "dimensionsIntro": "沿着{{count, zhNumeral}}条生活脉络，探索你的画像。",
         "dimensionsTitle": "画像维度",
-        "domainsIntro": "走进{{count, zhNumeral}}个生活板块，探索你的画像。",
+        "domainsIntro": "走进人生的{{count, zhNumeral}}个板块，探索你的画像。",
         "domainsTitle": "画像板块",
         "eyebrow": "A MAP OF YOU",
         "grouping": "画像分组方式",

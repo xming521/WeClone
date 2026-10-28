@@ -19,7 +19,7 @@ Before it starts, it shows the model backend and asks you to confirm, because yo
 
 1. Prepare the chat data: group text messages by contact and split them into sessions
 2. Extract profile memories and event memories
-3. Induce life domains, then classify, group into topics and summarize the memories, giving every fact a privacy level and a time scope
+3. Induce domains, then classify, group into topics and summarize the memories, giving every fact a privacy level and a time scope
 4. Build the portrait hierarchy
 5. Write domain summaries
 6. Extract speaking style (`--purpose clone` only)

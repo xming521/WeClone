@@ -97,7 +97,7 @@
       "close": "收起左栏",
       "eyebrow": "A MAP OF YOU",
       "tagline": "每一条线索，<br/><em>都更了解你。</em>",
-      "domainsIntro_other": "走进{{count, zhNumeral}}个生活板块，探索你的画像。",
+      "domainsIntro_other": "走进人生的{{count, zhNumeral}}个板块，探索你的画像。",
       "dimensionsIntro_other": "沿着{{count, zhNumeral}}条生活脉络，探索你的画像。",
       "grouping": "画像分组方式",
       "groupings": {

@@ -56,7 +56,7 @@ INSTRUCTIONS = (
 TOOLS = [
     mcp.Tool(
         "weclone_profile",
-        "返回用户各生活板块的总结，每段前面方括号里是板块编号。需要了解用户是谁、在做什么、喜欢什么时先调用它，"
+        "返回用户各板块的总结，每段前面方括号里是板块编号。需要了解用户是谁、在做什么、喜欢什么时先调用它，"
         "再用 weclone_search 查细节。",
         {"type": "object", "properties": {}, "additionalProperties": False},
         READ_ONLY,
