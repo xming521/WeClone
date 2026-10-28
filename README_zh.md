@@ -24,21 +24,29 @@
   <a href="https://docs.weclone.love/zh/docs/introduce/what-is-weclone.html" target="_blank"> 项目文档 </a>
 </p>
 
-WeClone 从你的数字生活中提炼身份、目标、偏好与近况，按生活板块整理成一份可审核、可追溯、按需授权的人生画像，并分析你的说话风格。画像可以作为 AI 助理的长期记忆，也将驱动具有你个人风格的数字分身。目前支持聊天记录，更多数据源持续接入中。
+WeClone 从你的数字生活中提炼身份、目标、偏好与近况，按工作、家庭、健康等板块整理成一份可审核、可追溯、按需授权的人生画像，并分析你的说话风格。画像可以作为 AI 助理的长期记忆，也将驱动具有你个人风格的数字分身。目前支持聊天记录，更多数据源持续接入中。
 
 ## ✨ 核心功能
 
-- 🧠 **MCP 接入 AI 助理**：Claude Code、Codex 等助手可通过 MCP 读取你的画像与板块总结，开放范围按生活板块和隐私级别精细控制。全程基于 API 模型，无需 GPU。
+- 🧠 **MCP 接入 AI 助理**：Claude Code、Codex 等助手可通过 MCP 读取你的画像与板块总结，能读哪些板块、读到哪个隐私级别由你设定。
 - 🎭 **专属数字分身**：基于聊天记录微调开源模型，并通过 AstrBot、LangBot 部署至 Telegram、Discord、Slack、飞书等平台。训练数据经过隐私信息过滤。
 - 🗣️ **说话风格分析**：覆盖词汇、句式、语气、情绪、修辞、互动节奏等十大类、179 项风格特征。
-- 🗺️ **交互式人生画像**：画像按生活板块与主题逐层组织，每条事实均可追溯原文，支持逐条审核与修改。
+- 🗺️ **交互式人生画像**：画像按板块与主题逐层组织，每条事实均可追溯原文，支持逐条审核与修改。可通过 Codex 或任意 OpenAI 兼容 API 抽取画像。
 - 🔒 **隐私优先**：默认本地加密存储，每条事实标注隐私级别，导出与授权范围由你决定。
 - 🤖 **Agent 分身**（开发中）：无需训练，由大模型结合画像、记忆与说话风格实时驱动。
 
 > [!NOTE]
 > WeClone 现在不只做微调分身。原有的微调流程完整保留，见[微调分身](docs/zh/finetune.md)。
 
-### 数据源平台适配
+## 📰 近期更新
+
+- [26/10] 人生画像：`build-profile` 一条命令完成画像抽取、整理与板块总结，并在网页上逐条审核
+- [26/10] 助手接入：通过 MCP 向 Claude Code、Codex 等助手提供人生画像
+- [26/10] 数据默认加密存储，聊天机器人通过令牌调用分身
+- [25/07/10] 数据源增加 Telegram
+- [25/06/05] 支持图片模态数据微调
+
+## 📥 数据源平台适配
 
 人生画像只读取文字消息，下表是微调分身支持的消息类型。导出和配置方法见[准备数据](docs/zh/data.md)。
 
@@ -49,13 +57,7 @@ WeClone 从你的数字生活中提炼身份、目标、偏好与近况，按生
 | Discord | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 |
 | Slack | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 |
 
-## 📰 近期更新
-
-- [26/10] 人生画像：`build-profile` 一条命令完成画像抽取、整理与板块总结，并在网页上逐条审核
-- [26/10] 助手接入：通过 MCP 向 Claude Code、Codex 等助手提供人生画像
-- [26/10] 数据默认加密存储，聊天机器人通过令牌调用分身
-- [25/07/10] 数据源增加 Telegram
-- [25/06/05] 支持图片模态数据微调
+其他平台的聊天记录可以转换成 WeClone 的通用 CSV 格式，放进 `dataset/csv/` 使用，格式见文档站的[聊天平台适配](https://docs.weclone.love/zh/docs/deploy/export-chat-history.html)。
 
 ## 🚀 快速开始
 
@@ -75,7 +77,7 @@ cp settings.template.jsonc settings.jsonc
 
 ### 2. 准备数据
 
-目前支持 Telegram 聊天记录：用 Telegram Desktop 以 JSON 格式导出，把 `ChatExport_*` 文件夹放进 `dataset/telegram/`，在 `settings.jsonc` 中把 `platform` 设为 `telegram`，并在 `telegram_args.my_id` 填写你的用户 ID。详见[准备数据](docs/zh/data.md)。
+目前支持 Telegram 聊天记录：用 Telegram Desktop 以 JSON 格式导出，把 `ChatExport_*` 文件夹放进 `dataset/telegram/`，在 `settings.jsonc` 中把 `platform` 设为 `telegram`，并在 `telegram_args.my_id` 填写你的用户 ID。其他平台的聊天记录可以转换成通用 CSV 格式，放进 `dataset/csv/`。详见[准备数据](docs/zh/data.md)。
 
 ### 3. 绘制人生画像，接入 AI 助理
 
@@ -98,6 +100,9 @@ weclone-cli server --inference --port 8005   # 启动 OpenAI 兼容接口
 
 训练好的分身可以通过 AstrBot、LangBot 接入聊天平台，见[接入聊天机器人](docs/zh/chatbot.md)。
 
+> [!TIP]
+> **社群内有部署好的 Qwen2.5-VL 32B Bot，可以体验微调效果。**
+
 ## 🔒 隐私与数据安全
 
 - **抽取时调用模型服务**：绘制画像时，聊天内容会发送给你配置的模型服务，开始前会请你确认。已抽取过的内容读取本地缓存，不会再次发送。
@@ -112,7 +117,7 @@ weclone-cli server --inference --port 8005   # 启动 OpenAI 兼容接口
 | 文档 | 内容 |
 |---|---|
 | [安装与配置](docs/zh/installation.md) | 按用途安装、模型后端、说话风格与微调依赖 |
-| [准备数据](docs/zh/data.md) | 支持的数据源、Telegram 导出 |
+| [准备数据](docs/zh/data.md) | 支持的数据源、Telegram 导出、通用 CSV 格式 |
 | [人生画像与助手接入](docs/zh/profile.md) | build-profile、网页审核、板块总结、MCP |
 | [微调分身](docs/zh/finetune.md) | 硬件、模型下载、训练数据、训练与推理 |
 | [接入聊天机器人](docs/zh/chatbot.md) | 机器人令牌、AstrBot、LangBot |
@@ -134,7 +139,7 @@ weclone-cli server --inference --port 8005   # 启动 OpenAI 兼容接口
 ## 💬 问题解决
 
 - 先查阅[官方文档 FAQ](https://docs.weclone.love/zh/docs/introduce/FAQ.html)，也可以使用 [DeepWiki](https://deepwiki.com/xming521/WeClone) 解决问题。
-- 欢迎加入页面顶部的 QQ 群和 Telegram 群交流。社群内有部署好的 Qwen2.5-VL 32B Bot，可以体验微调效果。
+- 欢迎加入页面顶部的 QQ 群和 Telegram 群交流。
 
 ## ❤️ 贡献代码
 

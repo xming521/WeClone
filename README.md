@@ -25,14 +25,14 @@
   <a href="https://docs.weclone.love/en/docs/introduce/what-is-weclone.html" target="_blank"> Documentation </a> 
 </p>
 
-WeClone distills your identity, goals, preferences and current situation from your digital life into a portrait of your life, organized by domain, that you can review, trace to its sources and share on your own terms. It also analyzes your speaking style. The portrait works as long-term memory for your AI assistants and will power clones with your personal style. Chat history is supported today, with more data sources coming.
+WeClone distills your identity, goals, preferences and current situation from your digital life into a portrait of your life, organized into domains such as work, family and health, that you can review, trace to its sources and share on your own terms. It also analyzes your speaking style. The portrait works as long-term memory for your AI assistants and will power clones with your personal style. Chat history is supported today, with more data sources coming.
 
 ## ✨ Core Features
 
-- 🧠 **MCP access for AI assistants**: Claude Code, Codex and other assistants read your portrait and domain summaries over MCP, with access scoped by life domain and privacy level. Runs entirely on API models, no GPU required.
+- 🧠 **MCP access for AI assistants**: Claude Code, Codex and other assistants read your portrait and domain summaries over MCP. You choose which domains and privacy levels they can read.
 - 🎭 **Your own AI clone**: fine-tune an open model on your chat history and deploy it to Telegram, Discord, Slack, Feishu and more through AstrBot or LangBot. Training data is filtered for personal information.
 - 🗣️ **Speaking style analysis**: 179 style features in ten categories, covering vocabulary, syntax, tone, emotion, rhetoric and conversational rhythm.
-- 🗺️ **Interactive life portrait**: your portrait is organized by life domain and topic. Every fact traces back to its source and can be reviewed and edited.
+- 🗺️ **Interactive life portrait**: your portrait is organized by domain and topic. Every fact traces back to its source and can be reviewed and edited. Extraction runs through Codex or any OpenAI-compatible API.
 - 🔒 **Privacy first**: encrypted local storage by default, a privacy level on every fact, and full control over what is exported and shared.
 - 🤖 **Agent clone** (in development): no training required. A large model drives the clone in real time from your portrait, memories and speaking style.
 
@@ -41,7 +41,15 @@ WeClone distills your identity, goals, preferences and current situation from yo
 >
 > The portrait and its extraction prompts are currently in Chinese, and English chats have not been tested yet. The web UI is available in English and Chinese.
 
-### Supported data sources
+## 📰 Recent Updates
+
+- [26/10] Life portrait: `build-profile` extracts, organizes and summarizes your portrait in one command, ready for fact-by-fact review in the web UI
+- [26/10] Assistant access: Claude Code, Codex and other assistants read your portrait over MCP
+- [26/10] Encrypted storage by default, and token access for chat bots
+- [25/07/10] Telegram added as a data source
+- [25/06/05] Fine-tuning on image data
+
+## 📥 Supported Data Sources
 
 The life portrait reads text messages only. The table shows the message types the fine-tuned clone supports. See [Preparing data](docs/en/data.md) for exporting and setup.
 
@@ -52,13 +60,7 @@ The life portrait reads text messages only. The table shows the message types th
 | Discord | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 |
 | Slack | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 |
 
-## 📰 Recent Updates
-
-- [26/10] Life portrait: `build-profile` extracts, organizes and summarizes your portrait in one command, ready for fact-by-fact review in the web UI
-- [26/10] Assistant access: Claude Code, Codex and other assistants read your portrait over MCP
-- [26/10] Encrypted storage by default, and token access for chat bots
-- [25/07/10] Telegram added as a data source
-- [25/06/05] Fine-tuning on image data
+Chats from other platforms can be converted to WeClone's generic CSV format and placed in `dataset/csv/`. See [Chat Platform Adapters](https://docs.weclone.love/en/docs/deploy/export-chat-history.html) on the docs site for the format.
 
 ## 🚀 Quick Start
 
@@ -78,7 +80,7 @@ All settings live in `settings.jsonc`. The base install is enough to build your 
 
 ### 2. Prepare your data
 
-Telegram chats are supported today. Export them as JSON with Telegram Desktop, put the `ChatExport_*` folders in `dataset/telegram/`, then set `platform` to `telegram` and `telegram_args.my_id` to your user ID in `settings.jsonc`. See [Preparing data](docs/en/data.md).
+Telegram chats are supported today. Export them as JSON with Telegram Desktop, put the `ChatExport_*` folders in `dataset/telegram/`, then set `platform` to `telegram` and `telegram_args.my_id` to your user ID in `settings.jsonc`. Chats from other platforms can be converted to the generic CSV format and placed in `dataset/csv/`. See [Preparing data](docs/en/data.md).
 
 ### 3. Build your portrait and connect assistants
 
@@ -87,7 +89,7 @@ weclone-cli build-profile --purpose assistant
 weclone-cli server
 ```
 
-Open http://127.0.0.1:5175 to review your portrait fact by fact, approve the summaries on the domain summary page, then generate a token on the assistant page and run the commands it shows for Claude Code or Codex. See [Life portrait and assistants](docs/en/profile.md).
+Open http://127.0.0.1:5175 to review your portrait fact by fact, approve the summaries on the Summaries page, then generate a token on the Assistants page and run the commands it shows for Claude Code or Codex. See [Life portrait and assistants](docs/en/profile.md).
 
 ### 4. Fine-tune a clone
 
@@ -100,6 +102,9 @@ weclone-cli server --inference --port 8005   # OpenAI-compatible API
 ```
 
 Connect the trained clone to chat platforms through AstrBot or LangBot, see [Chat bots](docs/en/chatbot.md).
+
+> [!TIP]
+> **We're looking for interesting examples of native English speakers chatting with WeClone! Feel free to share them with us on Twitter.**
 
 ## 🔒 Privacy and Security
 
@@ -115,7 +120,7 @@ See [Security](docs/en/security.md).
 | Document | Covers |
 |---|---|
 | [Installation and configuration](docs/en/installation.md) | What to install, model backend, speaking style and fine-tuning dependencies |
-| [Preparing data](docs/en/data.md) | Supported sources, Telegram export |
+| [Preparing data](docs/en/data.md) | Supported sources, Telegram export, generic CSV format |
 | [Life portrait and assistants](docs/en/profile.md) | build-profile, web review, domain summaries, MCP |
 | [Fine-tuned clone](docs/en/finetune.md) | Hardware, model download, training data, training and inference |
 | [Chat bots](docs/en/chatbot.md) | Bot token, AstrBot, LangBot |
@@ -137,7 +142,7 @@ Full tutorials, configuration reference and FAQ are on the [documentation site](
 ## 💬 Troubleshooting
 
 - Start with the [official FAQ](https://docs.weclone.love/en/docs/introduce/FAQ.html). [DeepWiki](https://deepwiki.com/xming521/WeClone) can also help.
-- Join the Telegram group linked at the top of this page. We're looking for interesting examples of native English speakers chatting with WeClone, so feel free to share them with us on Twitter.
+- Join the Telegram group linked at the top of this page.
 
 ## ❤️ Contributing
 

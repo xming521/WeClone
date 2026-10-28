@@ -4,7 +4,7 @@
 
 ## 支持的数据源
 
-目前支持 Telegram 聊天记录，更多数据源持续接入中。人生画像只读取文字消息，微调分身支持的消息类型如下：
+目前支持 Telegram 聊天记录，其他平台可以转换成通用 CSV 格式导入，更多数据源持续接入中。人生画像只读取文字消息，微调分身支持的消息类型如下：
 
 | 平台 | 文字 | 图片 | 语音 | 视频 | 动画表情 | 链接（分享） | 引用 | 转发 | 位置 | 文件 |
 |------|------|------|------|------|----------|-----------|------|------|------|------|
@@ -23,6 +23,6 @@
    - `language`：聊天常用语言，`zh` 或 `en`
    - `include_type`：微调使用的消息类型，默认 `["text"]`，微调多模态模型时加上 `"image"`
 
-## 其他来源
+## 通用 CSV 格式
 
-其他来源的聊天记录可以整理成 WeClone 的 CSV 格式，放进 `dataset/csv/`，并保持 `platform` 为 `chat`。CSV 的列和目录结构见文档站的[聊天平台适配](https://docs.weclone.love/zh/docs/deploy/export-chat-history.html)。
+其他平台的聊天记录可以转换成 WeClone 的通用 CSV 格式，放进 `dataset/csv/`，并保持 `platform` 为 `chat`。CSV 的列和目录结构见文档站的[聊天平台适配](https://docs.weclone.love/zh/docs/deploy/export-chat-history.html)。

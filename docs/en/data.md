@@ -4,7 +4,7 @@
 
 ## Supported sources
 
-Telegram chats are supported today, with more data sources coming. The life portrait reads text messages only. The fine-tuned clone supports these message types:
+Telegram chats are supported today. Chats from other platforms can be imported in the generic CSV format, and more data sources are coming. The life portrait reads text messages only. The fine-tuned clone supports these message types:
 
 | Platform | Text | Images | Voice | Video | Animated Emojis/Stickers | Links (Sharing) | Quote | Forward | Location | Files |
 |----------|------|--------|-------|-------|-----------------|-----------------|-------|---------|----------|-------|
@@ -23,6 +23,6 @@ Telegram chats are supported today, with more data sources coming. The life port
    - `language`: the main language of your chats, `zh` or `en`
    - `include_type`: the message types used for fine-tuning, `["text"]` by default. Add `"image"` to fine-tune a multimodal model.
 
-## Other sources
+## Generic CSV format
 
-Chats from other sources can be converted to WeClone's CSV format and placed in `dataset/csv/`, with `platform` left as `chat`. See [Chat Platform Adapters](https://docs.weclone.love/en/docs/deploy/export-chat-history.html) on the docs site for the columns and folder layout.
+Chats from other platforms can be converted to WeClone's generic CSV format and placed in `dataset/csv/`, with `platform` left as `chat`. See [Chat Platform Adapters](https://docs.weclone.love/en/docs/deploy/export-chat-history.html) on the docs site for the columns and folder layout.
