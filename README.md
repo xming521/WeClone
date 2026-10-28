@@ -1,7 +1,6 @@
 ![download](https://github.com/user-attachments/assets/cd4a87c6-1649-4ce5-bce8-bd5b08b278de)
 
-<h3 align="center">Build a portrait of your life</h3>
-<h3 align="center">Assistants that know you. Clones that talk like you.</h3>
+<h3 align="center">Build a portrait of your life. Assistants that know you. Clones that talk like you.</h3>
 
 <div align="center">
 
@@ -17,7 +16,6 @@
 
 <a href="https://hellogithub.com/repository/12ab209b56cb4cfd885c8cfd4cfdd53e" target="_blank"><img src="https://abroad.hellogithub.com/v1/widgets/recommend.svg?rid=12ab209b56cb4cfd885c8cfd4cfdd53e&claim_uid=RThlPDoGrFvdMY5" alt="Featured｜HelloGitHub" style="width: 150px; height: 28px;" /></a>
 <a href="https://trendshift.io/repositories/13759" target="_blank"><img src="https://trendshift.io/api/badge/repositories/13759" alt="xming521%2FWeClone | Trendshift" style="width: 220px; height: 50px;" /></a>
-<a href="https://deepwiki.com/xming521/WeClone"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"  style="width: 134px; height: 23px;margin-bottom: 3px;"></a>
 </div>
 
 <p align="center">
@@ -29,20 +27,30 @@
 
 WeClone distills your identity, goals, preferences and current situation from your digital life into a portrait of your life, organized by domain, that you can review, trace to its sources and share on your own terms. It also analyzes your speaking style. The portrait works as long-term memory for your AI assistants and will power clones with your personal style. Chat history is supported today, with more data sources coming.
 
-> [!NOTE]
-> WeClone now goes beyond fine-tuned clones. The original fine-tuning workflow remains fully supported, see [Fine-tuned clone](docs/en/finetune.md).
-
 ## ✨ Core Features
 
 - 🧠 **MCP access for AI assistants**: Claude Code, Codex and other assistants read your portrait and domain summaries over MCP, with access scoped by life domain and privacy level. Runs entirely on API models, no GPU required.
 - 🎭 **Your own AI clone**: fine-tune an open model on your chat history and deploy it to Telegram, Discord, Slack, Feishu and more through AstrBot or LangBot. Training data is filtered for personal information.
-- 🗣️ **Speaking style analysis**: nine categories of style features, covering vocabulary, syntax, tone, emotion, rhetoric and conversational rhythm.
+- 🗣️ **Speaking style analysis**: 179 style features in ten categories, covering vocabulary, syntax, tone, emotion, rhetoric and conversational rhythm.
 - 🗺️ **Interactive life portrait**: your portrait is organized by life domain and topic. Every fact traces back to its source and can be reviewed and edited.
 - 🔒 **Privacy first**: encrypted local storage by default, a privacy level on every fact, and full control over what is exported and shared.
 - 🤖 **Agent clone** (in development): no training required. A large model drives the clone in real time from your portrait, memories and speaking style.
 
 > [!NOTE]
+> WeClone now goes beyond fine-tuned clones. The original fine-tuning workflow remains fully supported, see [Fine-tuned clone](docs/en/finetune.md).
+>
 > The portrait and its extraction prompts are currently in Chinese, and English chats have not been tested yet. The web UI is available in English and Chinese.
+
+### Supported data sources
+
+The life portrait reads text messages only. The table shows the message types the fine-tuned clone supports. See [Preparing data](docs/en/data.md) for exporting and setup.
+
+| Platform | Text | Images | Voice | Video | Animated Emojis/Stickers | Links (Sharing) | Quote | Forward | Location | Files |
+|----------|------|--------|-------|-------|-----------------|-----------------|-------|---------|----------|-------|
+| Telegram | ✅ | ✅ | ❌ | ❌ | ⚠️ Converted to Emoji | ❌ | ❌ | ✅ | ✅ | ❌ |
+| WhatsApp | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 |
+| Discord | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 |
+| Slack | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 |
 
 ## 📰 Recent Updates
 
@@ -152,8 +160,6 @@ This project also benefits from excellent open source projects such as [PyWxDump
 > [!CAUTION]
 > **This project is for learning, research and experimental purposes only. There are significant risks in using it for production environments, please assess carefully. Do not use for illegal purposes, consequences are at your own risk.**
 
-> [!IMPORTANT]
-> #### WeClone is currently not partnered with any platform and has not issued any cryptocurrency. The only official website is: [weclone.love](https://www.weclone.love). Beware of imitations.
 
 <details>
 <summary>Click to view disclaimer terms</summary>
@@ -224,3 +230,6 @@ This disclaimer may be revised with project updates, users should regularly chec
 [![Star History Chart](https://star-history.dera.page/svg?repos=xming521/WeClone&type=Date)](https://star-history.dera.page/#xming521/WeClone&Date)
 
 </div>
+
+
+<div align="center"> We clone, soul and all. </div>

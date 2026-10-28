@@ -1,6 +1,5 @@
 ![download](https://github.com/user-attachments/assets/cd4a87c6-1649-4ce5-bce8-bd5b08b278de)
-<h3 align="center">绘制你的人生画像</h3>
-<h3 align="center">让助理懂你，让分身像你</h3>
+<h3 align="center">绘制你的人生画像，让助理懂你，让分身像你</h3>
 
 
 <div align="center">
@@ -16,7 +15,6 @@
 
 <a href="https://hellogithub.com/repository/12ab209b56cb4cfd885c8cfd4cfdd53e" target="_blank"><img src="https://abroad.hellogithub.com/v1/widgets/recommend.svg?rid=12ab209b56cb4cfd885c8cfd4cfdd53e&claim_uid=RThlPDoGrFvdMY5" alt="Featured｜HelloGitHub" style="width: 150px; height: 28px;" /></a>
 <a href="https://trendshift.io/repositories/13759" target="_blank"><img src="https://trendshift.io/api/badge/repositories/13759" alt="xming521%2FWeClone | Trendshift" style="width: 220px; height: 50px;" /></a>
-<a href="https://deepwiki.com/xming521/WeClone"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"  style="width: 134px; height: 23px;margin-bottom: 3px;"></a>
 </div>
 
 <p align="center">
@@ -26,23 +24,34 @@
   <a href="https://docs.weclone.love/zh/docs/introduce/what-is-weclone.html" target="_blank"> 项目文档 </a>
 </p>
 
-WeClone 从你的数字生活中提炼身份、目标、偏好与近况，按生活领域整理成一份可审核、可追溯、按需授权的人生画像，并分析你的说话风格。画像可以作为 AI 助理的长期记忆，也将驱动具有你个人风格的数字分身。目前支持聊天记录，更多数据源持续接入中。
+WeClone 从你的数字生活中提炼身份、目标、偏好与近况，按生活板块整理成一份可审核、可追溯、按需授权的人生画像，并分析你的说话风格。画像可以作为 AI 助理的长期记忆，也将驱动具有你个人风格的数字分身。目前支持聊天记录，更多数据源持续接入中。
+
+## ✨ 核心功能
+
+- 🧠 **MCP 接入 AI 助理**：Claude Code、Codex 等助手可通过 MCP 读取你的画像与板块总结，开放范围按生活板块和隐私级别精细控制。全程基于 API 模型，无需 GPU。
+- 🎭 **专属数字分身**：基于聊天记录微调开源模型，并通过 AstrBot、LangBot 部署至 Telegram、Discord、Slack、飞书等平台。训练数据经过隐私信息过滤。
+- 🗣️ **说话风格分析**：覆盖词汇、句式、语气、情绪、修辞、互动节奏等十大类、179 项风格特征。
+- 🗺️ **交互式人生画像**：画像按生活板块与主题逐层组织，每条事实均可追溯原文，支持逐条审核与修改。
+- 🔒 **隐私优先**：默认本地加密存储，每条事实标注隐私级别，导出与授权范围由你决定。
+- 🤖 **Agent 分身**（开发中）：无需训练，由大模型结合画像、记忆与说话风格实时驱动。
 
 > [!NOTE]
 > WeClone 现在不只做微调分身。原有的微调流程完整保留，见[微调分身](docs/zh/finetune.md)。
 
-## ✨ 核心功能
+### 数据源平台适配
 
-- 🧠 **MCP 接入 AI 助理**：Claude Code、Codex 等助手可通过 MCP 读取你的画像与领域总结，开放范围按生活领域和隐私级别精细控制。全程基于 API 模型，无需 GPU。
-- 🎭 **专属数字分身**：基于聊天记录微调开源模型，并通过 AstrBot、LangBot 部署至 Telegram、Discord、Slack、飞书等平台。训练数据经过隐私信息过滤。
-- 🗣️ **说话风格分析**：覆盖词汇、句式、语气、情绪、修辞、互动节奏等九大类风格特征。
-- 🗺️ **交互式人生画像**：画像按生活领域与主题逐层组织，每条事实均可追溯原文，支持逐条审核与修改。
-- 🔒 **隐私优先**：默认本地加密存储，每条事实标注隐私级别，导出与授权范围由你决定。
-- 🤖 **Agent 分身**（开发中）：无需训练，由大模型结合画像、记忆与说话风格实时驱动。
+人生画像只读取文字消息，下表是微调分身支持的消息类型。导出和配置方法见[准备数据](docs/zh/data.md)。
+
+| 平台 | 文字 | 图片 | 语音 | 视频 | 动画表情 | 链接（分享） | 引用 | 转发 | 位置 | 文件 |
+|------|------|------|------|------|----------|-----------|------|------|------|------|
+| Telegram | ✅ | ✅ | ❌ | ❌ | ⚠️ 转为 Emoji | ❌ | ❌ | ✅ | ✅ | ❌ |
+| WhatsApp | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 |
+| Discord | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 |
+| Slack | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 |
 
 ## 📰 近期更新
 
-- [26/10] 人生画像：`build-profile` 一条命令完成画像抽取、整理与领域总结，并在网页上逐条审核
+- [26/10] 人生画像：`build-profile` 一条命令完成画像抽取、整理与板块总结，并在网页上逐条审核
 - [26/10] 助手接入：通过 MCP 向 Claude Code、Codex 等助手提供人生画像
 - [26/10] 数据默认加密存储，聊天机器人通过令牌调用分身
 - [25/07/10] 数据源增加 Telegram
@@ -75,7 +84,7 @@ weclone-cli build-profile --purpose assistant
 weclone-cli server
 ```
 
-打开 http://127.0.0.1:5175 逐条审核画像，在「领域总结」页确认总结，再到「助手接入」页生成令牌，按页面上的命令配置 Claude Code 或 Codex。详见[人生画像与助手接入](docs/zh/profile.md)。
+打开 http://127.0.0.1:5175 逐条审核画像，在「板块总结」页确认总结，再到「助手接入」页生成令牌，按页面上的命令配置 Claude Code 或 Codex。详见[人生画像与助手接入](docs/zh/profile.md)。
 
 ### 4. 微调数字分身
 
@@ -93,7 +102,7 @@ weclone-cli server --inference --port 8005   # 启动 OpenAI 兼容接口
 
 - **抽取时调用模型服务**：绘制画像时，聊天内容会发送给你配置的模型服务，开始前会请你确认。已抽取过的内容读取本地缓存，不会再次发送。
 - **默认加密存储**：聊天快照、画像、训练数据和微调模型加密保存在本地，网页和命令行共用一个密码。
-- **按需授权**：每条事实带有隐私级别（公开、普通、私密、敏感），助理能读取哪些领域、到哪个级别由你在网页上设定。
+- **按需授权**：每条事实带有隐私级别（公开、普通、私密、敏感），助理能读取哪些板块、到哪个级别由你在网页上设定。
 - **训练数据去敏**：微调前通过 Microsoft Presidio 和自定义禁用词过滤隐私信息，但不能保证 100% 识别。
 
 详见[数据安全](docs/zh/security.md)。
@@ -104,7 +113,7 @@ weclone-cli server --inference --port 8005   # 启动 OpenAI 兼容接口
 |---|---|
 | [安装与配置](docs/zh/installation.md) | 按用途安装、模型后端、说话风格与微调依赖 |
 | [准备数据](docs/zh/data.md) | 支持的数据源、Telegram 导出 |
-| [人生画像与助手接入](docs/zh/profile.md) | build-profile、网页审核、领域总结、MCP |
+| [人生画像与助手接入](docs/zh/profile.md) | build-profile、网页审核、板块总结、MCP |
 | [微调分身](docs/zh/finetune.md) | 硬件、模型下载、训练数据、训练与推理 |
 | [接入聊天机器人](docs/zh/chatbot.md) | 机器人令牌、AstrBot、LangBot |
 | [数据安全](docs/zh/security.md) | 存储模式、密码、密钥与令牌、请求日志 |
@@ -113,7 +122,7 @@ weclone-cli server --inference --port 8005   # 启动 OpenAI 兼容接口
 
 ## 📌 路线图
 
-- [x] 人生画像：画像抽取、审核与领域总结
+- [x] 人生画像：画像抽取、审核与板块总结
 - [x] 通过 MCP 为 AI 助理提供长期记忆
 - [ ] Agent 分身：结合画像、记忆与说话风格驱动分身
 - [ ] 支持更多数据源
@@ -143,12 +152,9 @@ BUPT VCIS Lab的支持
 
 ## ⚠️ 免责声明
 > [!CAUTION]
-> **本项目仅供学习、研究和实验用途，用于生产环境存在较大风险，请谨慎评估。请勿用于非法用途，后果自负。**   
-> [针对违规获取及利用微信终端用户数据行为的打击公告](https://mp.weixin.qq.com/s/A6h4ZLTE2EPrY7kJ5fHE2g)
+> **本项目仅供学习、研究和实验用途，用于生产环境存在较大风险，请谨慎评估。请勿用于非法用途，后果自负。**
 
 
-> [!IMPORTANT]
-> #### WeClone 目前未与任何平台合作，未发行任何数字货币。唯一官方网站：[weclone.love](https://www.weclone.love)，谨防仿冒。
 <details>
 <summary>点击查看免责条款</summary>
 
