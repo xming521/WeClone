@@ -290,33 +290,10 @@
   background: var(--color-surface);
   box-shadow: 0 10px 30px var(--color-shadow-soft);
 }
-.summary-export-head {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-}
-.summary-export-head h2 {
+.summary-export h2 {
   margin: 0;
   color: var(--color-ink-strong);
   font-size: 14px;
-}
-.summary-export-head label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--color-muted);
-  font-size: 11.5px;
-}
-.summary-export-head select {
-  padding: 4px 6px;
-  border: 1px solid var(--color-border-control);
-  border-radius: 7px;
-  background: var(--color-white);
-  color: var(--color-ink-soft);
-  font: inherit;
-  font-size: 12px;
 }
 .summary-export textarea {
   display: block;

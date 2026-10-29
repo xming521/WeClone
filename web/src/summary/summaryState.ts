@@ -24,7 +24,7 @@ export interface SummaryView {
   /** How many domains the last generation left without a summary, while they still wait for one, and why. The
    * reason is the error's own text, empty when the model calls gave up after their retries. */
   failure: { failed: number; reason: string } | null;
-  limits: { title: number; summary: number; facts: number };
+  limits: { title: number; summary: number };
   domains: SummaryDomain[];
   text: string;
 }

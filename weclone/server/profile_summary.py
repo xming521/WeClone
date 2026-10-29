@@ -1,10 +1,11 @@
-"""Domain summaries of the reviewed profile, one per life domain and level, written by the LLM from the domain's facts.
+"""Domain summaries of the reviewed profile for B's personal assistant to keep in context, one per life domain and
+level, written by the LLM from the domain's facts.
 
-The full level is B's own summary of every fact still true, written by build-profile as its last stage. The public
-and normal levels are shorter versions for a personal assistant to keep in context, written from identity, goals,
-conditions and preferences at or below that privacy level. A summary keeps the hash of the fact lines it was written
-from. Once those facts change it is stale and leaves the export until it is regenerated and approved again. Each
-summary is stored as soon as it comes back, so a model that fails on some domains still leaves the others done.
+The full level summarises every fact still true and is written by build-profile as its last stage. The public and
+normal levels are shorter, written from identity, goals, conditions and preferences at or below that privacy level.
+A summary keeps the hash of the prompt it was written from: the domain's facts under the current rules. Once either
+changes it is stale and leaves the export until it is regenerated and approved again. Each summary is stored as soon
+as it comes back, so a model that fails on some domains still leaves the others done.
 """
 
 import argparse
@@ -27,20 +28,19 @@ from weclone.utils import secure_storage as secure
 from weclone.utils.log import logger
 
 Level = Literal["full", "normal", "public"]
-READERS = {"full": "owner", "normal": "assistant", "public": "assistant"}
+LENGTHS = {"full": "long", "normal": "short", "public": "short"}
 # Privacy levels an assistant's summary draws on. Private facts never go into its always-on text.
 ASSISTANT_LEVELS = {"normal": ("public", "normal"), "public": ("public",)}
 # Identity, goals, conditions and preferences. Plans and commitments date too fast for an assistant's always-on text.
 ASSISTANT_DIMS = (1, 3, 4, 8)
-# Facts of one domain the model reads, most supported first: a few sentences cannot use more.
-SUMMARY_FACTS = 60
+# Facts of one domain the model reads, most supported first. The model picks what the assistant needs, often a fact
+# mentioned once, so it reads every fact of a real domain. The cap only keeps a runaway domain within INPUT_TOKENS.
+SUMMARY_FACTS = 150
 # Bounds one prompt of SUMMARY_FACTS facts. A guard against runaway input, not the model's context window.
 INPUT_TOKENS = 16_000
 TITLE_CHARS = 12
 # The model counts Chinese characters loosely, so only clear overruns of the length it is asked for are rejected.
-SUMMARY_MAX_CHARS = {level: SUMMARY_CHARS[reader] * 3 // 2 for level, reader in READERS.items()}
-# Facts the export can list under each summary.
-EXTRA_FACTS = 10
+SUMMARY_MAX_CHARS = {level: SUMMARY_CHARS[length] * 3 // 2 for level, length in LENGTHS.items()}
 EXPORT_HEADER = (
     "以下是我的背景资料，由 WeClone 根据我的聊天记录整理，可能已经过时，涉及重要决定时请先跟我确认。"
 )
@@ -98,7 +98,7 @@ def domain_members(profile: dict) -> dict[str, list[int]]:
 
 def domain_inputs(profile: dict, level: str) -> list[dict]:
     """For each domain of the review store's profile, in order: the facts a summary at `level` is written from,
-    as prompt lines with their hash and as export lines, and the last month any of them came up."""
+    as prompt lines, the prompt with its hash, and the last month any of them came up."""
     sources = profile.get("sources", {})
     inputs = []
     for domain, indices in domain_members(profile).items():
@@ -115,23 +115,23 @@ def domain_inputs(profile: dict, level: str) -> list[dict]:
         rows.sort(key=lambda row: row["last"], reverse=True)
         rows.sort(key=lambda row: row["support"], reverse=True)
         used = rows[:SUMMARY_FACTS]
-        lines, extra = [], []
+        lines = []
         for row in used:
             fact = row["fact"]
-            text = f"{fact['attr']}：{clean(fact['value'])}"
             span = row["first"] if row["first"] == row["last"] else f"{row['first']}~{row['last']}"
             lines.append(
-                f"{text}（{dimension_name(fact['dim'])}，{row['support']} 次{'，' + span if span else ''}）"
+                f"{fact['attr']}：{clean(fact['value'])}"
+                f"（{dimension_name(fact['dim'])}，{row['support']} 次{'，' + span if span else ''}）"
             )
-            extra.append(f"{text}（{span}）" if span else text)
+        prompt = summary_prompt(LENGTHS[level], lines)
         inputs.append(
             {
                 "domain": domain,
                 "facts": len(rows),
                 "fact_ids": [row["fact"]["id"] for row in used],
                 "lines": lines,
-                "extra": extra,
-                "sha256": hashlib.sha256("\n".join(lines).encode()).hexdigest(),
+                "prompt": prompt,
+                "sha256": hashlib.sha256(prompt.encode()).hexdigest(),
                 "as_of": max((row["last"] for row in used), default=""),
             }
         )
@@ -139,8 +139,8 @@ def domain_inputs(profile: dict, level: str) -> list[dict]:
 
 
 def due(item: dict, rows: dict[str, dict]) -> bool:
-    """Generation writes domains that have facts and no summary, or a summary of facts that have since changed.
-    Domains left out of export stay as they are."""
+    """Generation writes domains that have facts and no summary, or a summary whose facts or rules have since
+    changed. Domains left out of export stay as they are."""
     row = rows.get(item["domain"])
     if not item["lines"]:
         return False
@@ -174,13 +174,12 @@ def exported(inputs: list[dict], rows: dict[str, dict]) -> list[tuple[dict, dict
     ]
 
 
-def export_text(chosen: list[tuple[dict, dict]], extra: int) -> str:
-    """Approved, current summaries as text to paste into an assistant, each with up to `extra` of its facts."""
+def export_text(chosen: list[tuple[dict, dict]]) -> str:
+    """Approved, current summaries as text to paste into an assistant."""
     lines = []
     for item, row in chosen:
         as_of = f"（截至 {item['as_of']}）" if item["as_of"] else ""
         lines.append(f"- {row['title']}{as_of}：{row['summary']}")
-        lines += [f"  - {text}" for text in item["extra"][:extra]]
     return f"{EXPORT_HEADER}\n\n" + "\n".join(lines) if lines else ""
 
 
@@ -273,7 +272,7 @@ class SummaryStore:
             }
         return inputs, rows
 
-    def view(self, level: str, extra: int = 0) -> dict:
+    def view(self, level: str) -> dict:
         inputs, rows = self.state(level)
         domains = []
         for item in inputs:
@@ -292,9 +291,9 @@ class SummaryStore:
             "generating": GENERATING.locked(),
             # Shown while the domains it is about still wait for a summary.
             "failure": self.failures.get(level) if any(due(item, rows) for item in inputs) else None,
-            "limits": {"title": TITLE_CHARS, "summary": SUMMARY_MAX_CHARS[level], "facts": EXTRA_FACTS},
+            "limits": {"title": TITLE_CHARS, "summary": SUMMARY_MAX_CHARS[level]},
             "domains": domains,
-            "text": export_text(exported(inputs, rows), extra),
+            "text": export_text(exported(inputs, rows)),
         }
 
     def generate(self, level: str, *, wait: bool = False) -> dict:
@@ -330,7 +329,7 @@ class SummaryStore:
                 {
                     "stage": "domain_summary",
                     "schema": SUMMARY_SCHEMA,
-                    "prompt": summary_prompt(READERS[level], item["lines"]),
+                    "prompt": item["prompt"],
                 }
                 for item in todo
             ]
@@ -391,7 +390,7 @@ class SummaryStore:
         if row["version"] != request.version:
             raise ApiError(409, "summary_changed", "总结已被修改，请刷新后核对并重试")
         if row["input_sha256"] != current.get(request.domain):
-            raise ApiError(409, "summary_stale", "这个板块的画像有变动，请先重新生成总结")
+            raise ApiError(409, "summary_stale", "这个板块的画像或总结规则有变动，请先重新生成总结")
         changed = (request.title, request.summary) != (row["title"], row["summary"])
         status = "approved" if request.approve else "pending" if changed else row["status"]
         if not changed and status == row["status"]:
@@ -436,7 +435,9 @@ class SummaryStore:
                 if row["version"] != item.version:
                     raise ApiError(409, "summary_batch_changed", "总结已被修改，整批操作未保存，请刷新后重试")
                 if request.status == "approved" and row["input_sha256"] != current.get(item.domain):
-                    raise ApiError(409, "summary_batch_stale", "有板块的画像已变动，请先重新生成总结再确认")
+                    raise ApiError(
+                        409, "summary_batch_stale", "有板块的画像或总结规则已变动，请先重新生成总结再确认"
+                    )
                 rows.append(row)
             for row in rows:
                 if row["status"] != request.status:
@@ -448,7 +449,7 @@ class SummaryStore:
 
 
 def build_summaries(directory: Path) -> str:
-    """build-profile's last stage: B's full summary of each domain of the profile in `directory`, stored in the
+    """build-profile's last stage: the full summary of each domain of the profile in `directory`, stored in the
     review database next to it. Returns why some domains have none, empty when all do."""
     from weclone.server.profile_review import ReviewStore
 

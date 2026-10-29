@@ -9,8 +9,6 @@ import { SUMMARY_LEVELS, stateCounts, summaryState } from './summaryState';
 import type { DomainSummary, SummaryDomain, SummaryLevel, SummaryStatus, SummaryView } from './summaryState';
 import './summary.css';
 
-const FACT_CHOICES = [0, 3, 5, 10];
-
 function SummaryEditor({
   summary,
   limits,
@@ -155,7 +153,6 @@ function SummaryCard({
 export function SummaryApp() {
   const { t } = useTranslation();
   const [level, setLevel] = useState<SummaryLevel>('full');
-  const [facts, setFacts] = useState(0);
   const [view, setView] = useState<SummaryView | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState<'' | 'generate' | 'save'>('');
@@ -167,12 +164,12 @@ export function SummaryApp() {
   const load = useCallback(async () => {
     const ticket = ++sequence.current;
     try {
-      const next = await api.get<SummaryView>(`summaries?level=${level}&facts=${facts}`);
+      const next = await api.get<SummaryView>(`summaries?level=${level}`);
       if (ticket === sequence.current) setView(next);
     } catch (reason) {
       if (ticket === sequence.current) setError((reason as Error).message);
     }
-  }, [level, facts]);
+  }, [level]);
 
   useEffect(() => {
     void load();
@@ -373,19 +370,7 @@ export function SummaryApp() {
             ))}
           </ol>
           <aside className="summary-export" aria-label={t(($) => $.summary.export.title)}>
-            <div className="summary-export-head">
-              <h2>{t(($) => $.summary.export.title)}</h2>
-              <label>
-                {t(($) => $.summary.export.facts)}
-                <select value={facts} disabled={!!busy} onChange={(event) => setFacts(Number(event.target.value))}>
-                  {FACT_CHOICES.filter((count) => count <= view.limits.facts).map((count) => (
-                    <option key={count} value={count}>
-                      {count ? t(($) => $.summary.export.factCount, { count }) : t(($) => $.summary.export.noFacts)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
+            <h2>{t(($) => $.summary.export.title)}</h2>
             {view.text ? (
               <>
                 <textarea ref={exportRef} readOnly value={view.text} onFocus={(event) => event.target.select()} />

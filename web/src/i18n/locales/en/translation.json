@@ -35,10 +35,10 @@
     "summary_generating": "Summaries are being generated. Please wait",
     "summary_not_found": "Summary not found",
     "summary_changed": "This summary was changed elsewhere. Refresh, check it and try again",
-    "summary_stale": "The portrait of this domain changed. Regenerate the summary first",
+    "summary_stale": "The portrait of this domain or the summary rules changed. Regenerate the summary first",
     "duplicate_domains": "A batch can't contain the same domain twice",
     "summary_batch_changed": "Some summaries were changed elsewhere, so none of the batch was saved. Refresh and try again",
-    "summary_batch_stale": "The portrait of some domains changed. Regenerate their summaries before approving",
+    "summary_batch_stale": "The portrait of some domains or the summary rules changed. Regenerate their summaries before approving",
     "assistant_plaintext": "Your data is stored unencrypted, so assistants can read it whenever the token is valid. There is nothing to open",
     "api_not_found": "No such API endpoint"
   },
@@ -510,7 +510,7 @@
     "intro": {
       "full": "One summary per domain of your life, from every entry in it that still holds, private and sensitive ones included. The last step of build-profile generates this level.",
       "short": "A shorter summary per domain of your life, from identity, goals, circumstances and preferences at or below the chosen privacy level. Plans, commitments and outdated information are left out.",
-      "review": "Only approved summaries go into the export text and to assistants. Once the portrait behind a summary changes, it stops being exported until it is regenerated and approved again."
+      "review": "Only approved summaries go into the export text and to assistants. Once the portrait behind a summary or the summary rules change, it stops being exported until it is regenerated and approved again."
     },
     "level": "Up to privacy level",
     "full": {
@@ -546,7 +546,7 @@
       "facts_one": "{{count}} usable entry",
       "facts_other": "{{count}} usable entries",
       "asOf": "As of {{date}}",
-      "stale": "The portrait changed, so this is no longer exported. Regenerate it, then approve.",
+      "stale": "The portrait or the summary rules changed, so this is no longer exported. Regenerate it, then approve.",
       "missing": "No summary yet.",
       "empty": "Nothing in this domain can go into a summary: its entries are above the chosen privacy level, or they are plans, commitments or outdated information.",
       "emptyFull": "No entry in this domain still holds.",
@@ -558,10 +558,6 @@
     },
     "export": {
       "title": "Export text",
-      "facts": "Entries attached per domain",
-      "factCount_one": "{{count}}",
-      "factCount_other": "{{count}}",
-      "noFacts": "None",
       "chars_one": "{{count}} character",
       "chars_other": "{{count}} characters",
       "confirmFull": "This text has private and sensitive content, and once pasted it can't be taken back. Copy it anyway?",

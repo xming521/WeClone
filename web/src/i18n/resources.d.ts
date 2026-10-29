@@ -238,11 +238,11 @@ export default interface Resources {
       "storage_locked": "数据尚未解锁，请重新输入密码",
       "style_missing": "这次运行没有抽取说话风格，做分身请运行 weclone-cli build-profile --purpose clone",
       "summary_batch_changed": "总结已被修改，整批操作未保存，请刷新后重试",
-      "summary_batch_stale": "有板块的画像已变动，请先重新生成总结再确认",
+      "summary_batch_stale": "有板块的画像或总结规则已变动，请先重新生成总结再确认",
       "summary_changed": "总结已被修改，请刷新后核对并重试",
       "summary_generating": "正在生成板块总结，请稍候",
       "summary_not_found": "板块总结不存在",
-      "summary_stale": "这个板块的画像有变动，请先重新生成总结",
+      "summary_stale": "这个板块的画像或总结规则有变动，请先重新生成总结",
       "too_many_attempts": "尝试次数过多，请一分钟后再试",
       "unlock_required": "请重新输入密码解锁"
     },
@@ -574,7 +574,7 @@ export default interface Resources {
         "missing": "还没有生成总结。",
         "reject": "不导出",
         "restore": "恢复",
-        "stale": "画像有变动，这段已不再导出，重新生成后再确认。",
+        "stale": "画像或总结规则有变动，这段已不再导出，重新生成后再确认。",
         "unapprove": "撤回确认"
       },
       "counts": "已确认 {{approved}} · 待确认 {{pending}} · 需生成 {{due}} · 不导出 {{rejected}}",
@@ -588,11 +588,8 @@ export default interface Resources {
         "chars": "{{count}} 字",
         "confirmFull": "这份文本含私密和敏感的内容，贴出去就收不回来。确定复制吗？",
         "empty": "确认至少一个板块的总结后，这里会出现可以粘贴给个人助理的文本。",
-        "factCount": "{{count}} 条",
-        "facts": "每个板块附原始条目",
         "fullWarning": "这一级含私密和敏感的内容，贴出去就收不回来。只想给助理少一些，可以切到普通或公开再生成一份。",
         "hint": "可以粘贴到个人助理的“关于我”、自定义指令或 USER.md。贴出去的内容收不回来，复制前请再看一遍。",
-        "noFacts": "不附",
         "title": "导出文本"
       },
       "failed": "{{count}} 个板块没有生成成功，下次生成只补这些板块。",
@@ -607,7 +604,7 @@ export default interface Resources {
       "generatingHint": "每个板块调用一次模型，通常一两分钟，模型繁忙时会更久。生成在后台进行，可以先离开这个页面。",
       "intro": {
         "full": "每个板块写一段总结，用这个板块所有还成立的条目，包括私密和敏感的。build-profile 最后一步会生成这一级。",
-        "review": "确认过的总结才会进入导出文本和助手接入，所依据的画像一改动就停止导出，等重新生成并确认。",
+        "review": "确认过的总结才会进入导出文本和助手接入，所依据的画像或总结规则一改动就停止导出，等重新生成并确认。",
         "short": "每个板块写一段较短的总结，只用隐私度不高于所选级别的身份、目标、条件和偏好，不用计划承诺和已过时的信息。"
       },
       "level": "隐私度上限",

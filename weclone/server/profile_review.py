@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Literal
 from uuid import uuid4
 
-from fastapi import APIRouter, FastAPI, Query
+from fastapi import APIRouter, FastAPI
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -21,7 +21,6 @@ from weclone.server.bots import install_bots
 from weclone.server.errors import ApiError, error_response, install_errors, security_response
 from weclone.server.profile_intro import profile_intro
 from weclone.server.profile_summary import (
-    EXTRA_FACTS,
     Level,
     SummaryEdit,
     SummaryGenerate,
@@ -453,8 +452,8 @@ def create_app(
     summaries = SummaryStore(store)
 
     @app.get("/api/summaries")
-    def summary_view(level: Level = "full", facts: int = Query(0, ge=0, le=EXTRA_FACTS)):
-        return summaries.view(level, facts)
+    def summary_view(level: Level = "full"):
+        return summaries.view(level)
 
     @app.post("/api/summaries/generate")
     def summary_generate(request: SummaryGenerate):

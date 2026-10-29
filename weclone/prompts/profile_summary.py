@@ -1,8 +1,8 @@
-"""Prompts that turn the facts of one life domain into a summary: B's own full summary, or the shorter one a personal
-assistant reads about B."""
+"""Prompts that turn the facts of one life domain into the summary B's personal assistant keeps in context: a long one
+from every fact still true, or a short one from the facts at or below a privacy level."""
 
-# Characters each reader's summary asks for.
-SUMMARY_CHARS = {"owner": 200, "assistant": 100}
+# Characters each length of summary asks for.
+SUMMARY_CHARS = {"long": 300, "short": 100}
 
 SUMMARY_SCHEMA = {
     "type": "object",
@@ -11,10 +11,10 @@ SUMMARY_SCHEMA = {
     "additionalProperties": False,
 }
 
-RULES = """{intro}内容按 B 生活的领域分段，每段一个标题和一段总结。
+RULES = """你在为 B 的个人助理整理 B 的背景资料。助理事先对 B 一无所知，和 B 对话时会一直带着这份资料，靠它了解 B 是什么人、在做什么、在意什么。内容按 B 生活的领域分段，每段一个标题和一段总结。
 下面是 B 在其中一个领域的画像条目，按出现次数从多到少排列。为这个领域写标题和总结。
 1. 标题 2～8 个字，概括这些条目涉及的方面，比如"学业与科研""饮食口味"，不写人名、机构名和数字。
-2. 总结{sentences}，合计不超过 {chars} 个字，{focus}，出现次数多的优先。只出现过一次的条目，没有别的内容可写时才用。
+2. 总结{sentences}，合计不超过 {chars} 个字。条目写不下时按这个标准取舍：助理缺了这一条，会不会弄错 B 是谁、处境如何，或者给出不合适的建议和安排。会的先写，影响越大越靠前，不影响的细节提得再多也不写。条目涉及几个方面时，每个方面里会影响助理的都要写到，不要只写其中一两个方面。助理会带着这份资料用上一段时间，写长期成立的情况，几周内就办完的事不写。出现次数只说明聊得多，不说明重要，只出现过一次的条目也可能最该写。
 3. 只写条目里有的内容，不推断，不评价，不把一次提到的事写成长期习惯。条目互相矛盾时，以年月更晚的为准。
 4. 不写主语，不出现"B""我""你""用户"，直接写内容。不写 P1 这类聊天对象编号，提到别人时用"朋友""同事"这类称呼，或者略去。
 5. 写到{recent}时带上年份，比如"2024 年起在实习"。
@@ -26,23 +26,18 @@ RULES = """{intro}内容按 B 生活的领域分段，每段一个标题和一�
 """
 
 SUMMARY_RULES = {
-    "owner": RULES.format(
-        intro="你在为 B 整理 B 自己的画像总结。B 会直接读这份总结，快速看到从 B 的聊天记录里归纳出了什么。",
-        sentences="两到四句话",
-        chars=SUMMARY_CHARS["owner"],
-        focus="覆盖这个领域最主要的几个方面",
+    "long": RULES.format(
+        sentences="两到五句话",
+        chars=SUMMARY_CHARS["long"],
         recent="近况和计划",
     ),
-    "assistant": RULES.format(
-        intro="你在为 B 的个人助理整理 B 的背景资料。"
-        "助理和 B 对话时会一直带着这份资料，用来了解 B 是什么人、在做什么、在意什么。",
+    "short": RULES.format(
         sentences="一到两句话",
-        chars=SUMMARY_CHARS["assistant"],
-        focus="优先写助理帮 B 做事时用得上的情况",
+        chars=SUMMARY_CHARS["short"],
         recent="近况",
     ),
 }
 
 
-def summary_prompt(reader: str, lines: list[str]) -> str:
-    return SUMMARY_RULES[reader] + "\n".join(lines)
+def summary_prompt(length: str, lines: list[str]) -> str:
+    return SUMMARY_RULES[length] + "\n".join(lines)
