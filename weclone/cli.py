@@ -231,12 +231,9 @@ def test_model():
 
 
 @cli.command("server-reset-password", help="重新设置共用密码；旧密文失效，必须从原始聊天重新生成全部数据。")
-@click.option("--database", type=click.Path(path_type=Path, dir_okay=False))
-def server_reset_password(database: Path | None):
+def server_reset_password():
     from weclone.utils import secure_storage as secure
 
-    if database is not None:
-        click.echo("密码作用于当前安全配置；网页会话将在下次请求时自动失效。")
     click.confirm("重置后旧密文无法用新密码读取，必须重新处理全部聊天数据。继续？", abort=True)
     password = click.prompt("设置新的共用密码", hide_input=True, confirmation_prompt=True)
     try:
@@ -459,7 +456,6 @@ def _check_versions():
 
     settings_version = None
     config_guide_version = None
-    config_changelog = None
     project_version = None
 
     if SETTINGS_PATH.exists():
@@ -483,7 +479,6 @@ def _check_versions():
                 pyproject_data = tomllib.load(f)
                 weclone_tool_data = pyproject_data.get("tool", {}).get("weclone", {})
                 config_guide_version = weclone_tool_data.get("config_version")
-                config_changelog = weclone_tool_data.get("config_changelog", "N/A")
                 project_version = pyproject_data.get("project", {}).get("version")
         except Exception as e:
             logger.warning(
@@ -496,7 +491,7 @@ def _check_versions():
 
     if not settings_version:
         logger.error(f"Error: 'version' field not found in {SETTINGS_PATH}.")
-        logger.error("Please copy from settings.template.json or update your settings.jsonc file.")
+        logger.error("Please copy from settings.template.jsonc or update your settings.jsonc file.")
         sys.exit(1)
 
     if config_guide_version:
@@ -505,10 +500,8 @@ def _check_versions():
                 f"Warning: Your settings.jsonc file version ({settings_version}) does not match the project's recommended config version ({config_guide_version})."
             )
             logger.warning(
-                "This may cause unexpected behavior or errors. Please copy from settings.template.json or update your settings.jsonc file."
+                "This may cause unexpected behavior or errors. Please copy from settings.template.jsonc or update your settings.jsonc file."
             )
-            # TODO Print update log based on version number
-            logger.warning(f"Config file changelog:\n{config_changelog}")
 
         logger.info(f"📦 Project Version: {project_version}")
         logger.info(f"⚙️  Config Version: {settings_version}")

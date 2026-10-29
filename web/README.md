@@ -3,7 +3,7 @@
 Start the service from the repository root (default: http://127.0.0.1:5175):
 
 ```sh
-source .venv2/bin/activate
+source .venv/bin/activate
 weclone-cli server
 ```
 
@@ -36,7 +36,7 @@ Profiles whose organizer assigned privacy levels (`sensitivity`: `public`, `norm
 
 View chat opens the chat sample used for extraction alongside the review panel. The authenticated `GET /api/sources/{source_id}/chat` endpoint resolves the saved origin and checks the sample ID and extracted memory before returning messages. It reads encrypted sources through the existing session key and does not cache responses. Keep the extraction output files referenced by `sources[*].origins`; older sources without these references or missing/changed files display an unavailable message. The panel shows the preserved extraction input, including any earlier preprocessing, and only displays message timestamps when they exist.
 
-The service accepts `--database`, `--source`, `--host`, and `--port`. By default, it listens only on localhost for single-user use.
+The service accepts `--run`, `--host`, `--port`, and `--inference`. By default, it listens only on localhost for single-user use.
 
 To enable the configured local inference model on the same port:
 

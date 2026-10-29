@@ -76,6 +76,8 @@ deepspeed --num_gpus=<显卡数量> weclone/train/train_sft.py
 weclone-cli webchat-demo
 ```
 
+试聊页只在明文模式下可用。加密模式下请用下面的接口和 `test-model` 测试。
+
 启动 `/v1` 下的 OpenAI 兼容接口，调用时 API Key 填网页「机器人接入」页生成的令牌，见[接入聊天机器人](chatbot.md)：
 
 ```bash

@@ -75,6 +75,8 @@ Chat with the model in a browser, find suitable `temperature` and `top_p` values
 weclone-cli webchat-demo
 ```
 
+The chat page works only in plaintext mode. In encrypted mode, test with the API below and `test-model`.
+
 Start the OpenAI-compatible API under `/v1`. Callers use the token from the bot access page of the web UI as the API key, see [Chat bots](chatbot.md):
 
 ```bash
