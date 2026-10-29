@@ -296,16 +296,33 @@ def decrypt(input_path: Path, output_path: Path):
 @click.option(
     "--inference", is_flag=True, help="Load the configured model and enable /v1 inference endpoints."
 )
+@click.option(
+    "--demo",
+    type=click.Choice(["zh", "en"]),
+    is_flag=False,
+    flag_value="zh",
+    help="Serve the synthetic test profile (Chinese, or English with en) in a temporary workspace removed on exit. "
+    "Password: demo.",
+)
 @clear_argv
-def server(host: str, port: int, run_dir: Path | None, inference: bool):
+def server(host: str, port: int, run_dir: Path | None, inference: bool, demo: str | None):
     from weclone.server.app import serve
 
-    serve(host=host, port=port, run=run_dir, inference=inference)
+    if demo and run_dir:
+        raise click.UsageError("--demo 和 --run 不能同时使用。")
+    serve(host=host, port=port, run=run_dir, inference=inference, demo=demo)
 
 
 @cli.command("dev", help="Start the backend and frontend development server.")
+@click.option(
+    "--demo",
+    type=click.Choice(["zh", "en"]),
+    is_flag=False,
+    flag_value="zh",
+    help="Have the backend serve the synthetic test profile, as server --demo does.",
+)
 @click.pass_context
-def dev(ctx: click.Context):
+def dev(ctx: click.Context, demo: str | None):
     import signal
     import subprocess
     import time
@@ -327,10 +344,8 @@ def dev(ctx: click.Context):
         sig: signal.signal(sig, interrupt) for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)
     }
     try:
-        commands = [
-            [sys.executable, "-m", "weclone.cli", "server", "--port", "5175"],
-            ["pnpm", "--dir", "web", "dev"],
-        ]
+        server = [sys.executable, "-m", "weclone.cli", "server", "--port", "5175"]
+        commands = [server + (["--demo", demo] if demo else []), ["pnpm", "--dir", "web", "dev"]]
         for command in commands:
             if shutdown_signal is not None:
                 ctx.exit(128 + shutdown_signal)

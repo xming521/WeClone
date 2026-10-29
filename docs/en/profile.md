@@ -36,7 +36,10 @@ Model answers are cached by input content in `dataset/res_csv/agent/llm_cache.sq
 ```bash
 weclone-cli server                    # serve the newest run
 weclone-cli server --run <result-dir> # serve a specific run
+weclone-cli server --demo en          # serve the bundled synthetic portrait in English
 ```
+
+`--demo` gives a look at the web UI before you build your own portrait. Reviews and the password are kept in a temporary directory that is removed on exit, apart from your own data. The password is `demo`.
 
 Open http://127.0.0.1:5175 and sign in with the shared password (see [Security](security.md#password)). The web UI follows your browser's language, English or Chinese. The 中/EN switch in the top bar changes it:
 

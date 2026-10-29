@@ -36,7 +36,10 @@ weclone-cli build-profile
 ```bash
 weclone-cli server                    # 打开最新一次结果
 weclone-cli server --run <结果目录>   # 打开指定的一次结果
+weclone-cli server --demo             # 打开自带的合成画像，--demo en 为英文版
 ```
+
+`--demo` 用来在生成自己的画像之前先看看网页效果。审核记录和密码只保存在临时目录，退出后删除，不影响你自己的数据。登录密码为 `demo`。
 
 在浏览器中打开 http://127.0.0.1:5175 ，使用共用密码登录（见[数据安全](security.md#密码)）。网页按浏览器语言显示中文或英文，可以用顶栏的「中/EN」切换：
 

@@ -11,6 +11,8 @@ By default, the service selects the newest timestamped run in `dataset/res_csv/a
 
 The service initializes `profile_review.sqlite3` alongside the selected profile (`.sqlite3.enc` in encrypted mode). Later starts use that database's snapshot and do not re-import the source file. The database stores review statuses, edits, sources, and history; include it in backups. Use `weclone-cli server --run <run-directory>` to serve a different run, including one generated with `build-profile --output-dir`. Its review database is stored in that run's `profile_hierarchy/` directory. The style page shows the same run's `style/` directory.
 
+`weclone-cli server --demo` serves the synthetic test profile `tests/tests_data/profile_hierarchy.demo.json` instead (`--demo en` for `profile_hierarchy.demo.en.json`). It copies the profile into a temporary directory with plaintext storage and a password state of its own, whatever `security_args` say, and removes the directory on exit, so reviews do not carry over between starts. The password is `demo`. Summary generation still uses the model configured in the settings file. `weclone-cli dev --demo` runs the frontend development server against it.
+
 For frontend development:
 
 ```sh

@@ -43,6 +43,7 @@ CHUNK_SIZE = 1024 * 1024
 HEADER_SIZE = len(MAGIC) + 16 + 16
 _settings: dict[str, Any] | None = None
 _settings_stamp: tuple[str, int] | None = None
+_demo_settings: dict[str, Any] | None = None
 _run_key: tuple[str, str, bytes] | None = None
 _request_key: contextvars.ContextVar[tuple[str, str, bytes] | None] = contextvars.ContextVar(
     "weclone_storage_key", default=None
@@ -77,6 +78,8 @@ def configure(config_path: str | Path | None = None) -> dict[str, Any]:
     global _settings, _settings_stamp
     if config_path is not None:
         os.environ["WECLONE_CONFIG_PATH"] = str(config_path)
+    if _demo_settings is not None:
+        return _demo_settings
     path = Path(os.environ.get("WECLONE_CONFIG_PATH", ROOT / "settings.jsonc")).resolve()
     stamp = (str(path), path.stat().st_mtime_ns if path.exists() else -1)
     if _settings_stamp != stamp:
@@ -105,6 +108,19 @@ def configure(config_path: str | Path | None = None) -> dict[str, Any]:
         _settings_stamp = stamp
     assert _settings is not None
     return _settings
+
+
+@contextlib.contextmanager
+def demo_storage(state_dir: Path) -> Iterator[None]:
+    """Plaintext storage with its own password state in state_dir, whatever security_args say. The settings file
+    still configures everything else, such as the model that writes summaries."""
+    global _demo_settings
+    _demo_settings = {**configure(), "storage_mode": "plaintext", "state_dir": state_dir.resolve()}
+    try:
+        yield
+    finally:
+        lock()
+        _demo_settings = None
 
 
 def _manifest_path() -> Path:

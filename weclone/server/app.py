@@ -1,8 +1,17 @@
 """Unified WeClone web and optional inference server."""
 
+import shutil
+import tempfile
+from contextlib import contextmanager, nullcontext
 from pathlib import Path
 
 from weclone.server.profile_review import create_app as create_profile_app
+from weclone.utils import secure_storage as secure
+from weclone.utils.log import logger
+
+DEMO_DATA = Path(__file__).resolve().parents[2] / "tests" / "tests_data"
+DEMO_PROFILES = {"zh": "profile_hierarchy.demo.json", "en": "profile_hierarchy.demo.en.json"}
+DEMO_PASSWORD = "demo"
 
 
 def create_app(
@@ -28,8 +37,26 @@ def create_app(
     return app
 
 
-def serve(*, host="127.0.0.1", port=5175, run=None, inference=False):
+@contextmanager
+def demo_run(language: str):
+    """A run holding a copy of the synthetic test profile, with plaintext storage and the password DEMO_PASSWORD
+    in a temporary directory, removed on exit. Real runs and their password stay untouched."""
+    with tempfile.TemporaryDirectory(prefix="weclone-demo-") as directory:
+        run = Path(directory) / "run"
+        source = run / "profile_hierarchy" / "profile_hierarchy.json"
+        source.parent.mkdir(parents=True)
+        shutil.copyfile(DEMO_DATA / DEMO_PROFILES[language], source)
+        with secure.demo_storage(Path(directory) / "state"):
+            secure.ensure_initialized(DEMO_PASSWORD)
+            secure.lock()
+            yield run
+
+
+def serve(*, host="127.0.0.1", port=5175, run=None, inference=False, demo=None):
     import uvicorn
 
-    app = create_app(run=run, inference=inference)
-    uvicorn.run(app, host=host, port=port)
+    with demo_run(demo) if demo else nullcontext(run) as run:
+        app = create_app(run=run, inference=inference)
+        if demo:
+            logger.info(f"演示模式：合成测试数据，退出后删除。登录密码：{DEMO_PASSWORD}")
+        uvicorn.run(app, host=host, port=port)

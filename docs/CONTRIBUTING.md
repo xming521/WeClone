@@ -28,6 +28,7 @@ pre-commit install
 ```bash
 pnpm --dir web install
 weclone-cli dev   # 前端 http://127.0.0.1:5174，后端 http://127.0.0.1:5175
+weclone-cli dev --demo   # 后端改用合成测试画像，登录密码 demo
 ```
 
 仓库中包含构建好的页面 `weclone/web/dist`，随 Python 包一起发布。修改前端源码后运行 `pnpm --dir web build` 更新。
@@ -58,6 +59,7 @@ The web UI source is in `web/` and uses pnpm:
 ```bash
 pnpm --dir web install
 weclone-cli dev   # frontend http://127.0.0.1:5174, backend http://127.0.0.1:5175
+weclone-cli dev --demo   # backend serves the synthetic test profile, password: demo
 ```
 
 The built pages in `weclone/web/dist` are committed and shipped with the Python package. Run `pnpm --dir web build` after changing the frontend source to update them.

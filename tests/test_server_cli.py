@@ -15,9 +15,12 @@ from weclone.utils import secure_storage
 
 
 @pytest.mark.parametrize("options,expected", [
-    ([], {"host": "127.0.0.1", "port": 5175, "run": None, "inference": False}),
+    ([], {"host": "127.0.0.1", "port": 5175, "run": None, "inference": False, "demo": None}),
     (["--host", "0.0.0.0", "--port", "5180", "--run", "run", "--inference"],
-     {"host": "0.0.0.0", "port": 5180, "run": Path("run"), "inference": True}),
+     {"host": "0.0.0.0", "port": 5180, "run": Path("run"), "inference": True, "demo": None}),
+    (["--demo"], {"host": "127.0.0.1", "port": 5175, "run": None, "inference": False, "demo": "zh"}),
+    (["--demo", "en", "--port", "5180"],
+     {"host": "127.0.0.1", "port": 5180, "run": None, "inference": False, "demo": "en"}),
 ])
 def test_server_cli_routes_options_without_loading_model_config(monkeypatch, tmp_path, options, expected):
     monkeypatch.chdir(tmp_path)
@@ -35,6 +38,39 @@ def test_server_cli_routes_options_without_loading_model_config(monkeypatch, tmp
     serve.assert_called_once_with(**expected)
     load.assert_not_called()
     assert "inference-server" not in module.cli.commands
+
+
+def test_server_cli_rejects_demo_with_run(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "run").mkdir()
+    module = importlib.import_module("weclone.cli")
+    monkeypatch.setattr(module, "_check_project_root", lambda: None)
+    serve = Mock()
+    monkeypatch.setattr(app, "serve", serve)
+    result = CliRunner().invoke(module.cli, ["server", "--demo", "--run", "run"])
+    assert result.exit_code == 2
+    serve.assert_not_called()
+
+
+@pytest.mark.parametrize("language", ["zh", "en"])
+def test_demo_serves_test_profile_apart_from_real_storage(tmp_path, monkeypatch, language):
+    settings = tmp_path / "settings.jsonc"
+    real_state = tmp_path / "state"
+    settings.write_text(json.dumps({"security_args": {"storage_mode": "encrypted", "state_dir": str(real_state)}}))
+    monkeypatch.setenv("WECLONE_CONFIG_PATH", str(settings))
+    secure_storage.configure()
+    profile = json.loads((app.DEMO_DATA / app.DEMO_PROFILES[language]).read_text())
+    with app.demo_run(language) as run:
+        assert not secure_storage.is_encrypted_mode()
+        with TestClient(app.create_app(run=run, static_dir=tmp_path / "no-static")) as client:
+            client.headers["X-WeClone-Request"] = "1"
+            assert client.get("/api/auth/status").json()["initialized"]
+            assert client.post("/api/auth/login", json={"password": app.DEMO_PASSWORD}).status_code == 200
+            assert len(client.get("/api/profile").json()["facts"]) == len(profile["facts"])
+            assert client.get("/api/profile/intro").json()["message_total"] == profile["_demo"]["message_total"]
+    assert not run.exists()
+    assert not real_state.exists()
+    assert secure_storage.is_encrypted_mode()
 
 
 def write_profile(run):
