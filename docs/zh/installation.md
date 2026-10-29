@@ -7,7 +7,7 @@
 | 用途 | 安装 | 其他要求 |
 |---|---|---|
 | 人生画像、网页、助手接入 | `uv pip install -e .` | Codex CLI 或任意 OpenAI 兼容 API |
-| 说话风格（`build-profile --purpose clone`） | 另装 `ltp`、`scipy` | LTP 模型，CPU 即可运行 |
+| 说话风格（`build-profile --purpose clone`） | `uv pip install --group style --torch-backend cpu -e .` | LTP 模型，CPU 即可运行 |
 | 微调分身 | `uv pip install --group main -e .` | NVIDIA GPU、CUDA 12.6 及以上、spaCy 模型 |
 
 ## 基础安装
@@ -34,11 +34,11 @@ cp settings.template.jsonc settings.jsonc
 ## 说话风格依赖
 
 ```bash
-uv pip install ltp scipy
+uv pip install --group style --torch-backend cpu -e .
 hf download LTP/base --local-dir models/LTPbase
 ```
 
-[LTP](https://github.com/HIT-SCIR/ltp) 用于中文分词和句法分析，默认在 CPU 上运行。国内下载较慢时，可以在命令前加上 `HF_ENDPOINT=https://hf-mirror.com`。
+[LTP](https://github.com/HIT-SCIR/ltp) 用于中文分词和句法分析，默认在 CPU 上运行，`--torch-backend cpu` 安装 CPU 版 PyTorch，不需要 CUDA。国内下载较慢时，可以在命令前加上 `HF_ENDPOINT=https://hf-mirror.com`。
 
 ## 微调依赖
 

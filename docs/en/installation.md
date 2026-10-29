@@ -7,7 +7,7 @@
 | Use | Install | Also needs |
 |---|---|---|
 | Life portrait, web UI, assistant access | `uv pip install -e .` | Codex CLI or any OpenAI-compatible API |
-| Speaking style (`build-profile --purpose clone`) | `ltp` and `scipy` on top | The LTP model, which runs on CPU |
+| Speaking style (`build-profile --purpose clone`) | `uv pip install --group style --torch-backend cpu -e .` | The LTP model, which runs on CPU |
 | Fine-tuned clone | `uv pip install --group main -e .` | NVIDIA GPU, CUDA 12.6 or later, a spaCy model |
 
 ## Base install
@@ -34,11 +34,11 @@ Portrait extraction, memory organization and domain summaries all call API model
 ## Speaking style dependencies
 
 ```bash
-uv pip install ltp scipy
+uv pip install --group style --torch-backend cpu -e .
 hf download LTP/base --local-dir models/LTPbase
 ```
 
-[LTP](https://github.com/HIT-SCIR/ltp) handles Chinese word segmentation and parsing. It runs on CPU by default.
+[LTP](https://github.com/HIT-SCIR/ltp) handles Chinese word segmentation and parsing. It runs on CPU by default, and `--torch-backend cpu` installs the CPU build of PyTorch, so CUDA isn't needed.
 
 ## Fine-tuning dependencies
 

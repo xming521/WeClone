@@ -59,7 +59,10 @@ def run(
         # Style needs the local LTP parser, which the profile itself does not.
         ltp_model = distill_style.parse_args(style_argv).ltp_model
         if find_spec("ltp") is None or not ltp_model.is_dir():
-            raise RuntimeError(f"做分身要抽取说话风格，请先安装 ltp 包，并把 LTP 模型放在 {ltp_model}")
+            raise RuntimeError(
+                "做分身要抽取说话风格，请先执行 uv pip install --group style --torch-backend cpu -e .，"
+                f"并把 LTP 模型放在 {ltp_model}"
+            )
     stages = 6 if with_style else 5
     click.echo(f"本次结果目录：{output_dir}")
     click.echo(f"抽取内容：{'画像、事件和说话风格' if with_style else '画像和事件'}")

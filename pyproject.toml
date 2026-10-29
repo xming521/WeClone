@@ -45,6 +45,8 @@ main = [
   "presidio_analyzer[transformers]",
   "presidio_anonymizer",
 ]
+# LTP 4.2 calls batch_encode_plus, which transformers 5 removed.
+style = ["ltp==4.2.14", "scipy", "transformers<5"]
 sparktts = [
   "einops>=0.8.1",
   "einx>=0.3.0",
@@ -64,6 +66,7 @@ dev = ["pytest", "pytest-order", "pyright", "ruff", "pre-commit"]
 weclone-cli = "weclone.cli:cli"
 
 [tool.uv]
+package = true
 
 [tool.uv.pip]
 torch-backend = "auto"
