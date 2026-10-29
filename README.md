@@ -22,7 +22,7 @@
   <a href="https://github.com/xming521/WeClone/blob/master/README_zh.md" target="_blank">简体中文</a>｜
   English｜
   <a href="https://www.weclone.love/" target="_blank"> Project Homepage </a> ｜
-  <a href="https://docs.weclone.love/en/docs/introduce/what-is-weclone.html" target="_blank"> Documentation </a> 
+  <a href="https://docs.weclone.love/en/docs/introduce/what-is-weclone" target="_blank"> Documentation </a> 
 </p>
 
 WeClone distills your identity, goals, preferences and current situation from your digital life into a portrait of your life, organized into domains such as work, family and health, that you can review, trace to its sources and share on your own terms. It also analyzes your speaking style. The portrait works as long-term memory for your AI assistants and will power clones with your personal style. Chat history is supported today, with more data sources coming.
@@ -60,7 +60,7 @@ The life portrait reads text messages only. The table shows the message types th
 | Discord | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 |
 | Slack | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 |
 
-Chats from other platforms can be converted to WeClone's generic CSV format and placed in `dataset/csv/`. See [Chat Platform Adapters](https://docs.weclone.love/en/docs/deploy/export-chat-history.html) on the docs site for the format.
+Chats from other platforms can be converted to WeClone's generic CSV format and placed in `dataset/csv/`. See [Preparing Data](https://docs.weclone.love/en/docs/deploy/export-chat-history#generic-csv-format) on the docs site for the format.
 
 ## 🚀 Quick Start
 
@@ -141,7 +141,7 @@ Full tutorials, configuration reference and FAQ are on the [documentation site](
 
 ## 💬 Troubleshooting
 
-- Start with the [official FAQ](https://docs.weclone.love/en/docs/introduce/FAQ.html). [DeepWiki](https://deepwiki.com/xming521/WeClone) can also help.
+- Start with the [official FAQ](https://docs.weclone.love/en/docs/introduce/FAQ). [DeepWiki](https://deepwiki.com/xming521/WeClone) can also help.
 - Join the Telegram group linked at the top of this page.
 
 ## ❤️ Contributing

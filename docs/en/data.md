@@ -25,4 +25,4 @@ Telegram chats are supported today. Chats from other platforms can be imported i
 
 ## Generic CSV format
 
-Chats from other platforms can be converted to WeClone's generic CSV format and placed in `dataset/csv/`, with `platform` left as `chat`. See [Chat Platform Adapters](https://docs.weclone.love/en/docs/deploy/export-chat-history.html) on the docs site for the columns and folder layout.
+Chats from other platforms can be converted to WeClone's generic CSV format and placed in `dataset/csv/`, with `platform` left as `chat`. See [Preparing Data](https://docs.weclone.love/en/docs/deploy/export-chat-history#generic-csv-format) on the docs site for the columns and folder layout.

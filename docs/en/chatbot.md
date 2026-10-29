@@ -45,4 +45,4 @@ Bot platforms call the [fine-tuned clone](finetune.md) through the OpenAI-compat
 3. Add a model on the model page: name it `gpt-3.5-turbo`, choose OpenAI as the provider, set the request URL to WeClone's address (see the [LangBot documentation](https://docs.langbot.app/en/workshop/network-details) for connection details), and use the token as the API Key.
 4. Select the new model in the pipeline configuration, or adjust the prompt configuration.
 
-See the [AstrBot](https://docs.weclone.love/en/docs/chatbot/AstrBot.html) and [LangBot](https://docs.weclone.love/en/docs/chatbot/LangBot.html) pages on the docs site for illustrated steps.
+See the [AstrBot](https://docs.weclone.love/en/docs/chatbot/AstrBot) and [LangBot](https://docs.weclone.love/en/docs/chatbot/LangBot) pages on the docs site for illustrated steps.

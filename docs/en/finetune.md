@@ -10,7 +10,7 @@ Fine-tune an open model on your chat history to get a clone that carries your sp
 
 ## Hardware
 
-By default WeClone fine-tunes Qwen2.5-7B-Instruct with LoRA in the SFT stage, which needs about 16GB of VRAM. 4-bit QLoRA needs about 6GB. Other models and methods supported by [LLaMA Factory](https://github.com/hiyouga/LLaMA-Factory/tree/main#supported-models) also work. See [Hardware Requirements](https://docs.weclone.love/en/docs/deploy/hardware.html) on the docs site for VRAM estimates at other sizes.
+By default WeClone fine-tunes Qwen2.5-7B-Instruct with LoRA in the SFT stage, which needs about 16GB of VRAM. 4-bit QLoRA needs about 6GB. Other models and methods supported by [LLaMA Factory](https://github.com/hiyouga/LLaMA-Factory/tree/main#supported-models) also work. See [Hardware Requirements](https://docs.weclone.love/en/docs/deploy/hardware) on the docs site for VRAM estimates at other sizes.
 
 ## Download a model
 
@@ -45,7 +45,7 @@ Personal information is filtered out while the training data is built:
 > [!IMPORTANT]
 > 🚨 Please protect personal privacy and do not leak personal information!
 
-You can tune the time windows and other `make_dataset_args` settings to your chat habits. See [Data Preprocessing](https://docs.weclone.love/en/docs/deploy/data_preprocessing.html#related-parameters) on the docs site.
+You can tune the time windows and other `make_dataset_args` settings to your chat habits. See [Data Preprocessing](https://docs.weclone.love/en/docs/deploy/data_preprocessing#related-parameters) on the docs site.
 
 ## Train
 

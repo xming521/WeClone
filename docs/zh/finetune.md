@@ -10,7 +10,7 @@
 
 ## 硬件要求
 
-默认使用 Qwen2.5-7B-Instruct，以 LoRA 方法进行 SFT，约需 16GB 显存，4-bit QLoRA 约需 6GB。也可以使用 [LLaMA Factory](https://github.com/hiyouga/LLaMA-Factory/blob/main/README_zh.md#%E6%A8%A1%E5%9E%8B) 支持的其他模型和方法，各种规模的显存估算见文档站的[所需硬件配置](https://docs.weclone.love/zh/docs/deploy/hardware.html)。
+默认使用 Qwen2.5-7B-Instruct，以 LoRA 方法进行 SFT，约需 16GB 显存，4-bit QLoRA 约需 6GB。也可以使用 [LLaMA Factory](https://github.com/hiyouga/LLaMA-Factory/blob/main/README_zh.md#%E6%A8%A1%E5%9E%8B) 支持的其他模型和方法，各种规模的显存估算见文档站的[所需硬件配置](https://docs.weclone.love/zh/docs/deploy/hardware)。
 
 ## 下载模型
 
@@ -46,7 +46,7 @@ weclone-cli make-dataset
 > [!IMPORTANT]
 > 🚨 请一定注意保护个人隐私，不要泄露个人信息！
 
-可以根据自己的聊天习惯调整 `make_dataset_args` 中的时间窗口等参数，说明见文档站的[数据预处理](https://docs.weclone.love/zh/docs/deploy/data_preprocessing.html#%E7%9B%B8%E5%85%B3%E5%8F%82%E6%95%B0)。
+可以根据自己的聊天习惯调整 `make_dataset_args` 中的时间窗口等参数，说明见文档站的[数据预处理](https://docs.weclone.love/zh/docs/deploy/data_preprocessing#%E7%9B%B8%E5%85%B3%E5%8F%82%E6%95%B0)。
 
 ## 训练
 

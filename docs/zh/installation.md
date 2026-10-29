@@ -54,4 +54,4 @@ hf download LTP/base --local-dir models/LTPbase
    ```
 4. （可选）安装 FlashAttention 加速训练和推理：`uv pip install flash-attn --no-build-isolation`。版本不匹配时可以使用 [prebuild-wheels](https://github.com/mjun0812/flash-attention-prebuild-wheels/releases) 的预编译包。
 
-更多环境问题见文档站的[环境配置](https://docs.weclone.love/zh/docs/deploy/environment.html)。
+更多环境问题见文档站的[安装与配置](https://docs.weclone.love/zh/docs/deploy/environment)。

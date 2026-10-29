@@ -21,7 +21,7 @@
 简体中文｜
   <a href="https://github.com/xming521/WeClone/blob/master/README.md" target="_blank">English</a>｜
   <a href="https://www.weclone.love/" target="_blank"> 项目主页 </a> ｜
-  <a href="https://docs.weclone.love/zh/docs/introduce/what-is-weclone.html" target="_blank"> 项目文档 </a>
+  <a href="https://docs.weclone.love/zh/docs/introduce/what-is-weclone" target="_blank"> 项目文档 </a>
 </p>
 
 WeClone 从你的数字生活中提炼身份、目标、偏好与近况，按工作、家庭、健康等板块整理成一份可审核、可追溯、按需授权的人生画像，并分析你的说话风格。画像可以作为 AI 助理的长期记忆，也将驱动具有你个人风格的数字分身。目前支持聊天记录，更多数据源持续接入中。
@@ -57,7 +57,7 @@ WeClone 从你的数字生活中提炼身份、目标、偏好与近况，按工
 | Discord | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 |
 | Slack | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 |
 
-其他平台的聊天记录可以转换成 WeClone 的通用 CSV 格式，放进 `dataset/csv/` 使用，格式见文档站的[聊天平台适配](https://docs.weclone.love/zh/docs/deploy/export-chat-history.html)。
+其他平台的聊天记录可以转换成 WeClone 的通用 CSV 格式，放进 `dataset/csv/` 使用，格式见文档站的[准备数据](https://docs.weclone.love/zh/docs/deploy/export-chat-history#%E9%80%9A%E7%94%A8-csv-%E6%A0%BC%E5%BC%8F)。
 
 ## 🚀 快速开始
 
@@ -138,7 +138,7 @@ weclone-cli server --inference --port 8005   # 启动 OpenAI 兼容接口
 
 ## 💬 问题解决
 
-- 先查阅[官方文档 FAQ](https://docs.weclone.love/zh/docs/introduce/FAQ.html)，也可以使用 [DeepWiki](https://deepwiki.com/xming521/WeClone) 解决问题。
+- 先查阅[官方文档 FAQ](https://docs.weclone.love/zh/docs/introduce/FAQ)，也可以使用 [DeepWiki](https://deepwiki.com/xming521/WeClone) 解决问题。
 - 欢迎加入页面顶部的 QQ 群和 Telegram 群交流。
 
 ## ❤️ 贡献代码

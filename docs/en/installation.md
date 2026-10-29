@@ -54,4 +54,4 @@ hf download LTP/base --local-dir models/LTPbase
    ```
 4. (Optional) Install FlashAttention to speed up training and inference: `uv pip install flash-attn --no-build-isolation`. If the versions do not match, use a prebuilt wheel from [prebuild-wheels](https://github.com/mjun0812/flash-attention-prebuild-wheels/releases).
 
-See [Environment Setup](https://docs.weclone.love/en/docs/deploy/environment.html) on the docs site for more environment issues.
+See [Installation](https://docs.weclone.love/en/docs/deploy/environment) on the docs site for more environment issues.

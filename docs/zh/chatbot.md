@@ -45,4 +45,4 @@
 3. 在模型页添加新模型：名称填 `gpt-3.5-turbo`，供应商选择 OpenAI，请求 URL 填 WeClone 的地址（连接方式参考 [LangBot 文档](https://docs.langbot.app/zh/workshop/network-details)），API Key 填生成的令牌。
 4. 在流水线配置中选择刚才添加的模型，或修改提示词配置。
 
-带截图的步骤见文档站的 [AstrBot](https://docs.weclone.love/zh/docs/chatbot/AstrBot.html) 和 [LangBot](https://docs.weclone.love/zh/docs/chatbot/LangBot.html) 页面。
+带截图的步骤见文档站的 [AstrBot](https://docs.weclone.love/zh/docs/chatbot/AstrBot) 和 [LangBot](https://docs.weclone.love/zh/docs/chatbot/LangBot) 页面。
