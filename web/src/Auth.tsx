@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import { LogOut } from 'lucide-react';
+import { Eye, EyeOff, LogOut } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { api } from './api';
 import { LanguageSwitch } from './LanguageSwitch';
@@ -32,6 +32,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
   const [mode, setMode] = useState<'encrypted' | 'plaintext'>('plaintext');
   const [password, setPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
+  const [shown, setShown] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -40,6 +41,14 @@ export function AuthGate({ children }: { children: ReactNode }) {
   function clear() {
     setExpires(null);
     useProfileStore.getState().resetSession();
+  }
+
+  function toggleShown() {
+    const field = document.activeElement instanceof HTMLInputElement ? document.activeElement : null;
+    const [start, end] = [field?.selectionStart ?? null, field?.selectionEnd ?? null];
+    setShown(!shown);
+    // Once the field's type changes, the browser moves the caret to the start; it goes back where it was.
+    requestAnimationFrame(() => field?.setSelectionRange(start, end));
   }
 
   useEffect(() => {
@@ -137,6 +146,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
             );
             setPassword('');
             setConfirmation('');
+            setShown(false);
             setInitialized(true);
             setExpires(session.expires_at);
           } catch (reason) {
@@ -157,24 +167,37 @@ export function AuthGate({ children }: { children: ReactNode }) {
             : t(($) => $.auth.loginHint)}
         </p>
         <label htmlFor="access-password">{setup ? t(($) => $.auth.newPassword) : t(($) => $.auth.password)}</label>
-        <input
-          id="access-password"
-          name="password"
-          type="password"
-          autoComplete={setup ? 'new-password' : 'current-password'}
-          required
-          autoFocus
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          disabled={busy || initialized === null}
-        />
+        <div className="password-field">
+          <input
+            id="access-password"
+            name="password"
+            type={shown ? 'text' : 'password'}
+            autoComplete={setup ? 'new-password' : 'current-password'}
+            required
+            autoFocus
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            disabled={busy || initialized === null}
+          />
+          <button
+            type="button"
+            className="password-toggle"
+            // Keeps the caret in the field, so typing goes on after a look.
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={toggleShown}
+            title={shown ? t(($) => $.auth.hidePassword) : t(($) => $.auth.showPassword)}
+            aria-label={shown ? t(($) => $.auth.hidePassword) : t(($) => $.auth.showPassword)}
+          >
+            {shown ? <EyeOff size={17} /> : <Eye size={17} />}
+          </button>
+        </div>
         {setup && (
           <>
             <label htmlFor="confirm-password">{t(($) => $.auth.confirmPassword)}</label>
             <input
               id="confirm-password"
               name="confirmation"
-              type="password"
+              type={shown ? 'text' : 'password'}
               autoComplete="new-password"
               required
               value={confirmation}

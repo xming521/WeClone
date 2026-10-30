@@ -145,6 +145,7 @@ export default interface Resources {
     "auth": {
       "checking": "正在验证登录状态",
       "confirmPassword": "再次输入密码",
+      "hidePassword": "隐藏密码",
       "loginHint": "输入你设置的密码。",
       "loginSubmit": "解锁",
       "loginTitle": "解锁个人记忆",
@@ -157,6 +158,7 @@ export default interface Resources {
       "setupPlaintext": "设置用于网页访问的密码。当前数据采用明文存储。",
       "setupSubmit": "设置并解锁",
       "setupTitle": "设置个人密码",
+      "showPassword": "显示密码",
       "verifying": "正在验证…"
     },
     "bots": {

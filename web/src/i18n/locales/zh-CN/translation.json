@@ -72,6 +72,8 @@
     "newPassword": "设置密码",
     "password": "访问密码",
     "confirmPassword": "再次输入密码",
+    "showPassword": "显示密码",
+    "hidePassword": "隐藏密码",
     "verifying": "正在验证…",
     "setupSubmit": "设置并解锁",
     "loginSubmit": "解锁",

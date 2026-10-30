@@ -112,6 +112,31 @@ summary:focus-visible {
   border-radius: 9px;
   background: var(--color-white);
 }
+.password-field {
+  position: relative;
+}
+.password-field input {
+  padding-right: 46px;
+}
+.auth-card .password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  margin: 0;
+  padding: 0;
+  border-radius: 7px;
+  color: var(--color-text-control);
+  background: transparent;
+  transform: translateY(-50%);
+}
+.auth-card .password-toggle:hover {
+  color: var(--color-accent-dark);
+  background: var(--color-surface-hover);
+}
 .auth-card button {
   width: 100%;
   margin: 18px 0;

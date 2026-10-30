@@ -74,6 +74,8 @@
     "newPassword": "New password",
     "password": "Password",
     "confirmPassword": "Enter it again",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
     "verifying": "Verifying…",
     "setupSubmit": "Set and unlock",
     "loginSubmit": "Unlock",
