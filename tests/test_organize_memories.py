@@ -134,9 +134,9 @@ def test_reader_rejects_samples_without_a_contact_id(tmp_path, chat_with_id):
 
 
 @pytest.mark.parametrize("kind,type_,dims", [
-    ("S", "stable_fact", (1, 3, 4, 6)),
+    ("S", "stable_fact", (1, 3, 4, 6, 8)),
     ("S", "goal", (1, 3, 4, 5, 6)),
-    ("S", "current_state", (1, 3, 4, 6)),
+    ("S", "current_state", (1, 3, 4, 6, 8)),
     ("S", "preference", (8,)),
     ("ES", "ES", (5, 7)),
     ("EI", "EI", (5, 7)),
@@ -343,8 +343,8 @@ def test_classify_prompts_share_rules_and_domains_before_memories():
     assert "本次维度" not in preference
 
 
-@pytest.mark.parametrize("kind,type_", [("S", "stable_fact"), ("S", "goal"), ("ES", "ES")])
-def test_preference_dimension_rejects_other_memory_types(kind, type_):
+@pytest.mark.parametrize("kind,type_", [("S", "goal"), ("ES", "ES"), ("EI", "EI")])
+def test_preference_dimension_rejects_goals_and_events(kind, type_):
     with pytest.raises(ValueError, match="Invalid dimension/source"):
         organize.validate_classification({"items": [{"id": "a", "fields": [field(8, "活动偏好")], "sensitivity": "normal"}]},
                                          [record("a", kind, type_)], 2)

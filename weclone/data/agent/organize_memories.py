@@ -102,10 +102,10 @@ def allowed_dimensions(record: dict) -> tuple[int, ...]:
         return (5, 7)
     if record["type"] == "preference":
         return (8,)
-    dims = [1, 3, 4, 6]
     if record["type"] == "goal":
-        dims.append(5)
-    return tuple(sorted(dims))
+        return (1, 3, 4, 5, 6)
+    # Habits arrive as stable facts, recent ones as current states.
+    return (1, 3, 4, 6, 8)
 
 
 def read_memories(input_dir: Path) -> tuple[list[dict], dict[str, dict]]:
