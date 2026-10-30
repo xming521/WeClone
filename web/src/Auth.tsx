@@ -35,10 +35,10 @@ export function AuthGate({ children }: { children: ReactNode }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
+  // Leaves the fields alone: signing in already empties them, and the check on window focus runs while one may
+  // be typing the password.
   function clear() {
     setExpires(null);
-    setPassword('');
-    setConfirmation('');
     useProfileStore.getState().resetSession();
   }
 
