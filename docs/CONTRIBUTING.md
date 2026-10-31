@@ -17,7 +17,7 @@ pre-commit install
 
 ### 测试
 
-提交代码前运行 `pytest tests`，确保所有测试通过。说话风格的测试另需安装[说话风格依赖](zh/installation.md#说话风格依赖)，没有 `models/LTPbase` 时自动跳过。
+提交代码前运行 `pytest tests`，确保所有测试通过。语言风格的测试另需安装[语言风格依赖](zh/installation.md#语言风格依赖)，没有 `models/LTPbase` 时自动跳过。
 
 端到端的微调测试默认不运行，用 `pytest -m e2e tests` 运行，需要 GPU 和 `tests/configs/` 里写的本地模型。它的聊天、数据集、模型输出和密钥状态都放在临时目录，不会移动或覆盖项目里的数据。
 

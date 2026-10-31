@@ -236,7 +236,7 @@ export default interface Resources {
       "request_rejected": "请求验证失败",
       "source_not_found": "来源记录不存在",
       "storage_locked": "数据尚未解锁，请重新输入密码",
-      "style_missing": "这次运行没有抽取说话风格，做分身请运行 weclone-cli build-profile --purpose clone",
+      "style_missing": "这次运行没有抽取语言风格，做分身请运行 weclone-cli build-profile --purpose clone",
       "summary_batch_changed": "总结已被修改，整批操作未保存，请刷新后重试",
       "summary_batch_stale": "有板块的画像或总结规则已变动，请先重新生成总结再确认",
       "summary_changed": "总结已被修改，请刷新后核对并重试",
@@ -292,7 +292,7 @@ export default interface Resources {
       "bots": "机器人接入",
       "label": "页面",
       "profile": "人生画像",
-      "style": "说话风格",
+      "style": "语言风格",
       "summary": "板块总结"
     },
     "privacy": {
@@ -415,7 +415,7 @@ export default interface Resources {
       "highlights": "最明显的是{{traits}}。",
       "legend": "泡泡越大越常见 · 只列出每 {{every}} 条至少出现 1 次的特点 · 点击看详情",
       "loadFailed": "风格结果暂时无法打开",
-      "loading": "正在读取聊天风格",
+      "loading": "正在读取语言风格",
       "main": "主要特点",
       "quoted": "「{{title}}」",
       "quotedSeparator": "",

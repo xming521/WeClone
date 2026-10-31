@@ -60,13 +60,13 @@ def run(
         ltp_model = distill_style.parse_args(style_argv).ltp_model
         if find_spec("ltp") is None or not ltp_model.is_dir():
             raise RuntimeError(
-                "做分身要抽取说话风格，请先执行 uv pip install --group style --torch-backend cpu -e .，"
+                "做分身要抽取语言风格，请先执行 uv pip install --group style --torch-backend cpu -e .，"
                 f"并把 LTP 模型放在 {ltp_model}"
             )
     stages = 6 if with_style else 5
     click.echo(f"本次结果目录：{output_dir}")
-    click.echo(f"抽取内容：{'画像、事件和说话风格' if with_style else '画像和事件'}")
-    task = "用户画像、事件记忆和说话风格" if with_style else "用户画像和事件记忆"
+    click.echo(f"抽取内容：{'画像、事件和语言风格' if with_style else '画像和事件'}")
+    task = "用户画像、事件记忆和语言风格" if with_style else "用户画像和事件记忆"
     if not distill_profile.confirm_distillation(args, task=task, file_count=None):
         raise click.Abort()
 
@@ -139,6 +139,6 @@ def run(
         click.echo(f"板块总结：{missing}")
 
     if with_style:
-        with _stage("[6/6] 抽取说话风格"):
+        with _stage("[6/6] 抽取语言风格"):
             distill_style.main(style_argv)
     return result

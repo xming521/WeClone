@@ -7,7 +7,7 @@
 | 用途 | 安装 | 其他要求 |
 |---|---|---|
 | 人生画像、网页、助手接入 | `uv pip install -e .` | Codex CLI 或任意 OpenAI 兼容 API |
-| 说话风格（`build-profile --purpose clone`） | `uv pip install --group style --torch-backend cpu -e .` | LTP 模型，CPU 即可运行 |
+| 语言风格（`build-profile --purpose clone`） | `uv pip install --group style --torch-backend cpu -e .` | LTP 模型，CPU 即可运行 |
 | 微调分身 | `uv pip install --group main -e .` | NVIDIA GPU、CUDA 12.6 及以上、spaCy 模型 |
 
 ## 基础安装
@@ -31,7 +31,7 @@ cp settings.template.jsonc settings.jsonc
 - `codex_exec`（默认）：通过本机的 [Codex CLI](https://github.com/openai/codex) 调用模型，需要先安装并登录。模型和推理强度在 `codex_exec_args` 中设置。
 - `api`：任意 OpenAI 兼容接口。地址、密钥和模型名填在 `make_dataset_args` 的 `base_url`、`llm_api_key`、`model_name`，并发数、超时和输出上限在 `agent_distill_args` 的 `batch_size`、`timeout`、`max_tokens` 中设置。运行 `build-profile` 时必须用 `--max-context-tokens` 指定模型的输入上限。
 
-## 说话风格依赖
+## 语言风格依赖
 
 ```bash
 uv pip install --group style --torch-backend cpu -e .

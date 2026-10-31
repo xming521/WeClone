@@ -2580,7 +2580,7 @@ button:disabled {
   }
 }
 
-/* 人生画像与说话风格的切换 */
+/* 人生画像与语言风格的切换 */
 .mode-switch {
   display: flex;
   flex-shrink: 0;

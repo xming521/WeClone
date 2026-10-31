@@ -147,12 +147,12 @@ def distill_style(ctx: click.Context):
 
 
 @cli.command(
-    "build-profile", help="从聊天数据依次完成数据准备、记忆抽取、整理和画像生成，做分身时另外抽取说话风格。"
+    "build-profile", help="从聊天数据依次完成数据准备、记忆抽取、整理和画像生成，做分身时另外抽取语言风格。"
 )
 @click.option(
     "--purpose",
     type=click.Choice(["assistant", "clone"]),
-    help="assistant：给个人助理用，抽取画像和事件。clone：做分身，另外抽取说话风格，需要 ltp 包和 LTP 模型。未指定时交互选择。",
+    help="assistant：给个人助理用，抽取画像和事件。clone：做分身，另外抽取语言风格，需要 ltp 包和 LTP 模型。未指定时交互选择。",
 )
 @click.option(
     "--output-dir",
@@ -169,7 +169,7 @@ def build_profile(purpose: str | None, output_dir: Path | None, max_context_toke
     from weclone.data.agent.profile_pipeline import run
 
     if purpose is None:
-        click.echo("1. 给个人助理用：抽取画像和事件\n2. 做分身：另外抽取说话风格，需要 ltp 包和 LTP 模型")
+        click.echo("1. 给个人助理用：抽取画像和事件\n2. 做分身：另外抽取语言风格，需要 ltp 包和 LTP 模型")
         choice = click.prompt("请选择用途", type=click.Choice(["1", "2"]), default="1")
         purpose = "clone" if choice == "2" else "assistant"
     config_path = Path(os.environ.get("WECLONE_CONFIG_PATH", "settings.jsonc"))

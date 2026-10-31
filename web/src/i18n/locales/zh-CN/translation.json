@@ -31,7 +31,7 @@
     "source_not_found": "来源记录不存在",
     "chat_unavailable": "该来源未保存聊天定位信息，无法查看原文",
     "chat_missing": "原始聊天文件不存在或与来源记录不一致，请检查本次抽取的来源文件",
-    "style_missing": "这次运行没有抽取说话风格，做分身请运行 weclone-cli build-profile --purpose clone",
+    "style_missing": "这次运行没有抽取语言风格，做分身请运行 weclone-cli build-profile --purpose clone",
     "summary_generating": "正在生成板块总结，请稍候",
     "summary_not_found": "板块总结不存在",
     "summary_changed": "总结已被修改，请刷新后核对并重试",
@@ -55,7 +55,7 @@
   "modes": {
     "label": "页面",
     "profile": "人生画像",
-    "style": "说话风格",
+    "style": "语言风格",
     "summary": "板块总结",
     "assistant": "助手接入",
     "bots": "机器人接入"
@@ -284,7 +284,7 @@
   "style": {
     "loadFailed": "风格结果暂时无法打开",
     "back": "回到人生画像",
-    "loading": "正在读取聊天风格",
+    "loading": "正在读取语言风格",
     "eyebrow": "HOW YOU TALK",
     "tagline": "你怎么聊天，<br/><em>一眼就能看出来。</em>",
     "highlights": "最明显的是{{traits}}。",

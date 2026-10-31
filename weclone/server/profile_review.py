@@ -478,7 +478,7 @@ def create_app(
             raise ApiError(
                 404,
                 "style_missing",
-                "这次运行没有抽取说话风格，做分身请运行 weclone-cli build-profile --purpose clone",
+                "这次运行没有抽取语言风格，做分身请运行 weclone-cli build-profile --purpose clone",
             )
         return style_view.build_view(run)
 
