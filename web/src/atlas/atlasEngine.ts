@@ -1040,6 +1040,22 @@ export class AtlasEngine implements AtlasControls {
     });
   }
 
+  /**
+   * The centre's slices as a conic gradient round it, each dimension's colour in the direction its
+   * branch leaves in, blending between neighbours; null without slices or conic gradients.
+   */
+  private sliceGradient(n: MapNode): CanvasGradient | null {
+    const slices = n.slices ?? [];
+    if (!slices.length || !this.ctx.createConicGradient) return null;
+    const start = slices[0].angle;
+    const at = (angle: number) => ((((angle - start) % TAU) + TAU) % TAU) / TAU;
+    const gradient = this.ctx.createConicGradient(start, n.rx, n.ry);
+    for (const slice of [...slices].sort((a, b) => at(a.angle) - at(b.angle)))
+      gradient.addColorStop(at(slice.angle), rgbaOf(slice.rgb, 1));
+    gradient.addColorStop(1, rgbaOf(slices[0].rgb, 1));
+    return gradient;
+  }
+
   /** A soft radial blot of `rgb`: a node's halo, or a cluster's wash. */
   private sprite(kind: 'halo' | 'wash', rgb: Rgb): HTMLCanvasElement {
     const key = `${kind}${rgb.join(',')}`;
@@ -1175,7 +1191,8 @@ export class AtlasEngine implements AtlasControls {
 
   // A dimension has a flat halo of its colour behind it, a section or topic a soft bloom that
   // spreads further the more important its facts are; attributes have neither. The centre has
-  // no halo of its own: the coloured ink swells round it as the waves arrive.
+  // no halo of its own: light coloured ink swells round it as the waves arrive, laid over the ground
+  // rather than multiplied in, so the five colours do not darken where they overlap.
   private drawHalos(tf: Transform, settle: number) {
     const ctx = this.ctx;
     const k = this.cam.k;
@@ -1185,7 +1202,8 @@ export class AtlasEngine implements AtlasControls {
       for (const n of this.order) {
         const ball = n.kind === 'dimension';
         const root = n.kind === 'root';
-        if (n.vis <= 0.01 || n.kind === 'attribute' || (pass === 'source-over') !== (ball && !n.section)) continue;
+        if (n.vis <= 0.01 || n.kind === 'attribute' || (pass === 'source-over') !== ((ball && !n.section) || root))
+          continue;
         // Sections are balls too, but they bloom like the topics, in the domain view.
         let R: number;
         let a: number;
@@ -1211,7 +1229,7 @@ export class AtlasEngine implements AtlasControls {
         if (R * k < 2 && n.id !== this.hoverId) continue;
         if (root) {
           const H = R * 1.25;
-          ctx.globalAlpha = Math.min(1, a * 3.2);
+          ctx.globalAlpha = Math.min(1, a * 1.6);
           for (const slice of n.slices ?? []) {
             const x = n.rx + Math.cos(slice.angle) * H * 0.3;
             const y = n.ry + Math.sin(slice.angle) * H * 0.3;
@@ -1372,12 +1390,12 @@ export class AtlasEngine implements AtlasControls {
     for (const ring of this.rings) {
       const e = clamp((this.time - ring.start) / (ring.soft ? 1300 : 900));
       const n = ring.n;
-      ctx.strokeStyle = n.color;
+      ctx.strokeStyle = (ring.soft && this.sliceGradient(n)) || n.color;
       for (const lag of ring.soft ? [0] : [0, 0.18]) {
         const ee = clamp(e - lag);
         if (ee <= 0 || ee >= 1) continue;
-        ctx.globalAlpha = (1 - ee) ** 2 * 0.55 * (ring.soft ? 0.5 : 1);
-        ctx.lineWidth = Math.max(1, ((ring.soft ? 1.6 : 2.4) * (1 - ee)) / Math.min(1, k));
+        ctx.globalAlpha = (1 - ee) ** 2 * 0.55 * (ring.soft ? 0.85 : 1);
+        ctx.lineWidth = Math.max(1, (2.4 * (1 - ee)) / Math.min(1, k));
         ctx.beginPath();
         ctx.arc(n.rx, n.ry, n.r + 4 + easeOutCubic(ee) * (ring.soft ? 34 + n.r * 0.4 : 70 + n.r), 0, TAU);
         ctx.stroke();

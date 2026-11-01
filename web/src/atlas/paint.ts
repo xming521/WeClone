@@ -194,7 +194,7 @@ function drawRoot(c: CanvasRenderingContext2D, n: PaintNode, alpha: number, glow
   c.globalAlpha = alpha;
   c.beginPath();
   c.arc(0, 0, n.r, 0, TAU);
-  c.shadowColor = rgba(p.ink1, Math.min(ROOT.shadowFlare, ROOT.shadowOpacity * glow));
+  c.shadowColor = rgba(p.ink1, Math.min(ROOT.shadowFlare, ROOT.shadowOpacity * Math.max(1, glow)));
   c.shadowBlur = ROOT.shadowBlur * unit * Math.max(1, glow);
   c.shadowOffsetY = ROOT.shadowOffset * unit;
   c.fillStyle = p.card;
