@@ -5,12 +5,12 @@ from fastapi.testclient import TestClient
 
 from weclone.data.agent import llm_profile_hierarchy as hierarchy
 from weclone.prompts.memory_organization import dimension_name
-from weclone.prompts.profile_hierarchy import DESCRIBE_SCHEMA, SPLIT_SCHEMA
+from weclone.prompts.profile_hierarchy import SPLIT_SCHEMA, TOPIC_SCHEMA
 from weclone.server.profile_review import create_app
 
 
-def fact(dim, domain, topic, attr, value, sid, **extra):
-    return {"dim": dim, "domain": domain, "topic": topic, "attr": attr, "value": value, "source_ids": [sid], **extra}
+def fact(dim, domain, attr, value, sid, **extra):
+    return {"dim": dim, "domain": domain, "attr": attr, "value": value, "source_ids": [sid], **extra}
 
 
 def organized():
@@ -20,19 +20,14 @@ def organized():
             {"name": "学业", "description": "旧描述二"},
             {"name": "工作", "description": "没有画像条目"},
         ],
-        "topics": [
-            {"domain": "出行旅行", "name": "周末郊游", "attrs": [[8, "活动偏好"]]},
-            {"domain": "学业", "name": "读博申请", "attrs": [[1, "目标院校"], [3, "读博目标"], [5, "面试安排"]]},
-            {"domain": "学业", "name": "课程", "attrs": [[1, "课程"]]},
-        ],
         "facts": [
-            fact(1, "学业", "读博申请", "目标院校", "B申请了甲大学。", "s1"),
-            fact(3, "学业", "读博申请", "读博目标", "B想读博。", "s2"),
-            fact(5, "学业", "读博申请", "面试安排", "B下周面试。", "s3"),
-            fact(1, "学业", "课程", "课程", "B在上机器学习课。", "s4"),
-            fact(6, None, None, "关系状态", "P1是B的同学。", "s5", peer="P1"),
-            fact(7, "出行旅行", None, "天气", "周末下雨。", "s6"),
-            fact(8, "出行旅行", "周末郊游", "活动偏好", "B喜欢徒步。", "s7"),
+            fact(1, "学业", "目标院校", "B申请了甲大学。", "s1"),
+            fact(3, "学业", "读博目标", "B想读博。", "s2"),
+            fact(5, "学业", "面试安排", "B下周面试。", "s3"),
+            fact(1, "学业", "课程", "B在上机器学习课。", "s4"),
+            fact(6, None, "关系状态", "P1是B的同学。", "s5", peer="P1"),
+            fact(7, "出行旅行", "天气", "周末下雨。", "s6"),
+            fact(8, "出行旅行", "活动偏好", "B喜欢徒步。", "s7"),
         ],
         "unused": [],
         "unassigned_ids": [],
@@ -40,27 +35,111 @@ def organized():
     }
 
 
-def test_layout_keeps_profile_facts_in_domain_topics_and_drops_empty_domains():
-    facts, domains = hierarchy.topic_layout(organized())
+def test_domain_facts_keep_profile_facts_per_domain_and_drop_empty_domains():
+    facts, layout = hierarchy.domain_facts(organized())
     assert [row["dim"] for row in facts] == [1, 3, 5, 1, 8]
+    assert [(domain["name"], indices) for domain, indices in layout] == [("出行旅行", [4]), ("学业", [0, 1, 2, 3])]
+
+
+@pytest.mark.parametrize("domain", [None, "不存在"])
+def test_domain_facts_reject_profile_facts_outside_known_domains(domain):
+    data = organized()
+    data["facts"][0]["domain"] = domain
+    with pytest.raises(ValueError, match="Profile fact 0"):
+        hierarchy.domain_facts(data)
+
+
+def test_group_topics_numbers_each_domain_and_rewrites_its_description():
+    data = organized()
+    facts, layout = hierarchy.domain_facts(data)
+    answers = {
+        "出行旅行": [{"name": "周末郊游", "items": [1]}],
+        "学业": [{"name": "课程", "items": [4]}, {"name": "读博申请", "items": [3, 1, 2]}],
+    }
+    prompts = []
+
+    class Runner:
+        def run(self, tasks, validate):
+            results = []
+            for task in tasks:
+                assert task["stage"] == "domain_topics" and task["schema"] is TOPIC_SCHEMA
+                prompts.append(task["prompt"])
+                name = task["prompt"].split("## 当前领域\n", 1)[1].split("：", 1)[0]
+                results.append(validate({"description": f" {name}说明 ", "topics": answers[name]}, task))
+            return results
+
+    domains = hierarchy.group_topics(data["domains"], layout, facts, Runner(), min_facts=8, max_facts=30)
     assert domains == [
-        {"name": "出行旅行", "description": "旧描述一", "topics": [{"name": "周末郊游", "fact_indices": [4]}]},
-        {"name": "学业", "description": "旧描述二", "topics": [
-            {"name": "读博申请", "fact_indices": [0, 1, 2]}, {"name": "课程", "fact_indices": [3]},
+        {"name": "出行旅行", "description": "出行旅行说明", "topics": [{"name": "周末郊游", "fact_indices": [4]}]},
+        {"name": "学业", "description": "学业说明", "topics": [
+            {"name": "课程", "fact_indices": [3]}, {"name": "读博申请", "fact_indices": [0, 1, 2]},
         ]},
+    ]
+    assert "不超过 30 条" in prompts[1] and "不少于 8 条" in prompts[1]
+    assert "## 当前领域\n学业：旧描述二\n" in prompts[1] and "3. 工作：没有画像条目" in prompts[1]
+    assert f"4 课程：B在上机器学习课。（{dimension_name(1)}）" in prompts[1]
+    assert prompts[0].split("## 当前领域")[0] == prompts[1].split("## 当前领域")[0]
+
+
+def test_topics_strip_names_and_keep_items():
+    payload = {"topics": [{"name": " 读博申请 ", "items": [2, 1]}, {"name": "日常出行", "items": [3]}]}
+    assert hierarchy.validate_topics(payload, 3) == [
+        {"name": "读博申请", "items": [2, 1]}, {"name": "日常出行", "items": [3]},
     ]
 
 
-@pytest.mark.parametrize("change", [{"topic": "不存在"}, {"domain": None}, {"domain": "工作"}])
-def test_layout_rejects_profile_facts_outside_known_topics(change):
-    data = organized()
-    data["facts"][0].update(change)
-    with pytest.raises(ValueError, match="Profile fact 0"):
-        hierarchy.topic_layout(data)
+@pytest.mark.parametrize("defect", ["missing", "duplicate_id", "out_of_range", "duplicate_name", "english_name",
+                                    "peer_id", "empty_items", "bool_id"])
+def test_topics_cover_every_fact_once(defect):
+    topics = [{"name": "读博申请", "items": [1, 2]}, {"name": "日常出行", "items": [3]}]
+    if defect == "missing":
+        topics.pop()
+    elif defect == "duplicate_id":
+        topics[1]["items"] = [3, 2]
+    elif defect == "out_of_range":
+        topics[1]["items"] = [3, 4]
+    elif defect == "duplicate_name":
+        topics[1]["name"] = "读博申请"
+    elif defect == "english_name":
+        topics[1]["name"] = "travel"
+    elif defect == "peer_id":
+        topics[1]["name"] = "和P3出行"
+    elif defect == "empty_items":
+        topics.append({"name": "空主题", "items": []})
+    else:
+        topics[1]["items"] = [True, 3]
+    with pytest.raises(ValueError):
+        hierarchy.validate_topics({"topics": topics}, 3)
+
+
+@pytest.mark.parametrize("defect", [None, "no_description", "blank_description", "extra_key", "missing_fact"])
+def test_domain_topics_need_a_description(defect):
+    payload = {"description": " 说明 ", "topics": [{"name": "读博申请", "items": [1, 2]}]}
+    if defect == "no_description":
+        del payload["description"]
+    elif defect == "blank_description":
+        payload["description"] = " "
+    elif defect == "extra_key":
+        payload["domains"] = []
+    elif defect == "missing_fact":
+        payload["topics"][0]["items"] = [1]
+    if defect is None:
+        assert hierarchy.validate_domain_topics(payload, 2) == {
+            "description": "说明", "topics": [{"name": "读博申请", "items": [1, 2]}],
+        }
+    else:
+        with pytest.raises(ValueError):
+            hierarchy.validate_domain_topics(payload, 2)
 
 
 def test_dimension_view_nests_domain_topic_and_attribute():
-    facts, domains = hierarchy.topic_layout(organized())
+    facts, _ = hierarchy.domain_facts(organized())
+    domains = [
+        {"name": "出行旅行", "topics": [{"name": "周末郊游", "fact_indices": [4]}]},
+        {"name": "学业", "topics": [
+            {"name": "读博申请", "fact_indices": [0, 1, 2]}, {"name": "课程", "fact_indices": [3]},
+        ]},
+    ]
     assert hierarchy.dimension_view(facts, domains) == [
         {"dim": 1, "name": dimension_name(1), "groups": [{"name": "学业", "items": [
             {"name": "读博申请", "items": [{"attr": "目标院校", "fact_indices": [0]}]},
@@ -79,7 +158,7 @@ def test_dimension_view_nests_domain_topic_and_attribute():
 
 
 def test_split_replaces_large_topics_and_renames_names_two_splits_share():
-    facts = [fact(1, "学业", "主题", "属性", f"事实{i}", f"s{i}") for i in range(7)]
+    facts = [fact(1, "学业", "属性", f"事实{i}", f"s{i}") for i in range(7)]
     domains = [{"name": "学业", "description": "读博和课程", "topics": [
         {"name": "读博申请", "fact_indices": [0, 1, 2]},
         {"name": "课程", "fact_indices": [3, 4, 5]},
@@ -121,7 +200,7 @@ def test_split_skips_the_model_when_topics_are_small():
             pytest.fail("No topic exceeds the limit")
 
     domains = [{"name": "学业", "description": "课程", "topics": [{"name": "课程", "fact_indices": [0]}]}]
-    assert hierarchy.split_topics(domains, [fact(1, "学业", "课程", "课程", "事实", "s1")], Runner(), 30) == (
+    assert hierarchy.split_topics(domains, [fact(1, "学业", "课程", "事实", "s1")], Runner(), 30) == (
         domains,
         [],
     )
@@ -145,35 +224,21 @@ def test_unique_name_prefixes_the_original_topic():
     assert hierarchy.unique_name("日常", "课程", {"日常", "课程·日常"}) == "课程·日常2"
 
 
-@pytest.mark.parametrize("defect", [None, "missing", "duplicate", "out_of_range", "empty"])
-def test_descriptions_cover_every_domain_once(defect):
-    items = [{"id": 2, "description": " 说明二 "}, {"id": 1, "description": "说明一"}]
-    if defect == "missing":
-        items.pop()
-    elif defect == "duplicate":
-        items[1]["id"] = 2
-    elif defect == "out_of_range":
-        items[1]["id"] = 3
-    elif defect == "empty":
-        items[1]["description"] = " "
-    if defect is None:
-        assert hierarchy.validate_descriptions({"domains": items}, 2) == ["说明一", "说明二"]
-    else:
-        with pytest.raises(ValueError):
-            hierarchy.validate_descriptions({"domains": items}, 2)
-
-
 def test_main_writes_a_hierarchy_the_review_store_accepts(tmp_path, monkeypatch):
     settings = tmp_path / "settings.jsonc"
     settings.write_text(json.dumps({"security_args": {"storage_mode": "plaintext", "state_dir": str(tmp_path / "state")}}))
     monkeypatch.setenv("WECLONE_CONFIG_PATH", str(settings))
     source = tmp_path / "organized_memories.json"
     source.write_text(json.dumps(organized(), ensure_ascii=False), encoding="utf-8")
+    answers = {
+        "出行旅行": [{"name": "周末郊游", "items": [1]}],
+        "学业": [{"name": "读博申请", "items": [1, 2, 3]}, {"name": "课程", "items": [4]}],
+    }
     seen = []
 
     class Runner:
         def __init__(self, args):
-            assert args.leaf_facts == 2
+            assert (args.leaf_facts, args.topic_min_facts) == (2, 1)
 
         def run(self, tasks, validate):
             results = []
@@ -182,9 +247,8 @@ def test_main_writes_a_hierarchy_the_review_store_accepts(tmp_path, monkeypatch)
                 if task["stage"] == "split_topic":
                     payload = {"topics": [{"name": "院校选择", "items": [1]}, {"name": "申请进度", "items": [2, 3]}]}
                 else:
-                    assert task["schema"] is DESCRIBE_SCHEMA
-                    count = len(task["prompt"].split("、主题（条目数）\n", 1)[1].splitlines())
-                    payload = {"domains": [{"id": i, "description": f"新描述{i}"} for i in range(1, count + 1)]}
+                    name = task["prompt"].split("## 当前领域\n", 1)[1].split("：", 1)[0]
+                    payload = {"description": f"{name}的新说明", "topics": answers[name]}
                 results.append(validate(payload, task))
             return results
 
@@ -194,13 +258,13 @@ def test_main_writes_a_hierarchy_the_review_store_accepts(tmp_path, monkeypatch)
     monkeypatch.setattr(hierarchy, "LLMTasks", Runner)
     output = tmp_path / "hierarchy"
     hierarchy.main(["--input-path", str(source), "--output-dir", str(output), "--config-path", str(settings),
-                    "--max-context-tokens", "8192", "--leaf-facts", "2"])
+                    "--max-context-tokens", "8192", "--leaf-facts", "2", "--topic-min-facts", "1"])
     data = json.loads((output / "profile_hierarchy.json").read_text())
-    assert [task["stage"] for task in seen] == ["split_topic", "describe_domains"]
-    assert "2 学业：院校选择（1）、申请进度（2）、课程（1）" in seen[1]["prompt"]
+    assert [task["stage"] for task in seen] == ["domain_topics", "domain_topics", "split_topic"]
+    assert "## 领域\n学业：学业的新说明\n" in seen[2]["prompt"]
     assert data["domains"] == [
-        {"name": "出行旅行", "description": "新描述1", "topics": [{"name": "周末郊游", "fact_indices": [4]}]},
-        {"name": "学业", "description": "新描述2", "topics": [
+        {"name": "出行旅行", "description": "出行旅行的新说明", "topics": [{"name": "周末郊游", "fact_indices": [4]}]},
+        {"name": "学业", "description": "学业的新说明", "topics": [
             {"name": "院校选择", "fact_indices": [0]},
             {"name": "申请进度", "fact_indices": [1, 2]},
             {"name": "课程", "fact_indices": [3]},

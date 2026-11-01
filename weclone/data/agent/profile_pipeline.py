@@ -97,7 +97,7 @@ def run(
             input_dir=people_dir, output_dir=distill_dir, config_path=config_path, confirmed=True
         )
 
-    with _stage(f"[3/{stages}] 划分板块、分类、分主题和汇总记忆"):
+    with _stage(f"[3/{stages}] 划分板块、分类和汇总记忆"):
         organize_memories.main(
             [
                 "--stage",
@@ -113,7 +113,7 @@ def run(
             ]
         )
 
-    with _stage(f"[4/{stages}] 生成画像层级"):
+    with _stage(f"[4/{stages}] 把事实分成主题，生成画像层级"):
         llm_profile_hierarchy.main(
             [
                 "--input-path",

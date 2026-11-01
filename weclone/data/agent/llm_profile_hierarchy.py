@@ -1,8 +1,8 @@
 """Build the browsable profile hierarchy (domain → topic → profile facts) from organized memories.
 
-Topics with more than --leaf-facts facts are split into smaller topics, and each domain description is rewritten
-from its final topics. The output also keeps a per-dimension view (dimension → domain → topic → attribute) for the
-review UI.
+Each domain's profile facts are grouped into topics of at most --leaf-facts facts, and the domain description
+is rewritten from them in the same request. Topics that still hold more facts are split into smaller topics.
+The output also keeps a per-dimension view (dimension → domain → topic → attribute) for the review UI.
 """
 
 import argparse
@@ -11,44 +11,101 @@ import json
 import re
 from collections import defaultdict
 from pathlib import Path
+from typing import Any
 
-from weclone.data.agent.organize_memories import LLMTasks, save, validate_topics
+from weclone.data.agent.organize_memories import LLMTasks, chinese_attr, save
 from weclone.prompts.memory_organization import PROFILE_DIMS, dimension_name
-from weclone.prompts.profile_hierarchy import DESCRIBE_SCHEMA, SPLIT_SCHEMA, describe_prompt, split_prompt
+from weclone.prompts.profile_hierarchy import SPLIT_SCHEMA, TOPIC_SCHEMA, split_prompt, topic_prompt
 from weclone.utils import secure_storage
 
 # Chat peer ids as organize_memories assigns them: P1, P2, ...
 PEER_ID = re.compile(r"(?<![A-Za-z0-9])P\d+(?![A-Za-z0-9])")
 
 
-def topic_layout(data: dict) -> tuple[list[dict], list[dict]]:
-    """Profile facts and the domains holding them, each with its topics' fact indices in organizer order."""
+def domain_facts(data: dict) -> tuple[list[dict], list[tuple[dict, list[int]]]]:
+    """Profile facts, and each domain holding some with their fact indices in organizer order."""
     facts = [fact for fact in data["facts"] if fact["dim"] in PROFILE_DIMS]
-    members = {domain["name"]: {} for domain in data["domains"]}
-    for topic in data["topics"]:
-        members[topic["domain"]][topic["name"]] = []
+    members: dict[str, list[int]] = {domain["name"]: [] for domain in data["domains"]}
     for index, fact in enumerate(facts):
-        indices = members.get(fact.get("domain"), {}).get(fact.get("topic"))
-        if indices is None:
-            raise ValueError(f"Profile fact {index} is not in a known domain topic")
-        indices.append(index)
-    domains = []
-    for domain in data["domains"]:
-        topics = [
-            {"name": name, "fact_indices": rows} for name, rows in members[domain["name"]].items() if rows
-        ]
-        if topics:
-            domains.append({**domain, "topics": topics})
-    return facts, domains
+        if fact.get("domain") not in members:
+            raise ValueError(f"Profile fact {index} is not in a known domain")
+        members[fact["domain"]].append(index)
+    return facts, [(domain, members[domain["name"]]) for domain in data["domains"] if members[domain["name"]]]
+
+
+def validate_topics(payload: Any, count: int) -> list[dict]:
+    if not isinstance(payload, dict) or set(payload) != {"topics"} or not isinstance(payload["topics"], list):
+        raise ValueError("Topics require topics array")
+    topics, names, seen = [], set(), []
+    for topic in payload["topics"]:
+        if not isinstance(topic, dict) or set(topic) != {"name", "items"}:
+            raise ValueError("Topic requires name and items")
+        name = topic["name"].strip() if isinstance(topic["name"], str) else ""
+        if not chinese_attr(name) or name in names:
+            raise ValueError("Topic names must be unique Chinese names")
+        # The router reads topic names against the incoming message, where a chat peer id never appears.
+        if PEER_ID.search(name):
+            raise ValueError("Topic names must not contain chat peer ids")
+        items = topic["items"]
+        if not isinstance(items, list) or not items or any(type(i) is not int for i in items):
+            raise ValueError("Topic items must be fact ids")
+        names.add(name)
+        seen.extend(items)
+        topics.append({"name": name, "items": items})
+    if sorted(seen) != list(range(1, count + 1)):
+        raise ValueError("Every fact id must appear in exactly one topic")
+    return topics
+
+
+def validate_domain_topics(payload: Any, count: int) -> dict:
+    if not isinstance(payload, dict) or set(payload) != {"description", "topics"}:
+        raise ValueError("Domain topics require description and topics")
+    description = payload["description"].strip() if isinstance(payload["description"], str) else ""
+    if not description:
+        raise ValueError("Domain description is empty")
+    return {"description": description, "topics": validate_topics({"topics": payload["topics"]}, count)}
+
+
+def group_topics(
+    domains: list[dict],
+    layout: list[tuple[dict, list[int]]],
+    facts: list[dict],
+    runner,
+    min_facts: int,
+    max_facts: int,
+) -> list[dict]:
+    """Each domain of the layout with its facts grouped into topics and its description rewritten."""
+    tasks = [
+        {
+            "stage": "domain_topics",
+            "schema": TOPIC_SCHEMA,
+            "count": len(indices),
+            "prompt": topic_prompt(domains, domain, [facts[i] for i in indices], min_facts, max_facts),
+        }
+        for domain, indices in layout
+    ]
+    results = (
+        runner.run(tasks, lambda payload, task: validate_domain_topics(payload, task["count"]))
+        if tasks
+        else []
+    )
+    return [
+        {
+            **domain,
+            "description": result["description"],
+            "topics": [
+                {"name": topic["name"], "fact_indices": sorted(indices[i - 1] for i in topic["items"])}
+                for topic in result["topics"]
+            ],
+        }
+        for (domain, indices), result in zip(layout, results)
+    ]
 
 
 def validate_split(payload, count: int, taken: set[str]) -> list[dict]:
     topics = validate_topics(payload, count)
     if len(topics) < 2 or any(topic["name"] in taken for topic in topics):
         raise ValueError("A split needs at least two topics with new names")
-    # The router reads topic names against the incoming message, where a chat peer id never appears.
-    if any(PEER_ID.search(topic["name"]) for topic in topics):
-        raise ValueError("Split topic names must not contain chat peer ids")
     return topics
 
 
@@ -121,27 +178,6 @@ def split_topics(
     return refined, report
 
 
-def validate_descriptions(payload, count: int) -> list[str]:
-    if (
-        not isinstance(payload, dict)
-        or set(payload) != {"domains"}
-        or not isinstance(payload["domains"], list)
-    ):
-        raise ValueError("Descriptions require domains array")
-    descriptions = {}
-    for item in payload["domains"]:
-        if not isinstance(item, dict) or set(item) != {"id", "description"}:
-            raise ValueError("Description requires id and description")
-        if type(item["id"]) is not int or not 1 <= item["id"] <= count or item["id"] in descriptions:
-            raise ValueError("Unknown or duplicate domain id")
-        if not isinstance(item["description"], str) or not item["description"].strip():
-            raise ValueError("Domain description is empty")
-        descriptions[item["id"]] = item["description"].strip()
-    if len(descriptions) != count:
-        raise ValueError("Missing domain ids")
-    return [descriptions[i] for i in range(1, count + 1)]
-
-
 def dimension_view(facts: list[dict], domains: list[dict]) -> list[dict]:
     """Per-dimension tree for the review UI: dimension → domain → topic → attribute → fact indices."""
     dimensions = []
@@ -182,31 +218,35 @@ def main(argv: list[str] | None = None):
     parser.add_argument("--token-encoding", default="o200k_base")
     parser.add_argument("--tokenizer-file", type=Path)
     parser.add_argument(
-        "--leaf-facts", type=int, default=30, help="Topics holding more facts are split into smaller topics"
+        "--leaf-facts",
+        type=int,
+        default=30,
+        help="Facts a topic should stay within; topics still holding more are split into smaller topics",
+    )
+    # 8 facts cite about 20 memories (2.4 per profile fact on average); smaller topics are fragments that only
+    # lengthen the topic list.
+    parser.add_argument(
+        "--topic-min-facts",
+        type=int,
+        default=8,
+        help="Facts a topic should reach; sparse facts join the closest topic",
     )
     args = parser.parse_args(argv)
-    if args.leaf_facts < 1:
-        parser.error("--leaf-facts must be positive")
+    if args.leaf_facts < 1 or args.topic_min_facts < 1:
+        parser.error("--leaf-facts and --topic-min-facts must be positive")
+    if args.topic_min_facts > args.leaf_facts:
+        parser.error("--topic-min-facts must not exceed --leaf-facts")
     secure_storage.configure(args.config_path)
     args.output_dir.mkdir(parents=True, exist_ok=True)
     input_bytes = secure_storage.read_bytes(args.input_path)
     input_sha256 = hashlib.sha256(input_bytes).hexdigest()
     data = json.loads(input_bytes)
     del input_bytes
-    facts, domains = topic_layout(data)
+    facts, layout = domain_facts(data)
     runner = LLMTasks(args)
     try:
+        domains = group_topics(data["domains"], layout, facts, runner, args.topic_min_facts, args.leaf_facts)
         domains, splits = split_topics(domains, facts, runner, args.leaf_facts)
-        if domains:
-            task = {
-                "stage": "describe_domains",
-                "schema": DESCRIBE_SCHEMA,
-                "prompt": describe_prompt(domains),
-            }
-            descriptions = runner.run(
-                [task], lambda payload, _: validate_descriptions(payload, len(domains))
-            )[0]
-            domains = [{**domain, "description": text} for domain, text in zip(domains, descriptions)]
     finally:
         runner.close()
     facts = list(facts)

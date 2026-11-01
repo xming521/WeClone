@@ -380,7 +380,7 @@ def dev(ctx: click.Context, demo: str | None):
 
 @cli.command(
     "organize-memories",
-    help="Induce life domains, classify, group into topics, and summarize extracted memories.",
+    help="Induce life domains, classify, and summarize extracted memories.",
     context_settings={"ignore_unknown_options": True, "allow_extra_args": True},
     add_help_option=False,
 )

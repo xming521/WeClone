@@ -1,15 +1,17 @@
-"""Organize extracted profile/event memories by life domain, topic and dimension without reading chat messages.
+"""Organize extracted profile/event memories by life domain and dimension without reading chat messages.
 
 Stages: prepare reads the extracted memories and notes which chat each peer id stands for (the stable contact id,
 P1, P2, ..., from the people files). domains induces the person's life domains from extraction tags
 and maps the tags to them. peers writes one line per chat peer on how they relate to B, from the memories that
-mention them. classify assigns each memory a dimension, a domain and an attribute name, in batches grouped by the
-tags' domains, places what passes between B and a peer by that relation, and gives every memory a privacy level.
-topics groups each domain's profile attributes into conversation topics. summarize writes facts per (topic,
-dimension), each with its own privacy level and time scope (stable, current, superseded or dated); dimension 6 is
-summarized per chat peer and dimension 7 per domain. Identity facts of every domain share one request, so the model
-can tell which candidate a later one replaced, and profile groups of different domains that share a memory share
-one request, so its fact is written once.
+mention them. classify assigns each memory dimensions and, per dimension, the domains it belongs to, in
+batches grouped by the tags' domains, places what passes between B and a peer by that relation, and gives
+every memory a privacy level.
+summarize writes facts per (domain, dimension), each with its own privacy level and time scope (stable,
+current, superseded or dated); dimension 6 is summarized per chat peer. A large group is summarized in
+time-ordered parts whose facts are then merged. Identity facts of every domain share one request, so the model
+can tell which candidate a later one replaced, and profile groups of different domains that share a memory
+share one request, so its fact is written once. llm_profile_hierarchy later groups the profile facts into
+topics.
 """
 
 from __future__ import annotations
@@ -19,6 +21,7 @@ import asyncio
 import hashlib
 import json
 import logging
+import math
 import re
 import subprocess
 from collections import Counter, defaultdict
@@ -40,19 +43,17 @@ from weclone.prompts.memory_organization import (
     SUMMARY_SCHEMA,
     TAG_DOMAIN_SCHEMA,
     TIME_SCOPES,
-    TOPIC_SCHEMA,
     batch_summary_prompt,
     classify_prompt,
     domain_prompt,
     peer_prompt,
     summarize_prompt,
     tag_domain_prompt,
-    topic_prompt,
 )
 from weclone.utils import secure_storage
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
-STAGES = ("prepare", "domains", "peers", "classify", "topics", "summarize")
+STAGES = ("prepare", "domains", "peers", "classify", "summarize")
 # Domain induction and tag mapping read the tags used at least DOMAIN_TAG_MIN_COUNT times, keeping at least
 # DOMAIN_TAG_FLOOR and at most DOMAIN_TAG_LIMIT of the most used tags.
 DOMAIN_TAG_MIN_COUNT = 3
@@ -60,7 +61,6 @@ DOMAIN_TAG_FLOOR = 200
 DOMAIN_TAG_LIMIT = 1000
 TAG_BATCH = 250
 MAX_DOMAINS = 20
-EXAMPLE_CHARS = 30
 # A peer's relation is read from at most PEER_MEMORY_LIMIT of the memories that mention the peer.
 PEER_MEMORY_LIMIT = 200
 PEER_RELATION_CHARS = 100
@@ -476,18 +476,16 @@ def validate_classification(payload: Any, records: list[dict], domain_count: int
         for field in item["fields"]:
             if (
                 not isinstance(field, dict)
-                or set(field) != {"dim", "domain", "attr"}
+                or set(field) != {"dim", "domain"}
                 or type(field["dim"]) is not int
                 or field["dim"] not in allowed_dimensions(expected[rid])
                 or type(field["domain"]) is not int
                 or not 1 <= field["domain"] <= domain_count
-                or not chinese_attr(field["attr"])
             ):
-                raise ValueError("Invalid dimension/source combination, domain or Chinese attribute")
-            field["attr"] = field["attr"].strip()
-            pair = (field["dim"], field["attr"])
+                raise ValueError("Invalid dimension/source combination or domain")
+            pair = (field["dim"], field["domain"])
             if pair in pairs:
-                raise ValueError("Duplicate attribute assignment")
+                raise ValueError("Duplicate dimension and domain assignment")
             pairs.add(pair)
     if seen != set(expected):
         raise ValueError("Missing classification ids")
@@ -520,89 +518,19 @@ def validate_summary(payload: Any, source_ids: set[str]) -> dict:
     return payload
 
 
-def topic_inputs(classifications: list[dict], by_id: dict[str, dict]) -> dict[int, list[dict]]:
-    """Profile attributes of each domain, numbered for its topic request, with memory counts and one example."""
-    members: dict[tuple[int, str, int], list[str]] = defaultdict(list)
+def summary_groups(classifications: list[dict], by_id: dict[str, dict], domains: list[dict]) -> list[dict]:
+    """Summary units: chat peer for dimension 6, (domain, dimension) for the others, named by the domain."""
+    members: dict[tuple[int, int, str], set[str]] = defaultdict(set)
     for item in classifications:
         for field in item["fields"]:
-            if field["dim"] in PROFILE_DIMS:
-                members[(field["domain"], field["attr"], field["dim"])].append(item["id"])
-    inputs: dict[int, list[dict]] = defaultdict(list)
-    for (domain, attr, dim), ids in sorted(members.items()):
-        example = min(
-            (by_id[rid] for rid in ids), key=lambda row: (-row["importance"], row["sample_time"], row["id"])
-        )
-        rows = inputs[domain]
-        rows.append(
-            {
-                "id": len(rows) + 1,
-                "dim": dim,
-                "attr": attr,
-                "count": len(ids),
-                "example": " ".join(prompt_record(example)["content"].split())[:EXAMPLE_CHARS],
-            }
-        )
-    return dict(inputs)
-
-
-def validate_topics(payload: Any, count: int) -> list[dict]:
-    if not isinstance(payload, dict) or set(payload) != {"topics"} or not isinstance(payload["topics"], list):
-        raise ValueError("Topics require topics array")
-    topics, names, seen = [], set(), []
-    for topic in payload["topics"]:
-        if not isinstance(topic, dict) or set(topic) != {"name", "items"}:
-            raise ValueError("Topic requires name and items")
-        name = topic["name"].strip() if isinstance(topic["name"], str) else ""
-        if not chinese_attr(name) or name in names:
-            raise ValueError("Topic names must be unique Chinese names")
-        items = topic["items"]
-        if not isinstance(items, list) or not items or any(type(i) is not int for i in items):
-            raise ValueError("Topic items must be attribute ids")
-        names.add(name)
-        seen.extend(items)
-        topics.append({"name": name, "items": items})
-    if sorted(seen) != list(range(1, count + 1)):
-        raise ValueError("Every attribute id must appear in exactly one topic")
-    return topics
-
-
-def summary_groups(classifications: list[dict], by_id: dict[str, dict], topics: list[dict]) -> list[dict]:
-    """Summary units: (topic, dimension) for profile dimensions, chat peer for 6, domain for 7."""
-    topic_of = {}
-    for topic in topics:
-        for dim, attr in topic["attrs"]:
-            key = (topic["domain"], dim, attr)
-            if key in topic_of:
-                raise ValueError("Topics do not match classifications")
-            topic_of[key] = topic["name"]
-    members: dict[tuple, dict[str, set[str]]] = defaultdict(lambda: {"attrs": set(), "source_ids": set()})
-    expected = set()
-    for item in classifications:
-        for field in item["fields"]:
-            dim, domain, attr = field["dim"], field["domain"], field["attr"]
-            if dim == 6:
-                key = (6, 0, "", by_id[item["id"]]["peer"])
-            elif dim in PROFILE_DIMS:
-                expected.add((domain, dim, attr))
-                if (domain, dim, attr) not in topic_of:
-                    raise ValueError("Topics do not match classifications")
-                key = (dim, domain, topic_of[(domain, dim, attr)], "")
+            if field["dim"] == 6:
+                members[(6, 0, by_id[item["id"]]["peer"])].add(item["id"])
             else:
-                key = (dim, domain, "", "")
-            members[key]["attrs"].add(attr)
-            members[key]["source_ids"].add(item["id"])
-    if expected != set(topic_of):
-        raise ValueError("Topics do not match classifications")
+                members[(field["dim"], field["domain"], "")].add(item["id"])
     groups = []
-    for (dim, domain, topic, peer), group in sorted(members.items()):
-        entry = {"dim": dim}
-        if dim == 6:
-            entry["peer"] = peer
-        else:
-            entry["domain"] = domain
-            if topic:
-                entry["topic"] = topic
-        groups.append({**entry, "attrs": sorted(group["attrs"]), "source_ids": sorted(group["source_ids"])})
+    for (dim, domain, peer), ids in sorted(members.items()):
+        label = {"peer": peer} if dim == 6 else {"domain": domains[domain - 1]["name"]}
+        groups.append({"dim": dim, **label, "source_ids": sorted(ids)})
     return groups
 
 
@@ -616,7 +544,6 @@ def task_schema(task: dict) -> dict:
         "tag_domains": TAG_DOMAIN_SCHEMA,
         "peers": PEER_SCHEMA,
         "classify": CLASSIFY_SCHEMA,
-        "topics": TOPIC_SCHEMA,
     }.get(task["stage"], SUMMARY_SCHEMA)
 
 
@@ -715,20 +642,18 @@ class LLMTasks:
 
 def pack_summary(
     dim: int,
-    attrs: list[str],
     rows: list[dict],
     *,
     reduced: bool,
     budget: InputBudget | None = None,
     peer: str | None = None,
-    topic: str | None = None,
-    domain: int | None = None,
+    domain: str | None = None,
     max_records: int = 300,
 ) -> list[dict]:
     def fits(items):
         if not reduced and len(items) > max_records:
             return False
-        prompt = summarize_prompt(dim, attrs, items, reduced=reduced, peer=peer, topic=topic)
+        prompt = summarize_prompt(dim, items, reduced=reduced, peer=peer, domain=domain)
         return budget is None or budget.fits(prompt)
 
     batches, current = [], []
@@ -750,10 +675,8 @@ def pack_summary(
             "stage": "reduce" if reduced else "summarize",
             "dim": dim,
             "domain": domain,
-            "topic": topic,
-            "attrs": attrs,
             "rows": batch,
-            "prompt": summarize_prompt(dim, attrs, batch, reduced=reduced, peer=peer, topic=topic),
+            "prompt": summarize_prompt(dim, batch, reduced=reduced, peer=peer, domain=domain),
             "source_ids": sorted(
                 {sid for row in batch for sid in (row["source_ids"] if reduced else [row["id"]])}
             ),
@@ -787,8 +710,11 @@ def validate_summary_batch(payload: Any, task: dict) -> list[dict]:
     return [results[i] for i in range(len(task["members"]))]
 
 
-def summary_partitions(tasks: list[dict]) -> dict[tuple, list[tuple[int, dict]]]:
-    """Summary tasks that may share a request: one stage and dimension, and one domain unless memories link them."""
+def summary_partitions(
+    tasks: list[dict], owners: list[int] | None = None
+) -> dict[tuple, list[tuple[int, dict]]]:
+    """Summary tasks that may share a request: one stage and dimension, and one domain unless memories link
+    them. The parts of one group, tasks with the same owner, stay in one partition."""
     keys = []
     for task in tasks:
         # Identity candidates of one person spread over domains (study status under background and under
@@ -811,6 +737,8 @@ def summary_partitions(tasks: list[dict]) -> dict[tuple, list[tuple[int, dict]]]
         if task["dim"] in PROFILE_DIMS:
             for sid in task["source_ids"]:
                 parent[root(i)] = root(first.setdefault((task["stage"], task["dim"], sid), i))
+        if owners is not None:
+            parent[root(i)] = root(first.setdefault(("owner", owners[i]), i))
     spans = defaultdict(set)
     for i, key in enumerate(keys):
         spans[root(i)].add(key)
@@ -827,9 +755,19 @@ def run_summary_tasks(
     max_groups: int,
     budget: InputBudget | None,
     max_records: int = 300,
+    owners: list[int] | None = None,
 ) -> list[dict]:
-    partitions = summary_partitions(tasks)
+    """Each task's result. Tasks with the same owner are parts of one group."""
+    partitions = summary_partitions(tasks, owners)
     requests, positions = [], []
+
+    def fits(batch):
+        source_count = len({sid for _, task in batch for sid in task["source_ids"]})
+        return (
+            len(batch) <= max_groups
+            and (batch[0][1]["stage"] != "summarize" or source_count <= max_records)
+            and (budget is None or budget.fits(batch_summary_prompt([task for _, task in batch])))
+        )
 
     def append(batch):
         members = [task for _, task in batch]
@@ -850,15 +788,16 @@ def run_summary_tasks(
             for entry in entries:
                 append([entry])
             continue
+        # Answered in one request, the parts of a group are merged into a few broad facts that leave most of
+        # their memories uncited, so the k-th parts of the partition's groups share requests and a reduce
+        # merges each group's parts.
+        layer, seen = {}, Counter()
+        for i, _ in entries:
+            owner = i if owners is None else owners[i]
+            layer[i], seen[owner] = seen[owner], seen[owner] + 1
         current = []
-        for entry in entries:
-            proposed = current + [entry]
-            source_count = len({sid for _, task in proposed for sid in task["source_ids"]})
-            if current and (
-                len(proposed) > max_groups
-                or (entry[1]["stage"] == "summarize" and source_count > max_records)
-                or (budget and not budget.fits(batch_summary_prompt([task for _, task in proposed])))
-            ):
+        for entry in sorted(entries, key=lambda entry: layer[entry[0]]):
+            if current and (layer[current[-1][0]] != layer[entry[0]] or not fits(current + [entry])):
                 append(current)
                 current = []
             current.append(entry)
@@ -886,6 +825,7 @@ def summarize_groups(
     budget: InputBudget | None = None,
     max_groups: int = 30,
     max_records: int = 300,
+    part_records: int = 30,
 ) -> list[dict]:
     states = []
     for group in groups:
@@ -899,20 +839,25 @@ def summarize_groups(
         for i, (group, state) in enumerate(zip(groups, states)):
             if state["result"] is not None:
                 continue
+            # Summarized as one long group, a large profile group gets a few broad facts that leave most of
+            # its memories uncited, so it is cut into time-ordered parts of similar size. Identity keeps
+            # every domain in one request, and dimensions 6 and 7 never reach the profile, so their groups
+            # stay whole.
+            rows, limit = state["rows"], max_records
+            if group["dim"] in PROFILE_DIMS and group["dim"] != 1:
+                limit = min(max_records, math.ceil(len(rows) / math.ceil(len(rows) / part_records)))
             batch = pack_summary(
                 group["dim"],
-                group["attrs"],
-                state["rows"],
+                rows,
                 reduced=state["reduced"],
                 budget=budget,
                 peer=group.get("peer"),
-                topic=group.get("topic"),
                 domain=group.get("domain"),
-                max_records=max_records,
+                max_records=limit,
             )
             tasks.extend(batch)
             owners.extend([i] * len(batch))
-        results = run_summary_tasks(tasks, runner, max_groups, budget, max_records=max_records)
+        results = run_summary_tasks(tasks, runner, max_groups, budget, max_records=max_records, owners=owners)
         by_group = defaultdict(list)
         for i, result in zip(owners, results):
             by_group[i].append(result)
@@ -943,7 +888,6 @@ def run(args: argparse.Namespace) -> dict:
     relation_path = args.output_dir / "peer_relations.json"
     task_path = args.output_dir / "classification_tasks.json"
     classification_path = args.output_dir / "classifications.json"
-    topic_path = args.output_dir / "topics.json"
     stages = STAGES if args.stage == "all" else (args.stage,)
     runner = None
     try:
@@ -995,7 +939,7 @@ def run(args: argparse.Namespace) -> dict:
                 runner = runner or LLMTasks(args)
                 results = runner.run(tasks, lambda payload, _: validate_peer(payload))
             save(relation_path, {task["peer"]: relation for task, relation in zip(tasks, results)})
-        if set(stages) & {"classify", "topics", "summarize"}:
+        if set(stages) & {"classify", "summarize"}:
             state = load(domain_path)
             domains, mapping = state["domains"], state["tags"]
         if "classify" in stages:
@@ -1033,49 +977,15 @@ def run(args: argparse.Namespace) -> dict:
             classifications = [item for batch in results for item in batch]
             validate_classification({"items": classifications}, records, len(domains))
             save(classification_path, classifications)
-        if "topics" in stages:
-            classifications = validate_classification(
-                {"items": load(classification_path)}, records, len(domains)
-            )
-            inputs = topic_inputs(classifications, by_id)
-            tasks = [
-                {
-                    "stage": "topics",
-                    "domain": domain,
-                    "prompt": topic_prompt(
-                        domains, domain, rows, args.topic_min_memories, args.topic_max_memories
-                    ),
-                }
-                for domain, rows in sorted(inputs.items())
-            ]
-            results = []
-            if tasks:
-                runner = runner or LLMTasks(args)
-                results = runner.run(
-                    tasks, lambda payload, task: validate_topics(payload, len(inputs[task["domain"]]))
-                )
-            topics = []
-            for task, result in zip(tasks, results):
-                rows = inputs[task["domain"]]
-                topics.extend(
-                    {
-                        "domain": task["domain"],
-                        "name": topic["name"],
-                        "attrs": [[rows[i - 1]["dim"], rows[i - 1]["attr"]] for i in topic["items"]],
-                    }
-                    for topic in result
-                )
-            save(topic_path, topics)
         if "summarize" in stages:
             classifications = validate_classification(
                 {"items": load(classification_path)}, records, len(domains)
             )
-            topics = load(topic_path)
             relations = load(relation_path)
             # Summaries see each memory's privacy level, and the output sources keep it.
             levels = {item["id"]: item["sensitivity"] for item in classifications}
             by_id = {rid: {**row, "sensitivity": levels[rid]} for rid, row in by_id.items()}
-            groups = summary_groups(classifications, by_id, topics)
+            groups = summary_groups(classifications, by_id, domains)
             runner = runner or LLMTasks(args)
             results = summarize_groups(
                 groups,
@@ -1084,6 +994,7 @@ def run(args: argparse.Namespace) -> dict:
                 budget=budget,
                 max_groups=args.max_summary_groups,
                 max_records=args.max_summary_records,
+                part_records=args.max_part_records,
             )
             referenced_by_dim = defaultdict(set)
             for group, result in zip(groups, results):
@@ -1092,11 +1003,7 @@ def run(args: argparse.Namespace) -> dict:
                 )
             facts, unused = [], []
             for group, result in zip(groups, results):
-                labels = {
-                    "dim": group["dim"],
-                    "domain": domains[group["domain"] - 1]["name"] if "domain" in group else None,
-                    "topic": group.get("topic"),
-                }
+                labels = {"dim": group["dim"], "domain": group.get("domain")}
                 if "peer" in group:
                     labels["peer"] = group["peer"]
                 facts.extend(
@@ -1105,22 +1012,13 @@ def run(args: argparse.Namespace) -> dict:
                 )
                 unreferenced = sorted(set(group["source_ids"]) - referenced_by_dim[group["dim"]])
                 if unreferenced:
-                    unused.append({**labels, "attrs": group["attrs"], "source_ids": unreferenced})
+                    unused.append({**labels, "source_ids": unreferenced})
             order = {domain["name"]: i for i, domain in enumerate(domains, 1)}
-            facts.sort(
-                key=lambda row: (
-                    row["dim"],
-                    order.get(row["domain"], 0),
-                    row["topic"] or "",
-                    row["attr"],
-                    row["value"],
-                )
-            )
+            facts.sort(key=lambda row: (row["dim"], order.get(row["domain"], 0), row["attr"], row["value"]))
             save(
                 args.output_dir / "organized_memories.json",
                 {
                     "domains": domains,
-                    "topics": [{**topic, "domain": domains[topic["domain"] - 1]["name"]} for topic in topics],
                     "facts": facts,
                     "unused": unused,
                     "unassigned_ids": [item["id"] for item in classifications if not item["fields"]],
@@ -1163,17 +1061,13 @@ def main(argv: list[str] | None = None) -> None:
         default=300,
         help="Maximum unique source memories per initial summary request",
     )
+    # Summarized whole, profile groups of up to 30 memories had about 80% of their memories cited and groups
+    # of 100 or more had 64%. Cut into parts of 30, the large groups had 90%.
     parser.add_argument(
-        "--topic-min-memories",
+        "--max-part-records",
         type=int,
-        default=20,
-        help="Memory count each topic should reach; sparse attributes join the closest topic",
-    )
-    parser.add_argument(
-        "--topic-max-memories",
-        type=int,
-        default=100,
-        help="Memory count each topic should stay under when a domain is split into topics",
+        default=30,
+        help="Maximum memories per part when a large summary group is cut into time-ordered parts",
     )
     parser.add_argument(
         "--dry-run", action="store_true", help="Count extracted memories without model calls or writes"
@@ -1185,14 +1079,11 @@ def main(argv: list[str] | None = None) -> None:
         "max_records",
         "max_summary_groups",
         "max_summary_records",
-        "topic_min_memories",
-        "topic_max_memories",
+        "max_part_records",
     ):
         value = getattr(args, name)
         if value is not None and value < 1:
             parser.error(f"--{name.replace('_', '-')} must be positive")
-    if args.topic_min_memories > args.topic_max_memories:
-        parser.error("--topic-min-memories must not exceed --topic-max-memories")
     try:
         print(json.dumps(run(args), ensure_ascii=False, indent=2))
     except (ValueError, FileNotFoundError, RuntimeError) as exc:
