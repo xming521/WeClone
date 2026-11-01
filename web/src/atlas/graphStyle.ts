@@ -135,17 +135,17 @@ export const SELECTED_NODE = {
   labelFontWeight: 700,
 };
 
-/** The centre: a `card` disc with a `line-1` edge, a translucent `card` backdrop, one arc per dimension and the Logo's favicon. */
+/**
+ * The centre: a `card` disc on a soft `ink-1` shadow and the Logo's favicon. The shadow's numbers
+ * are shadow-2's larger layer in node units; `glow` above 1 (the entrance) brightens it up to `shadowFlare`.
+ */
 export const ROOT = {
-  backdrop: 44 / 30.4,
-  backdropOpacity: 0.6,
-  /** The arcs' radius as a share of the disc's, their width, and the gap left between neighbours (radians). */
-  arcRadius: 27.4 / 30.4,
-  arcWidth: 4.5 * DS_SCALE,
-  arcGap: 0.05,
-  edgeWidth: DS_SCALE,
-  /** The favicon's box (28px on a disc of 30.4), as a share of the disc's radius. */
-  markSize: 28 / 30.4,
+  shadowOpacity: 0.1,
+  shadowFlare: 0.35,
+  shadowBlur: 8,
+  shadowOffset: 2,
+  /** The favicon's box as a share of the disc's radius. */
+  markSize: 1.1,
 };
 
 /** A dimension ball: a solid colour, a sheen from the upper left, the Logo's highlight and a white rim. */

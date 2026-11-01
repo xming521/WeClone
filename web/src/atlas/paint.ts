@@ -185,41 +185,23 @@ function drawMark(c: CanvasRenderingContext2D, r: number, alpha: number) {
   c.restore();
 }
 
-// The centre: a `card` disc with a `line-1` edge, one arc per dimension round it in that
-// dimension's colour, and the favicon. A translucent `card` backdrop lifts it off the ground.
+// The centre: a plain `card` disc lifted by a soft shadow (the design system's shadow-2), and the
+// favicon. The dimensions' colours are on their own balls, so the centre carries none. Canvas
+// shadows are in device pixels, so their lengths follow the transform's scale.
 function drawRoot(c: CanvasRenderingContext2D, n: PaintNode, alpha: number, glow: number) {
-  const r = n.r;
+  const unit = c.getTransform().a;
   const p = palette();
-  c.globalAlpha = alpha * ROOT.backdropOpacity;
-  c.beginPath();
-  c.arc(0, 0, r * ROOT.backdrop, 0, TAU);
-  c.fillStyle = p.card;
-  c.fill();
-  if (n.selected) drawSelectionRing(c, n, alpha);
   c.globalAlpha = alpha;
   c.beginPath();
-  c.arc(0, 0, r, 0, TAU);
-  const shadow = glowOn(c, n, 1, glow);
+  c.arc(0, 0, n.r, 0, TAU);
+  c.shadowColor = rgba(p.ink1, Math.min(ROOT.shadowFlare, ROOT.shadowOpacity * glow));
+  c.shadowBlur = ROOT.shadowBlur * unit * Math.max(1, glow);
+  c.shadowOffsetY = ROOT.shadowOffset * unit;
   c.fillStyle = p.card;
   c.fill();
-  if (shadow) glowOff(c);
-  c.lineWidth = ROOT.edgeWidth;
-  c.strokeStyle = p.line1;
-  c.stroke();
-  const slices = n.slices ?? [];
-  if (slices.length) {
-    const half = Math.max(0.02, Math.PI / slices.length - ROOT.arcGap);
-    c.lineWidth = ROOT.arcWidth;
-    c.lineCap = 'round';
-    for (const slice of slices) {
-      c.strokeStyle = rgbaOf(slice.rgb, 1);
-      c.beginPath();
-      c.arc(0, 0, r * ROOT.arcRadius, slice.angle - half, slice.angle + half);
-      c.stroke();
-    }
-    c.lineCap = 'butt';
-  }
-  drawMark(c, r, alpha);
+  glowOff(c);
+  c.shadowOffsetY = 0;
+  drawMark(c, n.r, alpha);
 }
 
 // A wide translucent ring in the node's colour just outside it.
@@ -263,7 +245,7 @@ export function drawNode(
     else if (n.kind === 'attribute') drawAttribute(c, n, alpha, glow);
     else drawDisc(c, n, alpha, glow);
   }
-  if (n.selected) drawSelectionRim(c, n, alpha);
+  if (n.selected && n.kind !== 'root') drawSelectionRim(c, n, alpha);
   c.globalAlpha = 1;
 }
 
