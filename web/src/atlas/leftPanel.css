@@ -1,0 +1,432 @@
+.left-panel {
+  position: absolute;
+  z-index: 6;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: var(--left-panel-width);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding: 30px 20px 25px;
+  background: linear-gradient(
+    145deg,
+    var(--color-surface) 0%,
+    var(--color-surface-subtle) 64%,
+    var(--color-surface-tint) 100%
+  );
+  border-right: 1px solid var(--color-border-faint);
+  box-shadow: 4px 0 26px #52675b07;
+  transition:
+    transform 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0.38s;
+}
+
+.left-panel.is-collapsed {
+  transform: translateX(-100%);
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.brand-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #33443e;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.sidebar-close {
+  display: grid;
+  place-items: center;
+  flex: 0 0 29px;
+  width: 29px;
+  height: 29px;
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: #6d8179;
+}
+
+.sidebar-close:hover {
+  background: var(--color-accent-tint);
+  color: var(--color-accent);
+}
+
+.brand-symbol {
+  height: 24px;
+}
+
+.brand-separator {
+  margin: 0 6px;
+  color: #b6c0bc;
+  font-weight: 400;
+}
+
+.intro-block {
+  margin-top: 61px;
+  padding: 0 8px;
+}
+
+.eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #588278;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+}
+
+.eyebrow-line {
+  display: block;
+  width: 20px;
+  height: 1px;
+  background: #719990;
+}
+
+.intro-block h1 {
+  margin: 19px 0 11px;
+  font-size: 29px;
+  line-height: 1.46;
+  font-weight: 600;
+  letter-spacing: -0.07em;
+}
+
+.intro-block h1 em {
+  color: var(--color-accent);
+  font-style: normal;
+}
+
+.intro-block p {
+  margin: 0;
+  color: #84918d;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+/* 两种分组的说明长短不一，留足两行，切换时下面的开关不跟着上下跳 */
+.grouping-intro {
+  min-height: 3.4em;
+}
+
+.grouping-intro.is-entering {
+  animation: intro-copy-enter 0.5s ease-out backwards;
+}
+
+@keyframes intro-copy-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+.nav-heading {
+  margin: 55px 9px 14px;
+  color: #8f9c95;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+}
+
+/* 按维度与按板块的切换，兼作列表的标题。白色滑块滑到选中的一项下面 */
+.grouping-switch {
+  position: relative;
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  gap: 4px;
+  margin: 24px 0 14px;
+  padding: 4px;
+  border-radius: 13px;
+  background: #edf1eb;
+}
+
+.grouping-thumb {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc(50% - 6px);
+  border-radius: 10px;
+  background: var(--color-white);
+  box-shadow:
+    0 2px 8px #294e3612,
+    0 1px 2px #294e360d;
+  transform: translateX(calc(var(--grouping-index) * (100% + 4px)));
+  transition: transform 0.45s cubic-bezier(0.3, 1.25, 0.45, 1);
+}
+
+.grouping-switch button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-width: 0;
+  height: 36px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #71867a;
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: color 0.25s;
+}
+
+.grouping-switch button:hover {
+  color: var(--color-accent-dark);
+}
+
+.grouping-switch button[aria-pressed='true'] {
+  color: #326d5d;
+}
+
+.grouping-switch svg {
+  flex: none;
+  transition: color 0.25s;
+}
+
+/* 两个图标转半圈都和原样重合：选中时转一下，取消时直接跳回原位，看不出来 */
+.grouping-switch button[aria-pressed='true'] svg {
+  color: var(--color-accent);
+  transform: rotate(180deg);
+  transition:
+    color 0.25s,
+    transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.dimension-list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 7px;
+}
+
+.dimension-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 67px;
+  padding: 9px 12px;
+  border: 1px solid transparent;
+  border-radius: 15px;
+  background: transparent;
+  color: var(--color-ink-soft);
+  text-align: left;
+  transition:
+    background 0.22s,
+    border-color 0.22s,
+    box-shadow 0.22s,
+    transform 0.22s;
+}
+
+.dimension-item:hover {
+  background: var(--color-white);
+  transform: translateX(2px);
+}
+
+.dimension-item.active {
+  background: var(--color-white);
+  border-color: #e5eeeb;
+  box-shadow: 0 8px 28px #193c3510;
+}
+
+.dimension-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 38px;
+  height: 38px;
+  border-radius: 12px;
+  color: var(--dimension-color);
+  background: color-mix(in srgb, var(--dimension-color) 10%, white);
+}
+
+.dimension-item.active .dimension-icon {
+  color: white;
+  background: var(--dimension-color);
+  box-shadow: 0 5px 12px color-mix(in srgb, var(--dimension-color) 24%, transparent);
+}
+
+.domain-initial {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* 十几个板块时列表收紧，免得左栏一屏放不下 */
+.dimension-list.is-compact {
+  gap: 3px;
+}
+
+.dimension-list.is-compact .dimension-item {
+  min-height: 46px;
+  padding: 5px 10px;
+  border-radius: 12px;
+}
+
+.dimension-list.is-compact .dimension-icon {
+  flex-basis: 30px;
+  height: 30px;
+  border-radius: 9px;
+}
+
+.dimension-list.is-compact .domain-initial {
+  font-size: 13px;
+}
+
+/* 换了分组，新列表从选中一项的那一侧依次滑进来 */
+.dimension-list.is-entering .dimension-item {
+  animation: dimension-item-enter 0.5s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  animation-delay: calc(min(var(--enter-index), 12) * 28ms);
+}
+
+@keyframes dimension-item-enter {
+  from {
+    opacity: 0;
+    transform: translateX(calc(var(--enter-side) * 18px));
+  }
+}
+
+.dimension-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.dimension-copy strong {
+  overflow: hidden;
+  color: #34403f;
+  font-size: 12px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dimension-copy small {
+  color: #9aa6a1;
+  font-size: 10px;
+}
+
+.left-bottom {
+  margin-top: auto;
+  padding: 20px 9px 0;
+  border-top: 1px solid var(--color-border-faint);
+}
+
+.data-footnote {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #9ca9a2;
+  font-size: 10px;
+}
+
+.live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 100%;
+  background: var(--color-mint);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-mint) 12.549%, transparent);
+}
+
+@media (max-width: 1220px) {
+  .left-panel {
+      padding-inline: 13px;
+    }
+  .intro-block {
+      margin-top: 44px;
+    }
+  .intro-block h1 {
+      font-size: 24px;
+    }
+  .nav-heading {
+      margin-top: 35px;
+    }
+  .grouping-switch {
+      margin-top: 20px;
+    }
+}
+
+@media (max-width: 900px) {
+  .left-panel {
+      padding: 20px 12px;
+    }
+  .brand-row {
+      margin-left: 6px;
+      font-size: 11px;
+    }
+  .intro-block {
+      margin-top: 36px;
+    }
+  .intro-block h1 {
+      font-size: 22px;
+    }
+  .dimension-item {
+      padding-inline: 7px;
+      gap: 7px;
+    }
+  .dimension-icon {
+      flex-basis: 31px;
+      height: 31px;
+    }
+  .dimension-copy strong {
+      font-size: 11px;
+    }
+}
+
+@media (max-width: 650px) {
+  .left-panel {
+      padding: 20px 13px;
+    }
+  .brand-row {
+      margin: 0 0 8px 3px;
+    }
+  .intro-block {
+      display: none;
+    }
+  .nav-heading {
+      margin-top: 34px;
+    }
+  .left-bottom {
+      display: none;
+    }
+  .dimension-list {
+      display: grid;
+      gap: 5px;
+    }
+  .dimension-item {
+      width: 100%;
+      min-height: 58px;
+      padding: 7px 8px;
+      border-radius: 10px;
+    }
+  .dimension-icon {
+      flex: 0 0 31px;
+      height: 31px;
+      border-radius: 9px;
+    }
+  .dimension-icon svg {
+      width: 15px;
+    }
+  .dimension-copy strong {
+      font-size: 10px;
+    }
+  .dimension-copy small {
+      font-size: 9px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* 否则各项要等完各自的延迟才一个个冒出来 */
+  .dimension-list.is-entering .dimension-item {
+      animation: none;
+    }
+}

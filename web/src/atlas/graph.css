@@ -1,0 +1,63 @@
+/* The loading screen draws the same background as the map behind it. */
+.canvas-atmosphere,
+.load-state::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(ellipse at 23% 24%, #c7e7da65, transparent 42%),
+    radial-gradient(ellipse at 78% 72%, #cbd9ee59, transparent 39%),
+    radial-gradient(ellipse at 66% 18%, #f0dfca50, transparent 31%), var(--color-page);
+}
+
+.canvas-atmosphere::after,
+.load-state::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.23;
+  background-image: radial-gradient(#8ba49a 0.7px, transparent 0.7px);
+  background-size: 23px 23px;
+  mask-image: radial-gradient(ellipse at center, #0008, transparent 80%);
+  pointer-events: none;
+}
+
+.graph-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.graph-canvas canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  outline: none;
+  touch-action: none;
+}
+
+/* Each dimension's wash, drawn at a quarter of the size and multiplied onto the paper under the map. */
+.graph-wash {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  mix-blend-mode: multiply;
+}
+
+.graph-entrance {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.graph-entrance canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}

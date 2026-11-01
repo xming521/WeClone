@@ -1,0 +1,101 @@
+:root {
+  /* Text */
+  --color-ink: #24353a; /* 页面默认正文 */
+  --color-ink-strong: #263e33; /* 强调正文（来源聊天面板） */
+  --color-ink-body: #384f4b; /* 顶栏标题、搜索输入 */
+  --color-ink-soft: #485956; /* 按钮与维度条目文字 */
+  --color-ink-action: #48645b; /* 编辑器提示按钮文字 */
+  --color-text-control: #587169; /* 图标/重置/子项按钮文字 */
+  --color-text-progress: #61786a; /* 复核筛选与进度文字 */
+  --color-muted: #6a7d72; /* 次要文字（标签、时间、说明） */
+  --color-subtle: #74857e; /* 更弱的辅助文字（状态、提示） */
+  --color-text-meta: #798984; /* 顶栏副标题、卡片小字 */
+  --color-text-aux: #79928b; /* 搜索图标与加载说明文字 */
+  --color-text-dim: #7d9186; /* 关闭按钮、节点路径文字 */
+  /* Accent */
+  --color-accent: #008f85; /* 主题强调色（链接、焦点环） */
+  --color-accent-dark: #087f73; /* 主按钮背景与强调文字 */
+  --color-accent-bright: #00a391; /* 顶栏状态点 */
+  --color-green: #498773; /* 评分、勾选、采纳等绿色强调 */
+  --color-mint: #53b89b; /* 实时状态点 */
+  /* Surface */
+  --color-white: #ffffff; /* 纯白 */
+  --color-surface: #fffefa; /* 面板、卡片底色 */
+  --color-page: #f4f3ef; /* 页面底色 */
+  --color-surface-subtle: #f9f9f5; /* 极浅的底色 */
+  --color-surface-tint: #f5f8f5; /* 浅绿灰底色 */
+  --color-surface-hover: #edf3ef; /* 悬停、次级按钮底色 */
+  --color-accent-tint: #e9f4ef; /* 悬停浅绿底色 */
+  --color-accent-tint-strong: #e5f3ec; /* 选中浅绿底色 */
+  --color-surface-selected: #e3eee7; /* 选中、计数徽标底色 */
+  --color-surface-pressed: #dee7e0; /* 按下、较深的浅色底色 */
+  --color-track: #dfebe4; /* 评分轨道与气泡底色 */
+  --color-forest: #183b37; /* 深绿底色（品牌标识、登录按钮） */
+  --color-forest-soft: #203b35; /* 提示气泡深色底色 */
+  /* Border */
+  --color-border: #e4ebe4; /* 默认边框 */
+  --color-border-faint: #e9ece8; /* 最浅的分隔线 */
+  --color-border-hairline: #edf0eb; /* 内部细分隔线 */
+  --color-border-strong: #dfe8e3; /* 较明显的边框 */
+  --color-border-control: #dde5de; /* 控件边框 */
+  /* Status and shadow */
+  --color-danger: #a33434; /* 错误文字 */
+  --color-shadow-soft: #627b7011; /* 浮层柔和阴影 */
+  font-family: 'Noto Sans', 'Noto Sans CJK SC', system-ui, sans-serif;
+  color: var(--color-ink);
+  background: var(--color-page);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  min-width: 320px;
+  height: 100%;
+  margin: 0;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:focus-visible,
+input:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+}
+
+.brand-mark {
+  display: block;
+  flex: none;
+  width: auto;
+  user-select: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+}
+
+button:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
