@@ -11,7 +11,6 @@ import {
   LABEL_OFFSET_Y,
   ROOT,
   SELECTED_NODE,
-  TAIL,
   edgeStyle,
   glowColor,
   labelFont,
@@ -37,8 +36,6 @@ export type PaintNode = {
   selected: boolean;
   /** The centre's dimensions, which become the arcs round its edge. */
   slices?: PearlSlice[];
-  /** Facts below the node still wait for review: it gets the pending tail. */
-  pending?: boolean;
   /** A domain in the domain view: a section, labelled like one. */
   section?: boolean;
 };
@@ -245,21 +242,6 @@ function drawSelectionRim(c: CanvasRenderingContext2D, n: PaintNode, alpha: numb
   c.stroke();
 }
 
-// The pending tail: a dot about a quarter of the node's size, detached to its lower right at 45°.
-function drawTail(c: CanvasRenderingContext2D, n: PaintNode, alpha: number) {
-  const radius = Math.max(n.r * TAIL.ratio, TAIL.minRadius);
-  const offset = (n.r + radius + TAIL.gap) / Math.SQRT2;
-  const p = palette();
-  c.globalAlpha = alpha;
-  c.beginPath();
-  c.arc(offset, offset, radius, 0, TAU);
-  c.fillStyle = p.pending;
-  c.fill();
-  c.lineWidth = TAIL.edge;
-  c.strokeStyle = p.paper;
-  c.stroke();
-}
-
 /** Draws a node at (x, y). `glow` scales the glow it flares with while it enters: 1 at rest of the entrance, more while it flares, 0 for none. */
 export function drawNode(
   c: CanvasRenderingContext2D,
@@ -282,7 +264,6 @@ export function drawNode(
     else drawDisc(c, n, alpha, glow);
   }
   if (n.selected) drawSelectionRim(c, n, alpha);
-  if (n.pending && n.kind !== 'root') drawTail(c, n, alpha);
   c.globalAlpha = 1;
 }
 
@@ -360,34 +341,6 @@ export function drawEdge(
   if (alpha <= 0.002) return;
   const style = edgeStyle(n.kind, n.dim);
   strokeEdge(c, tf, parent, child, style.color, style.width, style.opacity * alpha, grow);
-}
-
-// ───────────────────────── orbits ─────────────────────────
-
-/** A dotted circle round (x, y). */
-export function strokeOrbit(
-  c: CanvasRenderingContext2D,
-  tf: Transform,
-  x: number,
-  y: number,
-  r: number,
-  width: number,
-  dash: number[],
-  alpha: number,
-) {
-  if (alpha <= 0.002 || r <= 0) return;
-  c.setTransform(tf.k, 0, 0, tf.k, tf.ox, tf.oy);
-  c.globalAlpha = alpha;
-  c.strokeStyle = palette().line2;
-  c.lineWidth = width;
-  c.lineCap = 'round';
-  c.setLineDash(dash);
-  c.beginPath();
-  c.arc(x, y, r, 0, TAU);
-  c.stroke();
-  c.setLineDash([]);
-  c.lineCap = 'butt';
-  c.globalAlpha = 1;
 }
 
 // ───────────────────────── labels ─────────────────────────

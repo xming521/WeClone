@@ -28,7 +28,6 @@ export type Palette = {
   ink4: string;
   edge1: string;
   edge2: string;
-  pending: string;
   /** The Logo's two bubbles and their faces at 32px and below, for the mark in the centre. */
   logo: { you1: string; you2: string; youEye: string; clone1: string; clone2: string; cloneEye: string };
   /** --text-node-root / -dim / -section / -attr. */
@@ -59,7 +58,6 @@ function readPalette(style: CSSStyleDeclaration): Palette {
     ink4: get('--ink-4'),
     edge1: get('--edge-1'),
     edge2: get('--edge-2'),
-    pending: get('--pending'),
     logo: {
       you1: get('--logo-you-1'),
       you2: get('--logo-you-2'),
@@ -137,9 +135,6 @@ export const SELECTED_NODE = {
   labelFontWeight: 700,
 };
 
-/** The pending tail: a dot about a quarter of the node's size, lower right at 45°, with a `paper` edge. */
-export const TAIL = { ratio: 0.25, minRadius: 1.8 * DS_SCALE, gap: 1.5 * DS_SCALE, edge: 1.2 * DS_SCALE };
-
 /** The centre: a `card` disc with a `line-1` edge, a translucent `card` backdrop, one arc per dimension and the Logo's favicon. */
 export const ROOT = {
   backdrop: 44 / 30.4,
@@ -193,9 +188,6 @@ export const edgeOnStyle = (dim: number | null): EdgeStyle => ({
   width: 1.6 * DS_SCALE,
   opacity: 0.55,
 });
-
-/** An orbit (`orbit`): `line-2` dots 1.5 long every 5 (1.5, 5 apart in `dash`). */
-export const ORBIT = { width: DS_SCALE, dash: [1.5 * DS_SCALE, 5 * DS_SCALE] };
 
 // ───────────────────────── colour helpers ─────────────────────────
 

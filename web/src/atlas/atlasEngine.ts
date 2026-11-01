@@ -1,7 +1,7 @@
 // The profile map on a canvas (design: WC-exp/design, "A 纸本 · 浅色克制"; drawn as the design
-// system's AtlasGraph says), laid out by d3-force. Each level sits on a dotted orbit round the one
-// above it. Every section's and topic's colour blooms on the paper by its importance, and each
-// dimension washes the ground under its cluster. Waves of ink run along the lines into 「我」.
+// system's AtlasGraph says, without its pending tail dots and dotted orbits), laid out by d3-force.
+// Every section's and topic's colour blooms on the paper by its importance, and each dimension
+// washes the ground under its cluster. Waves of ink run along the lines into 「我」.
 // Hovering a node lights its path to the centre and dims the rest; clicking one rings it and brings
 // its branch into view. The entrance (entrance.ts) plays over the blank map and hands over its last
 // frame, so the map first draws that frame with the same primitives (paint.ts), then settles into
@@ -33,7 +33,6 @@ import { inkStrength, supportWidth, type NodeMetrics } from './atlasMetrics';
 import type { Camera, EntranceItem } from './entrance';
 import {
   DENSE_NODE_COUNT,
-  STAGGER_COUNT,
   clusterCenters,
   computeSeeds,
   dimensionAngle,
@@ -51,7 +50,6 @@ import {
   EDGE_GAP,
   LABEL_LINE_HEIGHT,
   LABEL_OFFSET_Y,
-  ORBIT,
   edgeOnStyle,
   edgeStyle,
   hexToRgb,
@@ -69,7 +67,6 @@ import {
   resetLabelMetrics,
   rgbaOf,
   strokeEdge,
-  strokeOrbit,
   type PaintNode,
   type Rgb,
   type Transform,
@@ -203,22 +200,6 @@ function hash01(text: string): number {
   return ((h >>> 0) % 1000003) / 1000003;
 }
 
-/** The nodes with a fact waiting for review somewhere below them. */
-function pendingNodes(model: ProfileModel): Set<string> {
-  const ids = new Set<string>();
-  for (const id of model.attributeIds) {
-    const attribute = model.nodes.get(id)!;
-    if (!attribute.factIndices.some((index) => model.facts[index]?.status === 'pending')) continue;
-    for (let n: ProfileNode | undefined = attribute; n; n = n.parentId ? model.nodes.get(n.parentId) : undefined) {
-      ids.add(n.id);
-    }
-  }
-  return ids;
-}
-
-/** The middle one of `values`, the lower of the two when there are two. */
-const median = (values: number[]) => values.sort((a, b) => a - b)[(values.length - 1) >> 1];
-
 export class AtlasEngine implements AtlasControls {
   private readonly canvas: HTMLCanvasElement;
   private readonly wash: HTMLCanvasElement;
@@ -233,8 +214,6 @@ export class AtlasEngine implements AtlasControls {
   private view: ReviewView = 'all';
   private looks = new Map<string, NodeLook>();
   private metrics = new Map<string, NodeMetrics>();
-  /** Nodes with facts still to review below them; the ones that are drawn with the pending tail. */
-  private pendingIds = new Set<string>();
   private initialPositions: Positions = new Map();
   private visible: ProfileNode[] | null = null;
 
@@ -330,7 +309,6 @@ export class AtlasEngine implements AtlasControls {
     this.view = view;
     this.looks = looks;
     this.metrics = metrics;
-    this.pendingIds = pendingNodes(model);
   }
 
   /**
@@ -413,7 +391,6 @@ export class AtlasEngine implements AtlasControls {
           r: n.r,
           label: '',
           selected: false,
-          pending: n.pending,
           section: n.section,
         };
         this.ghosts.push({ n, paint, into: into ?? null, start: now, x: n.rx, y: n.ry, a: n.vis * n.emph, scale: 1 });
@@ -508,7 +485,6 @@ export class AtlasEngine implements AtlasControls {
         label: this.labelOf(n, attributeLabels),
         selected: n.selected,
         slices: n.slices,
-        pending: n.pending,
         section: n.section,
       })),
       camera: { zoom: k, x: this.W / 2 - this.cam.x * k, y: this.H / 2 - this.cam.y * k },
@@ -585,7 +561,6 @@ export class AtlasEngine implements AtlasControls {
       r: look.size / 2,
       label: node.name,
       selected: node.id === this.selectedId,
-      pending: this.isPending(node),
       section: this.isSection(node),
       depth: metrics.depth,
       metrics,
@@ -618,18 +593,12 @@ export class AtlasEngine implements AtlasControls {
     n.r = n.look.size / 2;
     n.metrics = this.metrics.get(node.id)!;
     n.depth = n.metrics.depth;
-    n.pending = this.isPending(node);
     n.section = this.isSection(node);
   }
 
   /** A domain in the domain view is a section: it sets and labels like one. */
   private isSection(node: ProfileNode): boolean {
     return node.kind === 'dimension' && this.model?.grouping === 'domain';
-  }
-
-  /** Whether the node shows the pending tail: sections, topics and attributes do, the five dimensions do not. */
-  private isPending(node: ProfileNode): boolean {
-    return this.pendingIds.has(node.id) && node.kind !== 'root' && (node.kind !== 'dimension' || this.isSection(node));
   }
 
   private measureLabel(node: ProfileNode): number {
@@ -1138,7 +1107,6 @@ export class AtlasEngine implements AtlasControls {
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     this.drawWash(tx, ty, k, settle);
     if (settle > 0) {
-      this.drawOrbits(tf, settle);
       this.drawHalos(tf, settle);
     }
     this.drawEdges(tf, settle);
@@ -1203,37 +1171,6 @@ export class AtlasEngine implements AtlasControls {
       }
     }
     g.globalAlpha = 1;
-  }
-
-  // Every level sits on a dotted orbit round the node above it: one per expanded node, at the
-  // distance most of its children are from it. In the domain view the centre has two, as its
-  // sections alternate between an inner and an outer ring.
-  private drawOrbits(tf: Transform, settle: number) {
-    const children = new Map<string, MapNode[]>();
-    for (const n of this.order) {
-      const parentId = n.node.parentId;
-      if (!parentId) continue;
-      const list = children.get(parentId);
-      if (list) list.push(n);
-      else children.set(parentId, [n]);
-    }
-    const staggered = (this.model?.dimensionIds.length ?? 0) >= STAGGER_COUNT;
-    for (const parent of this.order) {
-      const kids = children.get(parent.id);
-      const open = parent.vis * parent.emph * settle;
-      if (!kids || open <= 0.01) continue;
-      const rings = parent.kind === 'root' && staggered ? 2 : 1;
-      for (let ring = 0; ring < rings; ring++) {
-        const onRing = rings === 1 ? kids : kids.filter((_, index) => index % 2 === ring);
-        if (!onRing.length) continue;
-        const radius = median(onRing.map((n) => Math.hypot(n.rx - parent.rx, n.ry - parent.ry)));
-        if (!this.inView(parent.rx, parent.ry, radius)) continue;
-        // Orbits of nodes still growing out of their parent fade in with them.
-        const grown = onRing.reduce((sum, n) => sum + n.vis, 0) / onRing.length;
-        strokeOrbit(this.ctx, tf, parent.rx, parent.ry, radius, ORBIT.width, ORBIT.dash, open * grown);
-      }
-    }
-    this.ctx.globalAlpha = 1;
   }
 
   // A dimension has a flat halo of its colour behind it, a section or topic a soft bloom that
