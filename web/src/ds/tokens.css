@@ -1,0 +1,229 @@
+/* WeClone design system 素笺·双泡: tokens.css generated from its tokens.json, minus the type helper classes.
+   To re-sync, copy the generated file again and redo only that cut and the font paths. */
+:root, [data-theme="light"] {
+  --paper: #f4f3ef; /* 页面与图谱画布的底色（素笺）。图谱画布在它上面再叠 ground-wash 淡晕和 ground-dot 点阵，其它地方只铺这一层。 */
+  --panel: #faf9f6; /* 左栏、右侧画像档案等贴边面板。与 paper 之间用 line-1 分开。 */
+  --card: #ffffff; /* 画像卡片、浮动工具条、菜单、登录卡。 */
+  --sunken: #ebebe6; /* 分段控件的轨道、标签底、禁用按钮底。 */
+  --well: #f6f6f2; /* 卡片里的评分条、引用块等“嵌在纸里”的小区域。 */
+  --veil: rgba(244,243,239,0.86); /* 浮在图谱上的顶栏与工具条底色，配合 backdrop-filter: blur(12px)。 */
+  --line-1: #e5e4e0; /* 分隔线、卡片描边、面板边。纯装饰，不承担识别控件的作用。 */
+  --line-2: #d2d2cc; /* 次按钮、输入框、筛选片的描边（低于 3:1，靠文字和图标识别控件）。 */
+  --line-3: #878c94; /* 必须靠描边识别的控件：圆形复选框、单选框、未选中的开关。paper 3.05 · card 3.38 / 深色 card 3.30。 */
+  --ink-1: #212731; /* 标题与正文。paper 13.5 · card 15.0 · sunken 12.6；深色 card 13.6。 */
+  --ink-2: #484f5a; /* 次级文字、未选中的控件文字。paper 7.4 · sunken 6.9；深色 card 9.4。 */
+  --ink-3: #626871; /* 说明、元信息、占位符。paper 5.1 · sunken 4.7 · well 5.2；深色 card 6.1 · well 6.5。 */
+  --ink-4: #93979e; /* 只给禁用文字和非信息性的刻度（2.6:1，不用于可读文字）。 */
+  --you: #0d6db2; /* “你”的颜色：主操作、选中、焦点、眉标与标题强调。作文字在 paper 4.9 · card 5.5；深色在 paper 6.6。来自 Logo 前泡晴蓝。 */
+  --you-hi: #1677be; /* 主按钮渐变的上端（釉面），只和 you 成对使用；其上文字 on-you 4.8 / 深色 7.4。 */
+  --you-strong: #085b97; /* 主按钮的描边、按下态、悬停加深。 */
+  --you-ink: #0961a0; /* 链接与选中项文字。card 6.5 · you-tint 5.7；深色 card 8.1 · you-tint 7.3。 */
+  --you-tint: #e4f1fe; /* 选中底：当前筛选、轨道选中项、你发出的聊天气泡。文字用 you-ink 或 ink-1。 */
+  --you-line: #b5d4ed; /* you-tint 底上的描边，选中卡片的外圈。 */
+  --on-you: #ffffff; /* you / you-hi 填充上的文字与图标。深色主题里主按钮是亮蓝，所以字是深色。 */
+  --clone: #e18258; /* 分身本身的颜色：“分身画像”前的 wc-clone 圆点、分身模型和机器人接入的状态点。不标审核状态。只作伴随文字的小记号（paper 2.5，不单独承载信息）。 */
+  --clone-ink: #a95024; /* 分身相关的文字，比如机器人接入页里分身的状态。clone-tint 4.9 · paper 4.9；深色 clone-tint 7.7。 */
+  --clone-tint: #fdf0e8; /* 分身相关的浅底，比如机器人接入页里分身的状态条。 */
+  --pending: var(--ink-3); /* 待审核的记号：12px 虚线小圈、卡片和图谱节点的尾点、审核进度的斜纹、待审核计数的尾点。现在指向 ink-3（中性墨色）；换颜色只改这一个令牌。 */
+  --mark: #efdfa6; /* 证据里那句原话的荧光笔底，只划下半截。其上 ink-1 11.3 / 深色 8.6。 */
+  --adopt: #26795f; /* 采纳：采纳按钮、已采纳圆点、审核进度里已采纳的一段。作文字 paper 4.7。 */
+  --adopt-hi: #2a8267; /* 采纳按钮渐变的上端（釉面），只和 adopt 成对使用。 */
+  --adopt-strong: #1c654f; /* 采纳按钮的描边、按下态。 */
+  --adopt-ink: #216952; /* “已采纳”文字。card 6.5 · adopt-tint 5.7；深色 card 8.5。 */
+  --adopt-tint: #e3f2ec; /* 已采纳的浅底。 */
+  --on-adopt: #ffffff; /* adopt / adopt-hi 填充上的文字与图标。 */
+  --danger: #a23e35; /* 停用、删除、清空等不可逆操作的文字与图标。card 6.4 · danger-tint 5.5；深色 card 6.6。 */
+  --danger-strong: #8e332b; /* 危险按钮悬停加深。 */
+  --danger-tint: #fceae8; /* 危险按钮的底。 */
+  --amber: #b98b49; /* 重要度评分格的填充（伴随数字，paper 2.8）。 */
+  --amber-tint: #eee6d9; /* 重要度评分格还没灌满的部分（在 well 上看得出空格）。 */
+  --privacy-public: #2d644e; /* 隐私度「公开」的文字与水位圈。在自己的 tint 上 6.0:1。 */
+  --privacy-public-tint: #e2f2ea; /* 隐私度「公开」徽标与选中筛选片的底。 */
+  --privacy-public-mid: #84b8a1; /* 隐私度分布条里「公开」的一段。 */
+  --privacy-normal: #3d5a7b; /* 隐私度「普通」的文字与水位圈。在自己的 tint 上 6.1:1。 */
+  --privacy-normal-tint: #e7eff7; /* 隐私度「普通」徽标与选中筛选片的底。 */
+  --privacy-normal-mid: #92aecd; /* 隐私度分布条里「普通」的一段。 */
+  --privacy-private: #7c5019; /* 隐私度「私密」的文字与水位圈。在自己的 tint 上 6.0:1。 */
+  --privacy-private-tint: #faecd8; /* 隐私度「私密」徽标与选中筛选片的底。 */
+  --privacy-private-mid: #d3a974; /* 隐私度分布条里「私密」的一段。 */
+  --privacy-sensitive: #903c39; /* 隐私度「敏感」的文字与水位圈。在自己的 tint 上 6.2:1。 */
+  --privacy-sensitive-tint: #fce9e6; /* 隐私度「敏感」徽标与选中筛选片的底。 */
+  --privacy-sensitive-mid: #d78e88; /* 隐私度分布条里「敏感」的一段。 */
+  --dim-identity: #118f83; /* 维度「人口学与基本身份」：图谱一级节点、左栏图标、归属路径（paper 3.6）。 */
+  --dim-identity-tint: #e5f3f1; /* 维度「人口学与基本身份」图标圆片的浅底。 */
+  --dim-goal: #7860c4; /* 维度「长期需求、动机与目标」：图谱一级节点、左栏图标、归属路径（paper 4.4）。 */
+  --dim-goal-tint: #f0eef9; /* 维度「长期需求、动机与目标」图标圆片的浅底。 */
+  --dim-condition: #c68331; /* 维度「资源禀赋与生活条件」：图谱一级节点、左栏图标、归属路径（paper 2.8，低于 3:1：节点旁总有文字标签）。 */
+  --dim-condition-tint: #f9f1e8; /* 维度「资源禀赋与生活条件」图标圆片的浅底。 */
+  --dim-plan: #be5d6f; /* 维度「重要计划与承诺」：图谱一级节点、左栏图标、归属路径（paper 3.8）。 */
+  --dim-plan-tint: #f8edef; /* 维度「重要计划与承诺」图标圆片的浅底。 */
+  --dim-preference: #3a76b4; /* 维度「兴趣与偏好」：图谱一级节点、左栏图标、归属路径（paper 4.3）。 */
+  --dim-preference-tint: #e9f0f7; /* 维度「兴趣与偏好」图标圆片的浅底。 */
+  --on-dim: #ffffff; /* 维度色填充上的图标（选中的维度圆片）。 */
+  --sec-base: oklch(0.585 0.11 182); /* 板块色的起点：第 0 个板块（内圈）的颜色。其余板块不列成令牌，由 bundle.css 的 [data-sec] 按序号 --i 和个数 --n 算出：色相均分 268° 走到金，奇数号亮 0.09（深色 0.065），最后 20% 再抬亮最多 0.05，彩度不变。 */
+  --edge-1: #bfc4cd; /* 图谱里根到维度、维度到板块的主干连线（1.6px）。 */
+  --edge-2: #d0d4dc; /* 图谱里板块到属性的细连线（1.1px）。 */
+  --ground-wash-1: #c7e7da65; /* 图谱底面：左上那团青绿淡晕，径向渐变到 42% 处消失。深色主题待定。 */
+  --ground-wash-2: #cbd9ee59; /* 图谱底面：右下那团蓝色淡晕，到 39% 处消失。深色主题待定。 */
+  --ground-wash-3: #f0dfca50; /* 图谱底面：右上那团暖色淡晕，到 31% 处消失。深色主题待定。 */
+  --ground-dot: #8ba49a; /* 图谱底面的点阵：0.7px 圆点、23px 间距、整体 23% 不透明，中间浓、四周渐隐。深色主题待定。 */
+  --logo-you-1: #70d1fc; /* Logo 前泡（你）渐变起点，左上。只用于 Logo 与品牌图形。 */
+  --logo-you-2: #3ea1f6; /* Logo 前泡（你）渐变终点，右下。 */
+  --logo-you-eye: #075690; /* 前泡的眼睛和嘴（40px 以上）。 */
+  --logo-you-eye-sm: #13426a; /* 前泡的眼睛和嘴（32px 及以下，加深一档）。 */
+  --logo-clone-1: #fd9f77; /* Logo 后泡（分身）渐变起点，上。 */
+  --logo-clone-2: #fec394; /* Logo 后泡（分身）渐变终点，下。 */
+  --logo-clone-eye: #843b19; /* 后泡的眼睛和嘴（40px 以上）。 */
+  --logo-clone-eye-sm: #602e18; /* 后泡的眼睛和嘴（32px 及以下）。 */
+  --logo-ink: #1d302b; /* 单色 Logo 与字标在浅底上的墨色。 */
+  --logo-ink-light: #f1f0ea; /* 单色 Logo 与字标在深底上的颜色。 */
+  --logo-night: #13211e; /* Logo 展示用的深色底（品牌物料、深色海报），不是界面深色主题的底。 */
+  --shadow-1: 0 1px 2px rgba(33,39,49,0.06), 0 1px 1px rgba(33,39,49,0.03); /* 静止的卡片、分段滑块、次按钮。 */
+  --shadow-2: 0 8px 24px rgba(33,39,49,0.07), 0 2px 6px rgba(33,39,49,0.04); /* 浮在画布上的工具条、审核轨道、选中的维度项。 */
+  --shadow-3: 0 18px 44px rgba(33,39,49,0.14), 0 4px 12px rgba(33,39,49,0.06); /* 菜单、提示气泡、对话框。 */
+  --glaze: inset 0 1px 0 rgba(255,255,255,0.26), inset 0 -1px 0 rgba(0,0,0,0.10); /* 釉面：主按钮、采纳按钮、选中的维度圆片。上沿一道高光、下沿一道暗线，呼应 Logo 的高光。 */
+  --lift-you: 0 1px 2px rgba(8,91,151,0.28), 0 6px 14px -6px rgba(13,109,178,0.55); /* 主按钮下方带色的影子。 */
+  --lift-adopt: 0 1px 2px rgba(28,101,79,0.28), 0 6px 14px -6px rgba(38,121,95,0.55); /* 采纳按钮下方带色的影子。 */
+  --inset-track: inset 0 1px 2px rgba(33,39,49,0.07); /* 分段轨道、复选框未选中时的凹陷。 */
+  --focus-ring: 0 0 0 2px #ffffff, 0 0 0 4px #0d6db2; /* 键盘焦点：2px 底色间隙 + 2px 实心 you（深色用 you-ink）。在所有底色上 ≥4.5:1。 */
+}
+[data-theme="dark"] {
+  --paper: #13171c;
+  --panel: #171c22;
+  --card: #1d232a;
+  --sunken: #0e1115;
+  --well: #191e24;
+  --veil: rgba(19,23,28,0.82);
+  --line-1: #262d35;
+  --line-2: #343c46;
+  --line-3: #6b737e;
+  --ink-1: #eceef1;
+  --ink-2: #c3c8cf;
+  --ink-3: #9aa2ac;
+  --ink-4: #6a727c;
+  --you: #47a3ec;
+  --you-hi: #63b5f3;
+  --you-strong: #3b95df;
+  --you-ink: #7dc0f5;
+  --you-tint: #142c42;
+  --you-line: #22496b;
+  --on-you: #04213a;
+  --clone: #f09068;
+  --clone-ink: #f5a985;
+  --clone-tint: #35231a;
+  --pending: var(--ink-3);
+  --mark: #4a4223;
+  --adopt: #42a585;
+  --adopt-hi: #55b594;
+  --adopt-strong: #399376;
+  --adopt-ink: #6dd0ad;
+  --adopt-tint: #163027;
+  --on-adopt: #062018;
+  --danger: #f08b80;
+  --danger-strong: #f4a197;
+  --danger-tint: #3a1d1b;
+  --amber: #d7a051;
+  --amber-tint: #504532;
+  --privacy-public: #a1d1bb;
+  --privacy-public-tint: #1d2a24;
+  --privacy-public-mid: #62927d;
+  --privacy-normal: #abc7e7;
+  --privacy-normal-tint: #202730;
+  --privacy-normal-mid: #6f89a5;
+  --privacy-private: #e6bb8f;
+  --privacy-private-tint: #2f2418;
+  --privacy-private-mid: #a47e4d;
+  --privacy-sensitive: #fdaba5;
+  --privacy-sensitive-tint: #36201e;
+  --privacy-sensitive-mid: #b4716c;
+  --dim-identity: #54b8ac;
+  --dim-identity-tint: #263b3f;
+  --dim-goal: #a792f6;
+  --dim-goal-tint: #33354b;
+  --dim-condition: #d6954b;
+  --dim-condition-tint: #3b352f;
+  --dim-plan: #e48494;
+  --dim-plan-tint: #3d333b;
+  --dim-preference: #6fa9e7;
+  --dim-preference-tint: #2a3848;
+  --on-dim: #0e1115;
+  --sec-base: oklch(0.7 0.1 182);
+  --edge-1: #3e4652;
+  --edge-2: #2f3640;
+  --ground-wash-1: #2fa59522;
+  --ground-wash-2: #47a3ec1c;
+  --ground-wash-3: #e8946b16;
+  --ground-dot: #6b737e;
+  --shadow-1: 0 1px 2px rgba(0,0,0,0.40);
+  --shadow-2: 0 10px 28px rgba(0,0,0,0.45), 0 2px 6px rgba(0,0,0,0.30);
+  --shadow-3: 0 20px 48px rgba(0,0,0,0.55), 0 4px 12px rgba(0,0,0,0.35);
+  --glaze: inset 0 1px 0 rgba(255,255,255,0.34), inset 0 -1px 0 rgba(0,0,0,0.14);
+  --lift-you: 0 1px 2px rgba(0,0,0,0.40), 0 6px 16px -6px rgba(71,163,236,0.45);
+  --lift-adopt: 0 1px 2px rgba(0,0,0,0.40), 0 6px 16px -6px rgba(66,165,133,0.45);
+  --inset-track: inset 0 1px 2px rgba(0,0,0,0.35);
+  --focus-ring: 0 0 0 2px #13171c, 0 0 0 4px #7dc0f5;
+}
+:root {
+  --space-1: 4px; /* 图标与文字、计数与标签之间。 */
+  --space-2: 8px; /* 控件内部、按钮组的间隔。 */
+  --space-3: 12px; /* 卡片内各行之间、列表项之间。 */
+  --space-4: 16px; /* 面板左右内边距、卡片内边距。 */
+  --space-5: 20px; /* 面板顶部内边距、卡片组之间。 */
+  --space-6: 24px; /* 区块之间。 */
+  --space-8: 32px; /* 大区块之间、浮层与画布边。 */
+  --space-11: 44px; /* 品牌栏到开场标题、最小可点击尺寸。 */
+  --space-16: 64px; /* 整页外边距（品牌页、登录页）。 */
+  --radius-tail: 4px; /* 气泡的“尾角”：聊天气泡靠近说话人的那个角、快捷键键帽。 */
+  --radius-badge: 6px; /* 隐私度徽标、小标签。 */
+  --radius-inner: 7px; /* 嵌在 3px 内边距容器里的元素：分段滑块、工具条按钮、小按钮。 */
+  --radius-control: 10px; /* 按钮、输入框、下拉、分段轨道。 */
+  --radius-card: 14px; /* 画像卡片、浮动工具条、轨道、菜单。 */
+  --radius-sheet: 20px; /* 登录卡、提示气泡、品牌展示块。 */
+  --radius-pill: 999px; /* 筛选片、计数气泡、圆形复选框、圆点。 */
+  --control-xs: 24px; /* 计数、键帽之外最小的可点击元素（工具条内的级别按钮除外）。 */
+  --control-sm: 28px; /* 小按钮、卡片内的操作。 */
+  --control-md: 32px; /* 默认按钮、下拉、图标按钮。 */
+  --control-lg: 40px; /* 登录卡、空状态里的主操作、输入框。 */
+  --touch: 44px; /* 触屏上的最小点击区。 */
+  --rail-left: 288px; /* 左栏宽度。 */
+  --rail-detail: 364px; /* 右侧画像档案宽度。 */
+  --font-sans: "Figtree", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", system-ui, sans-serif;
+  --font-brand: "Figtree", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", system-ui, sans-serif;
+  --font-mono: "DM Mono", "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --text-hero: 600 26px/37px var(--font-sans); /* 左栏开场标题、登录卡标题。一屏最多一处。 */
+  --text-title: 600 20px/28px var(--font-sans); /* 画像档案的主题名、页面区块标题。 */
+  --text-subtitle: 600 16px/24px var(--font-sans); /* 面板内的小节标题、卡片组标题。 */
+  --text-body: 400 14px/24px var(--font-sans); /* 画像内容、说明段落、证据气泡里的聊天原文。 */
+  --text-label: 500 13px/20px var(--font-sans); /* 按钮、分段、标签页、列表项、卡片里的属性名（属性名用 600）。 */
+  --text-caption: 400 12px/18px var(--font-sans); /* 元信息、帮助提示、计数说明。 */
+  --text-eyebrow: 600 11px/16px var(--font-sans); /* 只用于拉丁大写眉标，颜色 you，前面带一个气泡尾点。 */
+  --text-numeral: 600 28px/32px var(--font-brand); /* 审核进度、总览里的大数字。 */
+  --text-count: 600 13px/16px var(--font-brand); /* 轨道、筛选片、计数气泡里的数字。 */
+  --text-meta: 400 11px/16px var(--font-mono); /* 证据时间戳、画像编号、面板角标 WECLONE / 2026。 */
+  --text-kbd: 500 10.5px/16px var(--font-mono); /* 快捷键提示（Kbd）。 */
+  --text-node-root: 600 15px/20px var(--font-sans); /* 根节点。 */
+  --text-node-dim: 600 13.5px/18px var(--font-sans); /* 一级：维度。 */
+  --text-node-section: 500 12px/16px var(--font-sans); /* 二级：板块，颜色 ink-2。 */
+  --text-node-attr: 400 11px/14px var(--font-sans); /* 三级：属性，颜色 ink-3。 */
+}
+@font-face {
+  font-family: "Figtree";
+  src: url("./fonts/figtree-latin-wght-normal.woff2") format("woff2");
+  font-weight: 300 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "DM Mono";
+  src: url("./fonts/dm-mono-latin-400-normal.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "DM Mono";
+  src: url("./fonts/dm-mono-latin-500-normal.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}

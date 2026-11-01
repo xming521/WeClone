@@ -1,4 +1,7 @@
-/* Each area keeps its own stylesheet; the order here is the cascade order of the old single file. */
+/* Each area keeps its own stylesheet; the order here is the cascade order of the old single file.
+   The design system's tokens and components load first so every area can use them. */
+@import './ds/tokens.css';
+@import './ds/components.css';
 @import './base.css';
 @import './shell.css';
 @import './atlas/leftPanel.css';
