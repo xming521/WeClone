@@ -191,7 +191,7 @@ class Setup(Login):
     confirmation: str = Field(min_length=1, max_length=256)
 
 
-def install_auth(app, database: Path):
+def install_auth(app, database: Path, demo_password: str | None = None):
     store = AuthStore(database)
     app.state.auth_store = store
     public = {"/api/auth/status", "/api/auth/setup", "/api/auth/login", "/api/auth/session"}
@@ -255,6 +255,8 @@ def install_auth(app, database: Path):
         return {
             "initialized": secure.is_initialized(),
             "storage_mode": "encrypted" if secure.is_encrypted_mode() else "plaintext",
+            # Only the demo's fixed password, shown on the sign-in page.
+            "demo_password": demo_password,
         }
 
     @app.post("/api/auth/setup")

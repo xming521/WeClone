@@ -88,6 +88,9 @@ summary:focus-visible {
   background: var(--color-surface);
   box-shadow: 0 16px 50px color-mix(in srgb, var(--color-forest) 3.9216%, transparent);
 }
+.auth-card .brand-symbol {
+  height: 32px;
+}
 .auth-brand {
   font-weight: 700;
 }
@@ -243,17 +246,14 @@ summary:focus-visible {
   background: var(--color-accent-tint);
   color: var(--color-accent);
 }
+.brand-mark {
+  display: block;
+  flex: none;
+  width: auto;
+  user-select: none;
+}
 .brand-symbol {
-  display: grid;
-  place-items: center;
-  width: 31px;
-  height: 31px;
-  border-radius: 11px;
-  color: var(--color-white);
-  font-size: 21px;
-  line-height: 1;
-  background: var(--color-forest);
-  box-shadow: 0 8px 18px #0e51401f;
+  height: 24px;
 }
 .brand-separator {
   margin: 0 6px;
@@ -296,45 +296,87 @@ summary:focus-visible {
   font-size: 12px;
   line-height: 1.7;
 }
-.nav-heading-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin: 55px 9px 14px;
+/* 两种分组的说明长短不一，留足两行，切换时下面的开关不跟着上下跳 */
+.grouping-intro {
+  min-height: 3.4em;
+}
+.grouping-intro.is-entering {
+  animation: intro-copy-enter 0.5s ease-out backwards;
+}
+@keyframes intro-copy-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
 }
 .nav-heading {
+  margin: 55px 9px 14px;
   color: #8f9c95;
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.13em;
 }
-/* 按维度与按板块的切换 */
+/* 按维度与按板块的切换，兼作列表的标题。白色滑块滑到选中的一项下面 */
 .grouping-switch {
-  display: flex;
-  flex-shrink: 0;
-  gap: 2px;
-  padding: 2px;
-  border-radius: 8px;
+  position: relative;
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  gap: 4px;
+  margin: 24px 0 14px;
+  padding: 4px;
+  border-radius: 13px;
   background: #edf1eb;
 }
+.grouping-thumb {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc(50% - 6px);
+  border-radius: 10px;
+  background: var(--color-white);
+  box-shadow:
+    0 2px 8px #294e3612,
+    0 1px 2px #294e360d;
+  transform: translateX(calc(var(--grouping-index) * (100% + 4px)));
+  transition: transform 0.45s cubic-bezier(0.3, 1.25, 0.45, 1);
+}
 .grouping-switch button {
-  padding: 4px 8px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-width: 0;
+  height: 36px;
+  padding: 0 8px;
   border: 0;
-  border-radius: 6px;
+  border-radius: 10px;
   background: transparent;
   color: #71867a;
-  font-size: 10.5px;
+  font-size: 12.5px;
   font-weight: 600;
   white-space: nowrap;
+  transition: color 0.25s;
 }
 .grouping-switch button:hover {
   color: var(--color-accent-dark);
 }
 .grouping-switch button[aria-pressed='true'] {
-  background: var(--color-white);
   color: #326d5d;
-  box-shadow: 0 2px 8px #294e3610;
+}
+.grouping-switch svg {
+  flex: none;
+  transition: color 0.25s;
+}
+/* 两个图标转半圈都和原样重合：选中时转一下，取消时直接跳回原位，看不出来 */
+.grouping-switch button[aria-pressed='true'] svg {
+  color: var(--color-accent);
+  transform: rotate(180deg);
+  transition:
+    color 0.25s,
+    transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .dimension-list {
   display: grid;
@@ -404,6 +446,17 @@ summary:focus-visible {
 .dimension-list.is-compact .domain-initial {
   font-size: 13px;
 }
+/* 换了分组，新列表从选中一项的那一侧依次滑进来 */
+.dimension-list.is-entering .dimension-item {
+  animation: dimension-item-enter 0.5s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  animation-delay: calc(min(var(--enter-index), 12) * 28ms);
+}
+@keyframes dimension-item-enter {
+  from {
+    opacity: 0;
+    transform: translateX(calc(var(--enter-side) * 18px));
+  }
+}
 .dimension-copy {
   display: flex;
   flex-direction: column;
@@ -471,6 +524,7 @@ summary:focus-visible {
   background-image: radial-gradient(#8ba49a 0.7px, transparent 0.7px);
   background-size: 23px 23px;
   mask-image: radial-gradient(ellipse at center, #0008, transparent 80%);
+  pointer-events: none;
 }
 .graph-canvas {
   position: absolute;
@@ -1382,6 +1436,7 @@ summary:focus-visible {
 }
 .detail-footer {
   display: flex;
+  align-items: center;
   justify-content: space-between;
   padding: 20px 26px;
   border-top: 1px solid var(--color-border-faint);
@@ -1390,10 +1445,8 @@ summary:focus-visible {
   font-weight: 700;
   letter-spacing: 0.15em;
 }
-.detail-footer span:last-child {
-  color: var(--detail-accent);
-  font-size: 16px;
-  line-height: 0.6;
+.detail-footer .brand-mark {
+  height: 12px;
 }
 .load-state {
   position: relative;
@@ -1406,9 +1459,8 @@ summary:focus-visible {
   color: #37524a;
   text-align: center;
 }
-.load-state > span {
-  color: var(--color-accent);
-  font-size: 58px;
+.load-state > .brand-mark {
+  height: 46px;
 }
 .load-state h1 {
   margin: 12px 0;
@@ -1424,8 +1476,8 @@ summary:focus-visible {
 }
 @keyframes breathe {
   50% {
-    opacity: 0.35;
-    transform: scale(0.86) rotate(25deg);
+    opacity: 0.45;
+    transform: scale(0.9);
   }
 }
 
@@ -1443,8 +1495,11 @@ summary:focus-visible {
   .intro-block h1 {
     font-size: 24px;
   }
-  .nav-heading-row {
+  .nav-heading {
     margin-top: 35px;
+  }
+  .grouping-switch {
+    margin-top: 20px;
   }
   .detail-content {
     padding-inline: 18px;
@@ -1527,7 +1582,7 @@ summary:focus-visible {
   .intro-block {
     display: none;
   }
-  .nav-heading-row {
+  .nav-heading {
     margin-top: 34px;
   }
   .left-bottom {
@@ -1660,6 +1715,10 @@ summary:focus-visible {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+  /* 否则各项要等完各自的延迟才一个个冒出来 */
+  .dimension-list.is-entering .dimension-item {
+    animation: none;
   }
 }
 

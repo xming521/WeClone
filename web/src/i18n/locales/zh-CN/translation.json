@@ -69,6 +69,7 @@
     "setupEncrypted": "同一个密码用于网页访问和数据加密。忘记密码后需要重新抽取全部数据。",
     "setupPlaintext": "设置用于网页访问的密码。当前数据采用明文存储。",
     "loginHint": "输入你设置的密码。",
+    "demoHint": "演示模式，使用合成数据。访问密码：{{password}}",
     "newPassword": "设置密码",
     "password": "访问密码",
     "confirmPassword": "再次输入密码",

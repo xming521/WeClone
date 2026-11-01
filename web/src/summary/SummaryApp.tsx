@@ -3,6 +3,7 @@ import { Check, ClipboardCopy, EyeOff, PencilLine, Sparkles, Undo2 } from 'lucid
 import { useTranslation } from 'react-i18next';
 import { api } from '../api';
 import { LogoutButton } from '../Auth';
+import { BrandMark } from '../BrandMark';
 import { LanguageSwitch } from '../LanguageSwitch';
 import { ModeSwitch } from '../ModeSwitch';
 import { SUMMARY_LEVELS, stateCounts, summaryState } from './summaryState';
@@ -239,7 +240,7 @@ export function SummaryApp() {
   if (!view && error)
     return (
       <div className="load-state">
-        <span>✳</span>
+        <BrandMark />
         <h1>{t(($) => $.summary.loadFailed)}</h1>
         <p>{error}</p>
         <button onClick={() => void load()}>{t(($) => $.common.retry)}</button>
@@ -248,7 +249,7 @@ export function SummaryApp() {
   if (!view)
     return (
       <div className="load-state">
-        <span className="loading-mark">✳</span>
+        <BrandMark className="loading-mark" />
         <h1>{t(($) => $.summary.loading)}</h1>
       </div>
     );

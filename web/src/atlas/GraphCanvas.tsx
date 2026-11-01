@@ -5,6 +5,7 @@ import { useProfileStore } from '../store';
 import { AtlasEngine, type AtlasControls, type HoverInfo, type Insets } from './atlasEngine';
 import { nodeMetrics } from './atlasMetrics';
 import { playEntrance, type EntranceConfig } from './entrance';
+import type { Point } from './graphLayout';
 import { openNightIntro, type NightIntro } from './nightIntro';
 import { NodePreview } from './NodePreview';
 import { nodeLooks } from './nodeLook';
@@ -28,6 +29,36 @@ function panelInsets(host: HTMLElement, open: boolean): Insets {
 function stopEntrance(ref: RefObject<(() => void) | null>) {
   ref.current?.();
   ref.current = null;
+}
+
+/**
+ * A reset or the other grouping mounts a new map. The old one's last picture stays a moment and sinks into its root
+ * under the new map, whose entrance grows out of the same root, instead of leaving a blank page.
+ */
+function fadeOutMap(main: HTMLElement | null, canvases: HTMLCanvasElement[], root: Point | null) {
+  // Canvases still in the page belong to a map that stays; a main area out of the page is a view that closed.
+  if (!main?.isConnected || canvases.some((canvas) => canvas.isConnected)) return;
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  // First in the main area, so under the new map's canvases.
+  main.prepend(...canvases);
+  for (const canvas of canvases) {
+    Object.assign(canvas.style, {
+      position: 'absolute',
+      inset: '0',
+      width: '100%',
+      height: '100%',
+      zIndex: '1',
+      pointerEvents: 'none',
+      transformOrigin: root ? `${root.x}px ${root.y}px` : 'center',
+    });
+    const remove = () => canvas.remove();
+    canvas
+      .animate(
+        { opacity: [1, 0], transform: ['none', 'scale(0.95)'] },
+        { duration: 340, easing: 'cubic-bezier(0.4, 0, 0.6, 1)', fill: 'forwards' },
+      )
+      .finished.then(remove, remove);
+  }
 }
 
 export function GraphCanvas({ atlasRef }: Props) {
@@ -63,7 +94,10 @@ export function GraphCanvas({ atlasRef }: Props) {
 
   useEffect(() => {
     const host = hostRef.current!;
-    const engine = new AtlasEngine(canvasRef.current!, washRef.current!, {
+    const main = host.parentElement;
+    const canvas = canvasRef.current!;
+    const wash = washRef.current!;
+    const engine = new AtlasEngine(canvas, wash, {
       onNodeClick: (id) => useProfileStore.getState().clickNode(id),
       onBackgroundClick: () => useProfileStore.getState().clearSelection(),
       onHover: setHovered,
@@ -92,10 +126,12 @@ export function GraphCanvas({ atlasRef }: Props) {
       host.removeEventListener('wheel', interrupt, true);
       resize.disconnect();
       interrupt();
+      const root = engine.rootPoint();
       engine.destroy();
       engineRef.current = null;
       atlasRef.current = null;
       mountedRef.current = false;
+      fadeOutMap(main, [wash, canvas], root);
     };
   }, [atlasRef]);
 

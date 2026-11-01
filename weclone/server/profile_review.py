@@ -398,11 +398,12 @@ def create_app(
     static_dir: Path | None = None,
     *,
     inference_router: APIRouter | None = None,
+    demo_password: str | None = None,
 ):
     store = ReviewStore(*review_paths(database, source))
     app = FastAPI(title="WeClone")
     install_errors(app)
-    install_auth(app, store.database)
+    install_auth(app, store.database, demo_password)
     install_bots(app, inference=inference_router is not None)
 
     @app.exception_handler(secure.SecurityError)

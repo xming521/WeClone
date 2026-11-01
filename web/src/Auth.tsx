@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { LogOut } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { api } from './api';
+import { BrandMark } from './BrandMark';
 import { LanguageSwitch } from './LanguageSwitch';
 import { useProfileStore } from './store';
 
@@ -30,6 +31,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
   const [checking, setChecking] = useState(true);
   const [initialized, setInitialized] = useState<boolean | null>(null);
   const [mode, setMode] = useState<'encrypted' | 'plaintext'>('plaintext');
+  const [demoPassword, setDemoPassword] = useState<string | null>(null);
   const [password, setPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
   const [busy, setBusy] = useState(false);
@@ -51,12 +53,17 @@ export function AuthGate({ children }: { children: ReactNode }) {
     async function check() {
       try {
         const [status, session] = await Promise.all([
-          api.get<{ initialized: boolean; storage_mode: 'encrypted' | 'plaintext' }>('auth/status'),
+          api.get<{
+            initialized: boolean;
+            storage_mode: 'encrypted' | 'plaintext';
+            demo_password: string | null;
+          }>('auth/status'),
           api.get<{ expires_at: number | null }>('auth/session'),
         ]);
         if (active) {
           setInitialized(status.initialized);
           setMode(status.storage_mode);
+          setDemoPassword(status.demo_password);
           if (session.expires_at === null || session.expires_at * 1000 <= Date.now()) clear();
           else setExpires(session.expires_at);
           setError('');
@@ -101,7 +108,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
   if (checking)
     return (
       <div className="load-state">
-        <span className="loading-mark">✳</span>
+        <BrandMark className="loading-mark" />
         <h1>{t(($) => $.auth.checking)}</h1>
       </div>
     );
@@ -146,7 +153,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
           }
         }}
       >
-        <span className="brand-symbol">✳</span>
+        <BrandMark className="brand-symbol" />
         <p className="auth-brand">WeClone</p>
         <h1>{setup ? t(($) => $.auth.setupTitle) : t(($) => $.auth.loginTitle)}</h1>
         <p>
@@ -154,7 +161,9 @@ export function AuthGate({ children }: { children: ReactNode }) {
             ? mode === 'encrypted'
               ? t(($) => $.auth.setupEncrypted)
               : t(($) => $.auth.setupPlaintext)
-            : t(($) => $.auth.loginHint)}
+            : demoPassword
+              ? t(($) => $.auth.demoHint, { password: demoPassword })
+              : t(($) => $.auth.loginHint)}
         </p>
         <label htmlFor="access-password">{setup ? t(($) => $.auth.newPassword) : t(($) => $.auth.password)}</label>
         <input

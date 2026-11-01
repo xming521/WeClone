@@ -1,14 +1,14 @@
 // Visual weight of every profile node (design: WC-exp/design, "画像入场 A"). Salience sets the
-// size and glow, confidence the fill opacity and a dashed outline: well supported nodes read as
-// bright solid stars, vague inferences as faint dashed ones. Only type imports are allowed here so
-// the tests can load this file directly with node's type stripping.
+// size and glow, confidence the fill opacity: well supported nodes read as bright solid stars,
+// vague inferences as faint ones. Only type imports are allowed here so the tests can load this
+// file directly with node's type stripping.
 import type { NodeKind, ProfileFact, ProfileModel } from '../data';
 
 /**
  * Thresholds on the source confidence scale (2–4). At or above `solid` a node is a solid disc,
- * below `dash` it gets a dashed outline, and at `low` or below it is at its most translucent.
+ * and at `low` or below it is at its most translucent.
  */
-export const CONFIDENCE = { low: 2.6, dash: 2.95, solid: 3.25 };
+export const CONFIDENCE = { low: 2.6, solid: 3.25 };
 
 const BASE_SIZE: Record<NodeKind, number> = { root: 76, dimension: 54, topic: 31, subtopic: 24, attribute: 12 };
 
@@ -21,7 +21,6 @@ export type NodeLook = {
   fillOpacity: number;
   strokeOpacity: number;
   lineWidth: number;
-  lineDash: number[] | null;
   glowBlur: number;
   /** Alpha of the glow colour. The canvas multiplies it by the fill opacity. */
   glowAlpha: number;
@@ -75,13 +74,11 @@ function encode(kind: NodeKind, sal01: number, confidence: number): NodeLook {
       fillOpacity: 1,
       strokeOpacity: 1,
       lineWidth: 1.5,
-      lineDash: null,
       glowBlur: root ? 16 : 24,
       glowAlpha: 1,
     };
   }
   const clarity = smooth(CONFIDENCE.low, CONFIDENCE.solid, confidence);
-  const dashed = confidence < CONFIDENCE.dash;
   const size = BASE_SIZE[kind] * (0.7 + 0.6 * sal01);
   if (kind === 'attribute') {
     // A white body; only the more salient attributes glow at all.
@@ -94,7 +91,6 @@ function encode(kind: NodeKind, sal01: number, confidence: number): NodeLook {
       fillOpacity,
       strokeOpacity: (0.5 + 0.5 * sal01) * (0.62 + 0.38 * clarity),
       lineWidth: 2.5,
-      lineDash: dashed ? [2.3, 1.9] : null,
       glowBlur: bright > 0 ? 3 + 9 * bright : 0,
       glowAlpha: bright > 0 ? Math.min(1, (0.22 + 0.3 * bright) / fillOpacity) : 0,
     };
@@ -109,7 +105,6 @@ function encode(kind: NodeKind, sal01: number, confidence: number): NodeLook {
     fillOpacity,
     strokeOpacity: 1,
     lineWidth: 1.5,
-    lineDash: dashed ? [3.4, 2.6] : null,
     glowBlur: 6 + 16 * sal01,
     glowAlpha: Math.min(1, glow / fillOpacity),
   };

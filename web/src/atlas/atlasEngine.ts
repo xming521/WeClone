@@ -468,6 +468,14 @@ export class AtlasEngine implements AtlasControls {
     };
   }
 
+  /** Where the root is drawn, in pixels from the canvas's top left. */
+  rootPoint(): Point | null {
+    const n = this.nodes.get('root');
+    if (!n) return null;
+    const { x, y, k } = this.cam;
+    return { x: (n.rx - x) * k + this.W / 2, y: (n.ry - y) * k + this.H / 2 };
+  }
+
   /**
    * Shows the map, drawn at once. With `settle` it starts as the entrance's last frame and then
    * eases into its own look; without, it shows that look straight away.

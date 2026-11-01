@@ -145,6 +145,7 @@ export default interface Resources {
     "auth": {
       "checking": "正在验证登录状态",
       "confirmPassword": "再次输入密码",
+      "demoHint": "演示模式，使用合成数据。访问密码：{{password}}",
       "loginHint": "输入你设置的密码。",
       "loginSubmit": "解锁",
       "loginTitle": "解锁个人记忆",

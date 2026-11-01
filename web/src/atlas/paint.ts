@@ -117,9 +117,7 @@ function drawBody(c: CanvasRenderingContext2D, n: PaintNode, alpha: number, glow
   c.globalAlpha = alpha * look.strokeOpacity;
   c.lineWidth = look.lineWidth;
   c.strokeStyle = nodeStroke(n.kind, n.dim);
-  if (look.lineDash) c.setLineDash(look.lineDash);
   c.stroke();
-  if (look.lineDash) c.setLineDash([]);
 }
 
 // The centre: a pearl lit from the upper left and tinted by each dimension from the side its

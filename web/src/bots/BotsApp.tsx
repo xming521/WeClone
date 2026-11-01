@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { api } from '../api';
 import { LogoutButton } from '../Auth';
+import { BrandMark } from '../BrandMark';
 import { LanguageSwitch } from '../LanguageSwitch';
 import { ModeSwitch } from '../ModeSwitch';
 import { CopyField, TokenCard, type TokenState } from '../assistant/accessParts';
@@ -66,7 +67,7 @@ export function BotsApp() {
   if (!view && error)
     return (
       <div className="load-state">
-        <span>✳</span>
+        <BrandMark />
         <h1>{t(($) => $.bots.loadFailed)}</h1>
         <p>{error}</p>
         <button onClick={() => void load()}>{t(($) => $.common.retry)}</button>
@@ -75,7 +76,7 @@ export function BotsApp() {
   if (!view)
     return (
       <div className="load-state">
-        <span className="loading-mark">✳</span>
+        <BrandMark className="loading-mark" />
         <h1>{t(($) => $.bots.loading)}</h1>
       </div>
     );

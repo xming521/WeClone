@@ -71,6 +71,7 @@
     "setupEncrypted": "The same password signs you in and encrypts your data. If you forget it, all data has to be extracted again.",
     "setupPlaintext": "Set a password for the web UI. Your data is currently stored unencrypted.",
     "loginHint": "Enter the password you set.",
+    "demoHint": "Demo mode with synthetic data. Password: {{password}}",
     "newPassword": "New password",
     "password": "Password",
     "confirmPassword": "Enter it again",

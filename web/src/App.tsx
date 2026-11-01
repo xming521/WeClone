@@ -14,6 +14,7 @@ import { ReviewOverlays } from './review/ReviewOverlays';
 import { DIMENSIONS } from './data';
 import { useProfileStore } from './store';
 import { AuthGate, LogoutButton } from './Auth';
+import { BrandMark } from './BrandMark';
 import { LanguageSwitch } from './LanguageSwitch';
 import { ModeSwitch, modeFromHash } from './ModeSwitch';
 import { StyleApp } from './style/StyleApp';
@@ -119,7 +120,7 @@ function ProfileApp() {
   if (!loaded && error)
     return (
       <div className="load-state">
-        <span>✳</span>
+        <BrandMark />
         <h1>{t(($) => $.app.loadFailed)}</h1>
         <p>{error}</p>
         <button onClick={() => void reload()}>{t(($) => $.common.retry)}</button>
@@ -128,7 +129,7 @@ function ProfileApp() {
   if (!loaded)
     return (
       <div className="load-state">
-        <span className="loading-mark">✳</span>
+        <BrandMark className="loading-mark" />
         <h1>{t(($) => $.app.loading)}</h1>
       </div>
     );

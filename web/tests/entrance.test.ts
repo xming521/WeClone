@@ -77,13 +77,11 @@ test('nodeLooks sizes nodes by log salience per level and fades low-confidence o
   assert.equal(manual.sal01, 0);
   assert.ok(Math.abs(strong.size - 31 * 1.3) < 1e-9);
   assert.ok(Math.abs(weak.size - 31 * 0.7) < 1e-9);
-  // Confidence 2.5 is below every threshold: the most translucent fill and a dashed outline.
+  // Confidence 2.5 is below every threshold: the most translucent fill.
   assert.equal(weak.clarity, 0);
   assert.ok(Math.abs(weak.fillOpacity - 0.2) < 1e-9);
-  assert.ok(weak.lineDash);
   // Topic confidence is the mean over its attributes: ((3·3 + 4·1) / 4 + 3.5) / 2 = 3.375, above `solid`.
   assert.equal(strong.clarity, 1);
-  assert.equal(strong.lineDash, null);
   assert.equal(manual.clarity, 1);
   // Attributes are normalised among attributes, independently of topics.
   assert.equal(looks.get('a-strong')!.sal01, 1);
@@ -99,7 +97,6 @@ const look = (sal01: number, clarity = 1): NodeLook => ({
   fillOpacity: 1,
   strokeOpacity: 1,
   lineWidth: 1.5,
-  lineDash: null,
   glowBlur: 10,
   glowAlpha: 1,
 });

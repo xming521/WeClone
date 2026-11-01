@@ -3,6 +3,7 @@ import { Lock, LockOpen } from 'lucide-react';
 import { Trans, useTranslation } from 'react-i18next';
 import { api } from '../api';
 import { LogoutButton } from '../Auth';
+import { BrandMark } from '../BrandMark';
 import { LanguageSwitch } from '../LanguageSwitch';
 import { ModeSwitch } from '../ModeSwitch';
 import '../summary/summary.css';
@@ -129,7 +130,7 @@ export function AssistantApp() {
   if (!view && error)
     return (
       <div className="load-state">
-        <span>✳</span>
+        <BrandMark />
         <h1>{t(($) => $.assistant.loadFailed)}</h1>
         <p>{error}</p>
         <button onClick={() => void load()}>{t(($) => $.common.retry)}</button>
@@ -138,7 +139,7 @@ export function AssistantApp() {
   if (!view)
     return (
       <div className="load-state">
-        <span className="loading-mark">✳</span>
+        <BrandMark className="loading-mark" />
         <h1>{t(($) => $.assistant.loading)}</h1>
       </div>
     );

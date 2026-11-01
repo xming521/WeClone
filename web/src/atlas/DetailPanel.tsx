@@ -3,6 +3,7 @@ import type { CSSProperties } from 'react';
 import * as Tabs from '@radix-ui/react-tabs';
 import { ChevronRight, Sparkles, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { BrandMark } from '../BrandMark';
 import { ancestors, collectFacts, dimensionColor, displayProfileText } from '../data';
 import { useProfileStore } from '../store';
 import { PrivacyOverview } from '../review/privacy';
@@ -141,7 +142,7 @@ export function DetailPanel({ open, onClose }: { open: boolean; onClose: () => v
         </div>
         <div className="detail-footer">
           <span>{t(($) => $.atlas.detail.footer)}</span>
-          <span>✳</span>
+          <BrandMark />
         </div>
       </aside>
     </Tabs.Root>

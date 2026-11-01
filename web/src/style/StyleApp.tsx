@@ -4,6 +4,7 @@ import { Keyboard, MessagesSquare, Smile, Type } from 'lucide-react';
 import { Trans, useTranslation } from 'react-i18next';
 import { api } from '../api';
 import { LogoutButton } from '../Auth';
+import { BrandMark } from '../BrandMark';
 import { LanguageSwitch } from '../LanguageSwitch';
 import { ModeSwitch } from '../ModeSwitch';
 import { BubbleField } from './BubbleField';
@@ -54,7 +55,7 @@ export function StyleApp() {
   if (error)
     return (
       <div className="load-state">
-        <span>✳</span>
+        <BrandMark />
         <h1>{t(($) => $.style.loadFailed)}</h1>
         <p>{error}</p>
         <a className="style-back" href="#/">
@@ -65,7 +66,7 @@ export function StyleApp() {
   if (!data)
     return (
       <div className="load-state">
-        <span className="loading-mark">✳</span>
+        <BrandMark className="loading-mark" />
         <h1>{t(($) => $.style.loading)}</h1>
       </div>
     );
@@ -79,7 +80,7 @@ export function StyleApp() {
     <div className={`app-shell left-open style-shell${trait ? ' detail-open' : ''}`}>
       <aside className="left-panel">
         <div className="brand-row">
-          <span className="brand-symbol">✳</span>
+          <BrandMark className="brand-symbol" />
           <span>
             WeClone<span className="brand-separator">/</span>Style
           </span>
