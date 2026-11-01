@@ -7,7 +7,7 @@ import { BrandMark } from '../BrandMark';
 import { LanguageSwitch } from '../LanguageSwitch';
 import { ModeSwitch } from '../ModeSwitch';
 import '../summary/summary.css';
-import { CopyField, TokenCard, moment, type TokenState } from './accessParts';
+import { CopyField, LevelSwitch, TokenCard, moment, type TokenState } from './accessParts';
 import './assistant.css';
 
 // Shapes of GET /api/assistant, served by weclone/server/assistant.py.
@@ -133,7 +133,9 @@ export function AssistantApp() {
         <BrandMark />
         <h1>{t(($) => $.assistant.loadFailed)}</h1>
         <p>{error}</p>
-        <button onClick={() => void load()}>{t(($) => $.common.retry)}</button>
+        <button className="wc-btn" type="button" onClick={() => void load()}>
+          {t(($) => $.common.retry)}
+        </button>
       </div>
     );
   if (!view)
@@ -180,7 +182,7 @@ export function AssistantApp() {
           {error && (
             <div className="summary-error" role="alert">
               <span>{error}</span>
-              <button type="button" onClick={() => setError('')}>
+              <button className="wc-btn wc-btn--ghost wc-btn--sm" type="button" onClick={() => setError('')}>
                 {t(($) => $.common.dismiss)}
               </button>
             </div>
@@ -191,22 +193,15 @@ export function AssistantApp() {
           <div className="assistant-card-head">
             <h2>{t(($) => $.assistant.scope)}</h2>
           </div>
-          <div className="summary-levels" role="radiogroup" aria-label={t(($) => $.assistant.level)}>
-            <span>{t(($) => $.assistant.level)}</span>
-            {LEVELS.map((level) => (
-              <button
-                key={level}
-                type="button"
-                role="radio"
-                aria-checked={level === view.level}
-                disabled={busy}
-                onClick={() => level !== view.level && void run(() => api.patch('assistant', { level }))}
-              >
-                {t(($) => $.assistant.levels[level].label)}
-              </button>
-            ))}
-          </div>
+          <LevelSwitch
+            label={t(($) => $.assistant.level)}
+            value={view.level}
+            disabled={busy}
+            levels={LEVELS.map((level) => ({ level, text: t(($) => $.assistant.levels[level].label) }))}
+            onChange={(level) => level !== view.level && void run(() => api.patch('assistant', { level }))}
+          />
           <p className={`summary-hint${view.level === 'full' ? ' summary-warning' : ''}`}>
+            {view.level === 'full' && <span className="wc-phase" data-privacy="sensitive" aria-hidden="true" />}
             {t(($) => $.assistant.levels[view.level].hint)}
           </p>
           <div className="assistant-domains-head">
@@ -217,7 +212,7 @@ export function AssistantApp() {
                 : t(($) => $.assistant.someDomains, { shared: sharedCount, total: view.catalog.length })}
             </span>
             {view.domains !== null && (
-              <button type="button" disabled={busy} onClick={() => share(null)}>
+              <button className="wc-btn wc-btn--sm" type="button" disabled={busy} onClick={() => share(null)}>
                 {t(($) => $.assistant.resetDomains)}
               </button>
             )}
@@ -226,9 +221,10 @@ export function AssistantApp() {
             <ul className="assistant-domains" aria-label={t(($) => $.assistant.sharedDomains)}>
               {view.catalog.map((item) => (
                 <li key={item.name}>
-                  <label className={item.shared ? 'shared' : undefined}>
+                  <label className={`wc-check${item.shared ? ' shared' : ''}`}>
                     <input type="checkbox" checked={item.shared} disabled={busy} onChange={() => toggle(item)} />
-                    <span>{item.name}</span>
+                    <span className="wc-check__box" aria-hidden="true" />
+                    <span title={item.name}>{item.name}</span>
                     <small>
                       {item.summary
                         ? t(($) => $.assistant.domainFactsSummary, { count: item.facts })
@@ -245,7 +241,7 @@ export function AssistantApp() {
             <Trans
               i18nKey={($) => $.assistant.domainsNote}
               count={view.summaries}
-              components={{ link: <a href="#/summary" /> }}
+              components={{ link: <a className="wc-link" href="#/summary" /> }}
             />
           </p>
         </section>
@@ -254,7 +250,8 @@ export function AssistantApp() {
           <section className="assistant-card" aria-label={t(($) => $.assistant.access.title)}>
             <div className="assistant-card-head">
               <h2>
-                {allowed ? <LockOpen size={15} /> : <Lock size={15} />} {t(($) => $.assistant.access.title)}
+                {allowed ? <LockOpen size={16} strokeWidth={1.8} /> : <Lock size={16} strokeWidth={1.8} />}{' '}
+                {t(($) => $.assistant.access.title)}
               </h2>
               <span className={`assistant-state${allowed ? ' on' : ''}`}>
                 {allowed
@@ -267,6 +264,7 @@ export function AssistantApp() {
               {view.hours.map((hours) => (
                 <button
                   key={hours}
+                  className="wc-btn"
                   type="button"
                   disabled={busy}
                   onClick={() => void run(() => api.post('assistant/access', { hours }))}
@@ -277,7 +275,12 @@ export function AssistantApp() {
                 </button>
               ))}
               {allowed && (
-                <button type="button" disabled={busy} onClick={() => void run(() => api.delete('assistant/access'))}>
+                <button
+                  className="wc-btn wc-btn--danger"
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void run(() => api.delete('assistant/access'))}
+                >
                   {t(($) => $.assistant.access.close)}
                 </button>
               )}
@@ -287,6 +290,7 @@ export function AssistantApp() {
 
         <TokenCard
           token={view.token}
+          tone="you"
           created={Boolean(created)}
           busy={busy}
           unused={t(($) => $.assistant.unused)}
@@ -297,28 +301,33 @@ export function AssistantApp() {
           {created && (
             <div className="assistant-setup">
               <p className="summary-hint">{t(($) => $.assistant.setup.once)}</p>
-              <div className="summary-levels" role="radiogroup" aria-label={t(($) => $.assistant.setup.clients)}>
+              <div className="wc-tabs" role="tablist" aria-label={t(($) => $.assistant.setup.clients)}>
                 {CLIENTS.map((item) => (
                   <button
                     key={item}
+                    className="wc-tab"
                     type="button"
-                    role="radio"
-                    aria-checked={item === client}
+                    role="tab"
+                    id={`assistant-client-${item}`}
+                    aria-selected={item === client}
+                    aria-controls="assistant-commands"
                     onClick={() => setClient(item)}
                   >
                     {item}
                   </button>
                 ))}
               </div>
-              <CopyField
-                label={t(($) => $.assistant.setup.commands, { client })}
-                text={setupCommands(client, view.mcp_url, created)}
-              />
+              <div id="assistant-commands" role="tabpanel" aria-labelledby={`assistant-client-${client}`}>
+                <CopyField
+                  label={t(($) => $.assistant.setup.commands, { client })}
+                  text={setupCommands(client, view.mcp_url, created)}
+                />
+              </div>
               <p className="summary-hint">
                 <Trans i18nKey={($) => $.assistant.setup.other} components={{ code: <code /> }} />
               </p>
               <CopyField label={t(($) => $.access.token.title)} text={created} />
-              <button className="assistant-done" type="button" onClick={() => setCreated('')}>
+              <button className="wc-btn assistant-done" type="button" onClick={() => setCreated('')}>
                 {t(($) => $.assistant.setup.done)}
               </button>
             </div>

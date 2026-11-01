@@ -1,16 +1,17 @@
-import { useState, type CSSProperties } from 'react';
+import { useMemo, useState, type CSSProperties } from 'react';
 import type { LucideIcon } from 'lucide-react';
-import { ChevronLeft, Compass, Fingerprint, Heart, Layers3, LayoutGrid, Orbit, Target } from 'lucide-react';
+import { ChevronLeft, Compass, Fingerprint, Heart, Layers, LayoutGrid, Orbit, Target } from 'lucide-react';
 import { Trans, useTranslation } from 'react-i18next';
 import { BrandMark } from '../BrandMark';
-import { DIMENSIONS, dimensionColor, displayProfileText, type DimensionId } from '../data';
-import type { Grouping } from '../data';
+import { collectFacts, DIMENSIONS, displayProfileText, type DimensionId } from '../data';
+import type { Grouping, ReviewStatus } from '../data';
 import { useProfileStore } from '../store';
+import { scopeColor } from './scopeColor';
 
 const DIMENSION_ICONS: Record<DimensionId, LucideIcon> = {
   1: Fingerprint,
   3: Target,
-  4: Layers3,
+  4: Layers,
   5: Compass,
   8: Heart,
 };
@@ -41,6 +42,19 @@ export function LeftPanel({
   const grouping = viewModel.grouping;
   const byDomain = grouping === 'domain';
   const heading = byDomain ? t(($) => $.atlas.left.domainsTitle) : t(($) => $.atlas.left.dimensionsTitle);
+  // Review progress counts every fact, whatever view the review bar has filtered the map to.
+  const review = useMemo(() => {
+    const total = { pending: 0, approved: 0, rejected: 0 };
+    fullModel.facts.forEach((fact) => total[fact.status]++);
+    const perItem = new Map(
+      fullModel.dimensionIds.map((id) => {
+        const facts = collectFacts(fullModel, id);
+        const count = (status: ReviewStatus) => facts.filter((fact) => fact.status === status).length;
+        return [id, { facts: facts.length, pending: count('pending'), approved: count('approved') }] as const;
+      }),
+    );
+    return { total, perItem };
+  }, [fullModel]);
   // A switch brings the new list and intro in from the chosen option's side, until the list's last item is in.
   // The list the page opens with, and items a review view adds, just show.
   const [entering, setEntering] = useState(false);
@@ -52,20 +66,19 @@ export function LeftPanel({
       onPointerDownCapture={onInteract}
       onFocusCapture={onInteract}
     >
-      <div className="brand-row">
-        <BrandMark className="brand-symbol" />
-        <span>
-          WeClone<span className="brand-separator">/</span>Profile Atlas
+      <div className="wc-brand">
+        <BrandMark className="wc-brand__mark" variant="small" />
+        <span className="wc-brand__name">
+          <b>WeClone</b>
+          <small>Profile Atlas</small>
         </span>
-        <button className="sidebar-close" type="button" aria-label={t(($) => $.atlas.left.close)} onClick={onClose}>
-          <ChevronLeft size={17} />
+        <button className="wc-iconbtn" type="button" aria-label={t(($) => $.atlas.left.close)} onClick={onClose}>
+          <ChevronLeft size={16} strokeWidth={1.8} />
         </button>
       </div>
       <div className="intro-block">
-        <div className="eyebrow">
-          <span className="eyebrow-line" /> {t(($) => $.atlas.left.eyebrow)}
-        </div>
-        <h1>
+        <div className="wc-eyebrow eyebrow">{t(($) => $.atlas.left.eyebrow)}</div>
+        <h1 className="wc-hero">
           <Trans i18nKey={($) => $.atlas.left.tagline} components={{ br: <br />, em: <em /> }} />
         </h1>
         <p key={grouping} className={`grouping-intro${entering ? ' is-entering' : ''}`}>
@@ -84,7 +97,7 @@ export function LeftPanel({
       />
       <nav
         key={grouping}
-        className={`dimension-list${byDomain ? ' is-compact' : ''}${entering ? ' is-entering' : ''}`}
+        className={`wc-dims${byDomain ? ' is-compact' : ''}${entering ? ' is-entering' : ''}`}
         aria-label={heading}
         style={{ '--enter-side': side } as CSSProperties}
         onAnimationEnd={(event) => {
@@ -93,39 +106,77 @@ export function LeftPanel({
       >
         {viewModel.dimensionIds.map((id, index) => {
           const node = viewModel.nodes.get(id)!;
-          const color = dimensionColor(node.dim);
           const Icon = byDomain ? null : DIMENSION_ICONS[node.dim as DimensionId];
+          const counts = review.perItem.get(id);
+          const pending = counts?.pending ?? 0;
+          const share = counts?.facts ? counts.approved / counts.facts : 0;
+          const { style: colorVars, ...color } = scopeColor(node.dim);
           return (
             <button
               key={id}
               type="button"
-              className={`dimension-item ${focusedDimension === node.dim ? 'active' : ''}`}
+              className="wc-dim"
+              aria-current={focusedDimension === node.dim ? 'true' : undefined}
+              {...color}
               title={node.description ? displayProfileText(node.description) : undefined}
               onClick={() => {
                 reveal(id);
                 onSelect();
               }}
-              style={{ '--dimension-color': color, '--enter-index': index } as CSSProperties}
+              style={{ ...colorVars, '--enter-index': index } as CSSProperties}
             >
-              <span className="dimension-icon" aria-hidden="true">
+              <span className="wc-disc" data-progress aria-hidden="true" style={{ '--p': share } as CSSProperties}>
                 {Icon ? (
-                  <Icon size={19} strokeWidth={1.7} />
+                  <Icon size={17} strokeWidth={1.8} />
                 ) : (
                   <span className="domain-initial">{[...node.name][0]}</span>
                 )}
               </span>
-              <span className="dimension-copy">
+              <span className="wc-dim__copy">
                 <strong>{node.name}</strong>
                 <small>{t(($) => $.atlas.attributes, { count: node.attributeCount })}</small>
               </span>
+              {pending > 0 && (
+                <span
+                  className="wc-count wc-count--pending"
+                  aria-label={t(($) => $.atlas.detail.pending, { count: pending })}
+                >
+                  {pending}
+                </span>
+              )}
             </button>
           );
         })}
       </nav>
       <div className="left-bottom">
-        <div className="data-footnote">
-          <span className="live-dot" /> {t(($) => $.review.list.count, { count: viewModel.facts.length })}
+        <div
+          className="wc-progress"
+          role="img"
+          aria-label={t(($) => $.atlas.detail.progressCounts, {
+            pending: review.total.pending,
+            approved: review.total.approved,
+            rejected: review.total.rejected,
+          })}
+        >
+          {review.total.approved > 0 && <i data-k="adopted" style={{ flex: review.total.approved }} />}
+          {review.total.pending > 0 && <i data-k="pending" style={{ flex: review.total.pending }} />}
+          {review.total.rejected > 0 && <i data-k="rejected" style={{ flex: review.total.rejected }} />}
         </div>
+        <div className="data-footnote">{t(($) => $.review.list.count, { count: fullModel.facts.length })}</div>
+        <ul className="wc-legend">
+          <li>
+            <span className="wc-glyph" data-status="adopted" aria-hidden="true" />
+            {t(($) => $.review.status.approved)} <b>{review.total.approved}</b>
+          </li>
+          <li>
+            <span className="wc-glyph" data-status="pending" aria-hidden="true" />
+            {t(($) => $.review.status.pending)} <b>{review.total.pending}</b>
+          </li>
+          <li>
+            <span className="wc-glyph" data-status="rejected" aria-hidden="true" />
+            {t(($) => $.review.status.rejected)} <b>{review.total.rejected}</b>
+          </li>
+        </ul>
       </div>
     </aside>
   );
@@ -136,15 +187,19 @@ function GroupingSwitch({ value, onChange }: { value: Grouping; onChange: (group
   const { t } = useTranslation();
   return (
     <div
-      className="grouping-switch"
+      className="wc-seg wc-seg--fill wc-seg--lg wc-seg--slide grouping-switch"
       role="group"
       aria-label={t(($) => $.atlas.left.grouping)}
-      style={{ '--grouping-index': GROUPINGS.findIndex((option) => option.id === value) } as CSSProperties}
+      style={
+        {
+          '--seg-i': GROUPINGS.findIndex((option) => option.id === value),
+          '--seg-n': GROUPINGS.length,
+        } as CSSProperties
+      }
     >
-      <span className="grouping-thumb" aria-hidden="true" />
       {GROUPINGS.map(({ id, Icon }) => (
         <button key={id} type="button" aria-pressed={value === id} onClick={() => onChange(id)}>
-          <Icon size={15} strokeWidth={1.9} aria-hidden="true" />
+          <Icon size={16} strokeWidth={1.8} aria-hidden="true" />
           {t(($) => $.atlas.left.groupings[id])}
         </button>
       ))}

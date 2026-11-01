@@ -188,6 +188,8 @@
       "confirmReject_other": "Reject the {{count}} selected entries? {{hidden}} of them aren't shown in the list yet.",
       "selectAll_one": "Select {{count}}",
       "selectAll_other": "Select all {{count}}",
+      "selected_one": "{{count}} selected",
+      "selected_other": "{{count}} selected",
       "empty": "No entries in this view.",
       "more_one": "Show more ({{count}} left)",
       "more_other": "Show more ({{count}} left)"
@@ -204,15 +206,16 @@
       "viewChatLabel": "View the original chat of {{label}}",
       "viewChat": "View chat",
       "noTime": "No time given",
-      "noContent": "Source text unavailable"
+      "noContent": "Source text unavailable",
+      "latest": "Latest {{date}}"
     },
     "statusLabel": "Review status",
     "bookmark_one": "{{label}}: {{count}} entry",
     "bookmark_other": "{{label}}: {{count}} entries",
     "bookmarkTip_one": "{{label}} · {{count}} entry",
     "bookmarkTip_other": "{{label}} · {{count}} entries",
-    "bookmarkCloneTip_one": "{{label}} · {{count}} entry · in the clone's portrait",
-    "bookmarkCloneTip_other": "{{label}} · {{count}} entries · in the clone's portrait",
+    "bookmarkCloneTip_one": "{{label}} · {{count}} entry · <clone>in the clone's portrait</clone>",
+    "bookmarkCloneTip_other": "{{label}} · {{count}} entries · <clone>in the clone's portrait</clone>",
     "filterLabel_one": "Filter by review status: {{label}}, {{count}} entry",
     "filterLabel_other": "Filter by review status: {{label}}, {{count}} entries",
     "refresh": "Refresh"
@@ -269,7 +272,6 @@
     "badgeLabel": "Privacy level: {{label}}, {{hint}}",
     "tags": "Search tags",
     "overview": "Privacy levels",
-    "levelCount": "{{label}} {{n}}",
     "privateCount": "Private and sensitive {{n}}",
     "filter": "Filter by privacy level. None selected shows all"
   },
@@ -281,7 +283,7 @@
     "location": "Location",
     "value": "Content",
     "original": "Show the original content",
-    "hint": "Saved edits go back to pending review and stay out of the clone until adopted. “Save and adopt” adds them to the clone's portrait.",
+    "hint": "Saved edits go back to pending review and stay out of the clone until adopted. “Save and adopt” adds them to <clone>the clone's portrait</clone>.",
     "reloadConfirm": "Reloading from the server discards the changes in this form. Continue?",
     "reload": "Reload entry",
     "saveApprove": "Save and adopt"

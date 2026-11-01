@@ -1,3 +1,4 @@
+import { Check } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { collectFacts, filterPrivacy } from '../data';
@@ -43,10 +44,11 @@ function ReviewList({ facts }: { facts: ProfileFact[] }) {
   // Selecting all takes every fact of the list, also those further down than shown.
   const selected = facts.filter((fact) => checked.has(fact.id));
   const selectAllRef = useRef<HTMLInputElement>(null);
+  const mixed = selected.length > 0 && selected.length < facts.length;
   useEffect(() => {
     const box = selectAllRef.current;
-    if (box) box.indeterminate = selected.length > 0 && selected.length < facts.length;
-  }, [selected.length, facts.length]);
+    if (box) box.indeterminate = mixed;
+  }, [mixed]);
   async function batch(status: ReviewStatus) {
     if (!selected.length) return;
     const hidden = selected.length - page.filter((fact) => checked.has(fact.id)).length;
@@ -60,21 +62,35 @@ function ReviewList({ facts }: { facts: ProfileFact[] }) {
   return (
     <>
       {!!facts.length && (
-        <div className="batch-toolbar">
-          <label>
+        <div className={`wc-batch${selected.length ? ' has-selection' : ''}`}>
+          <label className={`wc-check${mixed ? ' is-mixed' : ''}`}>
             <input
               ref={selectAllRef}
-              className="review-checkbox"
               type="checkbox"
+              aria-checked={mixed ? 'mixed' : undefined}
               checked={selected.length === facts.length}
               onChange={(event) => setChecked(new Set(event.target.checked ? facts.map((fact) => fact.id) : []))}
             />
-            {t(($) => $.review.list.selectAll, { count: facts.length })}
+            <span className="wc-check__box" aria-hidden="true" />
+            {selected.length
+              ? t(($) => $.review.list.selected, { count: selected.length })
+              : t(($) => $.review.list.selectAll, { count: facts.length })}
           </label>
-          <button disabled={busy || !selected.length} onClick={() => void batch('approved')}>
-            {t(($) => $.review.approve)} {selected.length || ''}
+          <button
+            type="button"
+            className={`wc-btn wc-btn--sm${selected.length ? ' wc-btn--adopt' : ''}`}
+            disabled={busy || !selected.length}
+            onClick={() => void batch('approved')}
+          >
+            {!!selected.length && <Check size={13} strokeWidth={1.8} aria-hidden="true" />}
+            {t(($) => $.review.approve)}
           </button>
-          <button disabled={busy || !selected.length} onClick={() => void batch('rejected')}>
+          <button
+            type="button"
+            className="wc-btn wc-btn--sm"
+            disabled={busy || !selected.length}
+            onClick={() => void batch('rejected')}
+          >
             {t(($) => $.review.reject)}
           </button>
         </div>
@@ -94,7 +110,7 @@ function ReviewList({ facts }: { facts: ProfileFact[] }) {
         />
       ))}
       {facts.length > limit && (
-        <button className="load-more" onClick={() => setLimit(limit + 30)}>
+        <button type="button" className="wc-btn wc-btn--block load-more" onClick={() => setLimit(limit + 30)}>
           {t(($) => $.review.list.more, { count: facts.length - limit })}
         </button>
       )}

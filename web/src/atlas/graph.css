@@ -1,4 +1,6 @@
-/* The loading screen draws the same background as the map behind it. */
+/* The ground (晕染), the design system's `.wc-ground`: `paper` with three soft washes and a dot grid
+   that is dense in the middle and fades out. App.tsx and the loading screen draw it themselves, so
+   the same layers are written out here for `.canvas-atmosphere` and `.load-state`. */
 .canvas-atmosphere,
 .load-state::before {
   content: '';
@@ -6,9 +8,9 @@
   inset: 0;
   z-index: -1;
   background:
-    radial-gradient(ellipse at 23% 24%, #c7e7da65, transparent 42%),
-    radial-gradient(ellipse at 78% 72%, #cbd9ee59, transparent 39%),
-    radial-gradient(ellipse at 66% 18%, #f0dfca50, transparent 31%), var(--color-page);
+    radial-gradient(ellipse at 23% 24%, var(--ground-wash-1), transparent 42%),
+    radial-gradient(ellipse at 78% 72%, var(--ground-wash-2), transparent 39%),
+    radial-gradient(ellipse at 66% 18%, var(--ground-wash-3), transparent 31%), var(--paper);
 }
 
 .canvas-atmosphere::after,
@@ -17,9 +19,9 @@
   position: absolute;
   inset: 0;
   opacity: 0.23;
-  background-image: radial-gradient(#8ba49a 0.7px, transparent 0.7px);
+  background-image: radial-gradient(var(--ground-dot) 0.7px, transparent 0.7px);
   background-size: 23px 23px;
-  mask-image: radial-gradient(ellipse at center, #0008, transparent 80%);
+  mask-image: radial-gradient(ellipse at center, rgb(0 0 0 / 0.53), transparent 80%);
   pointer-events: none;
 }
 
@@ -37,7 +39,7 @@
   touch-action: none;
 }
 
-/* Each dimension's wash, drawn at a quarter of the size and multiplied onto the paper under the map. */
+/* Each dimension's wash (the `.wash` layer), drawn at a quarter of the size and multiplied onto the paper under the map. */
 .graph-wash {
   position: absolute;
   inset: 0;

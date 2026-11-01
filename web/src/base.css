@@ -1,51 +1,7 @@
 :root {
-  /* Transitional: the old palette now points at design-system tokens (ds/tokens.css).
-     Stylesheets move to the tokens directly; drop each alias once nothing uses it. */
-  /* Text */
-  --color-ink: var(--ink-1);
-  --color-ink-strong: var(--ink-1);
-  --color-ink-body: var(--ink-1);
-  --color-ink-soft: var(--ink-2);
-  --color-ink-action: var(--ink-2);
-  --color-text-control: var(--ink-2);
-  --color-text-progress: var(--ink-2);
-  --color-muted: var(--ink-3);
-  --color-subtle: var(--ink-3);
-  --color-text-meta: var(--ink-3);
-  --color-text-aux: var(--ink-3);
-  --color-text-dim: var(--ink-3);
-  /* Accent */
-  --color-accent: var(--you);
-  --color-accent-dark: var(--you-ink);
-  --color-accent-bright: var(--you);
-  --color-green: var(--adopt);
-  --color-mint: var(--adopt);
-  /* Surface */
-  --color-white: var(--card);
-  --color-surface: var(--card);
-  --color-page: var(--paper);
-  --color-surface-subtle: var(--panel);
-  --color-surface-tint: var(--well);
-  --color-surface-hover: var(--sunken);
-  --color-accent-tint: var(--you-tint);
-  --color-accent-tint-strong: var(--you-tint);
-  --color-surface-selected: var(--sunken);
-  --color-surface-pressed: var(--sunken);
-  --color-track: var(--sunken);
-  --color-forest: var(--you);
-  --color-forest-soft: var(--ink-1);
-  /* Border */
-  --color-border: var(--line-1);
-  --color-border-faint: var(--line-1);
-  --color-border-hairline: var(--line-1);
-  --color-border-strong: var(--line-1);
-  --color-border-control: var(--line-2);
-  /* Status and shadow */
-  --color-danger: var(--danger);
-  --color-shadow-soft: rgba(33, 39, 49, 0.07);
   font-family: var(--font-sans);
-  color: var(--color-ink);
-  background: var(--color-page);
+  color: var(--ink-1);
+  background: var(--paper);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -73,11 +29,11 @@ button {
   cursor: pointer;
 }
 
-button:focus-visible,
-input:focus-visible,
-summary:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 3px;
+/* The DS focus ring on every focusable control. Zero specificity, so the wc-* classes keep theirs; the inputs
+   inside .wc-input and .wc-search are left out because those draw the ring on their wrapper. */
+:where(button, input:not(.wc-input input, .wc-search input), summary):focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 .brand-mark {
@@ -89,15 +45,22 @@ summary:focus-visible {
 
 @media (prefers-reduced-motion: reduce) {
   *,
-    *::before,
-    *::after {
-      animation-duration: 0.01ms !important;
-      transition-duration: 0.01ms !important;
-      scroll-behavior: auto !important;
-    }
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
-button:disabled {
+/* The DS buttons carry their own disabled look (ink-4 on sunken); only the others dim. */
+button:disabled:not(.wc-btn, .wc-iconbtn) {
   cursor: default;
   opacity: 0.45;
+}
+
+.wc-iconbtn:disabled {
+  background: transparent;
+  color: var(--ink-4);
+  cursor: not-allowed;
 }

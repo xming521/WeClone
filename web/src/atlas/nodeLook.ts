@@ -1,6 +1,6 @@
-// Visual weight of every profile node (design: WC-exp/design, "画像入场 A"). Salience sets the
-// size and glow, confidence the fill opacity: well supported nodes read as bright solid stars,
-// vague inferences as faint ones. Only type imports are allowed here so the tests can load this
+// Visual weight of every profile node (design: WC-exp/design, "画像入场 A"; drawn as the design
+// system's AtlasGraph says). Salience sets the size, confidence the fill: well supported nodes are
+// solid, vague inferences faint. Only type imports are allowed here so the tests can load this
 // file directly with node's type stripping.
 import type { NodeKind, ProfileFact, ProfileModel } from '../data';
 
@@ -19,8 +19,11 @@ export type NodeLook = {
   /** 0 = vague inference, 1 = clearly supported. */
   clarity: number;
   fillOpacity: number;
+  /** Opacity of the outline, which only attributes have. */
   strokeOpacity: number;
+  /** Width of the outline in map units; 0 for nodes without one. */
   lineWidth: number;
+  /** Blur and alpha of the glow a node flares with while it enters; at rest nothing glows. */
   glowBlur: number;
   /** Alpha of the glow colour. The canvas multiplies it by the fill opacity. */
   glowAlpha: number;
@@ -73,7 +76,7 @@ function encode(kind: NodeKind, sal01: number, confidence: number): NodeLook {
       clarity: 1,
       fillOpacity: 1,
       strokeOpacity: 1,
-      lineWidth: 1.5,
+      lineWidth: 0,
       glowBlur: root ? 16 : 24,
       glowAlpha: 1,
     };
@@ -81,7 +84,8 @@ function encode(kind: NodeKind, sal01: number, confidence: number): NodeLook {
   const clarity = smooth(CONFIDENCE.low, CONFIDENCE.solid, confidence);
   const size = BASE_SIZE[kind] * (0.7 + 0.6 * sal01);
   if (kind === 'attribute') {
-    // A white body; only the more salient attributes glow at all.
+    // A hollow ring: the `card` body and the outline both fade with confidence. Only the more salient
+    // attributes glow at all.
     const fillOpacity = 0.32 + 0.68 * clarity;
     const bright = clamp((sal01 - 0.55) / 0.45, 0, 1);
     return {
@@ -89,13 +93,14 @@ function encode(kind: NodeKind, sal01: number, confidence: number): NodeLook {
       sal01,
       clarity,
       fillOpacity,
-      strokeOpacity: (0.5 + 0.5 * sal01) * (0.62 + 0.38 * clarity),
-      lineWidth: 2.5,
+      strokeOpacity: 0.62 + 0.38 * clarity,
+      lineWidth: 2,
       glowBlur: bright > 0 ? 3 + 9 * bright : 0,
       glowAlpha: bright > 0 ? Math.min(1, (0.22 + 0.3 * bright) / fillOpacity) : 0,
     };
   }
-  // A translucent star also glows less, but not in full proportion to its fill.
+  // A solid disc, 20% to 100% filled. A translucent one also glows less, but not in full proportion
+  // to its fill.
   const fillOpacity = 0.2 + 0.8 * clarity;
   const glow = (0.42 + 0.58 * sal01) * (0.3 + 0.7 * fillOpacity);
   return {
@@ -104,7 +109,7 @@ function encode(kind: NodeKind, sal01: number, confidence: number): NodeLook {
     clarity,
     fillOpacity,
     strokeOpacity: 1,
-    lineWidth: 1.5,
+    lineWidth: 0,
     glowBlur: 6 + 16 * sal01,
     glowAlpha: Math.min(1, glow / fillOpacity),
   };

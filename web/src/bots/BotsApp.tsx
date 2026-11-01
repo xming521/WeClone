@@ -70,7 +70,9 @@ export function BotsApp() {
         <BrandMark />
         <h1>{t(($) => $.bots.loadFailed)}</h1>
         <p>{error}</p>
-        <button onClick={() => void load()}>{t(($) => $.common.retry)}</button>
+        <button className="wc-btn" type="button" onClick={() => void load()}>
+          {t(($) => $.common.retry)}
+        </button>
       </div>
     );
   if (!view)
@@ -108,14 +110,17 @@ export function BotsApp() {
             {view.encrypted && t(($) => $.bots.encrypted)}
           </p>
           {!view.inference && (
-            <p className="summary-hint summary-warning">
-              <Trans i18nKey={($) => $.bots.noInference} components={{ code: <code /> }} />
+            <p className="assistant-strip clone" role="status">
+              <span className="wc-clone" aria-hidden="true" />
+              <span>
+                <Trans i18nKey={($) => $.bots.noInference} components={{ code: <code /> }} />
+              </span>
             </p>
           )}
           {error && (
             <div className="summary-error" role="alert">
               <span>{error}</span>
-              <button type="button" onClick={() => setError('')}>
+              <button className="wc-btn wc-btn--ghost wc-btn--sm" type="button" onClick={() => setError('')}>
                 {t(($) => $.common.dismiss)}
               </button>
             </div>
@@ -124,6 +129,7 @@ export function BotsApp() {
 
         <TokenCard
           token={view.token}
+          tone="clone"
           created={Boolean(created)}
           busy={busy}
           unused={t(($) => $.bots.unused)}
@@ -138,7 +144,7 @@ export function BotsApp() {
               <p className="summary-hint">{t(($) => $.bots.setup.key)}</p>
               <CopyField label="API Key" text={created} />
               <p className="summary-hint">{t(($) => $.bots.setup.model)}</p>
-              <button className="assistant-done" type="button" onClick={() => setCreated('')}>
+              <button className="wc-btn assistant-done" type="button" onClick={() => setCreated('')}>
                 {t(($) => $.assistant.setup.done)}
               </button>
             </div>

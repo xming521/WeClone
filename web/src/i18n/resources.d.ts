@@ -209,7 +209,7 @@ export default interface Resources {
       "attr": "属性名称",
       "discard": "放弃未保存的修改？",
       "editTitle": "编辑画像",
-      "hint": "保存修改后移回待审核，暂不用于分身；“保存并采纳”后纳入分身画像。",
+      "hint": "保存修改后移回待审核，暂不用于分身；“保存并采纳”后纳入<clone>分身画像</clone>。",
       "location": "归属位置",
       "original": "查看原始内容",
       "reload": "重新载入记录",
@@ -300,7 +300,6 @@ export default interface Resources {
       "badgeLabel": "隐私度：{{label}}，{{hint}}",
       "badgeTitle": "隐私度：{{hint}}",
       "filter": "按隐私度筛选，不选显示全部",
-      "levelCount": "{{label}} {{n}}",
       "levels": {
         "normal": {
           "hint": "熟人之间会聊",
@@ -331,12 +330,13 @@ export default interface Resources {
     "review": {
       "approve": "采纳",
       "bookmark": "{{label}} {{count}} 条画像",
-      "bookmarkCloneTip": "{{label}} · {{count}} 条画像 · 分身画像",
+      "bookmarkCloneTip": "{{label}} · {{count}} 条画像 · <clone>分身画像</clone>",
       "bookmarkTip": "{{label}} · {{count}} 条画像",
       "fact": {
         "edit": "编辑",
         "evidence": "原始抽取与 {{count}} 条证据",
         "initial": "初始内容",
+        "latest": "最近 {{date}}",
         "manual": "手动添加",
         "noContent": "来源正文不可用",
         "noTime": "未标注时间",
@@ -353,7 +353,8 @@ export default interface Resources {
         "count": "{{count}} 条画像",
         "empty": "当前视图没有画像记录。",
         "more": "继续显示（剩余 {{count}} 条）",
-        "selectAll": "全选 {{count}} 条"
+        "selectAll": "全选 {{count}} 条",
+        "selected": "已选 {{count}} 条"
       },
       "refresh": "刷新数据",
       "refreshFailed": "已保存，但刷新数据失败。请点击“刷新数据”后继续。",

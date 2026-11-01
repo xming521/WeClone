@@ -173,6 +173,7 @@
       "confirmApprove_other": "采纳选中的 {{count}} 条画像？其中 {{hidden}} 条还没有显示在列表里。",
       "confirmReject_other": "不采纳选中的 {{count}} 条画像？其中 {{hidden}} 条还没有显示在列表里。",
       "selectAll_other": "全选 {{count}} 条",
+      "selected_other": "已选 {{count}} 条",
       "empty": "当前视图没有画像记录。",
       "more_other": "继续显示（剩余 {{count}} 条）"
     },
@@ -187,12 +188,13 @@
       "viewChatLabel": "查看{{label}}的原始聊天记录",
       "viewChat": "查看原文",
       "noTime": "未标注时间",
-      "noContent": "来源正文不可用"
+      "noContent": "来源正文不可用",
+      "latest": "最近 {{date}}"
     },
     "statusLabel": "审核状态",
     "bookmark_other": "{{label}} {{count}} 条画像",
     "bookmarkTip_other": "{{label}} · {{count}} 条画像",
-    "bookmarkCloneTip_other": "{{label}} · {{count}} 条画像 · 分身画像",
+    "bookmarkCloneTip_other": "{{label}} · {{count}} 条画像 · <clone>分身画像</clone>",
     "filterLabel_other": "筛选审核状态：{{label}}，{{count}} 条",
     "refresh": "刷新数据"
   },
@@ -247,7 +249,6 @@
     "badgeLabel": "隐私度：{{label}}，{{hint}}",
     "tags": "检索标签",
     "overview": "隐私度分布",
-    "levelCount": "{{label}} {{n}}",
     "privateCount": "私密及敏感 {{n}}",
     "filter": "按隐私度筛选，不选显示全部"
   },
@@ -259,7 +260,7 @@
     "location": "归属位置",
     "value": "画像内容",
     "original": "查看原始内容",
-    "hint": "保存修改后移回待审核，暂不用于分身；“保存并采纳”后纳入分身画像。",
+    "hint": "保存修改后移回待审核，暂不用于分身；“保存并采纳”后纳入<clone>分身画像</clone>。",
     "reloadConfirm": "重新载入服务器数据会放弃当前表单中的修改，继续？",
     "reload": "重新载入记录",
     "saveApprove": "保存并采纳"

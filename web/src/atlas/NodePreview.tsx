@@ -1,15 +1,9 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  ancestors,
-  dimensionColor,
-  displayProfileText,
-  ROOT_COLOR,
-  type ProfileModel,
-  type ProfileNode,
-} from '../data';
+import { ancestors, displayProfileText, type ProfileModel, type ProfileNode } from '../data';
 import { Score } from '../review/ProfileScores';
 import type { NodeMetrics } from './atlasMetrics';
+import { scopeColor } from './scopeColor';
 
 export function NodePreview({
   viewModel,
@@ -31,7 +25,7 @@ export function NodePreview({
 }) {
   const { t } = useTranslation();
   const ref = useRef<HTMLDivElement>(null);
-  const [position, setPosition] = useState({ left: x, top: y });
+  const [place, setPlace] = useState({ left: x, top: y, tail: 'top-left' });
   const overview = node.kind === 'root' || node.kind === 'dimension';
   const facts = node.factIndices.map((index) => viewModel.facts[index]);
   const previews: string[] = [];
@@ -72,33 +66,35 @@ export function NodePreview({
         ? `${children} · ${attributes}`
         : attributes;
 
+  // The dot carries the colour the map paints the node's dimension or domain in.
+  const dot =
+    node.kind === 'root' ? { className: 'wc-dot node-preview-root' } : { className: 'wc-dot', ...scopeColor(node.dim) };
+
   useLayoutEffect(() => {
     const card = ref.current;
     if (!card) return;
     const left = Math.max(12, Math.min(x + 18, width - card.offsetWidth - 12));
-    const top = Math.max(
-      12,
-      Math.min(
-        y + 18 + card.offsetHeight > height - 12 ? y - card.offsetHeight - 18 : y + 18,
-        height - card.offsetHeight - 12,
-      ),
-    );
-    setPosition({ left, top });
+    const above = y + 18 + card.offsetHeight > height - 12;
+    const top = Math.max(12, Math.min(above ? y - card.offsetHeight - 18 : y + 18, height - card.offsetHeight - 12));
+    // The tail dots sit on the corner of the card that faces the pointer.
+    const tail = `${above ? 'bottom' : 'top'}-${x > left + card.offsetWidth / 2 ? 'right' : 'left'}`;
+    setPlace({ left, top, tail });
   }, [x, y, width, height, node]);
 
   return (
     <div
       ref={ref}
-      className={`graph-hover-tooltip${node.kind === 'attribute' ? ' node-preview-full' : ''}`}
+      className={`graph-hover-tooltip wc-tip wc-tip--card${node.kind === 'attribute' ? ' node-preview-full' : ''}`}
+      data-tail={place.tail}
       role="tooltip"
-      style={position}
+      style={{ left: place.left, top: place.top }}
     >
-      <div className="node-preview-heading">
-        <span style={{ background: node.kind === 'root' ? ROOT_COLOR : dimensionColor(node.dim) }} />
+      <div className="wc-tip__title node-preview-heading">
+        <span {...dot} aria-hidden="true" />
         <strong>{node.name}</strong>
       </div>
-      {path && <div className="node-preview-path">{path}</div>}
-      <div className="node-preview-summary">{summary}</div>
+      {path && <div className="wc-tip__meta node-preview-path">{path}</div>}
+      <div className="wc-tip__meta">{summary}</div>
       <div className="node-preview-scores">
         <Score kind="importance" value={metrics.importance ?? undefined} compact />
         <Score kind="confidence" value={metrics.confidence ?? undefined} compact />

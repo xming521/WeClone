@@ -1,15 +1,24 @@
+import type { CSSProperties } from 'react';
 import type zhCN from '../i18n/locales/zh-CN/translation.json';
 import type { StyleContact, StyleInput, StyleLeaf, VariationClass } from './types';
 
 export type TraitGroupId = 'typing' | 'words' | 'emotion' | 'manner';
 
 // Names, notes and units are in the catalog under `style`, by these ids.
-export const TRAIT_GROUPS: { id: TraitGroupId; color: string }[] = [
-  { id: 'typing', color: '#008f85' },
-  { id: 'words', color: '#d28b32' },
-  { id: 'emotion', color: '#c35f72' },
-  { id: 'manner', color: '#3775b4' },
+export const TRAIT_GROUPS: { id: TraitGroupId }[] = [
+  { id: 'typing' },
+  { id: 'words' },
+  { id: 'emotion' },
+  { id: 'manner' },
 ];
+
+/**
+ * A group's colour comes from the design system's section rule, not from a list: group i of n takes the i-th hue.
+ * Put `data-sec` on the element together with these variables, and `--c` / `--ct` follow.
+ */
+export function groupVars(id: TraitGroupId): CSSProperties {
+  return { '--i': TRAIT_GROUPS.findIndex((group) => group.id === id), '--n': TRAIT_GROUPS.length } as CSSProperties;
+}
 
 /** A trait is shown only when it appears at least once in 25 messages. */
 export const MIN_RATE = 0.04;

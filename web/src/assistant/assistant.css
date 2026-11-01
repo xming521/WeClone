@@ -1,130 +1,144 @@
-/* The assistant page reuses the summary page's shell, intro, segmented controls and hints. */
+/* The assistant and bot pages reuse the summary page's shell, intro, level switch and hints. */
 .assistant-main {
   max-width: 860px;
 }
 .summary-intro > p.assistant-address {
-  margin-top: 10px;
+  margin-top: var(--space-3);
 }
+/* Addresses, commands and tokens are archive-like facts: mono meta type, and one click selects the whole value. */
 .assistant-main code {
-  padding: 1px 5px;
-  border-radius: 5px;
-  background: var(--color-surface-hover);
-  color: var(--color-ink-strong);
-  font-size: 12px;
+  padding: 1px 6px;
+  border-radius: var(--radius-badge);
+  background: var(--sunken);
+  color: var(--ink-1);
+  font: var(--text-meta);
+  user-select: all;
 }
 .assistant-card {
-  margin-top: 18px;
-  padding: 16px 18px;
-  border: 1px solid var(--color-border);
-  border-radius: 14px;
-  background: var(--color-surface);
-  box-shadow: 0 6px 18px var(--color-shadow-soft);
+  margin-top: var(--space-5);
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--line-1);
+  border-radius: var(--radius-card);
+  background: var(--card);
+  box-shadow: var(--shadow-1);
 }
 .assistant-created {
-  border-color: #b9dccd;
+  border-color: var(--you-line);
 }
 .assistant-card-head {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-2) var(--space-3);
 }
 .assistant-card-head h2 {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-2);
   margin: 0;
-  color: var(--color-ink-strong);
-  font-size: 14px;
+  color: var(--ink-1);
+  font: var(--text-subtitle);
+}
+.assistant-card-head h2 svg {
+  color: var(--ink-2);
 }
 .assistant-card-head + .summary-levels {
-  margin-top: 12px;
+  margin-top: var(--space-3);
 }
-.assistant-actions button,
-.assistant-domains-head button,
-.assistant-copy button,
-button.assistant-done {
-  display: inline-flex;
-  flex-shrink: 0;
-  align-items: center;
-  gap: 5px;
-  border: 0;
-  border-radius: 9px;
-  padding: 7px 11px;
-  background: var(--color-surface-hover);
-  color: var(--color-ink-action);
-  font-size: 12px;
-  font-weight: 600;
-}
-.assistant-actions button.primary {
-  background: var(--color-accent-dark);
-  color: var(--color-white);
-}
-.assistant-card button:disabled {
-  opacity: 0.55;
-}
+/* A state of the connection. Yours (you): what you decided to open. The clone's own (clone): what bots reach. */
 .assistant-state {
-  border-radius: 5px;
-  padding: 3px 7px;
-  background: #eef0ec;
-  color: #7d8a84;
-  font-size: 11px;
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-badge);
+  background: var(--sunken);
+  color: var(--ink-3);
+  font: var(--text-caption);
+  font-weight: 500;
+  white-space: nowrap;
 }
 .assistant-state.on {
-  background: #dff1e9;
-  color: #23785e;
+  background: var(--you-tint);
+  color: var(--you-ink);
+}
+.assistant-state.on.clone {
+  background: var(--clone-tint);
+  color: var(--clone-ink);
+}
+/* The clone model's own status on the bot page: peach tint and ink, led by the clone dot. */
+.assistant-strip {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-control);
+  background: var(--clone-tint);
+  color: var(--clone-ink);
+  font: var(--text-caption);
+}
+.summary-intro > .assistant-strip {
+  max-width: none;
+}
+.assistant-strip .wc-clone {
+  margin-top: var(--space-2);
+}
+.assistant-strip code {
+  background: var(--card);
+  color: var(--clone-ink);
 }
 .assistant-domains-head {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px 10px;
-  margin-top: 16px;
-  padding-top: 14px;
-  border-top: 1px solid var(--color-border-hairline);
+  gap: var(--space-1) var(--space-3);
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--line-1);
 }
 .assistant-domains-head h3 {
   margin: 0;
-  color: var(--color-ink-strong);
-  font-size: 13px;
+  color: var(--ink-1);
+  font: var(--text-label);
+  font-weight: 600;
 }
 .assistant-domains-head span {
-  color: var(--color-subtle);
-  font-size: 12px;
+  color: var(--ink-3);
+  font: var(--text-caption);
 }
-.assistant-domains-head button {
+.assistant-domains-head .wc-btn {
   margin-left: auto;
 }
 .assistant-domains {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-  gap: 6px;
-  margin: 10px 0 0;
+  grid-template-columns: repeat(auto-fill, minmax(192px, 1fr));
+  gap: var(--space-2);
+  margin: var(--space-3) 0 0;
   padding: 0;
   list-style: none;
 }
-.assistant-domains label {
+/* A domain is a row you pick to share: circular checkbox, name, then how much is in it. */
+.assistant-domains .wc-check {
   display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 7px 10px;
-  border: 1px solid var(--color-border-hairline);
-  border-radius: 9px;
-  background: var(--color-surface-subtle);
-  color: var(--color-subtle);
-  font-size: 12.5px;
-  cursor: pointer;
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line-1);
+  border-radius: var(--radius-control);
+  background: var(--well);
+  color: var(--ink-3);
+  font: var(--text-label);
+  transition:
+    background-color var(--wc-t1) var(--wc-ease),
+    border-color var(--wc-t1) var(--wc-ease);
 }
-.assistant-domains label.shared {
-  border-color: #cfe3d8;
-  background: var(--color-white);
-  color: var(--color-ink-strong);
+.assistant-domains .wc-check.shared {
+  border-color: var(--line-2);
+  background: var(--card);
+  color: var(--ink-1);
 }
-.assistant-domains input {
-  margin: 0;
-  accent-color: var(--color-accent-dark);
-}
-.assistant-domains span {
+.assistant-domains span:not(.wc-check__box) {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -133,53 +147,50 @@ button.assistant-done {
 .assistant-domains small {
   flex-shrink: 0;
   margin-left: auto;
-  color: var(--color-subtle);
-  font-size: 11px;
-}
-.assistant-main a {
-  color: var(--color-ink-action);
+  color: var(--ink-3);
+  font: var(--text-caption);
+  font-variant-numeric: tabular-nums;
 }
 .assistant-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 12px;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
 }
 .assistant-setup {
-  margin-top: 16px;
-  padding-top: 14px;
-  border-top: 1px solid var(--color-border-hairline);
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--line-1);
 }
-.assistant-setup .summary-levels {
-  margin-top: 12px;
+.assistant-setup .wc-tabs {
+  margin-top: var(--space-3);
 }
-button.assistant-done {
-  margin-top: 12px;
+.assistant-done {
+  margin-top: var(--space-3);
 }
 .assistant-copy {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: start;
-  gap: 8px;
-  margin-top: 10px;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
 }
 .assistant-copy pre {
   min-width: 0;
   margin: 0;
-  padding: 9px 10px;
-  border: 1px solid var(--color-border-control);
-  border-radius: 9px;
-  background: var(--color-surface-subtle);
-  color: var(--color-ink-strong);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 12px;
-  line-height: 1.6;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line-1);
+  border-radius: var(--radius-control);
+  background: var(--well);
+  color: var(--ink-1);
+  font: var(--text-meta);
+  line-height: 20px;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   user-select: all;
 }
 .assistant-copy small {
   grid-column: 1 / -1;
-  color: var(--color-danger);
-  font-size: 11.5px;
+  color: var(--danger);
+  font: var(--text-caption);
 }

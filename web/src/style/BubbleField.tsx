@@ -1,7 +1,7 @@
 import { forceCollide, forceSimulation, forceX, forceY, type SimulationNodeDatum } from 'd3-force';
 import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
-import { TRAIT_GROUPS, formatPercent, tierOf, type Trait, type TraitGroupId } from './traits';
+import { formatPercent, groupVars, tierOf, type Trait, type TraitGroupId } from './traits';
 
 // Each group gathers around its own point, so colours form clusters instead of a mix.
 const ANCHORS: Record<TraitGroupId, [number, number]> = {
@@ -76,8 +76,6 @@ function makeRoom(nodes: Bubble[], selected: string | null) {
   return moved;
 }
 
-const COLORS = Object.fromEntries(TRAIT_GROUPS.map((group) => [group.id, group.color]));
-
 export function BubbleField({
   traits,
   selected,
@@ -136,6 +134,7 @@ export function BubbleField({
               key={trait.key}
               type="button"
               className={classes.join(' ')}
+              data-sec=""
               aria-label={t(($) => $.style.bubble, {
                 title: t(($) => $.style.traits[trait.id].title),
                 rate: formatPercent(trait.rate),
@@ -152,7 +151,7 @@ export function BubbleField({
                   width: r * 2,
                   height: r * 2,
                   '--r': r,
-                  '--bubble-color': COLORS[trait.group],
+                  ...groupVars(trait.group),
                   '--enter-delay': `${index * 45}ms`,
                   '--float-delay': `${-((index * 1.7) % 9)}s`,
                   '--float-duration': `${8 + (index % 5)}s`,

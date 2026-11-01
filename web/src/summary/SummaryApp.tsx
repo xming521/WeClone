@@ -2,12 +2,20 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Check, ClipboardCopy, EyeOff, PencilLine, Sparkles, Undo2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../api';
+import { LevelSwitch } from '../assistant/accessParts';
 import { LogoutButton } from '../Auth';
 import { BrandMark } from '../BrandMark';
 import { LanguageSwitch } from '../LanguageSwitch';
 import { ModeSwitch } from '../ModeSwitch';
 import { SUMMARY_LEVELS, stateCounts, summaryState } from './summaryState';
-import type { DomainSummary, SummaryDomain, SummaryLevel, SummaryStatus, SummaryView } from './summaryState';
+import type {
+  DomainSummary,
+  SummaryDomain,
+  SummaryLevel,
+  SummaryState,
+  SummaryStatus,
+  SummaryView,
+} from './summaryState';
 import './summary.css';
 
 function SummaryEditor({
@@ -42,30 +50,52 @@ function SummaryEditor({
         if (event.key === 'Escape') onCancel();
       }}
     >
-      <label>
-        {t(($) => $.summary.editor.title)}
-        <input value={title} maxLength={limits.title} autoFocus onChange={(event) => setTitle(event.target.value)} />
+      <label className="wc-field">
+        <span className="wc-field__label">{t(($) => $.summary.editor.title)}</span>
+        <span className="wc-input">
+          <input value={title} maxLength={limits.title} autoFocus onChange={(event) => setTitle(event.target.value)} />
+        </span>
       </label>
-      <label>
-        {t(($) => $.summary.editor.summary)}
+      <label className="wc-field">
+        <span className="wc-field__label">{t(($) => $.summary.editor.summary)}</span>
         <textarea value={text} rows={3} maxLength={limits.summary} onChange={(event) => setText(event.target.value)} />
-        <small>
+        <span className="wc-field__hint summary-count">
           {text.trim().length}/{limits.summary}
-        </small>
+        </span>
       </label>
       <div className="summary-actions">
-        <button type="button" onClick={onCancel}>
+        <button className="wc-btn wc-btn--ghost wc-btn--sm" type="button" onClick={onCancel}>
           {t(($) => $.common.cancel)}
         </button>
-        <button type="button" disabled={!valid || busy} onClick={() => onSave(title, text, false)}>
+        <button
+          className="wc-btn wc-btn--sm"
+          type="button"
+          disabled={!valid || busy}
+          onClick={() => onSave(title, text, false)}
+        >
           {t(($) => $.common.save)}
         </button>
-        <button className="primary" type="submit" disabled={!valid || busy}>
+        <button className="wc-btn wc-btn--sm" type="submit" disabled={!valid || busy}>
           {t(($) => $.summary.editor.saveApprove)}
         </button>
       </div>
     </form>
   );
+}
+
+/** The ReviewStatus glyph of each state that is a decision of yours. */
+const REVIEW_STATUS = { pending: 'pending', approved: 'adopted', rejected: 'rejected' } as const;
+
+/** A decision of yours reads as the review glyph and its word. A state of generation (nothing to write from, not
+ * written yet, written but out of date) is only a word: nothing waits for your review. */
+function StateLabel({ state, text }: { state: SummaryState; text: string }) {
+  if (state === 'pending' || state === 'approved' || state === 'rejected')
+    return (
+      <span className="wc-status" data-status={REVIEW_STATUS[state]}>
+        {text}
+      </span>
+    );
+  return <span className={`summary-state ${state}`}>{text}</span>;
 }
 
 function SummaryCard({
@@ -93,18 +123,20 @@ function SummaryCard({
   const { t } = useTranslation();
   const state = summaryState(item);
   const summary = item.summary;
-  const meta = [
-    t(($) => $.summary.card.facts, { count: item.facts }),
-    item.as_of && t(($) => $.summary.card.asOf, { date: item.as_of }),
-  ]
-    .filter(Boolean)
-    .join(' · ');
   return (
     <li className={`summary-card ${state}`}>
       <div className="summary-card-head">
         <span className="summary-domain">{item.domain}</span>
-        <span className="summary-meta">{meta}</span>
-        <span className={`summary-state ${state}`}>{t(($) => $.summary.states[state])}</span>
+        <span className="summary-meta">
+          {t(($) => $.summary.card.facts, { count: item.facts })}
+          {item.as_of && (
+            <>
+              {' · '}
+              <span className="wc-mono">{t(($) => $.summary.card.asOf, { date: item.as_of })}</span>
+            </>
+          )}
+        </span>
+        <StateLabel state={state} text={t(($) => $.summary.states[state])} />
       </div>
       {summary && editing ? (
         <SummaryEditor summary={summary} limits={limits} busy={busy} onCancel={onCancel} onSave={onSave} />
@@ -122,27 +154,27 @@ function SummaryCard({
       {summary && !editing && state !== 'empty' && (
         <div className="summary-actions">
           {state === 'pending' && (
-            <button className="primary" type="button" disabled={busy} onClick={() => onStatus('approved')}>
-              <Check size={14} /> {t(($) => $.summary.card.approve)}
+            <button className="wc-btn wc-btn--sm" type="button" disabled={busy} onClick={() => onStatus('approved')}>
+              <Check size={14} strokeWidth={1.8} /> {t(($) => $.summary.card.approve)}
             </button>
           )}
           {(state === 'pending' || state === 'approved') && (
-            <button type="button" disabled={busy} onClick={onEdit}>
-              <PencilLine size={14} /> {t(($) => $.summary.card.edit)}
+            <button className="wc-btn wc-btn--ghost wc-btn--sm" type="button" disabled={busy} onClick={onEdit}>
+              <PencilLine size={14} strokeWidth={1.8} /> {t(($) => $.summary.card.edit)}
             </button>
           )}
           {state === 'approved' && (
-            <button type="button" disabled={busy} onClick={() => onStatus('pending')}>
-              <Undo2 size={14} /> {t(($) => $.summary.card.unapprove)}
+            <button className="wc-btn wc-btn--sm" type="button" disabled={busy} onClick={() => onStatus('pending')}>
+              <Undo2 size={14} strokeWidth={1.8} /> {t(($) => $.summary.card.unapprove)}
             </button>
           )}
           {state === 'rejected' ? (
-            <button type="button" disabled={busy} onClick={() => onStatus('pending')}>
-              <Undo2 size={14} /> {t(($) => $.summary.card.restore)}
+            <button className="wc-btn wc-btn--sm" type="button" disabled={busy} onClick={() => onStatus('pending')}>
+              <Undo2 size={14} strokeWidth={1.8} /> {t(($) => $.summary.card.restore)}
             </button>
           ) : (
-            <button type="button" disabled={busy} onClick={() => onStatus('rejected')}>
-              <EyeOff size={14} /> {t(($) => $.summary.card.reject)}
+            <button className="wc-btn wc-btn--sm" type="button" disabled={busy} onClick={() => onStatus('rejected')}>
+              <EyeOff size={14} strokeWidth={1.8} /> {t(($) => $.summary.card.reject)}
             </button>
           )}
         </div>
@@ -243,7 +275,9 @@ export function SummaryApp() {
         <BrandMark />
         <h1>{t(($) => $.summary.loadFailed)}</h1>
         <p>{error}</p>
-        <button onClick={() => void load()}>{t(($) => $.common.retry)}</button>
+        <button className="wc-btn" type="button" onClick={() => void load()}>
+          {t(($) => $.common.retry)}
+        </button>
       </div>
     );
   if (!view)
@@ -283,40 +317,40 @@ export function SummaryApp() {
             {t(($) => $.summary.intro.review)}
           </p>
           <div className="summary-toolbar">
-            <div className="summary-levels" role="radiogroup" aria-label={t(($) => $.summary.level)}>
-              <span>{t(($) => $.summary.level)}</span>
-              {SUMMARY_LEVELS.map((item) => (
-                <button
-                  key={item}
-                  type="button"
-                  role="radio"
-                  aria-checked={item === level}
-                  disabled={!!busy}
-                  title={item === 'full' ? t(($) => $.summary.full.hint) : t(($) => $.privacy.levels[item].hint)}
-                  onClick={() => {
-                    setEditing(null);
-                    setLevel(item);
-                  }}
-                >
-                  {item === 'full' ? t(($) => $.summary.full.label) : t(($) => $.privacy.levels[item].label)}
-                </button>
-              ))}
-            </div>
+            <LevelSwitch
+              label={t(($) => $.summary.level)}
+              value={level}
+              disabled={!!busy}
+              levels={SUMMARY_LEVELS.map((item) => ({
+                level: item,
+                text: item === 'full' ? t(($) => $.summary.full.label) : t(($) => $.privacy.levels[item].label),
+                title: item === 'full' ? t(($) => $.summary.full.hint) : t(($) => $.privacy.levels[item].hint),
+              }))}
+              onChange={(item) => {
+                setEditing(null);
+                setLevel(item);
+              }}
+            />
             <button
-              className="primary"
+              className="wc-btn wc-btn--primary"
               type="button"
               disabled={!!busy || generating || !due}
               onClick={() => void run('generate', () => api.post('summaries/generate', { level }))}
             >
-              <Sparkles size={14} />
+              <Sparkles size={14} strokeWidth={1.8} />
               {generating
                 ? t(($) => $.summary.generating)
                 : due
                   ? t(($) => $.summary.generate, { count: due })
                   : t(($) => $.summary.generated)}
             </button>
-            <button type="button" disabled={!!busy || !pending.length} onClick={() => review(pending, 'approved')}>
-              <Check size={14} />{' '}
+            <button
+              className="wc-btn"
+              type="button"
+              disabled={!!busy || !pending.length}
+              onClick={() => review(pending, 'approved')}
+            >
+              <Check size={14} strokeWidth={1.8} />{' '}
               {pending.length
                 ? t(($) => $.summary.approveAllCount, { count: pending.length })
                 : t(($) => $.summary.approveAll)}
@@ -347,7 +381,7 @@ export function SummaryApp() {
           {error && (
             <div className="summary-error" role="alert">
               <span>{error}</span>
-              <button type="button" onClick={() => setError('')}>
+              <button className="wc-btn wc-btn--ghost wc-btn--sm" type="button" onClick={() => setError('')}>
                 {t(($) => $.common.dismiss)}
               </button>
             </div>
@@ -376,13 +410,17 @@ export function SummaryApp() {
               <>
                 <textarea ref={exportRef} readOnly value={view.text} onFocus={(event) => event.target.select()} />
                 <div className="summary-export-foot">
-                  <span>{t(($) => $.summary.export.chars, { count: view.text.length })}</span>
-                  <button className="primary" type="button" onClick={() => void copy()}>
-                    <ClipboardCopy size={14} /> {copied ? t(($) => $.common.copied) : t(($) => $.common.copy)}
+                  <span className="wc-count">{t(($) => $.summary.export.chars, { count: view.text.length })}</span>
+                  <button className="wc-btn wc-btn--sm" type="button" onClick={() => void copy()}>
+                    <ClipboardCopy size={14} strokeWidth={1.8} />{' '}
+                    {copied ? t(($) => $.common.copied) : t(($) => $.common.copy)}
                   </button>
                 </div>
                 {level === 'full' ? (
-                  <p className="summary-hint summary-warning">{t(($) => $.summary.export.fullWarning)}</p>
+                  <p className="summary-hint summary-warning">
+                    <span className="wc-phase" data-privacy="sensitive" aria-hidden="true" />
+                    {t(($) => $.summary.export.fullWarning)}
+                  </p>
                 ) : (
                   <p className="summary-hint">{t(($) => $.summary.export.hint)}</p>
                 )}

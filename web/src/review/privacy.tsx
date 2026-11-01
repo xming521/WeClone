@@ -1,4 +1,3 @@
-import { Lock, LockOpen } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { privacyLevel, SENSITIVITY_LEVELS } from '../data';
 import type { PrivacyLevel, ProfileFact, Sensitivity } from '../data';
@@ -14,26 +13,26 @@ export function PrivacyBadge({ level }: { level?: Sensitivity }) {
   if (!isLevel(level)) return null;
   const label = t(($) => $.privacy.levels[level].label);
   const hint = t(($) => $.privacy.levels[level].hint);
-  const Icon = level === 'public' ? LockOpen : Lock;
   return (
     <span
-      className={`privacy-badge ${level}`}
+      className="wc-privacy"
+      data-privacy={level}
       title={t(($) => $.privacy.badgeTitle, { hint })}
       aria-label={t(($) => $.privacy.badgeLabel, { label, hint })}
     >
-      <Icon size={10} aria-hidden="true" />
+      <span className="wc-phase" aria-hidden="true" />
       {label}
     </span>
   );
 }
 
-/** Tag chips, at most `limit` of them and a count of the rest. */
+/** Tags written as #text, at most `limit` of them and a count of the rest. */
 export function TagList({ tags, limit = Infinity }: { tags: string[]; limit?: number }) {
   const { t } = useTranslation();
   if (!tags.length) return null;
   const rest = tags.length - limit;
   return (
-    <ul className="tag-list" aria-label={t(($) => $.privacy.tags)}>
+    <ul className="wc-tags" aria-label={t(($) => $.privacy.tags)}>
       {tags.slice(0, limit).map((tag) => (
         <li key={tag}>{tag}</li>
       ))}
@@ -43,44 +42,6 @@ export function TagList({ tags, limit = Infinity }: { tags: string[]; limit?: nu
         </li>
       )}
     </ul>
-  );
-}
-
-/** How the facts in scope spread over the levels; nothing when none of them has a level. */
-export function PrivacyOverview({ facts }: { facts: ProfileFact[] }) {
-  const { t } = useTranslation();
-  const counts = new Map<Sensitivity, number>();
-  for (const fact of facts) {
-    if (isLevel(fact.sensitivity)) {
-      counts.set(fact.sensitivity, (counts.get(fact.sensitivity) ?? 0) + 1);
-    }
-  }
-  const levelled = [...counts.values()].reduce((sum, count) => sum + count, 0);
-  if (!levelled) return null;
-  const parts = SENSITIVITY_LEVELS.filter((level) => counts.get(level)).map((level) =>
-    t(($) => $.privacy.levelCount, { label: t(($) => $.privacy.levels[level].label), n: counts.get(level) ?? 0 }),
-  );
-  if (facts.length > levelled)
-    parts.push(
-      t(($) => $.privacy.levelCount, { label: t(($) => $.privacy.levels.unrated.label), n: facts.length - levelled }),
-    );
-  return (
-    <section className="overview-privacy" aria-label={t(($) => $.privacy.overview)}>
-      <div>
-        <span>{t(($) => $.privacy.title)}</span>
-        <span>
-          {t(($) => $.privacy.privateCount, {
-            n: (counts.get('private') ?? 0) + (counts.get('sensitive') ?? 0),
-          })}
-        </span>
-      </div>
-      <div className="privacy-track" aria-hidden="true">
-        {SENSITIVITY_LEVELS.map((level) =>
-          counts.get(level) ? <span key={level} className={level} style={{ flexGrow: counts.get(level) }} /> : null,
-        )}
-      </div>
-      <p>{parts.join(' · ')}</p>
-    </section>
   );
 }
 
@@ -106,20 +67,23 @@ export function PrivacyFilter({
   if (!value.length && levels.every((level) => level === 'unrated')) return null;
   return (
     <div className="privacy-filter" role="group" aria-label={t(($) => $.privacy.filter)}>
-      <span>{t(($) => $.privacy.title)}</span>
+      <span className="privacy-filter-title">{t(($) => $.privacy.title)}</span>
       {levels.map((level) => {
         const pressed = value.includes(level);
         return (
           <button
             key={level}
             type="button"
-            className={`privacy-chip ${level}`}
+            className="wc-chip"
+            // Unrated has no level: it takes the plain chip, without a water-level circle.
+            data-privacy={level === 'unrated' ? undefined : level}
             aria-pressed={pressed}
             title={t(($) => $.privacy.levels[level].hint)}
             onClick={() => onToggle(level)}
           >
+            {level !== 'unrated' && <span className="wc-phase" aria-hidden="true" />}
             {t(($) => $.privacy.levels[level].label)}
-            <span>{counts.get(level) ?? 0}</span>
+            <span className="wc-chip__n">{counts.get(level) ?? 0}</span>
           </button>
         );
       })}

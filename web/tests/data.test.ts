@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
   buildModel,
-  DOMAIN_COLORS,
   collectFacts,
   dimensionColor,
   exportProfile,
@@ -13,6 +12,7 @@ import {
   levelOf,
   reconcileNavigation,
   retainedSelection,
+  sectionColor,
   toggleLevelExpansion,
   withinLevel,
 } from '../src/data.ts';
@@ -274,10 +274,10 @@ test('toggling a level expands branching nodes down to it, then collapses it and
 });
 
 test('dimensionColor returns configured colours and falls back to dimension 1', () => {
-  assert.equal(dimensionColor(1), '#008f85');
-  assert.equal(dimensionColor(8), '#3775b4');
-  assert.equal(dimensionColor(2), '#008f85');
-  assert.equal(dimensionColor(null), '#008f85');
+  assert.equal(dimensionColor(1), '#118f83');
+  assert.equal(dimensionColor(8), '#3a76b4');
+  assert.equal(dimensionColor(2), '#118f83');
+  assert.equal(dimensionColor(null), '#118f83');
 });
 
 test('chineseNumeral renders small counts', () => {
@@ -381,7 +381,9 @@ test('domain grouping merges topics across dimensions and keeps the stored attri
   assert.equal(model.nodes.get('attr-like')!.dim, work.dim);
   // Domains keep their list position as key, so colours do not shift when an empty domain is hidden.
   assert.equal(model.nodes.get(model.dimensionIds[1])!.dim, 102);
-  assert.equal(dimensionColor(102), DOMAIN_COLORS[2]);
+  // Three domains are listed, so the palette spreads over three.
+  assert.equal(dimensionColor(102), sectionColor(2, 3));
+  assert.equal(dimensionColor(100), sectionColor(0, 3));
   const unassigned = model.nodes.get(model.dimensionIds[2])!;
   assert.deepEqual(
     collectFacts(model, unassigned.id).map((fact) => fact.id),

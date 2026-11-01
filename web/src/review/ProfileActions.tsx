@@ -42,14 +42,17 @@ export function ProfileActions() {
     <>
       <div className="header-review-actions">
         <button
+          className="wc-iconbtn"
+          type="button"
           disabled={busy}
           onClick={() => edit(null)}
           aria-label={t(($) => $.editor.addTitle)}
           title={t(($) => $.editor.addTitle)}
         >
-          <Plus size={17} />
+          <Plus size={16} strokeWidth={1.8} />
         </button>
         <button
+          className="wc-iconbtn"
           type="button"
           disabled={busy || !input}
           onClick={() => {
@@ -58,7 +61,7 @@ export function ProfileActions() {
           aria-label={t(($) => $.export.action)}
           title={t(($) => $.export.action)}
         >
-          <Download size={17} />
+          <Download size={16} strokeWidth={1.8} />
         </button>
       </div>
       {selection && (
@@ -83,10 +86,10 @@ export function ProfileActions() {
             </p>
             <p className="editor-hint">{t(($) => $.export.hint)}</p>
             <div className="editor-actions">
-              <button type="button" autoFocus onClick={close}>
+              <button className="wc-btn" type="button" autoFocus onClick={close}>
                 {t(($) => $.common.cancel)}
               </button>
-              <button className="primary" type="button" onClick={download}>
+              <button className="wc-btn wc-btn--primary" type="button" onClick={download}>
                 {t(($) => $.export.submit)}
               </button>
             </div>

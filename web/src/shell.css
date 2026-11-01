@@ -1,134 +1,15 @@
-.auth-page {
-  min-height: 100dvh;
-  display: grid;
-  place-items: center;
-  padding: 24px;
-}
+/* App shell: the page frame, the floating topbar and its controls, the sign-in page and the loading screens.
+   The controls are DS components (wc-modes, wc-search, wc-seg, wc-iconbtn, wc-btn, wc-login); this file lays them out. */
 
-.auth-card {
-  width: min(100%, 390px);
-  padding: 32px;
-  border: 1px solid var(--color-border);
-  border-radius: 20px;
-  background: var(--color-surface);
-  box-shadow: 0 16px 50px color-mix(in srgb, var(--color-forest) 3.9216%, transparent);
-}
-
-.auth-card .brand-symbol {
-  height: 32px;
-}
-
-.auth-brand {
-  font-weight: 700;
-}
-
-.auth-card h1 {
-  font-size: 24px;
-  margin: 24px 0 12px;
-}
-
-.auth-card p,
-.auth-card small {
-  color: #64766e;
-  line-height: 1.7;
-}
-
-.auth-card label {
-  display: block;
-  margin: 24px 0 8px;
-  font-size: 13px;
-}
-
-.auth-card input {
-  width: 100%;
-  padding: 12px;
-  border: 1px solid #cdd9d2;
-  border-radius: 9px;
-  background: var(--color-white);
-}
-
-.auth-card button {
-  width: 100%;
-  margin: 18px 0;
-  padding: 12px;
-  border: 0;
-  border-radius: 9px;
-  background: var(--color-forest);
-  color: white;
-}
-
-.auth-card button:disabled {
-  opacity: 0.55;
-  cursor: default;
-}
-
-.auth-card small {
-  display: block;
-  font-size: 12px;
-}
-
-.auth-card .auth-error {
-  color: var(--color-danger);
-  font-size: 13px;
-}
-
-.logout-button {
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-  width: 34px;
-  height: 34px;
-  border: 1px solid var(--color-border-control);
-  border-radius: 9px;
-  color: var(--color-ink-soft);
-  background: var(--color-surface);
-}
-
-.language-switch {
-  display: flex;
-  flex-shrink: 0;
-  gap: 2px;
-  padding: 3px;
-  border-radius: 9px;
-  background: #edf1eb;
-}
-
-.language-switch button {
-  min-width: 28px;
-  height: 28px;
-  padding: 0 6px;
-  border: 0;
-  border-radius: 7px;
-  color: #71867a;
-  background: transparent;
-  font-size: 11.5px;
-  font-weight: 600;
-}
-
-.language-switch button:hover {
-  color: var(--color-accent-dark);
-}
-
-.language-switch button[aria-pressed='true'] {
-  background: var(--color-white);
-  color: #326d5d;
-  box-shadow: 0 2px 8px #294e3610;
-}
-
-.auth-page > .language-switch {
-  position: absolute;
-  top: 20px;
-  right: 24px;
-}
-
+/* ── Frame ─────────────────────────────────────────────── */
 .app-shell {
-  --left-panel-width: 292px;
-  --detail-panel-width: 364px;
+  --left-panel-width: var(--rail-left);
+  --detail-panel-width: var(--rail-detail);
   position: relative;
   height: 100dvh;
   min-height: 610px;
   overflow: hidden;
-  background: var(--color-page);
+  background: var(--paper);
 }
 
 .atlas-main {
@@ -137,19 +18,25 @@
   min-width: 0;
   overflow: hidden;
   isolation: isolate;
-  background: var(--color-page);
+  background: var(--paper);
+}
+
+/* ── Topbar: the page switch and heading on the left, the tools on the right ─────────────────── */
+.topbar,
+.summary-topbar {
+  container: topbar / inline-size;
 }
 
 .topbar {
   position: absolute;
   z-index: 5;
-  top: 25px;
-  left: 33px;
-  right: 30px;
+  top: var(--space-5);
+  left: var(--space-6);
+  right: var(--space-6);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 20px;
+  gap: var(--space-5);
   pointer-events: none;
   transition:
     left 0.38s cubic-bezier(0.22, 1, 0.36, 1),
@@ -157,11 +44,11 @@
 }
 
 .app-shell.left-open .topbar {
-  left: calc(var(--left-panel-width) + 33px);
+  left: calc(var(--left-panel-width) + var(--space-6));
 }
 
 .app-shell.detail-open .topbar {
-  right: calc(var(--detail-panel-width) + 30px);
+  right: calc(var(--detail-panel-width) + var(--space-6));
 }
 
 .topbar > * {
@@ -171,145 +58,120 @@
 .topbar-leading {
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: var(--space-3);
   min-width: 0;
-}
-
-.sidebar-open {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex: 0 0 auto;
-  height: 36px;
-  padding: 0 12px;
-  border: 1px solid var(--color-border);
-  border-radius: 11px;
-  background: color-mix(in srgb, var(--color-white) 86.2745%, transparent);
-  box-shadow: 0 8px 24px var(--color-shadow-soft);
-  color: #497467;
-  font-size: 11px;
-  font-weight: 600;
-}
-
-.sidebar-open:hover {
-  background: var(--color-white);
-  color: var(--color-accent);
 }
 
 .topbar-heading {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: var(--space-2);
   min-width: 0;
   white-space: nowrap;
-  color: var(--color-text-meta);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+}
+
+.topbar-divider {
+  color: var(--ink-4);
 }
 
 .topbar-heading strong {
   overflow: hidden;
-  color: var(--color-ink-body);
-  font-weight: 700;
+  color: var(--ink-1);
+  font: var(--text-subtitle);
   text-overflow: ellipsis;
 }
 
-.topbar-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--color-accent-bright);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-accent-bright) 9.8039%, transparent);
-}
-
-.topbar-divider {
-  color: #b4c0b9;
-}
-
-.search-wrap {
-  position: relative;
+.topbar-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
-  width: min(290px, 43%);
-  height: 42px;
-  padding: 0 13px;
-  border: 1px solid var(--color-border);
-  border-radius: 13px;
-  background: color-mix(in srgb, var(--color-white) 84.7059%, transparent);
-  box-shadow: 0 10px 28px var(--color-shadow-soft);
-  backdrop-filter: blur(18px);
-  color: var(--color-text-aux);
-}
-
-.search-wrap:focus-within {
-  border-color: #9cc8be;
-  box-shadow: 0 10px 28px #357f6f1a;
-}
-
-.search-wrap input {
-  width: 100%;
+  justify-content: flex-end;
+  gap: var(--space-2);
   min-width: 0;
-  border: 0;
-  outline: 0;
-  background: transparent;
-  color: var(--color-ink-body);
-  font-size: 11px;
+  flex: 0 1 370px;
 }
 
-.search-wrap input::placeholder {
-  color: #9bad9f;
+.header-review-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex: none;
+}
+
+/* ModeNav: the DS styles the anchors and the .wc-i mask icons; the lucide icons need their colours here.
+   When the bar runs short of room the other pages lose their icons, like the DS's wc-modes--compact. */
+.wc-modes {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.wc-modes a {
+  flex: none;
+}
+
+.wc-modes a > svg {
+  flex: none;
+  color: var(--ink-3);
+}
+
+.wc-modes a[aria-current='page'] > svg {
+  color: var(--you);
+}
+
+@container topbar (max-width: 1100px) {
+  .wc-modes a:not([aria-current='page']) > svg {
+    display: none;
+  }
+}
+
+/* Too narrow for the heading: it would only show its divider. The page switch scrolls sideways before it clips. */
+@container topbar (max-width: 820px) {
+  .topbar-heading {
+    display: none;
+  }
+}
+
+/* SearchField: a label around the input, with the results menu under it. */
+.search-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 72px;
+}
+
+.wc-search:focus-within > svg {
+  color: var(--you);
+}
+
+.search-wrap input[type='search']::-webkit-search-cancel-button {
+  display: none;
+  -webkit-appearance: none;
 }
 
 .search-clear {
-  display: grid;
-  place-items: center;
-  flex: 0 0 auto;
-  width: 20px;
-  height: 20px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: #92a39b;
+  width: var(--control-xs);
+  height: var(--control-xs);
 }
 
 .search-results {
   position: absolute;
-  top: 48px;
+  z-index: 2;
+  top: calc(100% + var(--space-2));
   left: 0;
-  right: 0;
+  width: max(100%, 300px);
   max-height: min(500px, 60vh);
   overflow: auto;
-  padding: 7px;
-  border: 1px solid var(--color-border);
-  border-radius: 15px;
-  background: color-mix(in srgb, var(--color-white) 98.0392%, transparent);
-  box-shadow: 0 18px 50px #3e5e4e26;
 }
 
-.search-results button {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 9px 8px;
-  border: 0;
-  border-radius: 9px;
-  background: transparent;
-  text-align: left;
-  color: #869994;
+.search-results .wc-menu__item {
+  height: auto;
+  min-height: var(--control-lg);
+  padding: var(--space-2) var(--space-3);
 }
 
-.search-results button:hover {
-  background: #f1f7f3;
-}
-
-.search-result-dot {
-  flex: 0 0 auto;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
+.search-results .wc-menu__item > svg {
+  flex: none;
+  color: var(--ink-3);
 }
 
 .search-result-main {
@@ -317,31 +179,34 @@
   flex: 1;
   flex-direction: column;
   min-width: 0;
-  gap: 3px;
+  gap: 2px;
 }
 
 .search-result-main strong {
   overflow: hidden;
-  color: #304843;
-  font-size: 11px;
+  color: var(--ink-1);
+  font: var(--text-label);
+  font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .search-result-main small {
   overflow: hidden;
-  color: #9aa9a2;
-  font-size: 9px;
+  color: var(--ink-3);
+  font: var(--text-caption);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .search-empty {
-  padding: 14px;
-  color: #8b9a93;
-  font-size: 11px;
+  margin: 0;
+  padding: var(--space-3);
+  color: var(--ink-3);
+  font: var(--text-caption);
 }
 
+/* The panels push the floating controls of the canvas aside. */
 .app-shell.detail-open .canvas-toolbar {
   right: calc(var(--detail-panel-width) + 28px);
 }
@@ -350,6 +215,91 @@
   left: calc(var(--left-panel-width) + 36px);
 }
 
+.app-shell.left-open .review-bar {
+  left: var(--left-panel-width);
+}
+
+/* Export confirmation: the sheet itself is the shared editor dialog. */
+.export-confirm {
+  width: min(440px, 100%);
+}
+
+.export-confirm > p {
+  font: var(--text-body);
+}
+
+.export-confirm strong {
+  color: var(--you-ink);
+}
+
+/* ── Sign-in: the DS LoginCard ─────────────────────────── */
+.auth-page {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: var(--space-6);
+}
+
+.auth-page > .wc-seg {
+  position: absolute;
+  top: var(--space-5);
+  right: var(--space-6);
+}
+
+.auth-page .wc-login {
+  max-width: 100%;
+}
+
+.auth-mark {
+  align-self: flex-start;
+  height: 56px;
+  margin-bottom: var(--space-5);
+}
+
+.auth-title {
+  margin: 0 0 var(--space-1);
+  color: var(--ink-1);
+  font: var(--text-hero);
+}
+
+.auth-hint {
+  margin: 0 0 var(--space-5);
+  color: var(--ink-3);
+  font: var(--text-label);
+  font-weight: 400;
+}
+
+.auth-next-field {
+  margin-top: var(--space-4);
+}
+
+.auth-submit {
+  margin-top: var(--space-5);
+}
+
+.auth-note {
+  margin: var(--space-4) 0 0;
+  color: var(--ink-3);
+  font: var(--text-caption);
+}
+
+.auth-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: var(--space-5);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--line-1);
+}
+
+.auth-wordmark {
+  color: var(--ink-1);
+  font: var(--text-label);
+  font-family: var(--font-brand);
+  font-weight: 600;
+}
+
+/* ── Loading and error screens, shared by every page ───── */
 .load-state {
   position: relative;
   isolation: isolate;
@@ -358,23 +308,25 @@
   align-items: center;
   justify-content: center;
   height: 100dvh;
-  color: #37524a;
+  padding: 0 var(--space-6);
+  color: var(--ink-1);
   text-align: center;
 }
 
 .load-state > .brand-mark {
-  height: 46px;
+  height: 48px;
 }
 
 .load-state h1 {
-  margin: 12px 0;
-  font-size: 21px;
-  font-weight: 600;
+  margin: var(--space-4) 0 var(--space-1);
+  font: var(--text-title);
 }
 
 .load-state p {
-  color: var(--color-text-aux);
-  font-size: 13px;
+  max-width: 420px;
+  margin: 0 0 var(--space-4);
+  color: var(--ink-3);
+  font: var(--text-caption);
 }
 
 .loading-mark {
@@ -388,177 +340,68 @@
   }
 }
 
+/* ── Narrower windows ──────────────────────────────────── */
 @media (max-width: 1220px) {
   .app-shell {
-      --left-panel-width: 240px;
-      --detail-panel-width: 310px;
-    }
-  .topbar {
-      left: 20px;
-      right: 18px;
-    }
-  .app-shell.left-open .topbar {
-      left: calc(var(--left-panel-width) + 20px);
-    }
-  .app-shell.detail-open .topbar {
-      right: calc(var(--detail-panel-width) + 18px);
-    }
-}
+    --left-panel-width: 240px;
+    --detail-panel-width: 310px;
+  }
 
-@media (max-width: 900px) {
-  .app-shell {
-      --left-panel-width: 240px;
-    }
   .topbar {
-      right: 20px;
-    }
+    left: var(--space-5);
+    right: var(--space-5);
+  }
+
+  .app-shell.left-open .topbar {
+    left: calc(var(--left-panel-width) + var(--space-5));
+  }
+
   .app-shell.detail-open .topbar {
-      right: 338px;
-    }
+    right: calc(var(--detail-panel-width) + var(--space-5));
+  }
 }
 
 @media (max-width: 650px) {
   .app-shell {
-      --left-panel-width: min(300px, calc(100vw - 24px));
-      min-height: 0;
-    }
+    --left-panel-width: min(300px, calc(100vw - 24px));
+    min-height: 0;
+  }
+
   .topbar {
-      top: 10px;
-      left: 12px;
-      right: 12px;
-      gap: 8px;
-    }
+    top: var(--space-2);
+    left: var(--space-3);
+    right: var(--space-3);
+    flex-wrap: wrap; /* the tools drop below the page switch */
+    gap: var(--space-2);
+  }
+
   .app-shell.left-open .topbar {
-      left: 12px;
-    }
+    left: var(--space-3);
+  }
+
   .app-shell.detail-open .topbar {
-      right: 12px;
-    }
-  .sidebar-open {
-      width: 34px;
-      padding: 0;
-      justify-content: center;
-    }
-  .sidebar-open span {
-      display: none;
-    }
+    right: var(--space-3);
+  }
+
   .topbar-leading {
-      gap: 8px;
-    }
-  .topbar-heading {
-      font-size: 10px;
-    }
-  .search-wrap {
-      width: min(46%, 200px);
-      height: 36px;
-    }
-  .app-shell.left-open .canvas-help {
-      left: 14px;
-    }
-  .app-shell.detail-open .canvas-toolbar {
-      right: 12px;
-    }
-}
+    flex: 1 1 100%;
+    gap: var(--space-2);
+  }
 
-.app-shell.left-open .review-bar {
-  left: var(--left-panel-width);
-}
-
-.export-confirm {
-  width: min(440px, 100%);
-}
-
-.export-confirm > p {
-  line-height: 1.8;
-}
-
-.export-confirm strong {
-  color: var(--color-accent-dark);
-}
-
-.topbar-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 10px;
-  min-width: 0;
-  flex: 0 1 370px;
-}
-
-.topbar-actions .search-wrap {
-  width: auto;
-  flex: 1;
-  min-width: 72px;
-}
-
-.header-review-actions {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  flex-shrink: 0;
-}
-
-.header-review-actions button,
-.header-review-actions a {
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 36px;
-  padding: 0;
-  border: 0;
-  border-radius: 10px;
-  background: transparent;
-  color: #5c7d73;
-  text-decoration: none;
-}
-
-.header-review-actions button:hover,
-.header-review-actions a:hover {
-  background: color-mix(in srgb, var(--color-white) 72.1569%, transparent);
-  color: var(--color-accent);
-}
-
-@media (max-width: 650px) {
   .topbar-actions {
-      gap: 4px;
-      flex: 1;
-    }
-  .topbar-heading .topbar-divider,
-    .topbar-heading strong {
-      display: none;
-    }
-  .header-review-actions button,
-    .header-review-actions a {
-      width: 30px;
-    }
-}
+    gap: var(--space-1);
+    flex: 1;
+  }
 
-/* 人生画像与语言风格的切换 */
-.mode-switch {
-  display: flex;
-  flex-shrink: 0;
-  gap: 2px;
-  padding: 3px;
-  border-radius: 10px;
-  background: #edf1eb;
-}
+  .search-wrap {
+    max-width: 200px;
+  }
 
-.mode-switch a {
-  padding: 6px 11px;
-  border-radius: 8px;
-  color: #71867a;
-  font-size: 11.5px;
-  font-weight: 600;
-  text-decoration: none;
-  white-space: nowrap;
-}
+  .app-shell.left-open .canvas-help {
+    left: 14px;
+  }
 
-.mode-switch a:hover {
-  color: var(--color-accent-dark);
-}
-
-.mode-switch a[aria-current='page'] {
-  background: var(--color-white);
-  color: #326d5d;
-  box-shadow: 0 2px 8px #294e3610;
+  .app-shell.detail-open .canvas-toolbar {
+    right: 12px;
+  }
 }

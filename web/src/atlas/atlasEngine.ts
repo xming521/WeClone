@@ -1,6 +1,7 @@
-// The profile map on a canvas (design: WC-exp/design, "A 纸本 · 浅色克制"), laid out by d3-force.
-// Every node's colour spreads on the paper by its importance and each dimension washes the ground
-// under its cluster. Lines widen with chat support, and waves of ink run along them into 「我」.
+// The profile map on a canvas (design: WC-exp/design, "A 纸本 · 浅色克制"; drawn as the design
+// system's AtlasGraph says), laid out by d3-force. Each level sits on a dotted orbit round the one
+// above it. Every section's and topic's colour blooms on the paper by its importance, and each
+// dimension washes the ground under its cluster. Waves of ink run along the lines into 「我」.
 // Hovering a node lights its path to the centre and dims the rest; clicking one rings it and brings
 // its branch into view. The entrance (entrance.ts) plays over the blank map and hands over its last
 // frame, so the map first draws that frame with the same primitives (paint.ts), then settles into
@@ -32,6 +33,7 @@ import { inkStrength, supportWidth, type NodeMetrics } from './atlasMetrics';
 import type { Camera, EntranceItem } from './entrance';
 import {
   DENSE_NODE_COUNT,
+  STAGGER_COUNT,
   clusterCenters,
   computeSeeds,
   dimensionAngle,
@@ -45,16 +47,33 @@ import {
   type Positions,
 } from './graphLayout';
 import {
-  EDGE_OPACITY,
+  BALL,
+  EDGE_GAP,
   LABEL_LINE_HEIGHT,
   LABEL_OFFSET_Y,
-  edgeStroke,
-  edgeWidth,
+  ORBIT,
+  edgeOnStyle,
+  edgeStyle,
   hexToRgb,
-  labelFontSize,
+  labelFont,
+  labelStyle,
+  type LabelRole,
 } from './graphStyle';
 import type { NodeLook } from './nodeLook';
-import { canvasDpr, drawLabel, drawNode, rgbaOf, strokeEdge, type PaintNode, type Rgb, type Transform } from './paint';
+import {
+  canvasDpr,
+  curvePoint,
+  drawLabel,
+  drawNode,
+  edgeCurve,
+  resetLabelMetrics,
+  rgbaOf,
+  strokeEdge,
+  strokeOrbit,
+  type PaintNode,
+  type Rgb,
+  type Transform,
+} from './paint';
 
 /** What the toolbar can do with the map. */
 export interface AtlasControls {
@@ -162,8 +181,7 @@ const NODE_ZOOM: Record<NodeKind, number> = {
 /** Share of the frame a focused branch fills, so that some of its surroundings stay in view. */
 const BRANCH_FILL = 0.88;
 // While the map is dense, attribute labels show only when zoomed in far enough to read them.
-const ATTRIBUTE_LABEL_MIN_ZOOM = 8 / labelFontSize('attribute');
-const MEASURE_FONT = '"Noto Sans", "Noto Sans CJK SC", sans-serif';
+const ATTRIBUTE_LABEL_MIN_SIZE = 8;
 const DIMENSION_INDEX = new Map<number, number>(DIMENSIONS.map((entry, index) => [entry.dim, index]));
 const BLACK: Rgb = [0, 0, 0];
 
@@ -185,6 +203,22 @@ function hash01(text: string): number {
   return ((h >>> 0) % 1000003) / 1000003;
 }
 
+/** The nodes with a fact waiting for review somewhere below them. */
+function pendingNodes(model: ProfileModel): Set<string> {
+  const ids = new Set<string>();
+  for (const id of model.attributeIds) {
+    const attribute = model.nodes.get(id)!;
+    if (!attribute.factIndices.some((index) => model.facts[index]?.status === 'pending')) continue;
+    for (let n: ProfileNode | undefined = attribute; n; n = n.parentId ? model.nodes.get(n.parentId) : undefined) {
+      ids.add(n.id);
+    }
+  }
+  return ids;
+}
+
+/** The middle one of `values`, the lower of the two when there are two. */
+const median = (values: number[]) => values.sort((a, b) => a - b)[(values.length - 1) >> 1];
+
 export class AtlasEngine implements AtlasControls {
   private readonly canvas: HTMLCanvasElement;
   private readonly wash: HTMLCanvasElement;
@@ -199,6 +233,8 @@ export class AtlasEngine implements AtlasControls {
   private view: ReviewView = 'all';
   private looks = new Map<string, NodeLook>();
   private metrics = new Map<string, NodeMetrics>();
+  /** Nodes with facts still to review below them; the ones that are drawn with the pending tail. */
+  private pendingIds = new Set<string>();
   private initialPositions: Positions = new Map();
   private visible: ProfileNode[] | null = null;
 
@@ -275,6 +311,7 @@ export class AtlasEngine implements AtlasControls {
     this.washCtx = wash.getContext('2d')!;
     this.callbacks = callbacks;
     canvas.style.cursor = 'grab';
+    this.loadFonts();
     canvas.addEventListener('pointerdown', this.onDown);
     canvas.addEventListener('pointermove', this.onMove);
     canvas.addEventListener('pointerup', this.onUp);
@@ -293,6 +330,7 @@ export class AtlasEngine implements AtlasControls {
     this.view = view;
     this.looks = looks;
     this.metrics = metrics;
+    this.pendingIds = pendingNodes(model);
   }
 
   /**
@@ -368,7 +406,16 @@ export class AtlasEngine implements AtlasControls {
         if (next.has(id)) continue;
         let into: MapNode | undefined;
         for (let up = n.node.parentId; up && !into; up = this.nodes.get(up)?.node.parentId ?? null) into = next.get(up);
-        const paint: PaintNode = { kind: n.kind, dim: n.dim, look: n.look, r: n.r, label: '', selected: false };
+        const paint: PaintNode = {
+          kind: n.kind,
+          dim: n.dim,
+          look: n.look,
+          r: n.r,
+          label: '',
+          selected: false,
+          pending: n.pending,
+          section: n.section,
+        };
         this.ghosts.push({ n, paint, into: into ?? null, start: now, x: n.rx, y: n.ry, a: n.vis * n.emph, scale: 1 });
       }
     }
@@ -461,6 +508,8 @@ export class AtlasEngine implements AtlasControls {
         label: this.labelOf(n, attributeLabels),
         selected: n.selected,
         slices: n.slices,
+        pending: n.pending,
+        section: n.section,
       })),
       camera: { zoom: k, x: this.W / 2 - this.cam.x * k, y: this.H / 2 - this.cam.y * k },
       width: this.W,
@@ -536,6 +585,8 @@ export class AtlasEngine implements AtlasControls {
       r: look.size / 2,
       label: node.name,
       selected: node.id === this.selectedId,
+      pending: this.isPending(node),
+      section: this.isSection(node),
       depth: metrics.depth,
       metrics,
       color,
@@ -567,13 +618,45 @@ export class AtlasEngine implements AtlasControls {
     n.r = n.look.size / 2;
     n.metrics = this.metrics.get(node.id)!;
     n.depth = n.metrics.depth;
+    n.pending = this.isPending(node);
+    n.section = this.isSection(node);
+  }
+
+  /** A domain in the domain view is a section: it sets and labels like one. */
+  private isSection(node: ProfileNode): boolean {
+    return node.kind === 'dimension' && this.model?.grouping === 'domain';
+  }
+
+  /** Whether the node shows the pending tail: sections, topics and attributes do, the five dimensions do not. */
+  private isPending(node: ProfileNode): boolean {
+    return this.pendingIds.has(node.id) && node.kind !== 'root' && (node.kind !== 'dimension' || this.isSection(node));
   }
 
   private measureLabel(node: ProfileNode): number {
-    const size = labelFontSize(node.kind);
-    if (!this.measure) return node.name.length * size;
-    this.measure.font = `600 ${size}px ${MEASURE_FONT}`;
+    const style = labelStyle({ kind: node.kind, section: this.isSection(node) });
+    if (!this.measure) return node.name.length * style.size;
+    this.measure.font = labelFont(style);
     return this.measure.measureText(node.name).width;
+  }
+
+  // Labels are set in the design system's font, which a canvas does not wait for: once it is loaded,
+  // measure again and draw again.
+  private loadFonts() {
+    const fonts = document.fonts;
+    if (!fonts) return;
+    const roles: LabelRole[] = [{ kind: 'root' }, { kind: 'dimension' }, { kind: 'topic' }, { kind: 'attribute' }];
+    const wanted = [...roles.map((role) => labelStyle(role)), labelStyle({ kind: 'topic' }, true)];
+    Promise.all(wanted.map((style) => fonts.load(labelFont(style), 'Aa'))).then(
+      () => {
+        if (this.destroyed) return;
+        resetLabelMetrics();
+        for (const n of this.nodes.values()) n.labelWidth = this.measureLabel(n.node);
+        this.requestDraw();
+      },
+      () => {
+        // The font is missing: the fallback in the stack stays.
+      },
+    );
   }
 
   /** Lines from every visible node to its parent; their width follows the child's chat support. */
@@ -594,7 +677,7 @@ export class AtlasEngine implements AtlasControls {
 
   private collisionRadius(n: MapNode, dense: boolean): number {
     if (dense && n.kind === 'attribute') return n.r + 8;
-    return Math.max(n.r + 8, Math.hypot(n.labelWidth / 2 + 4, n.r + 11 + labelFontSize(n.kind)));
+    return Math.max(n.r + 8, Math.hypot(n.labelWidth / 2 + 4, n.r + 11 + labelStyle(n).size));
   }
 
   /** The forces read `anchors` whenever they are initialised, so moving an anchor and re-initialising moves its cluster. */
@@ -963,7 +1046,10 @@ export class AtlasEngine implements AtlasControls {
   }
 
   private attributeLabelsShown(): boolean {
-    return this.order.length <= DENSE_NODE_COUNT || this.cam.k >= ATTRIBUTE_LABEL_MIN_ZOOM;
+    return (
+      this.order.length <= DENSE_NODE_COUNT ||
+      this.cam.k >= ATTRIBUTE_LABEL_MIN_SIZE / labelStyle({ kind: 'attribute' }).size
+    );
   }
 
   private labelOf(n: MapNode, attributeLabels: boolean): string {
@@ -1051,7 +1137,10 @@ export class AtlasEngine implements AtlasControls {
     ctx.globalCompositeOperation = 'source-over';
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     this.drawWash(tx, ty, k, settle);
-    if (settle > 0) this.drawHalos(tf, settle);
+    if (settle > 0) {
+      this.drawOrbits(tf, settle);
+      this.drawHalos(tf, settle);
+    }
     this.drawEdges(tf, settle);
     if (settle > 0 && !this.reduced) this.drawWaves(tf, settle);
     // The entrance's glow fades as the halos take over.
@@ -1116,58 +1205,103 @@ export class AtlasEngine implements AtlasControls {
     g.globalAlpha = 1;
   }
 
-  // Each node's colour spreads around it, wider and stronger the more important its facts are.
-  // The pearl's halo is made of all five colours, each shifted towards its dimension.
+  // Every level sits on a dotted orbit round the node above it: one per expanded node, at the
+  // distance most of its children are from it. In the domain view the centre has two, as its
+  // sections alternate between an inner and an outer ring.
+  private drawOrbits(tf: Transform, settle: number) {
+    const children = new Map<string, MapNode[]>();
+    for (const n of this.order) {
+      const parentId = n.node.parentId;
+      if (!parentId) continue;
+      const list = children.get(parentId);
+      if (list) list.push(n);
+      else children.set(parentId, [n]);
+    }
+    const staggered = (this.model?.dimensionIds.length ?? 0) >= STAGGER_COUNT;
+    for (const parent of this.order) {
+      const kids = children.get(parent.id);
+      const open = parent.vis * parent.emph * settle;
+      if (!kids || open <= 0.01) continue;
+      const rings = parent.kind === 'root' && staggered ? 2 : 1;
+      for (let ring = 0; ring < rings; ring++) {
+        const onRing = rings === 1 ? kids : kids.filter((_, index) => index % 2 === ring);
+        if (!onRing.length) continue;
+        const radius = median(onRing.map((n) => Math.hypot(n.rx - parent.rx, n.ry - parent.ry)));
+        if (!this.inView(parent.rx, parent.ry, radius)) continue;
+        // Orbits of nodes still growing out of their parent fade in with them.
+        const grown = onRing.reduce((sum, n) => sum + n.vis, 0) / onRing.length;
+        strokeOrbit(this.ctx, tf, parent.rx, parent.ry, radius, ORBIT.width, ORBIT.dash, open * grown);
+      }
+    }
+    this.ctx.globalAlpha = 1;
+  }
+
+  // A dimension has a flat halo of its colour behind it, a section or topic a soft bloom that
+  // spreads further the more important its facts are; attributes have neither. The centre has
+  // no halo of its own: the coloured ink swells round it as the waves arrive.
   private drawHalos(tf: Transform, settle: number) {
     const ctx = this.ctx;
     const k = this.cam.k;
     ctx.setTransform(tf.k, 0, 0, tf.k, tf.ox, tf.oy);
-    ctx.globalCompositeOperation = 'multiply';
-    for (const n of this.order) {
-      if (n.vis <= 0.01) continue;
-      const root = n.kind === 'root';
-      let R: number;
-      let a: number;
-      if (root) {
-        R = n.r * 1.6 * n.scale;
-        a = 0.1;
-      } else {
+    for (const pass of ['source-over', 'multiply'] as const) {
+      ctx.globalCompositeOperation = pass;
+      for (const n of this.order) {
+        const ball = n.kind === 'dimension';
+        const root = n.kind === 'root';
+        if (n.vis <= 0.01 || n.kind === 'attribute' || (pass === 'source-over') !== (ball && !n.section)) continue;
+        // Sections are balls too, but they bloom like the topics, in the domain view.
+        let R: number;
+        let a: number;
         const t = n.metrics.weight ** 1.3;
-        R = n.r * n.scale * (1.25 + 2.5 * t);
-        a = 0.04 + 0.5 * t;
-      }
-      a *= n.vis * n.emph;
-      const bump = this.hubBump(n);
-      if (bump > 0.01) {
-        R *= 1 + 0.18 * bump;
-        a = Math.min(1, a * (1 + 0.6 * bump) + 0.04 * bump);
-      }
-      a *= settle;
-      if (a < 0.01 || !this.inView(n.rx, n.ry, R)) continue;
-      if (R * k < 2 && n.id !== this.hoverId) continue;
-      if (root) {
-        const H = R * 1.25;
-        ctx.globalAlpha = Math.min(1, a * 3.2);
-        for (const slice of n.slices ?? []) {
-          const x = n.rx + Math.cos(slice.angle) * H * 0.3;
-          const y = n.ry + Math.sin(slice.angle) * H * 0.3;
-          ctx.drawImage(this.sprite('halo', slice.rgb), x - H, y - H, 2 * H, 2 * H);
+        if (root) {
+          R = n.r * 1.6 * n.scale;
+          a = 0;
+        } else if (ball && !n.section) {
+          R = n.r * n.scale * (1.25 + 2.5 * t);
+          a = BALL.haloOpacity;
+        } else {
+          R = n.r * n.scale * 2.6;
+          a = 0.2 + 0.8 * t;
         }
-      } else {
-        ctx.globalAlpha = Math.min(1, a);
-        ctx.drawImage(this.sprite('halo', n.rgb), n.rx - R, n.ry - R, 2 * R, 2 * R);
+        a *= n.vis * n.emph;
+        const bump = this.hubBump(n);
+        if (bump > 0.01) {
+          R *= 1 + 0.18 * bump;
+          a = root ? 0.2 * bump * n.vis * n.emph : Math.min(1, a * (1 + 0.6 * bump) + 0.04 * bump);
+        }
+        a *= settle;
+        if (a < 0.01 || !this.inView(n.rx, n.ry, R)) continue;
+        if (R * k < 2 && n.id !== this.hoverId) continue;
+        if (root) {
+          const H = R * 1.25;
+          ctx.globalAlpha = Math.min(1, a * 3.2);
+          for (const slice of n.slices ?? []) {
+            const x = n.rx + Math.cos(slice.angle) * H * 0.3;
+            const y = n.ry + Math.sin(slice.angle) * H * 0.3;
+            ctx.drawImage(this.sprite('halo', slice.rgb), x - H, y - H, 2 * H, 2 * H);
+          }
+        } else if (ball && !n.section) {
+          ctx.globalAlpha = Math.min(1, a);
+          ctx.fillStyle = n.color;
+          ctx.beginPath();
+          ctx.arc(n.rx, n.ry, R, 0, TAU);
+          ctx.fill();
+        } else {
+          ctx.globalAlpha = Math.min(1, a);
+          ctx.drawImage(this.sprite('halo', n.rgb), n.rx - R, n.ry - R, 2 * R, 2 * R);
+        }
       }
     }
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 1;
   }
 
-  // Lines start as the entrance drew them and widen to their chat support as the map settles.
-  // Lines on the hovered or selected path take their dimension's colour.
+  // Lines are slight curves, `edge-1` into a dimension, `edge-2` into a topic and a faint stroke of
+  // the dimension's colour into an attribute. Lines on the hovered or selected path take the
+  // dimension's colour.
   private drawEdges(tf: Transform, settle: number) {
     const ctx = this.ctx;
     ctx.lineCap = 'butt';
-    const opacity = lerp(EDGE_OPACITY, 0.8, settle);
     const from = { x: 0, y: 0, r: 0 };
     const to = { x: 0, y: 0, r: 0 };
     for (const e of this.edges) {
@@ -1182,17 +1316,13 @@ export class AtlasEngine implements AtlasControls {
       to.r = c.r * c.scale;
       const hot = this.isHot(e) ? settle : 0;
       if (hot < 1) {
-        strokeEdge(
-          ctx,
-          tf,
-          from,
-          to,
-          edgeStroke(c.kind),
-          lerp(edgeWidth(c.kind), e.w, settle),
-          opacity * a * (1 - hot),
-        );
+        const style = edgeStyle(c.kind, c.dim);
+        strokeEdge(ctx, tf, from, to, style.color, style.width, style.opacity * a * (1 - hot));
       }
-      if (hot > 0) strokeEdge(ctx, tf, from, to, c.color, Math.max(2, e.w + 0.25), 0.5 * a * hot);
+      if (hot > 0) {
+        const style = edgeOnStyle(c.dim);
+        strokeEdge(ctx, tf, from, to, style.color, style.width, style.opacity * a * hot);
+      }
     }
     // A removed node keeps its line to its parent, which may be on its way out as well.
     const leaving = new Map(this.ghosts.map((g) => [g.n.id, g]));
@@ -1213,8 +1343,8 @@ export class AtlasEngine implements AtlasControls {
       to.x = g.x;
       to.y = g.y;
       to.r = g.n.r * g.scale;
-      const w = Math.round(supportWidth(g.n.metrics.support) * 4) / 4;
-      strokeEdge(ctx, tf, from, to, edgeStroke(g.n.kind), lerp(edgeWidth(g.n.kind), w, settle), opacity * g.a);
+      const style = edgeStyle(g.n.kind, g.n.dim);
+      strokeEdge(ctx, tf, from, to, style.color, style.width, style.opacity * g.a);
     }
   }
 
@@ -1225,6 +1355,7 @@ export class AtlasEngine implements AtlasControls {
     const k = this.cam.k;
     ctx.setTransform(tf.k, 0, 0, tf.k, tf.ox, tf.oy);
     ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
     ctx.globalAlpha = 1;
     const local = this.hoverSet;
     const localClock = local ? this.localClock() : -1;
@@ -1243,11 +1374,15 @@ export class AtlasEngine implements AtlasControls {
       if (length < 2) continue;
       const ux = dx / length;
       const uy = dy / length;
-      const start = c.r * c.scale + 1;
-      const end = length - (p.r * p.scale + 1);
+      // Distances along the straight line from the child's centre to the parent's: from where the
+      // curve of the line leaves the child to where it reaches the parent.
+      const start = c.r * c.scale + EDGE_GAP;
+      const end = length - (p.r * p.scale + EDGE_GAP);
       if ((end - start) * k < 6) continue;
       const span = swellSpan(progress, start, end);
       if (!span) continue;
+      const curve = edgeCurve({ x: p.rx, y: p.ry, r: p.r * p.scale }, { x: c.rx, y: c.ry, r: c.r * c.scale });
+      if (!curve) continue;
       const hot = this.isHot(e);
       const emph = isLocal ? 1 : Math.min(c.emph, p.emph);
       const peak = Math.min(1, (0.26 + 0.46 * e.s) * (isLocal ? 1.6 : 1)) * emph * vis * settle;
@@ -1265,9 +1400,15 @@ export class AtlasEngine implements AtlasControls {
       gradient.addColorStop(1, rgbaOf(color, 0));
       ctx.strokeStyle = gradient;
       ctx.lineWidth = Math.max(1.6 / k, e.w + 1.1 + 1.3 * e.s + (hot ? 1.2 : 0));
+      // The swell follows the curve: a point `s` along the straight line is at 1 - (s - start) / (end - start) of it.
+      const at = (s: number) => curvePoint(curve, 1 - (s - start) / (end - start));
+      const steps = Math.max(2, Math.ceil((span.to - span.from) / 12));
       ctx.beginPath();
-      ctx.moveTo(c.rx + ux * span.from, c.ry + uy * span.from);
-      ctx.lineTo(c.rx + ux * span.to, c.ry + uy * span.to);
+      for (let i = 0; i <= steps; i++) {
+        const point = at(span.from + ((span.to - span.from) * i) / steps);
+        if (i) ctx.lineTo(point.x, point.y);
+        else ctx.moveTo(point.x, point.y);
+      }
       ctx.stroke();
     }
     ctx.lineCap = 'butt';
