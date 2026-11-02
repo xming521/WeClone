@@ -48,6 +48,17 @@ weclone-cli dev --demo   # 后端改用合成测试画像，登录密码 demo
 
 Issues and pull requests are welcome, and so is help reviewing PRs. Please discuss new features in an issue first.
 
+### Architecture
+
+The diagram shows the modules, the data flow and the files each step writes. Click it for the full-size image.
+
+<a href="https://docs.weclone.love/img/architecture/architecture-light-en.webp">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://docs.weclone.love/img/architecture/architecture-dark-en.webp">
+    <img alt="WeClone architecture and implementation" src="https://docs.weclone.love/img/architecture/architecture-light-en.webp">
+  </picture>
+</a>
+
 ### Development environment
 
 ```bash
