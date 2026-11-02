@@ -6,6 +6,17 @@
 
 欢迎提交 Issue 和 Pull Request，也欢迎帮助审核 PR。新功能请先通过 Issue 讨论。
 
+### 架构
+
+下图列出各模块、数据流和每一步输出的文件，点击图片可查看大图。
+
+<a href="https://docs.weclone.love/img/architecture/architecture-light.webp">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://docs.weclone.love/img/architecture/architecture-dark.webp">
+    <img alt="WeClone 架构与实现" src="https://docs.weclone.love/img/architecture/architecture-light.webp">
+  </picture>
+</a>
+
 ### 开发环境
 
 ```bash
