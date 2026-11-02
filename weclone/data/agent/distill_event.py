@@ -12,9 +12,6 @@ from weclone.data.agent.distill_profile import (
     chat_items,
     confirm_distillation,
     current_state_time_window,
-)
-from weclone.data.agent.distill_profile import default_args as state_default_args
-from weclone.data.agent.distill_profile import (
     iter_chat_files,
     load_json,
     load_state,
@@ -27,6 +24,7 @@ from weclone.data.agent.distill_profile import (
     sample_id_for,
     state_key,
 )
+from weclone.data.agent.distill_profile import default_args as state_default_args
 from weclone.data.agent.distill_windows import (
     ChatSample,
     generate_window_batch,
