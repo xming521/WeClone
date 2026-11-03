@@ -44,7 +44,7 @@ weclone-cli make-dataset
 - `make_dataset_args.blocked_words` 中可以添加需要过滤的词句，包含禁用词的整句会被去掉。
 
 > [!IMPORTANT]
-> 🚨 请一定注意保护个人隐私，不要泄露个人信息！
+> 微调后的模型可能在回复中说出训练数据里的个人信息。部署给他人使用前，请检查训练数据并测试模型的回复。
 
 可以根据自己的聊天习惯调整 `make_dataset_args` 中的时间窗口等参数，说明见文档站的[数据预处理](https://docs.weclone.love/zh/docs/deploy/data_preprocessing#%E7%9B%B8%E5%85%B3%E5%8F%82%E6%95%B0)。
 

@@ -43,7 +43,7 @@ Personal information is filtered out while the training data is built:
 - Add words or phrases to filter to `make_dataset_args.blocked_words`. Any sentence containing one is removed.
 
 > [!IMPORTANT]
-> 🚨 Please protect personal privacy and do not leak personal information!
+> The fine-tuned model may reveal personal information from its training data in its replies. Before deploying it for others, check the training data and test the model's replies.
 
 You can tune the time windows and other `make_dataset_args` settings to your chat habits. See [Data Preprocessing](https://docs.weclone.love/en/docs/deploy/data_preprocessing#related-parameters) on the docs site.
 

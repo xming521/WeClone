@@ -1,4 +1,4 @@
-![download](https://github.com/user-attachments/assets/cd4a87c6-1649-4ce5-bce8-bd5b08b278de)
+![WeClone](https://github.com/user-attachments/assets/cd4a87c6-1649-4ce5-bce8-bd5b08b278de)
 
 <h3 align="center">Build a portrait of your life. Assistants that know you. Clones that talk like you.</h3>
 
@@ -43,6 +43,13 @@ WeClone distills your identity, goals, preferences and current situation from yo
 - 🤖 **Agent clone** (in development): no training required. A large model drives the clone in real time from your portrait, memories and speaking style.
 - 🔒 **Privacy first**: encrypted local storage by default, a privacy level on every fact, and full control over what is exported and shared.
 
+<a href="https://docs.weclone.love/img/architecture/overview-light-en.webp">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://docs.weclone.love/img/architecture/overview-compact-dark-en.webp">
+    <img alt="WeClone feature overview" src="https://docs.weclone.love/img/architecture/overview-compact-light-en.webp">
+  </picture>
+</a>
+
 > [!NOTE]
 > WeClone now goes beyond fine-tuned clones. The original fine-tuning workflow remains fully supported, see [Fine-tuned clone](docs/en/finetune.md).
 >
@@ -50,9 +57,9 @@ WeClone distills your identity, goals, preferences and current situation from yo
 
 ## 📰 Recent Updates
 
-- [26/10] Life portrait: `build-profile` extracts, organizes and summarizes your portrait in one command, ready for fact-by-fact review in the web UI
-- [26/10] Assistant access: Claude Code, Codex and other assistants read your portrait over MCP
-- [26/10] Encrypted storage by default, and token access for chat bots
+- [26/11/03] Life portrait: `build-profile` extracts, organizes and summarizes your portrait in one command, ready for fact-by-fact review in the web UI
+- [26/11/03] Assistant access: Claude Code, Codex and other assistants read your portrait over MCP
+- [26/11/03] Encrypted storage by default, and token access for chat bots
 - [25/07/10] Telegram added as a data source
 - [25/06/05] Fine-tuning on image data
 
@@ -110,9 +117,6 @@ weclone-cli server --inference --port 8005   # OpenAI-compatible API
 
 Connect the trained clone to chat platforms through AstrBot or LangBot, see [Chat bots](docs/en/chatbot.md).
 
-> [!TIP]
-> **We're looking for interesting examples of native English speakers chatting with WeClone! Feel free to share them with us on Twitter.**
-
 ## 🔒 Privacy and Security
 
 - **Model services during extraction**: while building your portrait, chat content is sent to the model service you configured, after you confirm. Content already extracted is read from a local cache and not sent again.
@@ -121,6 +125,20 @@ Connect the trained clone to chat platforms through AstrBot or LangBot, see [Cha
 - **Training data filtering**: Microsoft Presidio and your own blocked words remove personal information before fine-tuning, though 100% detection is not guaranteed.
 
 See [Security](docs/en/security.md).
+
+## 🏗️ Architecture
+
+<details>
+<summary>Show the architecture diagram: the modules, the data flow and the files each step writes. Click it for the full-size image.</summary>
+
+<a href="https://docs.weclone.love/img/architecture/architecture-light-en.webp">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://docs.weclone.love/img/architecture/architecture-dark-en.webp">
+    <img alt="WeClone architecture and implementation" src="https://docs.weclone.love/img/architecture/architecture-light-en.webp">
+  </picture>
+</a>
+
+</details>
 
 ## 📚 Documentation
 
@@ -144,7 +162,6 @@ Full tutorials, configuration reference and FAQ are on the [documentation site](
 - [ ] Richer context: including contextual conversations, chat participant information, time, etc.
 - [ ] Multimodal support: image support already implemented
 - [ ] Data augmentation
-- [ ] COT (Chain of Thought) thinking support
 
 ## 💬 Troubleshooting
 
@@ -157,81 +174,35 @@ Issues and pull requests are welcome, and so is help reviewing PRs. Please discu
 
 ## 🙏 Acknowledgments
 
-Thanks to the following code contributors and other community members for their contributions
+Thanks to BUPT VCIS Lab for its support, and to the following code contributors and other community members for their contributions.
 
 <a href="https://github.com/xming521/WeClone/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=xming521/WeClone" />
 </a>
 
-This project also benefits from excellent open source projects such as [PyWxDump](https://github.com/xaoyaoo/PyWxDump), [LLaMA-Factory](https://github.com/hiyouga/LLaMA-Factory), [AstrBot](https://github.com/AstrBotDevs/AstrBot), [LangBot](https://github.com/RockChinQ/LangBot), and others.
+This project also benefits from excellent open source projects such as [LLaMA-Factory](https://github.com/hiyouga/LLaMA-Factory), [AstrBot](https://github.com/AstrBotDevs/AstrBot), [LangBot](https://github.com/RockChinQ/LangBot), and others.
 
 [![Powered by DartNode](https://dartnode.com/branding/DN-Open-Source-sm.png)](https://dartnode.com "Powered by DartNode - Free VPS for Open Source")
 
 
 ## ⚠️ Disclaimer
-> [!CAUTION]
-> **This project is for learning, research and experimental purposes only. There are significant risks in using it for production environments, please assess carefully. Do not use for illegal purposes, consequences are at your own risk.**
-
+> [!IMPORTANT]
+> This project is intended for learning and research. Assess the risks yourself before using it in production or offering it as a service.
 
 <details>
-<summary>Click to view disclaimer terms</summary>
+<summary>Click to view the disclaimer terms</summary>
 
-### 1. Use at Your Own Risk
-- Users should fully understand and bear all related risks when using this project
-- **The project authors are not responsible for any direct or indirect losses arising from the use of this project**
-- Including but not limited to: data loss, financial loss, legal disputes, personal reputation damage, social relationship impact, psychological trauma, career development obstacles, business reputation damage, etc.
+- **Provided as is**: the project comes without warranties of any kind. The authors are not liable for any direct or indirect loss arising from its use and do not commit to ongoing maintenance or support.
+- **Data and consent**: chat history contains other people's messages. Make sure that collecting and using the data complies with local laws and that the people involved have consented.
+- **Portrait extraction by LLMs**: while your portrait is built, chat content, including the other side's messages, is sent to the model service you configured and handled under that service's data policy. Choose a provider you trust and check its data retention and training terms. Leave chats you don't want sent out of the data directory.
+- **Portrait content**: the portrait collects and infers personal information about you, touches on the people around you, and may include sensitive topics such as health or relationships. Keep result directories and exported files safe, and review the portrait before giving assistants access.
+- **Model output**: portraits, summaries and clone replies are generated by models. They may be inaccurate and do not represent the real views of you or anyone else.
+- **AI disclosure**: when a clone talks to other people, make clear that it is an AI so that no one mistakes it for a real person.
+- **Lawful use**: do not use this project for any unlawful purpose.
 
-### 2. Production Environment Risk Warning
-- **Use for commercial purposes or providing external services requires bearing all risks yourself**
-- All consequences that may result from production environment use (including but not limited to service interruption, data security issues, user complaints, legal liability, etc.) are entirely borne by the user
-- **It is recommended to conduct thorough testing, verification and risk assessment before using in production environments**
-
-### 3. Model Output Unreliability
-- Fine-tuned models may produce inaccurate, harmful or misleading content
-- Model outputs do not represent the views or intentions of real persons
-- Users should conduct manual review and verification of model outputs
-
-### 4. Data Security and Privacy
-- Users should ensure that uploaded chat records and other data comply with relevant laws and regulations
-- Users should obtain **appropriate authorization from data-related persons**
-- This project is not responsible for **data leakage or privacy infringement**
-
-### 5. Legal Compliance
-- **Users should ensure that using this project complies with local laws and regulations**
-- Involving artificial intelligence, data protection, intellectual property and other related laws
-- **Users bear the consequences of illegal use**
-
-### 6. Technical Support Limitations
-- This project is provided "as is" without any express or implied warranties
-- Authors do not promise to provide continuous technical support or maintenance
-- No guarantee of project stability, reliability or applicability
-
-## Usage Recommendations
-
-### Mandatory Bot Identity Identification
-**When using AI clones generated by this project, it is strongly recommended to:**
-- Clearly identify as "AI Bot" or "AI Clone" at the beginning of each conversation
-- Prominently mark "AI-generated content" in the user interface
-- Avoid letting users mistake it for real human conversation, which could cause risks
-
-### Risk Assessment Recommendations
-
-If you must use in production environments, it is recommended to:
-1. Conduct comprehensive security testing
-2. Establish complete content review mechanisms
-3. Develop emergency response plans
-4. Purchase appropriate insurance coverage
-5. Consult legal professionals for advice
-
-
-This disclaimer may be revised with project updates, users should regularly check the latest version. Continuing to use this project indicates agreement with the latest disclaimer terms.
-
-**Once you download, clone, modify, distribute or use the code or models of this project in any way, it indicates that you have fully read, understood and agreed to unconditionally accept all terms of this disclaimer.**
+This disclaimer may be revised as the project evolves.
 
 </details>
-
-**Please carefully read and understand all contents of this disclaimer, ensuring strict compliance with relevant regulations when using this project.**
-<br>  
 
 ## ⭐ Star History
 > [!TIP] 

@@ -8,14 +8,8 @@
 
 ### 架构
 
-第一张图是功能概览，第二张列出各模块、数据流和每一步输出的文件。点击图片可查看大图。
-
-<a href="https://docs.weclone.love/img/architecture/overview-light.webp">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://docs.weclone.love/img/architecture/overview-dark.webp">
-    <img alt="WeClone 功能概览" src="https://docs.weclone.love/img/architecture/overview-light.webp">
-  </picture>
-</a>
+<details>
+<summary>展开架构图：各模块、数据流和每一步输出的文件，点击图片可查看大图</summary>
 
 <a href="https://docs.weclone.love/img/architecture/architecture-light.webp">
   <picture>
@@ -23,6 +17,8 @@
     <img alt="WeClone 架构与实现" src="https://docs.weclone.love/img/architecture/architecture-light.webp">
   </picture>
 </a>
+
+</details>
 
 ### 开发环境
 
@@ -57,14 +53,8 @@ Issues and pull requests are welcome, and so is help reviewing PRs. Please discu
 
 ### Architecture
 
-The first diagram is an overview of the features. The second shows the modules, the data flow and the files each step writes. Click either for the full-size image.
-
-<a href="https://docs.weclone.love/img/architecture/overview-light-en.webp">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://docs.weclone.love/img/architecture/overview-dark-en.webp">
-    <img alt="WeClone feature overview" src="https://docs.weclone.love/img/architecture/overview-light-en.webp">
-  </picture>
-</a>
+<details>
+<summary>Show the architecture diagram: the modules, the data flow and the files each step writes. Click it for the full-size image.</summary>
 
 <a href="https://docs.weclone.love/img/architecture/architecture-light-en.webp">
   <picture>
@@ -72,6 +62,8 @@ The first diagram is an overview of the features. The second shows the modules, 
     <img alt="WeClone architecture and implementation" src="https://docs.weclone.love/img/architecture/architecture-light-en.webp">
   </picture>
 </a>
+
+</details>
 
 ### Development environment
 

@@ -1,4 +1,4 @@
-![download](https://github.com/user-attachments/assets/cd4a87c6-1649-4ce5-bce8-bd5b08b278de)
+![WeClone](https://github.com/user-attachments/assets/cd4a87c6-1649-4ce5-bce8-bd5b08b278de)
 <h3 align="center">绘制你的人生画像，让助理懂你，让分身像你</h3>
 
 
@@ -42,14 +42,21 @@ WeClone 从你的数字生活中提炼身份、目标、偏好与近况，按工
 - 🤖 **Agent 分身**（开发中）：无需训练，由大模型结合画像、记忆与语言风格实时驱动。
 - 🔒 **隐私优先**：默认本地加密存储，每条事实标注隐私级别，导出与授权范围由你决定。
 
+<a href="https://docs.weclone.love/img/architecture/overview-light.webp">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://docs.weclone.love/img/architecture/overview-compact-dark.webp">
+    <img alt="WeClone 功能概览" src="https://docs.weclone.love/img/architecture/overview-compact-light.webp">
+  </picture>
+</a>
+
 > [!NOTE]
 > WeClone 现在不只做微调分身。原有的微调流程完整保留，见[微调分身](docs/zh/finetune.md)。
 
 ## 📰 近期更新
 
-- [26/10] 人生画像：`build-profile` 一条命令完成画像抽取、整理与板块总结，并在网页上逐条审核
-- [26/10] 助手接入：通过 MCP 向 Claude Code、Codex 等助手提供人生画像
-- [26/10] 数据默认加密存储，聊天机器人通过令牌调用分身
+- [26/11/03] 人生画像：`build-profile` 一条命令完成画像抽取、整理与板块总结，并在网页上逐条审核
+- [26/11/03] 助手接入：通过 MCP 向 Claude Code、Codex 等助手提供人生画像
+- [26/11/03] 数据默认加密存储，聊天机器人通过令牌调用分身
 - [25/07/10] 数据源增加 Telegram
 - [25/06/05] 支持图片模态数据微调
 
@@ -119,6 +126,20 @@ weclone-cli server --inference --port 8005   # 启动 OpenAI 兼容接口
 
 详见[数据安全](docs/zh/security.md)。
 
+## 🏗️ 架构
+
+<details>
+<summary>展开架构图：各模块、数据流和每一步输出的文件，点击图片可查看大图</summary>
+
+<a href="https://docs.weclone.love/img/architecture/architecture-light.webp">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://docs.weclone.love/img/architecture/architecture-dark.webp">
+    <img alt="WeClone 架构与实现" src="https://docs.weclone.love/img/architecture/architecture-light.webp">
+  </picture>
+</a>
+
+</details>
+
 ## 📚 文档
 
 | 文档 | 内容 |
@@ -141,7 +162,6 @@ weclone-cli server --inference --port 8005   # 启动 OpenAI 兼容接口
 - [ ] 更丰富的上下文：包括上下文对话、聊天对象信息、时间等
 - [ ] 支持多模态：已支持图片
 - [ ] 数据增强
-- [ ] 支持COT思考
 
 ## 💬 问题解决
 
@@ -153,8 +173,7 @@ weclone-cli server --inference --port 8005   # 启动 OpenAI 兼容接口
 欢迎提交 Issue 和 Pull Request，也欢迎帮助审核 PR。新功能请先通过 Issue 讨论。开发环境、测试和前端构建见[贡献指南](docs/CONTRIBUTING.md)。
 
 ## 🙏 致谢
-BUPT VCIS Lab的支持
-感谢以下代码贡献者和社区里其他成员的贡献
+感谢 BUPT VCIS Lab 的支持，以及以下代码贡献者和社区其他成员的贡献。
 
 <a href="https://github.com/xming521/WeClone/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=xming521/WeClone" />
@@ -163,69 +182,23 @@ BUPT VCIS Lab的支持
 同时本项目受益于[LLaMA-Factory](https://github.com/hiyouga/LLaMA-Factory)、[AstrBot](https://github.com/AstrBotDevs/AstrBot)、[LangBot](https://github.com/RockChinQ/LangBot)等优秀开源项目。
 
 ## ⚠️ 免责声明
-> [!CAUTION]
-> **本项目仅供学习、研究和实验用途，用于生产环境存在较大风险，请谨慎评估。请勿用于非法用途，后果自负。**
-
+> [!IMPORTANT]
+> 本项目主要面向学习与研究。用于生产环境或对外提供服务前，请自行评估风险。
 
 <details>
 <summary>点击查看免责条款</summary>
 
-### 1. 使用风险自担
-- 用户在使用本项目时，应充分理解并承担所有相关风险
-- **本项目作者不对因使用本项目而产生的任何直接或间接损失承担责任**
-- 包括但不限于：数据丢失、经济损失、法律纠纷、个人名誉损害、社会关系影响、心理创伤、职业发展受阻、商业信誉受损等
+- **按现状提供**：本项目不附带任何明示或暗示的保证，作者不对使用本项目造成的直接或间接损失负责，也不承诺持续维护或技术支持。
+- **数据与授权**：聊天记录包含他人的消息。请确保数据的收集和使用符合当地法律法规，并取得相关人员的授权。
+- **大模型抽取画像**：绘制人生画像时，聊天内容（包括对方的消息）会发送给你配置的模型服务，并按该服务的数据政策处理。请选择可信的服务商，了解其数据保留和训练使用条款。不希望发送的聊天，请勿放入数据目录。
+- **画像内容**：画像会汇总和推断与你相关的个人信息，也会涉及你身边的人，可能包含健康、情感等敏感内容。请妥善保管结果目录和导出文件，授权给助理前先审核。
+- **模型输出**：画像、总结和分身的回复均由模型生成，可能不准确，不代表本人或他人的真实观点。
+- **身份标识**：数字分身与他人对话时，建议明确标识为 AI，避免对方误以为在与真人交流。
+- **合法使用**：请勿将本项目用于任何违法用途。
 
-### 2. 生产环境风险警告
-- **用于商业用途或对外提供服务需自行承担全部风险**
-- 生产环境使用可能导致的所有后果（包括但不限于服务中断、数据安全问题、用户投诉、法律责任等）完全由用户承担
-- **建议在生产环境使用前进行充分的测试、验证和风险评估**
-
-### 3. 模型输出不可靠性
-- 微调后的模型可能产生不准确、有害或误导性的内容
-- 模型输出不代表真实人物的观点或意图
-- 用户应对模型输出进行人工审核和验证
-
-### 4. 数据安全与隐私
-- 用户应确保上传的聊天记录等数据符合相关法律法规
-- 用户应获得**数据相关人员的适当授权**
-- 本项目不对**数据泄露或隐私侵犯**承担责任
-
-### 5. 法律合规
-- **用户应确保使用本项目符合当地法律法规**
-- 涉及人工智能、数据保护、知识产权等相关法律
-- **违法使用造成的后果由用户承担**
-
-### 6. 技术支持限制
-- 本项目按"现状"提供，不提供任何明示或暗示的保证
-- 作者不承诺提供持续的技术支持或维护
-- 不保证项目的稳定性、可靠性或适用性
-
-## 使用建议
-
-### 强制性Bot身份标识
-**使用本项目生成的数字分身时，强烈建议：**
-- 在每次对话开始时明确标识为"AI Bot"或"数字分身"
-- 在用户界面显著位置标注"此为AI生成内容"
-- 避免让用户误认为是真实人类在对话，从而造成风险
-
-### 风险评估建议
-
-如确需在生产环境使用，建议：
-1. 进行全面的安全性测试
-2. 建立完善的内容审核机制
-3. 制定应急响应预案
-4. 购买相应的保险保障
-5. 咨询法律专业人士意见
-
-
-本免责声明可能随项目更新而修订，用户应定期查看最新版本。继续使用本项目即表示同意最新的免责声明条款。
-
-**一旦您下载、克隆、修改、分发或以任何方式使用本项目的代码或模型，即表示您已完整阅读、理解并同意无条件接受本免责声明的全部条款。**
+本声明可能随项目更新而修订。
 
 </details>
-
-**请用户慎重阅读并理解本免责声明的所有内容，确保在使用本项目时严格遵守相关规定。**
-<br>  
 
 ## ⭐ Star History
 > [!TIP] 
