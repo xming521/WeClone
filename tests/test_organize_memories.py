@@ -357,6 +357,15 @@ def test_token_budget_splits_classification_even_when_characters_fit():
         )
 
 
+def test_token_budget_classification_accepts_lone_surrogates():
+    rows = [record("a"), record("b", sample="two")]
+    rows[0]["content"] += "\ud800"
+    batches = organize.classification_batches(
+        rows, [[1, 0], [1, 0]], max_records=20, neighbors=8, budget=organize.InputBudget(8192, "o200k_base"),
+    )
+    assert [[row["id"] for row in batch] for batch in batches] == [["a", "b"]]
+
+
 @pytest.mark.parametrize("reduced", [False, True])
 def test_token_budget_splits_summary_and_cross_batch_merge(reduced):
     rows = ([{"attr": "职业", "value": "B从事算法工作。", "source_ids": [rid]} for rid in ("a", "b")]
