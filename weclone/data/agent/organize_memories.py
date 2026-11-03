@@ -429,7 +429,9 @@ def classification_batches(
                     break
                 if budget:
                     if i not in prompt_rows:
-                        text = json.dumps(prompt_record(records[i]), ensure_ascii=False, separators=(",", ":"))
+                        text = json.dumps(
+                            prompt_record(records[i]), ensure_ascii=False, separators=(",", ":")
+                        )
                         prompt_rows[i] = text, len(text.encode())
                     text, size = prompt_rows[i]
                     small = byte_bounded and listed_size + size + 1 <= budget.max_tokens
