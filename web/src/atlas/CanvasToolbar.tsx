@@ -16,6 +16,8 @@ export function CanvasToolbar({ atlasRef }: { atlasRef: RefObject<AtlasControls 
   const toggleLevel = useProfileStore((state) => state.toggleLevel);
   const reset = useProfileStore((state) => state.reset);
   const byDomain = viewModel.grouping === 'domain';
+  // The intro tells the five dimensions apart by colour.
+  const replayShown = nightIntroAllowed() && !byDomain;
   // The map as it shows now, to share: what is expanded, the zoom and the colour scheme.
   async function saveImage() {
     const blob = await atlasRef.current?.snapshot();
@@ -82,12 +84,14 @@ export function CanvasToolbar({ atlasRef }: { atlasRef: RefObject<AtlasControls 
           <ImageDown size={16} strokeWidth={1.8} aria-hidden="true" />
         </IconButton>
         <span className="wc-sep" aria-hidden="true" />
-        <button className="wc-btn" type="button" onClick={() => reset()}>
-          <RotateCcw size={14} strokeWidth={1.8} aria-hidden="true" />
-          {t(($) => $.atlas.toolbar.reset)}
-        </button>
-        {/* The intro tells the five dimensions apart by colour. */}
-        {nightIntroAllowed() && !byDomain && (
+        <IconButton
+          label={t(($) => $.atlas.toolbar.reset)}
+          align={replayShown ? 'start' : 'end'}
+          onClick={() => reset()}
+        >
+          <RotateCcw size={16} strokeWidth={1.8} aria-hidden="true" />
+        </IconButton>
+        {replayShown && (
           // The map starts over as on a first visit, and the intro plays over it.
           <IconButton
             label={t(($) => $.atlas.toolbar.replayIntro)}
