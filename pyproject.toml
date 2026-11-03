@@ -1,6 +1,6 @@
 [project]
 name = "WeClone"
-version = "0.4.01"
+version = "1.0.1"
 description = "Build a portrait of your life. Assistants that know you. Clones that talk like you."
 authors = [{ name = "xming521" }]
 readme = "README.md"
@@ -29,7 +29,7 @@ dependencies = [
 
 [tool.weclone]
 # Configuration file version number. This number should be incremented when the configuration file structure or important default values change.
-config_version = "0.4.01"
+config_version = "1.0.1"
 
 [dependency-groups]
 main = [
