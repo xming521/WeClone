@@ -11,7 +11,7 @@ By default, the service selects the newest timestamped run in `dataset/res_csv/a
 
 The service initializes `profile_review.sqlite3` alongside the selected profile (`.sqlite3.enc` in encrypted mode). Later starts use that database's snapshot and do not re-import the source file. The database stores review statuses, edits, sources, and history; include it in backups. Use `weclone-cli server --run <run-directory>` to serve a different run, including one generated with `build-profile --output-dir`. Its review database is stored in that run's `profile_hierarchy/` directory. The style page shows the same run's `style/` directory.
 
-`weclone-cli server --demo` serves the synthetic test profile `tests/tests_data/profile_hierarchy.demo.json` instead (`--demo en` for `profile_hierarchy.demo.en.json`). It copies the profile into a temporary directory with plaintext storage and a password state of its own, whatever `security_args` say, and removes the directory on exit, so reviews do not carry over between starts. The password is `demo`. Summary generation still uses the model configured in the settings file. `weclone-cli dev --demo` runs the frontend development server against it.
+`weclone-cli server --demo` serves the synthetic test profile `tests/tests_data/profile_hierarchy.demo.json` instead (`--demo en` for `profile_hierarchy.demo.en.json`). It copies the profile into a temporary directory with plaintext storage and a password state of its own, whatever `security_args` say, and removes the directory on exit, so reviews do not carry over between starts. The password is `demo`, which `GET /api/auth/status` returns as `demo_password` for the sign-in page to show. Summary generation still uses the model configured in the settings file. `weclone-cli dev --demo` runs the frontend development server against it.
 
 For frontend development:
 
@@ -30,7 +30,7 @@ Profile cards, hover previews, and change history display the target role label 
 
 The review UI labels these decisions Adopt and Reject; records remain available when they are not adopted. Each fact displays the source confidence and importance means on four-segment scales, and individual evidence entries show their original scores. Missing scores and manually created facts display Unrated. Editing a fact does not recalculate its source scores.
 
-Profiles built with domains (`build-profile` writes a `domains` list) can switch the left panel between grouping by dimension and by domain. The domain view regroups the same facts as domain → topic → attribute, merging a topic's attributes across dimensions; each review card then names its dimension. Review status, edits and export are unchanged, the choice is remembered in the browser, and profiles without domains show only the dimension view.
+The switch at the head of the left panel's list groups the map by dimension or by domain (`build-profile` writes the `domains` list). The domain view regroups the same facts as domain → topic → attribute, merging a topic's attributes across dimensions; each review card then names its dimension. Review status, edits and export are unchanged, and the choice is remembered in the browser.
 
 The detail sidebar separates Overview (counts, review progress, and child navigation) from Review (status filtering and review cards). Selecting a dimension or topic opens the overview; selecting an attribute opens review. Switching tabs retains the selected scope and review filter. The review tab badge counts pending facts within that scope across all statuses.
 

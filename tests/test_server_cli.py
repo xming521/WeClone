@@ -62,9 +62,11 @@ def test_demo_serves_test_profile_apart_from_real_storage(tmp_path, monkeypatch,
     profile = json.loads((app.DEMO_DATA / app.DEMO_PROFILES[language]).read_text())
     with app.demo_run(language) as run:
         assert not secure_storage.is_encrypted_mode()
-        with TestClient(app.create_app(run=run, static_dir=tmp_path / "no-static")) as client:
+        options = {"run": run, "static_dir": tmp_path / "no-static", "demo_password": app.DEMO_PASSWORD}
+        with TestClient(app.create_app(**options)) as client:
             client.headers["X-WeClone-Request"] = "1"
-            assert client.get("/api/auth/status").json()["initialized"]
+            status = client.get("/api/auth/status").json()
+            assert status["initialized"] and status["demo_password"] == app.DEMO_PASSWORD
             assert client.post("/api/auth/login", json={"password": app.DEMO_PASSWORD}).status_code == 200
             assert len(client.get("/api/profile").json()["facts"]) == len(profile["facts"])
             assert client.get("/api/profile/intro").json()["message_total"] == profile["_demo"]["message_total"]

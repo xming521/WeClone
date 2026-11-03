@@ -1,0 +1,621 @@
+/* The review list and what its cards open: filters, batch bar, fact cards, the editor, the source chat.
+   Shapes come from the design system's wc-* classes (ds/components.css); this file only places them. */
+
+/* ── List header: status select, count, privacy chips ─────────────────────────────── */
+.review-list-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.review-list-toolbar > span {
+  color: var(--ink-3);
+  font: var(--text-caption);
+  white-space: nowrap;
+}
+
+/* The select's chevron is a Lucide icon: it follows the design system's open/closed rule for .wc-i. */
+.wc-select > svg:last-child {
+  color: var(--ink-3);
+  transition: transform var(--wc-t2) var(--wc-ease);
+}
+
+.wc-select[aria-expanded='true'] > svg:last-child {
+  transform: rotate(180deg);
+}
+
+.review-filter-menu {
+  z-index: 12;
+}
+
+.wc-menu__item[data-highlighted] {
+  background: var(--sunken);
+  outline: none;
+}
+
+.privacy-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.privacy-filter-title {
+  margin-right: var(--space-1);
+  color: var(--ink-3);
+  font: var(--text-caption);
+}
+
+/* ── Batch bar ─────────────────────────────────────────────────────────────────────── */
+.wc-batch {
+  margin-bottom: var(--space-3);
+}
+
+.load-more {
+  margin-top: var(--space-1);
+}
+
+/* The keys of the review shortcuts, for pointers that come with a keyboard. */
+.review-keys {
+  display: none;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  margin: 0 0 var(--space-3);
+  color: var(--ink-3);
+  font: var(--text-caption);
+}
+
+.review-keys span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.review-keys .wc-kbd {
+  margin: 0;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .review-keys {
+    display: flex;
+  }
+}
+
+/* The card the shortcuts act on. */
+.fact-card[data-marked] {
+  box-shadow: 0 0 0 2px var(--you);
+  scroll-margin: var(--space-4);
+}
+
+/* ── Fact card (wc-memory) ─────────────────────────────────────────────────────────── */
+.fact-card {
+  margin-bottom: var(--space-3);
+}
+
+.fact-card .wc-memory__head .wc-check {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.fact-card .wc-memory__head > :not(.wc-check) {
+  flex: none;
+}
+
+.fact-meta {
+  display: block;
+  margin-bottom: var(--space-1);
+  color: var(--ink-3);
+  font: var(--text-caption);
+}
+
+.wc-tags .tag-more::before {
+  content: none;
+}
+
+/* The two scores share a row while both fit; a longer label (English) puts them on rows of their own. */
+.wc-memory__scores {
+  display: flex;
+  flex-wrap: wrap;
+  row-gap: var(--space-2);
+}
+
+.wc-memory__scores .wc-score {
+  flex: 1 1 auto;
+  min-width: max-content;
+}
+
+.wc-memory__scores .score-support {
+  flex: 1 0 100%;
+  margin-top: calc(var(--space-1) * -1);
+  color: var(--ink-3);
+  font: var(--text-caption);
+  text-align: right;
+}
+
+/* The design system drops the score icons of a narrow card; its rule targets .wc-i, the icons here are Lucide svgs. */
+@container (max-width: 308px) {
+  .wc-memory__scores .wc-score__label > svg {
+    display: none;
+  }
+}
+
+.wc-memory__actions {
+  flex-wrap: wrap;
+}
+
+/* The evidence row is a <summary>: the card keeps its "查看原文" side panel, so the row opens the list of sources. */
+.evidence-details > summary {
+  list-style: none;
+}
+
+.evidence-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.wc-memory__evidence > svg {
+  flex: none;
+  color: var(--ink-3);
+}
+
+.evidence-label {
+  flex: 1;
+  min-width: 0;
+  line-height: 18px;
+}
+
+.wc-memory__evidence time {
+  flex: none;
+  margin-left: 0;
+}
+
+.evidence-chevron {
+  transition: transform var(--wc-t2) var(--wc-ease);
+}
+
+.evidence-details[open] .evidence-chevron {
+  transform: rotate(90deg);
+}
+
+.evidence-items {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.evidence-item {
+  padding: 10px var(--space-3);
+  border-radius: var(--radius-control);
+  background: var(--well);
+}
+
+.evidence-item > strong {
+  color: var(--ink-1);
+  font: var(--text-label);
+  font-weight: 600;
+}
+
+.evidence-item > p {
+  margin: var(--space-1) 0 0;
+  color: var(--ink-2);
+  font: var(--text-label);
+  font-weight: 400;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.evidence-source-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.evidence-source-header > span {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--ink-2);
+  font: var(--text-caption);
+  font-weight: 500;
+}
+
+.view-source-chat[aria-pressed='true'] {
+  border-color: var(--you-line);
+  background: var(--you-tint);
+  color: var(--you-ink);
+}
+
+.evidence-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-1) 0 var(--space-2);
+}
+
+.evidence-time {
+  color: var(--ink-3);
+  font: var(--text-meta);
+}
+
+.evidence-item > .wc-tags {
+  margin-top: var(--space-2);
+}
+
+.source-scores {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  margin-top: var(--space-2);
+}
+
+/* ── Edit history ──────────────────────────────────────────────────────────────────── */
+.fact-history {
+  margin-top: var(--space-1);
+  color: var(--ink-3);
+  font: var(--text-caption);
+}
+
+.fact-history > button {
+  margin-left: calc(var(--space-3) * -1 + 2px);
+}
+
+.history-rows {
+  margin-top: var(--space-1);
+}
+
+.history-row {
+  padding: var(--space-2) 0;
+  border-top: 1px solid var(--line-1);
+}
+
+.history-row time {
+  color: var(--ink-3);
+  font: var(--text-meta);
+}
+
+.history-row p {
+  margin: var(--space-1) 0 0;
+  color: var(--ink-2);
+  font: var(--text-caption);
+  overflow-wrap: anywhere;
+}
+
+/* ── Editor dialog ─────────────────────────────────────────────────────────────────── */
+.editor-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  width: 100vw;
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  margin: 0;
+  padding: var(--space-5);
+  border: 0;
+  background: color-mix(in srgb, var(--ink-1) 32%, transparent);
+  backdrop-filter: blur(5px);
+  color: inherit;
+}
+
+.editor-backdrop:not([open]) {
+  display: none;
+}
+
+.fact-editor {
+  width: min(580px, 100%);
+  max-height: 90dvh;
+  overflow: auto;
+  padding: var(--space-6);
+  border: 1px solid var(--line-1);
+  border-radius: var(--radius-sheet);
+  background: var(--card);
+  box-shadow: var(--shadow-3);
+}
+
+.fact-editor h2 {
+  margin: 0 0 var(--space-5);
+  color: var(--ink-1);
+  font: var(--text-title);
+}
+
+.fact-editor > .wc-field {
+  margin: var(--space-4) 0;
+}
+
+/* Select and textarea join the text field: the same line-3 box, only the inner control differs. */
+.fact-editor .wc-input select,
+.fact-editor .wc-input textarea {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ink-1);
+  font: 400 14px/1 var(--font-sans);
+  letter-spacing: 0.02em;
+}
+
+.fact-editor .wc-input select {
+  height: 100%;
+  appearance: none;
+  cursor: pointer;
+  text-overflow: ellipsis;
+}
+
+.fact-editor .wc-input > svg {
+  flex: none;
+  margin-right: var(--space-2);
+  color: var(--ink-3);
+  pointer-events: none;
+}
+
+.fact-editor .wc-input--area {
+  height: auto;
+  padding: 10px var(--space-3);
+}
+
+.fact-editor .wc-input textarea {
+  font: var(--text-body);
+  letter-spacing: normal;
+  resize: vertical;
+}
+
+.fact-editor .wc-input:has(:disabled) {
+  background: var(--sunken);
+}
+
+.fact-editor details {
+  margin: var(--space-4) 0;
+  color: var(--ink-2);
+  font: var(--text-caption);
+}
+
+.fact-editor summary {
+  cursor: pointer;
+}
+
+.fact-editor details p {
+  margin: var(--space-2) 0 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-control);
+  background: var(--well);
+  overflow-wrap: anywhere;
+}
+
+.editor-hint {
+  margin: var(--space-4) 0 0;
+  color: var(--ink-3);
+  font: var(--text-caption);
+}
+
+.editor-hint .wc-clone {
+  margin-left: var(--space-1);
+}
+
+.editor-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-5);
+}
+
+.editor-error,
+.review-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-control);
+  background: var(--danger-tint);
+  color: var(--danger);
+  font: var(--text-caption);
+}
+
+.editor-error {
+  margin: var(--space-3) 0;
+}
+
+.review-error {
+  position: absolute;
+  bottom: 70px;
+  left: 50%;
+  z-index: 20;
+  max-width: 90vw;
+  transform: translateX(-50%);
+  box-shadow: var(--shadow-2);
+}
+
+@media (max-width: 650px) {
+  .fact-editor {
+    padding: var(--space-4);
+  }
+}
+
+/* ── Source chat side panel ────────────────────────────────────────────────────────── */
+.source-chat-panel {
+  position: absolute;
+  z-index: 15;
+  right: calc(var(--detail-panel-width) + 16px);
+  top: 18px;
+  bottom: 18px;
+  display: flex;
+  flex-direction: column;
+  width: min(440px, calc(100% - var(--detail-panel-width) - 36px));
+  overflow: hidden;
+  border: 1px solid var(--line-1);
+  border-radius: var(--radius-card);
+  background: var(--card);
+  box-shadow: var(--shadow-2);
+  color: var(--ink-1);
+}
+
+.source-chat-header {
+  flex: none;
+}
+
+.source-chat-header h2 {
+  flex: none;
+  margin: 0;
+}
+
+.source-chat-header p {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: var(--ink-3);
+  font: var(--text-caption);
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.source-chat-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--space-5) var(--space-5) var(--space-6);
+  background: var(--well);
+}
+
+.source-chat-date {
+  margin-bottom: var(--space-5);
+  color: var(--ink-3);
+  font: var(--text-meta);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.source-chat-message {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+.source-chat-message.mine {
+  flex-direction: row-reverse;
+}
+
+.source-chat-avatar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: var(--control-sm);
+  height: var(--control-sm);
+  border-radius: var(--radius-pill);
+  background: var(--sunken);
+  color: var(--ink-2);
+  font: var(--text-caption);
+}
+
+.mine .source-chat-avatar {
+  background: var(--you-tint);
+  color: var(--you-ink);
+}
+
+.source-chat-message-main {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  max-width: calc(100% - var(--control-sm) - var(--space-2) * 2);
+  min-width: 0;
+}
+
+.mine .source-chat-message-main {
+  align-items: flex-end;
+}
+
+.source-chat-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-2);
+  margin-bottom: var(--space-1);
+  color: var(--ink-3);
+  overflow-wrap: anywhere;
+}
+
+.source-chat-meta > span {
+  color: var(--ink-2);
+  font: var(--text-caption);
+  font-weight: 500;
+}
+
+.source-chat-meta > time {
+  font: var(--text-meta);
+}
+
+.mine .source-chat-meta {
+  justify-content: flex-end;
+}
+
+.source-chat-bubble {
+  max-width: 100%;
+  white-space: pre-wrap;
+}
+
+.source-chat-footer {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-5);
+  border-top: 1px solid var(--line-1);
+  background: var(--card);
+  color: var(--ink-3);
+  font: var(--text-caption);
+}
+
+.source-chat-footer > span:last-child {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.source-chat-notice {
+  margin: 0;
+  padding: var(--space-5) 0;
+  color: var(--ink-3);
+  font: var(--text-body);
+}
+
+@media (max-width: 900px) {
+  .source-chat-panel {
+    right: 14px;
+    top: 14px;
+    bottom: 14px;
+    width: min(440px, calc(100% - 28px));
+  }
+}
+
+@media (max-width: 650px) {
+  .source-chat-panel {
+    left: 7px;
+    right: 7px;
+    top: 12px;
+    bottom: 8px;
+    width: auto;
+  }
+
+  .source-chat-body {
+    padding: var(--space-4);
+  }
+}
+
+@media (pointer: coarse) {
+  .view-source-chat,
+  .source-chat-header .wc-iconbtn {
+    min-width: var(--touch);
+    min-height: var(--touch);
+  }
+}

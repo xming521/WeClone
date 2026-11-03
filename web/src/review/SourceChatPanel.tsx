@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { LockKeyhole, MessagesSquare, X } from 'lucide-react';
+import { Eye, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../api';
 import type { ChatSelection, SourceChat } from '../data';
@@ -44,19 +44,22 @@ export function SourceChatPanel({ selection, onClose }: { selection: ChatSelecti
   const peer = data?.chat_with || t(($) => $.chat.peer);
   return (
     <aside className="source-chat-panel" role="dialog" aria-modal="false" aria-labelledby="source-chat-title">
-      <header className="source-chat-header">
-        <div>
-          <h2 id="source-chat-title">
-            <MessagesSquare size={19} aria-hidden="true" />
-            {t(($) => $.chat.title)}
-          </h2>
-          <p>
-            {selection.label}
-            {data && <> · {peer}</>}
-          </p>
-        </div>
-        <button type="button" ref={closeRef} onClick={onClose} aria-label={t(($) => $.chat.close)}>
-          <X size={18} />
+      <header className="source-chat-header wc-panelhead">
+        <h2 id="source-chat-title" className="wc-kicker">
+          {t(($) => $.chat.title)}
+        </h2>
+        <p>
+          {selection.label}
+          {data && <> · {peer}</>}
+        </p>
+        <button
+          type="button"
+          className="wc-iconbtn wc-iconbtn--sm"
+          ref={closeRef}
+          onClick={onClose}
+          aria-label={t(($) => $.chat.close)}
+        >
+          <X size={16} strokeWidth={1.8} aria-hidden="true" />
         </button>
       </header>
       <div className="source-chat-body" ref={bodyRef} aria-busy={!current}>
@@ -68,7 +71,7 @@ export function SourceChatPanel({ selection, onClose }: { selection: ChatSelecti
         {current?.error && (
           <div className="source-chat-notice" role="alert">
             <p>{current.error}</p>
-            <button type="button" onClick={() => setRetry((value) => value + 1)}>
+            <button type="button" className="wc-btn wc-btn--sm" onClick={() => setRetry((value) => value + 1)}>
               {t(($) => $.common.retry)}
             </button>
           </div>
@@ -88,7 +91,12 @@ export function SourceChatPanel({ selection, onClose }: { selection: ChatSelecti
                     <span>{message.role === 'assistant' ? t(($) => $.chat.self) : peer}</span>
                     {message.time && <time>{message.time.replace('T', ' ')}</time>}
                   </div>
-                  <div className="source-chat-bubble">{message.content}</div>
+                  <div
+                    className="wc-bubble source-chat-bubble"
+                    data-from={message.role === 'assistant' ? 'you' : 'other'}
+                  >
+                    {message.content}
+                  </div>
                 </div>
               </div>
             ))}
@@ -98,7 +106,7 @@ export function SourceChatPanel({ selection, onClose }: { selection: ChatSelecti
       <footer className="source-chat-footer">
         <span>{data ? t(($) => $.chat.messages, { count: data.messages.length }) : t(($) => $.chat.footer)}</span>
         <span>
-          <LockKeyhole size={12} aria-hidden="true" />
+          <Eye size={13} strokeWidth={1.8} aria-hidden="true" />
           {t(($) => $.chat.readOnly)}
         </span>
       </footer>

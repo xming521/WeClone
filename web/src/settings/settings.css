@@ -1,0 +1,224 @@
+/* Settings and about pages: the summary page's shell and the assistant page's cards, with rows of a label and its
+   control, and link cards. */
+.settings-section h2 {
+  margin: 0 0 var(--space-2);
+  color: var(--ink-1);
+  font: var(--text-subtitle);
+}
+
+.settings-row,
+.settings-password {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2) var(--space-5);
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--line-1);
+}
+
+.settings-section h2 + .settings-row {
+  border-top: 0;
+}
+
+.settings-row__text {
+  display: grid;
+  gap: 2px;
+  flex: 1 1 260px;
+  min-width: 0;
+}
+
+.settings-row__label {
+  color: var(--ink-1);
+  font: var(--text-label);
+  font-weight: 600;
+}
+
+.settings-row__hint {
+  color: var(--ink-3);
+  font: var(--text-caption);
+}
+
+.settings-row__control {
+  flex: none;
+  max-width: 100%;
+}
+
+.settings-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.settings-chips .wc-phase {
+  color: var(--pc);
+}
+
+.settings-password {
+  align-items: stretch;
+  flex-direction: column;
+}
+
+.settings-password .settings-row__text {
+  flex: none;
+}
+
+.settings-password__fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+  width: 100%;
+}
+
+.settings-facts {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.settings-facts > div {
+  display: grid;
+  grid-template-columns: 9em minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+.settings-facts dt {
+  color: var(--ink-3);
+  font: var(--text-caption);
+  line-height: 22px;
+}
+
+.settings-facts dd {
+  margin: 0;
+  color: var(--ink-1);
+  font: var(--text-label);
+  overflow-wrap: anywhere;
+}
+
+/* Link cards: the about link on the settings page and the project and community links on the about page. */
+.settings-about-link,
+.about-link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--ink-2);
+  text-decoration: none;
+  transition:
+    border-color var(--wc-t1) var(--wc-ease),
+    background-color var(--wc-t1) var(--wc-ease);
+}
+
+.settings-about-link:hover,
+.about-link:hover {
+  border-color: var(--you-line);
+}
+
+.settings-about-link > span,
+.about-link > span {
+  display: grid;
+  flex: 1;
+  gap: 2px;
+  min-width: 0;
+}
+
+.settings-about-link strong,
+.about-link strong {
+  color: var(--ink-1);
+  font: var(--text-label);
+  font-weight: 600;
+}
+
+.settings-about-link > span > span,
+.about-link > span > span {
+  color: var(--ink-3);
+  font: var(--text-caption);
+  overflow-wrap: anywhere;
+}
+
+.settings-about-link:focus-visible,
+.about-link:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.about-hero {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  margin-bottom: var(--space-6);
+}
+
+.about-hero .about-mark {
+  flex: none;
+  width: 92px;
+  height: 66px;
+}
+
+.about-hero h1 {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-1);
+  color: var(--ink-1);
+  font: 600 28px/36px var(--font-brand);
+}
+
+.about-version {
+  color: var(--ink-3);
+  font: var(--text-meta);
+}
+
+.about-hero p {
+  max-width: 640px;
+  margin: 0;
+  color: var(--ink-2);
+  font: var(--text-body);
+}
+
+.about-hero p.summary-hint {
+  margin-top: var(--space-2);
+  color: var(--ink-3);
+}
+
+.about-heading {
+  margin: var(--space-6) 0 var(--space-3);
+  color: var(--ink-1);
+  font: var(--text-subtitle);
+}
+
+.about-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.about-link {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--line-1);
+  border-radius: var(--radius-card);
+  background: var(--card);
+  box-shadow: var(--shadow-1);
+}
+
+.about-credits a + a,
+.about-credits span {
+  white-space: nowrap;
+}
+
+@media (max-width: 650px) {
+  .settings-password__fields,
+  .about-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .settings-facts > div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+
+  .about-hero {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+}

@@ -1,9 +1,11 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import { LogOut } from 'lucide-react';
+import { LockOpen, LogOut } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { api } from './api';
+import { BrandMark } from './BrandMark';
 import { LanguageSwitch } from './LanguageSwitch';
+import { formatDuration } from './settings/duration';
 import { useProfileStore } from './store';
 
 const AuthContext = createContext<() => Promise<void>>(async () => {});
@@ -14,12 +16,12 @@ export function LogoutButton() {
   return (
     <button
       type="button"
-      className="logout-button"
+      className="wc-iconbtn wc-iconbtn--outline"
       onClick={() => void logout()}
       title={t(($) => $.auth.logout)}
       aria-label={t(($) => $.auth.logout)}
     >
-      <LogOut size={17} />
+      <LogOut size={16} strokeWidth={1.8} />
     </button>
   );
 }
@@ -30,6 +32,8 @@ export function AuthGate({ children }: { children: ReactNode }) {
   const [checking, setChecking] = useState(true);
   const [initialized, setInitialized] = useState<boolean | null>(null);
   const [mode, setMode] = useState<'encrypted' | 'plaintext'>('plaintext');
+  const [demoPassword, setDemoPassword] = useState<string | null>(null);
+  const [sessionSeconds, setSessionSeconds] = useState(2 * 3600);
   const [password, setPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
   const [busy, setBusy] = useState(false);
@@ -51,12 +55,19 @@ export function AuthGate({ children }: { children: ReactNode }) {
     async function check() {
       try {
         const [status, session] = await Promise.all([
-          api.get<{ initialized: boolean; storage_mode: 'encrypted' | 'plaintext' }>('auth/status'),
+          api.get<{
+            initialized: boolean;
+            storage_mode: 'encrypted' | 'plaintext';
+            demo_password: string | null;
+            session_seconds: number;
+          }>('auth/status'),
           api.get<{ expires_at: number | null }>('auth/session'),
         ]);
         if (active) {
           setInitialized(status.initialized);
           setMode(status.storage_mode);
+          setDemoPassword(status.demo_password);
+          setSessionSeconds(status.session_seconds);
           if (session.expires_at === null || session.expires_at * 1000 <= Date.now()) clear();
           else setExpires(session.expires_at);
           setError('');
@@ -101,7 +112,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
   if (checking)
     return (
       <div className="load-state">
-        <span className="loading-mark">✳</span>
+        <BrandMark className="loading-mark" />
         <h1>{t(($) => $.auth.checking)}</h1>
       </div>
     );
@@ -117,11 +128,15 @@ export function AuthGate({ children }: { children: ReactNode }) {
       </AuthContext.Provider>
     );
   const setup = initialized === false;
+  // The error lands on the last field, like the DS: its outline turns danger and the hint names the problem.
+  const errorId = 'auth-error';
+  const lastField = setup ? 'confirm' : 'password';
   return (
     <main className="auth-page">
       <LanguageSwitch />
       <form
-        className="auth-card"
+        className="wc-login"
+        aria-labelledby="auth-title"
         onSubmit={async (event) => {
           event.preventDefault();
           if (setup && password !== confirmation) {
@@ -146,52 +161,81 @@ export function AuthGate({ children }: { children: ReactNode }) {
           }
         }}
       >
-        <span className="brand-symbol">✳</span>
-        <p className="auth-brand">WeClone</p>
-        <h1>{setup ? t(($) => $.auth.setupTitle) : t(($) => $.auth.loginTitle)}</h1>
-        <p>
+        <BrandMark className="auth-mark" />
+        <h1 id="auth-title" className="auth-title">
+          {setup ? t(($) => $.auth.setupTitle) : t(($) => $.auth.loginTitle)}
+        </h1>
+        <p className="auth-hint">
           {setup
             ? mode === 'encrypted'
               ? t(($) => $.auth.setupEncrypted)
               : t(($) => $.auth.setupPlaintext)
-            : t(($) => $.auth.loginHint)}
+            : demoPassword
+              ? t(($) => $.auth.demoHint, { password: demoPassword })
+              : t(($) => $.auth.loginHint)}
         </p>
-        <label htmlFor="access-password">{setup ? t(($) => $.auth.newPassword) : t(($) => $.auth.password)}</label>
-        <input
-          id="access-password"
-          name="password"
-          type="password"
-          autoComplete={setup ? 'new-password' : 'current-password'}
-          required
-          autoFocus
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          disabled={busy || initialized === null}
-        />
-        {setup && (
-          <>
-            <label htmlFor="confirm-password">{t(($) => $.auth.confirmPassword)}</label>
+        <div className="wc-field">
+          <label className="wc-field__label" htmlFor="access-password">
+            {setup ? t(($) => $.auth.newPassword) : t(($) => $.auth.password)}
+          </label>
+          <div className="wc-input" aria-invalid={error && lastField === 'password' ? true : undefined}>
             <input
-              id="confirm-password"
-              name="confirmation"
+              id="access-password"
+              name="password"
               type="password"
-              autoComplete="new-password"
+              autoComplete={setup ? 'new-password' : 'current-password'}
               required
-              value={confirmation}
-              onChange={(event) => setConfirmation(event.target.value)}
-              disabled={busy}
+              autoFocus
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              disabled={busy || initialized === null}
+              aria-describedby={error && lastField === 'password' ? errorId : undefined}
             />
-          </>
+          </div>
+          {error && lastField === 'password' && (
+            <p className="wc-field__hint" data-tone="danger" id={errorId} role="alert">
+              {error}
+            </p>
+          )}
+        </div>
+        {setup && (
+          <div className="wc-field auth-next-field">
+            <label className="wc-field__label" htmlFor="confirm-password">
+              {t(($) => $.auth.confirmPassword)}
+            </label>
+            <div className="wc-input" aria-invalid={error && lastField === 'confirm' ? true : undefined}>
+              <input
+                id="confirm-password"
+                name="confirmation"
+                type="password"
+                autoComplete="new-password"
+                required
+                value={confirmation}
+                onChange={(event) => setConfirmation(event.target.value)}
+                disabled={busy}
+                aria-describedby={error && lastField === 'confirm' ? errorId : undefined}
+              />
+            </div>
+            {error && lastField === 'confirm' && (
+              <p className="wc-field__hint" data-tone="danger" id={errorId} role="alert">
+                {error}
+              </p>
+            )}
+          </div>
         )}
-        {error && (
-          <p className="auth-error" role="alert">
-            {error}
-          </p>
-        )}
-        <button type="submit" disabled={busy || initialized === null || !password || (setup && !confirmation)}>
+        <button
+          className="wc-btn wc-btn--primary wc-btn--lg wc-btn--block auth-submit"
+          type="submit"
+          disabled={busy || initialized === null || !password || (setup && !confirmation)}
+        >
+          <LockOpen size={16} strokeWidth={1.8} />
           {busy ? t(($) => $.auth.verifying) : setup ? t(($) => $.auth.setupSubmit) : t(($) => $.auth.loginSubmit)}
         </button>
-        <small>{t(($) => $.auth.sessionNote)}</small>
+        <p className="auth-note">{t(($) => $.auth.sessionNote, { duration: formatDuration(sessionSeconds) })}</p>
+        <footer className="auth-foot">
+          <b className="auth-wordmark">WeClone</b>
+          <span className="wc-serial">PROFILE ATLAS</span>
+        </footer>
       </form>
     </main>
   );

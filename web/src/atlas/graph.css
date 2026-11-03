@@ -1,0 +1,70 @@
+/* The ground (晕染), the design system's `.wc-ground`: `paper` with three soft washes and a dot grid
+   that is dense in the middle and fades out. App.tsx and the loading screen draw it themselves, so
+   the same layers are written out here for `.canvas-atmosphere` and `.load-state`. */
+.canvas-atmosphere,
+.load-state::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(ellipse at 23% 24%, var(--ground-wash-1), transparent 42%),
+    radial-gradient(ellipse at 78% 72%, var(--ground-wash-2), transparent 39%),
+    radial-gradient(ellipse at 66% 18%, var(--ground-wash-3), transparent 31%), var(--paper);
+}
+
+.canvas-atmosphere::after,
+.load-state::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.23;
+  background-image: radial-gradient(var(--ground-dot) 0.7px, transparent 0.7px);
+  background-size: 23px 23px;
+  mask-image: radial-gradient(ellipse at center, rgb(0 0 0 / 0.53), transparent 80%);
+  pointer-events: none;
+}
+
+.graph-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.graph-canvas canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  outline: none;
+  touch-action: none;
+}
+
+/* Each dimension's wash (the `.wash` layer), drawn at a quarter of the size and multiplied onto the paper under the map. */
+.graph-wash {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  mix-blend-mode: multiply;
+}
+
+/* On the night paper multiplying would darken it to nothing: the wash lightens it instead. */
+[data-theme='dark'] .graph-wash {
+  mix-blend-mode: screen;
+}
+
+.graph-entrance {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.graph-entrance canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}

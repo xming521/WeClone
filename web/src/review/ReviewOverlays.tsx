@@ -17,7 +17,7 @@ export function ReviewOverlays() {
       {error && !editing && (
         <div className="review-error" role="alert">
           {error}
-          <button disabled={busy} onClick={() => void reload()}>
+          <button type="button" className="wc-btn wc-btn--sm" disabled={busy} onClick={() => void reload()}>
             {t(($) => $.review.refresh)}
           </button>
         </div>

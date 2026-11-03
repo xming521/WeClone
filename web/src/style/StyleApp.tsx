@@ -1,14 +1,16 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { LucideIcon } from 'lucide-react';
-import { Keyboard, MessagesSquare, Smile, Type } from 'lucide-react';
+import { Info, Keyboard, MessagesSquare, Smile, Type } from 'lucide-react';
 import { Trans, useTranslation } from 'react-i18next';
 import { api } from '../api';
 import { LogoutButton } from '../Auth';
+import { AppBrand, BrandMark } from '../BrandMark';
 import { LanguageSwitch } from '../LanguageSwitch';
+import { SettingsLink } from '../settings/SettingsLink';
 import { ModeSwitch } from '../ModeSwitch';
 import { BubbleField } from './BubbleField';
 import { TraitDetail } from './TraitDetail';
-import { MIN_RATE, TIERS, TRAIT_GROUPS, selectTraits, type TraitGroupId } from './traits';
+import { MIN_RATE, TIERS, TRAIT_GROUPS, groupVars, selectTraits, type TraitGroupId } from './traits';
 import type { StyleInput } from './types';
 import './styleView.css';
 
@@ -54,10 +56,10 @@ export function StyleApp() {
   if (error)
     return (
       <div className="load-state">
-        <span>✳</span>
+        <BrandMark />
         <h1>{t(($) => $.style.loadFailed)}</h1>
         <p>{error}</p>
-        <a className="style-back" href="#/">
+        <a className="wc-btn wc-btn--primary" href="#/">
           {t(($) => $.style.back)}
         </a>
       </div>
@@ -65,7 +67,7 @@ export function StyleApp() {
   if (!data)
     return (
       <div className="load-state">
-        <span className="loading-mark">✳</span>
+        <BrandMark className="loading-mark" />
         <h1>{t(($) => $.style.loading)}</h1>
       </div>
     );
@@ -77,18 +79,12 @@ export function StyleApp() {
 
   return (
     <div className={`app-shell left-open style-shell${trait ? ' detail-open' : ''}`}>
+      <AppBrand />
       <aside className="left-panel">
-        <div className="brand-row">
-          <span className="brand-symbol">✳</span>
-          <span>
-            WeClone<span className="brand-separator">/</span>Style
-          </span>
-        </div>
+        <div className="left-panel__head" />
         <div className="intro-block">
-          <div className="eyebrow">
-            <span className="eyebrow-line" /> {t(($) => $.style.eyebrow)}
-          </div>
-          <h1>
+          <div className="wc-eyebrow eyebrow">{t(($) => $.style.eyebrow)}</div>
+          <h1 className="wc-hero">
             <Trans i18nKey={($) => $.style.tagline} components={{ br: <br />, em: <em /> }} />
           </h1>
           {traits.length > 0 && (
@@ -102,8 +98,8 @@ export function StyleApp() {
             </p>
           )}
         </div>
-        <div className="nav-heading">{t(($) => $.style.groupsTitle)}</div>
-        <nav className="dimension-list" aria-label={t(($) => $.style.groupsTitle)}>
+        <div className="style-groups-title">{t(($) => $.style.groupsTitle)}</div>
+        <nav className="wc-dims" aria-label={t(($) => $.style.groupsTitle)}>
           {TRAIT_GROUPS.map((group) => {
             const Icon = GROUP_ICONS[group.id];
             const count = traits.filter((entry) => entry.group === group.id).length;
@@ -111,14 +107,16 @@ export function StyleApp() {
               <button
                 key={group.id}
                 type="button"
-                className={`dimension-item ${focus === group.id ? 'active' : ''}`}
+                className="wc-dim"
+                aria-current={focus === group.id ? 'true' : undefined}
+                data-sec=""
                 onClick={() => setFocus(focus === group.id ? null : group.id)}
-                style={{ '--dimension-color': group.color } as CSSProperties}
+                style={groupVars(group.id)}
               >
-                <span className="dimension-icon">
-                  <Icon size={19} strokeWidth={1.7} />
+                <span className="wc-disc" aria-hidden="true">
+                  <Icon size={17} strokeWidth={1.8} />
                 </span>
-                <span className="dimension-copy">
+                <span className="wc-dim__copy">
                   <strong>{t(($) => $.style.groups[group.id].name)}</strong>
                   <small>
                     {t(($) => $.style.groupCount, { count, hint: t(($) => $.style.groups[group.id].hint) })}
@@ -130,7 +128,6 @@ export function StyleApp() {
         </nav>
         <div className="left-bottom">
           <div className="data-footnote">
-            <span className="live-dot" />{' '}
             {t(($) => $.style.footnote, {
               start: start?.slice(0, 7) ?? '',
               end: end?.slice(0, 7) ?? '',
@@ -152,6 +149,7 @@ export function StyleApp() {
           </div>
           <div className="topbar-actions">
             <LanguageSwitch />
+            <SettingsLink />
             <LogoutButton />
           </div>
         </div>
@@ -160,14 +158,19 @@ export function StyleApp() {
         ) : (
           <div className="graph-empty">{t(($) => $.style.empty)}</div>
         )}
-        <div className="canvas-help bubble-legend">
-          {TIERS.map((tier) => (
-            <span key={tier.id}>
-              <i className={`legend-swatch tier-${tier.id}`} />
-              {t(($) => $.style.tiers[tier.id])}
-            </span>
-          ))}
-          <span className="legend-note">{t(($) => $.style.legend, { every: Math.round(1 / MIN_RATE) })}</span>
+        <div className="bubble-legend">
+          <ul className="wc-legend">
+            {TIERS.map((tier) => (
+              <li key={tier.id}>
+                <i className={`legend-swatch tier-${tier.id}`} aria-hidden="true" />
+                {t(($) => $.style.tiers[tier.id])}
+              </li>
+            ))}
+          </ul>
+          <p className="wc-hint">
+            <Info size={15} strokeWidth={1.8} aria-hidden="true" />
+            <span>{t(($) => $.style.legend, { every: Math.round(1 / MIN_RATE) })}</span>
+          </p>
         </div>
       </main>
 

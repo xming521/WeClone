@@ -1,5 +1,6 @@
+import { ChevronDown } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import { isDimensionId } from '../data';
 import { useProfileStore } from '../store';
 import type { EditTarget, FactDraft } from '../store';
@@ -80,40 +81,47 @@ function FactEditorDialog({ editing }: { editing: EditTarget }) {
         }}
       >
         <h2 id={titleId}>{editing.fact ? t(($) => $.editor.editTitle) : t(($) => $.editor.addTitle)}</h2>
-        <label>
-          {t(($) => $.editor.attr)}
-          <input
-            disabled={busy}
-            autoFocus
-            required
-            value={draft.attr}
-            onChange={(event) => setDraft({ ...draft, attr: event.target.value })}
-          />
+        <label className="wc-field">
+          <span className="wc-field__label">{t(($) => $.editor.attr)}</span>
+          <span className="wc-input">
+            <input
+              disabled={busy}
+              autoFocus
+              required
+              value={draft.attr}
+              onChange={(event) => setDraft({ ...draft, attr: event.target.value })}
+            />
+          </span>
         </label>
-        <label>
-          {t(($) => $.editor.location)}
-          <select
-            disabled={busy}
-            required
-            value={draft.group_id}
-            onChange={(event) => setDraft({ ...draft, group_id: event.target.value })}
-          >
-            {input.locations.map((item) => (
-              <option value={item.id} key={item.id}>
-                {locationName(item.id)}
-              </option>
-            ))}
-          </select>
+        <label className="wc-field">
+          <span className="wc-field__label">{t(($) => $.editor.location)}</span>
+          <span className="wc-input">
+            <select
+              disabled={busy}
+              required
+              value={draft.group_id}
+              onChange={(event) => setDraft({ ...draft, group_id: event.target.value })}
+            >
+              {input.locations.map((item) => (
+                <option value={item.id} key={item.id}>
+                  {locationName(item.id)}
+                </option>
+              ))}
+            </select>
+            <ChevronDown size={14} strokeWidth={1.8} aria-hidden="true" />
+          </span>
         </label>
-        <label>
-          {t(($) => $.editor.value)}
-          <textarea
-            disabled={busy}
-            required
-            rows={5}
-            value={draft.value}
-            onChange={(event) => setDraft({ ...draft, value: event.target.value })}
-          />
+        <label className="wc-field">
+          <span className="wc-field__label">{t(($) => $.editor.value)}</span>
+          <span className="wc-input wc-input--area">
+            <textarea
+              disabled={busy}
+              required
+              rows={5}
+              value={draft.value}
+              onChange={(event) => setDraft({ ...draft, value: event.target.value })}
+            />
+          </span>
         </label>
         {editing.fact && (
           <details>
@@ -123,12 +131,15 @@ function FactEditorDialog({ editing }: { editing: EditTarget }) {
             </p>
           </details>
         )}
-        <p className="editor-hint">{t(($) => $.editor.hint)}</p>
+        <p className="editor-hint">
+          <Trans i18nKey={($) => $.editor.hint} components={{ clone: <span className="wc-clone" /> }} />
+        </p>
         {error && (
           <div className="editor-error" role="alert">
             {error}
             <button
               type="button"
+              className="wc-btn wc-btn--sm"
               disabled={busy}
               onClick={async () => {
                 if (!window.confirm(t(($) => $.editor.reloadConfirm))) return;
@@ -150,12 +161,14 @@ function FactEditorDialog({ editing }: { editing: EditTarget }) {
           </div>
         )}
         <div className="editor-actions">
-          <button type="button" disabled={busy} onClick={close}>
+          <button type="button" className="wc-btn" disabled={busy} onClick={close}>
             {t(($) => $.common.cancel)}
           </button>
-          <button disabled={busy}>{t(($) => $.common.save)}</button>
+          <button className="wc-btn" disabled={busy}>
+            {t(($) => $.common.save)}
+          </button>
           <button
-            className="primary"
+            className="wc-btn wc-btn--adopt"
             type="button"
             disabled={busy || !draft.attr.trim() || !draft.value.trim() || !draft.group_id}
             onClick={() => void save(draft, true)}

@@ -11,7 +11,7 @@ const NAMES = {
 export function LanguageSwitch() {
   const { t, i18n } = useTranslation();
   return (
-    <div className="language-switch" role="group" aria-label={t(($) => $.common.language)}>
+    <div className="wc-seg wc-seg--lang" role="group" aria-label={t(($) => $.common.language)}>
       {LANGUAGES.map((language) => (
         <button
           key={language}

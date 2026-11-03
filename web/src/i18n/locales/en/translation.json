@@ -10,7 +10,15 @@
     "dismiss": "Dismiss",
     "copy": "Copy",
     "copied": "Copied",
-    "copyBlocked": "Your browser blocked copying. Select all the text in the box and copy it by hand"
+    "copyBlocked": "Your browser blocked copying. Select all the text in the box and copy it by hand",
+    "duration": {
+      "minutes_one": "{{count}} minute",
+      "minutes_other": "{{count}} minutes",
+      "hours_one": "{{count}} hour",
+      "hours_other": "{{count}} hours",
+      "days_one": "{{count}} day",
+      "days_other": "{{count}} days"
+    }
   },
   "errors": {
     "password_mismatch": "The passwords don't match",
@@ -40,7 +48,9 @@
     "summary_batch_changed": "Some summaries were changed elsewhere, so none of the batch was saved. Refresh and try again",
     "summary_batch_stale": "The portrait of some domains or the summary rules changed. Regenerate their summaries before approving",
     "assistant_plaintext": "Your data is stored unencrypted, so assistants can read it whenever the token is valid. There is nothing to open",
-    "api_not_found": "No such API endpoint"
+    "api_not_found": "No such API endpoint",
+    "demo_password_fixed": "The demo password is fixed and can't be changed",
+    "demo_settings_fixed": "This setting can't be changed in the demo"
   },
   "app": {
     "title": "My portrait · WeClone",
@@ -71,13 +81,14 @@
     "setupEncrypted": "The same password signs you in and encrypts your data. If you forget it, all data has to be extracted again.",
     "setupPlaintext": "Set a password for the web UI. Your data is currently stored unencrypted.",
     "loginHint": "Enter the password you set.",
+    "demoHint": "Demo mode with synthetic data. Password: {{password}}",
     "newPassword": "New password",
     "password": "Password",
     "confirmPassword": "Enter it again",
     "verifying": "Verifying…",
     "setupSubmit": "Set and unlock",
     "loginSubmit": "Unlock",
-    "sessionNote": "You stay signed in for 2 hours, then need to enter the password again. Use this on your own device."
+    "sessionNote": "You stay signed in for {{duration}}, then enter the password again. Use this on your own device."
   },
   "model": {
     "root": "My portrait",
@@ -142,7 +153,8 @@
       "zoomOut": "Zoom out",
       "fit": "Fit to view",
       "reset": "Reset",
-      "replayIntro": "Replay the intro"
+      "replayIntro": "Replay the intro",
+      "saveImage": "Save as image"
     },
     "search": {
       "placeholder": "Search the portrait",
@@ -187,6 +199,8 @@
       "confirmReject_other": "Reject the {{count}} selected entries? {{hidden}} of them aren't shown in the list yet.",
       "selectAll_one": "Select {{count}}",
       "selectAll_other": "Select all {{count}}",
+      "selected_one": "{{count}} selected",
+      "selected_other": "{{count}} selected",
       "empty": "No entries in this view.",
       "more_one": "Show more ({{count}} left)",
       "more_other": "Show more ({{count}} left)"
@@ -203,18 +217,49 @@
       "viewChatLabel": "View the original chat of {{label}}",
       "viewChat": "View chat",
       "noTime": "No time given",
-      "noContent": "Source text unavailable"
+      "noContent": "Source text unavailable",
+      "latest": "Latest {{date}}"
     },
     "statusLabel": "Review status",
     "bookmark_one": "{{label}}: {{count}} entry",
     "bookmark_other": "{{label}}: {{count}} entries",
     "bookmarkTip_one": "{{label}} · {{count}} entry",
     "bookmarkTip_other": "{{label}} · {{count}} entries",
-    "bookmarkCloneTip_one": "{{label}} · {{count}} entry · in the clone's portrait",
-    "bookmarkCloneTip_other": "{{label}} · {{count}} entries · in the clone's portrait",
+    "bookmarkCloneTip_one": "{{label}} · {{count}} entry · <clone>in the clone's portrait</clone>",
+    "bookmarkCloneTip_other": "{{label}} · {{count}} entries · <clone>in the clone's portrait</clone>",
     "filterLabel_one": "Filter by review status: {{label}}, {{count}} entry",
     "filterLabel_other": "Filter by review status: {{label}}, {{count}} entries",
-    "refresh": "Refresh"
+    "refresh": "Refresh",
+    "sort": {
+      "label": "Sort: {{order}}",
+      "title": "Sort",
+      "short": {
+        "default": "Default",
+        "confidence": "Confidence",
+        "importance": "Importance",
+        "recent": "Time"
+      },
+      "orders": {
+        "default": "Default order",
+        "confidence": "Confidence, lowest first",
+        "importance": "Importance, highest first",
+        "recent": "Sources, newest first"
+      }
+    },
+    "keys": {
+      "label": "Shortcuts",
+      "next": "Next",
+      "previous": "Previous",
+      "approve": "Adopt",
+      "reject": "Reject",
+      "edit": "Edit",
+      "select": "Select",
+      "undo": "Undo"
+    },
+    "start": "One by one",
+    "startTip_one": "Review the {{count}} pending entry, with keyboard shortcuts",
+    "startTip_other": "Review the {{count}} pending entries one by one from the first, with keyboard shortcuts",
+    "startDone": "Nothing left to review"
   },
   "history": {
     "show": "Show edit history",
@@ -268,7 +313,6 @@
     "badgeLabel": "Privacy level: {{label}}, {{hint}}",
     "tags": "Search tags",
     "overview": "Privacy levels",
-    "levelCount": "{{label}} {{n}}",
     "privateCount": "Private and sensitive {{n}}",
     "filter": "Filter by privacy level. None selected shows all"
   },
@@ -280,7 +324,7 @@
     "location": "Location",
     "value": "Content",
     "original": "Show the original content",
-    "hint": "Saved edits go back to pending review and stay out of the clone until adopted. “Save and adopt” adds them to the clone's portrait.",
+    "hint": "Saved edits go back to pending review and stay out of the clone until adopted. “Save and adopt” adds them to <clone>the clone's portrait</clone>.",
     "reloadConfirm": "Reloading from the server discards the changes in this form. Continue?",
     "reload": "Reload entry",
     "saveApprove": "Save and adopt"
@@ -659,6 +703,106 @@
       "once": "The token is shown only this once. On your bot platform, add an OpenAI-type model provider with this API base URL:",
       "key": "API key:",
       "model": "Any model name works, for example gpt-3.5-turbo. The fine-tuned model doesn't call tools, so turn off tools and plugins on the platform. If the bot platform runs in Docker, replace 127.0.0.1 in the address with the host's address on the Docker network (for example 172.17.0.1) and start the server with --host set to that address."
+    },
+    "playground": {
+      "title": "Try your clone",
+      "restart": "New chat",
+      "hint": "Chat with your clone here and hear whether it sounds like you. It answers with the same model and settings bots use.",
+      "unavailable": "The server hasn't loaded the clone model. Start it with weclone-cli server --inference to try it.",
+      "empty": "Send a message to start",
+      "placeholder": "Type a message. Enter sends, Shift+Enter adds a line",
+      "send": "Send",
+      "stop": "Stop",
+      "typing": "Typing…"
     }
+  },
+  "toast": {
+    "undo": "Undo",
+    "undone": "Undone",
+    "approved_one": "Adopted {{count}} entry",
+    "approved_other": "Adopted {{count}} entries",
+    "rejected_one": "Rejected {{count}} entry",
+    "rejected_other": "Rejected {{count}} entries",
+    "pending_one": "Moved {{count}} entry back to pending review",
+    "pending_other": "Moved {{count}} entries back to pending review",
+    "saved": "Saved",
+    "added": "Added",
+    "downloaded": "Downloaded {{file}}"
+  },
+  "settings": {
+    "title": "Settings",
+    "actions": "Page actions",
+    "intro": "Appearance and review preferences are kept in this browser. Security settings are kept by the server on this computer.",
+    "aboutHint": "Version, homepage, documentation and community",
+    "appearance": {
+      "title": "Appearance",
+      "theme": "Colour scheme",
+      "themeHint": "Following the system switches with your device's light or dark mode.",
+      "themes": {
+        "system": "System",
+        "light": "Light",
+        "dark": "Dark"
+      }
+    },
+    "review": {
+      "title": "Review",
+      "privacy": "Privacy levels shown first",
+      "privacyHint": "The review list opens with entries of these levels. Choose none to show all. You can change it in the list at any time."
+    },
+    "security": {
+      "title": "Security",
+      "storage": "Data storage",
+      "encrypted": "Your portrait and chats are stored encrypted. The password both signs you in and decrypts them.",
+      "plaintext": "Data is stored as plain text. The password only protects the web pages.",
+      "encryptedState": "Encrypted",
+      "plaintextState": "Plain text"
+    },
+    "session": {
+      "title": "Sign-in length",
+      "hint": "Applies from your next sign-in. In encrypted mode the server keeps the data key in memory while you are signed in, so longer means more exposure.",
+      "saved": "Sign-in length set to {{duration}} from your next sign-in"
+    },
+    "password": {
+      "title": "Change password",
+      "hint": "Your data and bot tokens are kept. Sign-ins on other devices end. A forgotten password means extracting all data again.",
+      "demo": "The demo password is fixed to demo and can't be changed.",
+      "current": "Current password",
+      "next": "New password",
+      "submit": "Change password",
+      "done": "Password changed. Other devices were signed out"
+    },
+    "run": {
+      "title": "Data source",
+      "name": "Run",
+      "path": "Folder",
+      "generated": "Portrait built",
+      "reviewed": "Last reviewed",
+      "notReviewed": "Not reviewed yet",
+      "style": "Speaking style",
+      "styleYes": "Extracted",
+      "styleNo": "Not extracted in this run",
+      "demo": "Demo data (synthetic, deleted on exit)",
+      "none": "Unknown",
+      "update": "To update your portrait from new chats, run weclone-cli build-profile for a new run, then open it with weclone-cli server. It opens the newest run by default; pick another folder with --run.",
+      "footnote": "Built {{date}}"
+    }
+  },
+  "about": {
+    "title": "About WeClone",
+    "tagline": "WeClone distills your identity, goals, preferences and current situation from your digital life into a portrait you can review, trace to its sources and share on your own terms. It also analyzes your speaking style.",
+    "local": "Your portrait, review history and settings stay on the computer that runs the server.",
+    "project": "Project",
+    "home": "Homepage",
+    "docs": "Documentation",
+    "issues": "Report an issue",
+    "issuesText": "Open an issue on GitHub",
+    "community": "Community",
+    "qq": "QQ group",
+    "telegramText": "Join the group",
+    "xiaohongshu": "Xiaohongshu",
+    "help": "Having trouble? Start with the",
+    "faq": "FAQ",
+    "credits": "License and thanks",
+    "licenseLine": "WeClone is open source under <license>AGPL-3.0</license> and builds on these projects: "
   }
 }

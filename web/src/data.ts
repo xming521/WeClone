@@ -107,12 +107,15 @@ export interface ProfileModel {
 }
 
 // Single source of truth for profile dimensions (ordered). Icons live in LeftPanel because data.ts must stay import-free.
+// `token` is the design system's name for a dimension (`data-dim`, `--dim-<token>`). The colours are those
+// tokens (web/src/ds/tokens.css, light theme); a canvas and the intro need plain values, so they are
+// copied here and tests/graphTokens.test.ts checks them.
 export const DIMENSIONS = [
-  { dim: 1, color: '#008f85' },
-  { dim: 3, color: '#7859cf' },
-  { dim: 4, color: '#d28b32' },
-  { dim: 5, color: '#c35f72' },
-  { dim: 8, color: '#3775b4' },
+  { dim: 1, token: 'identity', color: '#118f83' },
+  { dim: 3, token: 'goal', color: '#7860c4' },
+  { dim: 4, token: 'condition', color: '#c68331' },
+  { dim: 5, token: 'plan', color: '#be5d6f' },
+  { dim: 8, token: 'preference', color: '#3a76b4' },
 ] as const;
 
 export type DimensionId = (typeof DIMENSIONS)[number]['dim'];
@@ -121,40 +124,65 @@ export function isDimensionId(dim: number | null | undefined): dim is DimensionI
   return DIMENSIONS.some((entry) => entry.dim === dim);
 }
 
-export const ROOT_COLOR = '#59616d';
+export const ROOT_COLOR = '#626871'; // --ink-3: the centre has no colour of its own
 
 // The domain view puts the domains where the dimensions are: a domain node has kind 'dimension',
 // the id `dimension:<key>` and its key in `dim`, so the map clusters and colours it like a dimension.
 // Keys follow the domain list and start above every dimension number.
 const DOMAIN_KEY = 100;
 
-// Colours in domain-list order, at one chroma in OKLCH. The hue walks from teal through blue,
-// violet and rose to gold, so neighbouring domains, which the list keeps related, get related
-// colours; it skips yellow-green, which turns muddy at this lightness. Lightness alternates
-// between about 0.59 and 0.68, as the domains alternate between the inner and the outer ring.
-// Lists longer than this repeat.
-export const DOMAIN_COLORS = [
-  '#058f80',
-  '#1cabb1',
-  '#058aa4',
-  '#49a1d1',
-  '#4a7ebb',
-  '#7e92db',
-  '#7a70b9',
-  '#a984cc',
-  '#9c64a0',
-  '#c67ba9',
-  '#b05e78',
-  '#d27a7c',
-  '#b3624c',
-  '#cf8755',
-  '#ae7a30',
-  '#c2a44f',
-];
+// Section colours follow one rule, the design system's `[data-sec]` (web/src/ds/components.css), so
+// CSS and canvas agree for any number of sections. Section i of n starts from --sec-base,
+// oklch(0.585 0.11 182), and turns its hue 268° (--wc-sec-span) through teal, blue, violet and rose to
+// gold, in equal steps, stopping before yellow-green. Odd sections are 0.09 lighter (--wc-sec-dl), as
+// they sit on the outer ring; over the last 20% of the walk, which ends on warm yellow, lightness
+// rises by up to 0.05 so gold does not turn grey. Chroma stays. The numbers were fitted to the
+// 16-colour palette this view had before, which the rule reproduces at n = 16 to within 5/255 a
+// channel, and are the only thing to change to tune it.
+const SECTION = { l: 0.585, c: 0.11, h: 182, span: 268, odd: 0.09, lift: 0.05 };
+
+/** Colour (#rrggbb, clipped to sRGB as browsers do) of section `index` of `count`; an index past the count extends it. */
+export function sectionColor(index: number, count: number): string {
+  const n = Math.max(count, index + 1);
+  const t = index / Math.max(n - 1, 1);
+  const l = SECTION.l + SECTION.odd * (index % 2) + SECTION.lift * Math.min(1, Math.max(0, (t - 0.8) / 0.2));
+  const h = ((SECTION.h + SECTION.span * t) * Math.PI) / 180;
+  const a = SECTION.c * Math.cos(h);
+  const b = SECTION.c * Math.sin(h);
+  // OKLab to linear sRGB (Björn Ottosson), then gamma.
+  const l3 = (l + 0.3963377774 * a + 0.2158037573 * b) ** 3;
+  const m3 = (l - 0.1055613458 * a - 0.0638541728 * b) ** 3;
+  const s3 = (l - 0.0894841775 * a - 1.291485548 * b) ** 3;
+  const linear = [
+    4.0767416621 * l3 - 3.3077115913 * m3 + 0.2309699292 * s3,
+    -1.2684380046 * l3 + 2.6097574011 * m3 - 0.3413193965 * s3,
+    -0.0041960863 * l3 - 0.7034186147 * m3 + 1.707614701 * s3,
+  ];
+  const channel = (v: number) => {
+    const c = Math.min(1, Math.max(0, v));
+    return Math.round((c <= 0.0031308 ? 12.92 * c : 1.055 * c ** (1 / 2.4) - 0.055) * 255);
+  };
+  return `#${linear.map((v) => channel(v).toString(16).padStart(2, '0')).join('')}`;
+}
+
+/** The palette of 16 sections the rule was fitted to. */
+export const DOMAIN_COLORS = Array.from({ length: 16 }, (_, index) => sectionColor(index, 16));
+
+// How many sections the profile being shown lists. A section's colour depends on it, and
+// `dimensionColor` has no model to ask, so `buildModel` records it when it builds the domain view.
+let sectionCount = DOMAIN_COLORS.length;
+
+/** A domain's place in the section palette (the `--i` and `--n` of `[data-sec]`); null for anything else. */
+export function sectionPlace(dim: number | null | undefined): { index: number; count: number } | null {
+  if (dim == null || dim < DOMAIN_KEY) return null;
+  const index = dim - DOMAIN_KEY;
+  return { index, count: Math.max(sectionCount, index + 1) };
+}
 
 // Unknown or missing dimensions fall back to the first dimension's colour.
 export function dimensionColor(dim: number | null | undefined): string {
-  if (dim != null && dim >= DOMAIN_KEY) return DOMAIN_COLORS[(dim - DOMAIN_KEY) % DOMAIN_COLORS.length];
+  const place = sectionPlace(dim);
+  if (place) return sectionColor(place.index, place.count);
   return (DIMENSIONS.find((entry) => entry.dim === dim) ?? DIMENSIONS[0]).color;
 }
 
@@ -230,6 +258,9 @@ function domainLevel(input: ProfileInput, labels: ModelLabels): TopLevelInput[] 
       }
     }
   }
+  // The listed domains fix the palette, so colours do not shift between review views when an extra
+  // one (attributes without a domain) is missing from one of them.
+  sectionCount = input.domains.length || domains.size;
   const listedTopics = new Map(input.domains.map((domain) => [domain.name, domain.topics]));
   return [...domains.values()]
     .filter((domain) => domain.topics.size || domain.direct.length)
@@ -449,8 +480,48 @@ export function factTags(fact: ProfileFact, sources: Record<string, ProfileSourc
   return [...counts].sort((a, b) => b[1] - a[1]).map(([tag]) => tag);
 }
 
+/** Every privacy level a fact can have, the unrated ones last. */
+export const PRIVACY_LEVELS: PrivacyLevel[] = [...SENSITIVITY_LEVELS, 'unrated'];
+
 export function privacyLevel(fact: ProfileFact): PrivacyLevel {
   return fact.sensitivity && SENSITIVITY_LEVELS.includes(fact.sensitivity) ? fact.sensitivity : 'unrated';
+}
+
+/** Orders of the review list: as stored, least confident first, most important first, newest source first. */
+export type ReviewSort = 'default' | 'confidence' | 'importance' | 'recent';
+export const REVIEW_SORTS: ReviewSort[] = ['default', 'confidence', 'importance', 'recent'];
+
+/** The newest source time of a fact; ISO times sort as text. */
+export function latestSourceTime(fact: ProfileFact, sources: Record<string, ProfileSource> | undefined) {
+  return fact.source_ids
+    .map((id) => sources?.[id]?.sample_time)
+    .filter((time): time is string => !!time)
+    .sort()
+    .at(-1);
+}
+
+/** The facts in the chosen order. Facts without the value sorted on go last; ties keep the stored order. */
+export function sortFacts(
+  facts: ProfileFact[],
+  sort: ReviewSort,
+  sources: Record<string, ProfileSource> | undefined,
+): ProfileFact[] {
+  if (sort === 'default') return facts;
+  const key = (fact: ProfileFact): number | string | undefined =>
+    sort === 'confidence'
+      ? fact.source_confidence_mean
+      : sort === 'importance'
+        ? fact.source_importance_mean
+        : latestSourceTime(fact, sources);
+  // Ascending for confidence, descending for the others.
+  const sign = sort === 'confidence' ? 1 : -1;
+  const keyed = facts.map((fact) => ({ fact, key: key(fact) }));
+  return keyed
+    .sort((a, b) => {
+      if (a.key === undefined || b.key === undefined) return a.key === b.key ? 0 : a.key === undefined ? 1 : -1;
+      return a.key < b.key ? -sign : a.key > b.key ? sign : 0;
+    })
+    .map(({ fact }) => fact);
 }
 
 /** Facts whose level is one of `levels`; no levels keeps them all. */

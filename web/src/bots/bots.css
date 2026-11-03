@@ -1,0 +1,52 @@
+/* The playground: a chat thread with the clone, the clone's bubbles in its peach, then the message box. */
+.playground-thread {
+  min-height: 160px;
+  max-height: 420px;
+  margin-top: var(--space-3);
+  overflow-y: auto;
+}
+
+.playground-empty {
+  margin: auto;
+  color: var(--ink-3);
+  font: var(--text-caption);
+  text-align: center;
+}
+
+.wc-bubble.playground-clone[data-from] {
+  border-color: color-mix(in srgb, var(--clone) 30%, transparent);
+  background: var(--clone-tint);
+  white-space: pre-wrap;
+}
+
+.wc-bubble[data-from='you'] {
+  white-space: pre-wrap;
+}
+
+.playground-typing {
+  color: var(--ink-3);
+}
+
+.playground-form {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.playground-form .wc-input {
+  flex: 1;
+  height: auto;
+}
+
+.playground-form textarea {
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-2) 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink-1);
+  font: var(--text-body);
+  resize: vertical;
+  outline: none;
+}

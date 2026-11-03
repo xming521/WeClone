@@ -1,26 +1,24 @@
 // Drawing primitives shared by the map (atlasEngine.ts) and its entrance overlay (entrance.ts). The
 // overlay hands its last frame to the map in a single frame, so both draw nodes, lines and labels
-// with these functions and the tokens in graphStyle.ts.
-import { ROOT_COLOR } from '../data';
+// with these functions and the tokens in graphStyle.ts. The look is the design system's AtlasGraph.
 import type { NodeKind } from '../data';
 import {
-  EDGE_OPACITY,
-  GRAPH_FONT,
-  LABEL_FILL_OPACITY,
-  LABEL_HALO,
+  BALL,
+  BEAD,
+  EDGE_BEND,
+  EDGE_GAP,
   LABEL_HALO_WIDTH,
   LABEL_LINE_HEIGHT,
   LABEL_OFFSET_Y,
-  PEARL,
+  ROOT,
   SELECTED_NODE,
-  edgeStroke,
-  edgeWidth,
+  edgeStyle,
   glowColor,
-  labelFill,
-  labelFontSize,
-  labelFontWeight,
+  labelFont,
+  labelStyle,
   nodeFill,
   nodeStroke,
+  palette,
   rgba,
 } from './graphStyle';
 import type { NodeLook } from './nodeLook';
@@ -37,8 +35,10 @@ export type PaintNode = {
   r: number;
   label: string;
   selected: boolean;
-  /** The centre's dimensions, which tint the pearl. */
+  /** The centre's dimensions, which become the arcs round its edge. */
   slices?: PearlSlice[];
+  /** A domain in the domain view: a section, labelled like one. */
+  section?: boolean;
 };
 
 /** Device pixels of a map point: point × k + (ox, oy). */
@@ -47,6 +47,7 @@ export type Transform = { k: number; ox: number; oy: number };
 type Circle = { x: number; y: number; r: number };
 
 const TAU = Math.PI * 2;
+const WHITE = 'rgba(255,255,255,';
 
 export const rgbaOf = (rgb: Rgb, alpha: number) =>
   `rgba(${Math.round(rgb[0])},${Math.round(rgb[1])},${Math.round(rgb[2])},${Math.min(1, Math.max(0, alpha)).toFixed(3)})`;
@@ -59,138 +60,163 @@ export function canvasDpr(): number {
 
 // ───────────────────────── nodes ─────────────────────────
 
-/** A four-point star centred on (x, y) with arms of length `size`. */
-export function star4(c: CanvasRenderingContext2D, x: number, y: number, size: number) {
-  const q = size * 0.13;
-  c.beginPath();
-  c.moveTo(x, y - size);
-  c.quadraticCurveTo(x + q, y - q, x + size, y);
-  c.quadraticCurveTo(x + q, y + q, x, y + size);
-  c.quadraticCurveTo(x - q, y + q, x - size, y);
-  c.quadraticCurveTo(x - q, y - q, x, y - size);
-  c.fill();
+// The Logo's shapes, in the coordinates of the design system's symbols (Assets › Logos). Built on
+// first use: this module is loaded where there is no Path2D.
+let shapes: { gloss: Path2D; you: Path2D; clone: Path2D; youEye: Path2D; cloneEye: Path2D } | null = null;
+function logoShapes() {
+  shapes ??= {
+    // The front bubble's highlight, drawn for a bubble of radius 12.
+    gloss: new Path2D(
+      'M-9.22 -3.92A10.02 10.02 0 0 1 -1.57 -9.9A0.78 0.78 0 0 1 -1.32 -8.36A8.46 8.46 0 0 0 -7.79 -3.31A0.78 0.78 0 0 1 -9.22 -3.92z',
+    ),
+    // The favicon: the front bubble, the back bubble behind it, and their faces.
+    you: new Path2D('M-12 2a12 12 0 1 0 24 0a12 12 0 1 0 -24 0z'),
+    clone: new Path2D('M6.47 -9.85A10.6 10.6 0 1 1 12.19 7.81A13.5 13.5 0 0 0 6.47 -9.85z'),
+    youEye: new Path2D(
+      'M-5.48 2.5a1.58 2.02 0 1 0 3.17 0a1.58 2.02 0 1 0 -3.17 0zM3.42 2.5a1.58 2.02 0 1 0 3.17 0a1.58 2.02 0 1 0 -3.17 0z',
+    ),
+    cloneEye: new Path2D(
+      'M14.69 -2.8a1.41 1.79 0 1 0 2.82 0a1.41 1.79 0 1 0 -2.82 0zM20.19 -2.8a1.41 1.79 0 1 0 2.82 0a1.41 1.79 0 1 0 -2.82 0z',
+    ),
+  };
+  return shapes;
+}
+// The favicon symbol's viewBox: 37.4 units square, centred on (6.4, 0.4).
+const MARK_BOX = 37.4;
+const MARK_CENTER = { x: 6.4, y: 0.4 };
+
+// The glow a node flares with while it enters (the shadow of its fill). Shadow blur is in device
+// pixels. At rest `glow` is 0 and nothing glows.
+function glowOn(c: CanvasRenderingContext2D, n: PaintNode, alpha: number, glow: number): boolean {
+  const look = n.look;
+  const blur = n.selected ? SELECTED_NODE.shadowBlur : look.glowBlur;
+  if (!(glow > 0 && blur > 0 && look.glowAlpha > 0)) return false;
+  c.shadowColor = rgba(glowColor(n.kind, n.dim), look.glowAlpha * glow * alpha);
+  c.shadowBlur = blur;
+  return true;
 }
 
-/** A conic gradient around (x, y) through the colours of `slices`, each at the angle of its branch. */
-export function sliceGradient(
-  c: CanvasRenderingContext2D,
-  slices: PearlSlice[],
-  x: number,
-  y: number,
-  alpha: number,
-): CanvasGradient | string {
-  if (!slices.length || typeof c.createConicGradient !== 'function') return rgba(ROOT_COLOR, alpha);
-  const turn = (angle: number) => (((angle % TAU) + TAU) % TAU) / TAU;
-  const stops = slices.map((slice) => ({ at: turn(slice.angle), rgb: slice.rgb })).sort((a, b) => a.at - b.at);
-  const first = stops[0];
-  const last = stops[stops.length - 1];
-  // Colour at angle 0, between the last stop and the first one after it.
-  const gap = first.at + 1 - last.at;
-  const share = gap > 0 ? (1 - last.at) / gap : 0;
-  const seam = last.rgb.map((value, i) => value + (first.rgb[i] - value) * share) as Rgb;
-  const gradient = c.createConicGradient(0, x, y);
-  gradient.addColorStop(0, rgbaOf(seam, alpha));
-  for (const stop of stops) gradient.addColorStop(stop.at, rgbaOf(stop.rgb, alpha));
-  gradient.addColorStop(1, rgbaOf(seam, alpha));
-  return gradient;
+function glowOff(c: CanvasRenderingContext2D) {
+  c.shadowColor = 'transparent';
+  c.shadowBlur = 0;
 }
 
-// The body of every node but the centre: the glow is the shadow of the fill. Shadow blur is in
-// device pixels.
-function drawBody(c: CanvasRenderingContext2D, n: PaintNode, alpha: number, glow: number) {
+// An attribute: a hollow ring, its `card` body and its outline both fading with confidence.
+function drawAttribute(c: CanvasRenderingContext2D, n: PaintNode, alpha: number, glow: number) {
   const look = n.look;
   c.beginPath();
   c.arc(0, 0, n.r, 0, TAU);
-  const blur = n.selected ? SELECTED_NODE.shadowBlur : look.glowBlur;
-  const shadow = glow > 0 && blur > 0 && look.glowAlpha > 0;
   c.globalAlpha = alpha * look.fillOpacity;
-  if (shadow) {
-    c.shadowColor = rgba(glowColor(n.kind, n.dim), look.glowAlpha * glow);
-    c.shadowBlur = blur;
-  }
+  const shadow = glowOn(c, n, 1, glow);
   c.fillStyle = nodeFill(n.kind, n.dim);
   c.fill();
-  if (shadow) {
-    c.shadowColor = 'transparent';
-    c.shadowBlur = 0;
-  }
+  if (shadow) glowOff(c);
   c.globalAlpha = alpha * look.strokeOpacity;
   c.lineWidth = look.lineWidth;
   c.strokeStyle = nodeStroke(n.kind, n.dim);
-  if (look.lineDash) c.setLineDash(look.lineDash);
   c.stroke();
-  if (look.lineDash) c.setLineDash([]);
 }
 
-// The centre: a pearl lit from the upper left and tinted by each dimension from the side its
-// branch leaves on. Its glow is drawn as rings fading outwards in the same colours. `k` is the
-// device pixels per unit, to turn the glow's blur into map units.
-function drawPearl(c: CanvasRenderingContext2D, n: PaintNode, alpha: number, glow: number, k: number) {
+// A dimension (or section, in the domain view) or a topic: a solid ball with a sheen from the upper
+// left, the Logo's highlight scaled to it and a white rim. A topic's ball is 20% to 100% opaque by
+// confidence, and its highlight and rim are fainter (BEAD).
+function drawBall(c: CanvasRenderingContext2D, n: PaintNode, alpha: number, glow: number) {
   const r = n.r;
-  const slices = n.slices ?? [];
-  const blur = n.selected ? SELECTED_NODE.shadowBlur : n.look.glowBlur;
-  if (glow > 0 && blur > 0) {
-    const spread = (blur * 1.1) / k;
-    const rings = 8;
-    c.strokeStyle = sliceGradient(c, slices, 0, 0, 1);
-    c.lineWidth = (spread / rings) * 1.2;
-    for (let i = 0; i < rings; i++) {
-      const t = (i + 0.5) / rings;
-      c.globalAlpha = alpha * Math.min(1, glow) * 0.6 * (1 - t) ** 2;
-      c.beginPath();
-      c.arc(0, 0, r + spread * t, 0, TAU);
-      c.stroke();
-    }
-  }
-  c.globalAlpha = alpha;
+  const finish = n.kind === 'dimension' ? BALL : BEAD;
   c.beginPath();
   c.arc(0, 0, r, 0, TAU);
-  c.fillStyle = PEARL.base;
+  c.globalAlpha = alpha * n.look.fillOpacity;
+  const shadow = glowOn(c, n, 1, glow);
+  c.fillStyle = nodeFill(n.kind, n.dim);
+  c.fill();
+  if (shadow) glowOff(c);
+  // radialGradient cx 32%, cy 24%, r 70% of the ball's box.
+  const sx = -r + 0.64 * r;
+  const sy = -r + 0.48 * r;
+  const sheen = c.createRadialGradient(sx, sy, 0, sx, sy, 1.4 * r);
+  sheen.addColorStop(0, `${WHITE}${finish.sheenOpacity})`);
+  sheen.addColorStop(0.55, `${WHITE}0)`);
+  sheen.addColorStop(1, `${WHITE}0)`);
+  c.fillStyle = sheen;
   c.fill();
   c.save();
-  c.clip();
-  for (const slice of slices) {
-    const cx = Math.cos(slice.angle) * r * 0.6;
-    const cy = Math.sin(slice.angle) * r * 0.6;
-    const tint = c.createRadialGradient(cx, cy, 0, cx, cy, r * 0.95);
-    tint.addColorStop(0, rgbaOf(slice.rgb, PEARL.tint));
-    tint.addColorStop(1, rgbaOf(slice.rgb, 0));
-    c.fillStyle = tint;
-    c.fillRect(-r, -r, 2 * r, 2 * r);
-  }
-  const light = c.createRadialGradient(-r * 0.32, -r * 0.38, 0, -r * 0.32, -r * 0.38, r * 0.85);
-  light.addColorStop(0, 'rgba(255,255,255,0.7)');
-  light.addColorStop(1, 'rgba(255,255,255,0)');
-  c.fillStyle = light;
-  c.fillRect(-r, -r, 2 * r, 2 * r);
+  c.scale(r / 12, r / 12);
+  c.fillStyle = `${WHITE}${finish.glossOpacity})`;
+  c.fill(logoShapes().gloss);
   c.restore();
   c.beginPath();
-  c.arc(0, 0, r, 0, TAU);
-  c.lineWidth = 1.5;
-  c.strokeStyle = sliceGradient(c, slices, 0, 0, PEARL.rimOpacity);
+  c.arc(0, 0, r - finish.rimInset, 0, TAU);
+  c.lineWidth = finish.rimWidth;
+  c.strokeStyle = `${WHITE}${finish.rimOpacity})`;
   c.stroke();
-  c.fillStyle = PEARL.star;
-  star4(c, 0, 0, r * 0.37);
 }
 
-// A wide translucent ring just outside the node, in its colour (the pearl's in all of them), and a white rim.
-function drawSelection(c: CanvasRenderingContext2D, n: PaintNode, alpha: number) {
-  const { ringWidth, ringOpacity, rimWidth } = SELECTED_NODE;
-  c.globalAlpha = alpha * ringOpacity;
-  c.lineWidth = ringWidth;
-  c.strokeStyle = n.kind === 'root' ? sliceGradient(c, n.slices ?? [], 0, 0, 1) : glowColor(n.kind, n.dim);
-  c.beginPath();
-  c.arc(0, 0, n.r + ringWidth / 2, 0, TAU);
-  c.stroke();
+// The Logo's favicon, as the design system sets it in the centre: its box is 28/30.4 of the disc's radius.
+function drawMark(c: CanvasRenderingContext2D, r: number, alpha: number) {
+  const { logo } = palette();
+  const shape = logoShapes();
+  const scale = (r * ROOT.markSize) / MARK_BOX;
+  c.save();
+  c.scale(scale, scale);
+  c.translate(-MARK_CENTER.x, -MARK_CENTER.y);
   c.globalAlpha = alpha;
-  c.lineWidth = rimWidth;
-  c.strokeStyle = '#ffffff';
+  const front = c.createLinearGradient(-8.64, -6.64, 8.64, 10.64);
+  front.addColorStop(0, logo.you1);
+  front.addColorStop(1, logo.you2);
+  c.fillStyle = front;
+  c.fill(shape.you);
+  const back = c.createLinearGradient(14.2, -13.2, 14.2, 8);
+  back.addColorStop(0, logo.clone1);
+  back.addColorStop(1, logo.clone2);
+  c.fillStyle = back;
+  c.fill(shape.clone);
+  c.fillStyle = logo.youEye;
+  c.fill(shape.youEye);
+  c.fillStyle = logo.cloneEye;
+  c.fill(shape.cloneEye);
+  c.restore();
+}
+
+// The centre: a plain `card` disc lifted by a soft shadow (the design system's shadow-2), and the
+// favicon. The dimensions' colours are on their own balls, so the centre carries none. Canvas
+// shadows are in device pixels, so their lengths follow the transform's scale.
+function drawRoot(c: CanvasRenderingContext2D, n: PaintNode, alpha: number, glow: number) {
+  const unit = c.getTransform().a;
+  const p = palette();
+  c.globalAlpha = alpha;
   c.beginPath();
-  c.arc(0, 0, n.r + 1, 0, TAU);
+  c.arc(0, 0, n.r, 0, TAU);
+  c.shadowColor = rgba(p.ink1, Math.min(ROOT.shadowFlare, ROOT.shadowOpacity * Math.max(1, glow)));
+  c.shadowBlur = ROOT.shadowBlur * unit * Math.max(1, glow);
+  c.shadowOffsetY = ROOT.shadowOffset * unit;
+  c.fillStyle = p.card;
+  c.fill();
+  glowOff(c);
+  c.shadowOffsetY = 0;
+  drawMark(c, n.r, alpha);
+}
+
+// A wide translucent ring in the node's colour just outside it.
+function drawSelectionRing(c: CanvasRenderingContext2D, n: PaintNode, alpha: number) {
+  c.globalAlpha = alpha * SELECTED_NODE.ringOpacity;
+  c.lineWidth = SELECTED_NODE.ringWidth;
+  c.strokeStyle = nodeStroke(n.kind, n.dim);
+  c.beginPath();
+  c.arc(0, 0, n.r + SELECTED_NODE.ringOffset, 0, TAU);
   c.stroke();
 }
 
-/** Draws a node at (x, y). `glow` scales its glow: 1 at rest, more while it flares, 0 for none. */
+// A `card` ring against the selected node.
+function drawSelectionRim(c: CanvasRenderingContext2D, n: PaintNode, alpha: number) {
+  c.globalAlpha = alpha;
+  c.lineWidth = SELECTED_NODE.rimWidth;
+  c.strokeStyle = palette().card;
+  c.beginPath();
+  c.arc(0, 0, n.r + SELECTED_NODE.rimOffset, 0, TAU);
+  c.stroke();
+}
+
+/** Draws a node at (x, y). `glow` scales the glow it flares with while it enters: 1 at rest of the entrance, more while it flares, 0 for none. */
 export function drawNode(
   c: CanvasRenderingContext2D,
   tf: Transform,
@@ -204,31 +230,53 @@ export function drawNode(
   if (alpha <= 0.002) return;
   const k = tf.k * scale;
   c.setTransform(k, 0, 0, k, tf.ox + tf.k * x, tf.oy + tf.k * y);
-  if (n.kind === 'root') drawPearl(c, n, alpha, glow, k);
-  else drawBody(c, n, alpha, glow);
-  if (n.selected) drawSelection(c, n, alpha);
+  if (n.kind === 'root') drawRoot(c, n, alpha, glow);
+  else {
+    if (n.selected) drawSelectionRing(c, n, alpha);
+    if (n.kind === 'attribute') drawAttribute(c, n, alpha, glow);
+    else drawBall(c, n, alpha, glow);
+  }
+  if (n.selected && n.kind !== 'root') drawSelectionRim(c, n, alpha);
   c.globalAlpha = 1;
 }
 
 // ───────────────────────── lines ─────────────────────────
 
-/** Ends of the line between two nodes, from rim to rim; null while they overlap. */
-export function edgeEnds(parent: Circle, child: Circle): { sx: number; sy: number; ex: number; ey: number } | null {
+/** A line as a quadratic curve: from the parent's end (x0, y0) through the control point to the child's end. */
+export type EdgeCurve = { x0: number; y0: number; qx: number; qy: number; x1: number; y1: number };
+
+/**
+ * The curve between two nodes, null while they overlap. It leaves the straight line between their
+ * centres, stopping EDGE_GAP short of each edge, and bends `bend` of their distance to the left of
+ * the direction from parent to child.
+ */
+export function edgeCurve(parent: Circle, child: Circle, bend = EDGE_BEND): EdgeCurve | null {
   const dx = child.x - parent.x;
   const dy = child.y - parent.y;
   const d = Math.hypot(dx, dy) || 1;
-  if (d <= parent.r + child.r) return null;
+  if (d <= parent.r + child.r + 2 * EDGE_GAP) return null;
   const ux = dx / d;
   const uy = dy / d;
-  return {
-    sx: parent.x + ux * parent.r,
-    sy: parent.y + uy * parent.r,
-    ex: child.x - ux * child.r,
-    ey: child.y - uy * child.r,
-  };
+  const x0 = parent.x + ux * (parent.r + EDGE_GAP);
+  const y0 = parent.y + uy * (parent.r + EDGE_GAP);
+  const x1 = child.x - ux * (child.r + EDGE_GAP);
+  const y1 = child.y - uy * (child.r + EDGE_GAP);
+  const offset = bend * d;
+  return { x0, y0, x1, y1, qx: (x0 + x1) / 2 - uy * offset, qy: (y0 + y1) / 2 + ux * offset };
 }
 
-/** A line from the parent's rim towards the child's; `grow` 0…1 extends it out of the parent. */
+/** The point `u` (0 at the parent's end, 1 at the child's) of the curve. Its distance along the straight line is linear in `u`. */
+export function curvePoint(curve: EdgeCurve, u: number): { x: number; y: number } {
+  const a = (1 - u) * (1 - u);
+  const b = 2 * u * (1 - u);
+  const e = u * u;
+  return { x: a * curve.x0 + b * curve.qx + e * curve.x1, y: a * curve.y0 + b * curve.qy + e * curve.y1 };
+}
+
+/**
+ * A line from the parent's edge towards the child's; `grow` 0…1 extends it out of the parent. A child
+ * still on its way along its arc has come `reach` of it, and its line is that part of the arc.
+ */
 export function strokeEdge(
   c: CanvasRenderingContext2D,
   tf: Transform,
@@ -238,38 +286,45 @@ export function strokeEdge(
   width: number,
   alpha: number,
   grow = 1,
+  reach = 1,
 ) {
-  const ends = edgeEnds(parent, child);
-  if (!ends || grow <= 0 || alpha <= 0) return;
+  const curve = edgeCurve(parent, child, EDGE_BEND * reach);
+  if (!curve || grow <= 0 || alpha <= 0) return;
   c.setTransform(tf.k, 0, 0, tf.k, tf.ox, tf.oy);
   c.globalAlpha = alpha;
   c.strokeStyle = color;
   c.lineWidth = width;
   c.beginPath();
-  c.moveTo(ends.sx, ends.sy);
-  c.lineTo(ends.sx + (ends.ex - ends.sx) * grow, ends.sy + (ends.ey - ends.sy) * grow);
+  c.moveTo(curve.x0, curve.y0);
+  if (grow >= 1) c.quadraticCurveTo(curve.qx, curve.qy, curve.x1, curve.y1);
+  else {
+    // The part up to `grow` of a quadratic is a quadratic: its control point lies on the first half-tangent.
+    const end = curvePoint(curve, grow);
+    c.quadraticCurveTo(curve.x0 + (curve.qx - curve.x0) * grow, curve.y0 + (curve.qy - curve.y0) * grow, end.x, end.y);
+  }
   c.stroke();
   c.globalAlpha = 1;
 }
 
-/** The line into node `n` before the map settles into its own look: width and shade by the node's kind. */
+/** The line into node `n` before the map settles into its own look: its colour and width by the node's kind. */
 export function drawEdge(
   c: CanvasRenderingContext2D,
   tf: Transform,
-  n: { kind: NodeKind },
+  n: { kind: NodeKind; dim: number | null },
   parent: Circle,
   child: Circle,
   grow = 1,
   alpha = 1,
+  reach = 1,
 ) {
   if (alpha <= 0.002) return;
-  strokeEdge(c, tf, parent, child, edgeStroke(n.kind), edgeWidth(n.kind), EDGE_OPACITY * alpha, grow);
+  const style = edgeStyle(n.kind, n.dim);
+  strokeEdge(c, tf, parent, child, style.color, style.width, style.opacity * alpha, grow, reach);
 }
 
 // ───────────────────────── labels ─────────────────────────
 
-export const labelFont = (n: PaintNode) =>
-  `${n.selected ? SELECTED_NODE.labelFontWeight : labelFontWeight(n.kind)} ${labelFontSize(n.kind)}px ${GRAPH_FONT}`;
+export const labelFontOf = (n: PaintNode) => labelFont(labelStyle(n, n.selected));
 
 // Height of the box a single-line label is centred in: the line height, or more when the glyphs of
 // "|ÉqÅM" plus the halo stroke are taller.
@@ -286,8 +341,11 @@ export function labelHeight(c: CanvasRenderingContext2D, font: string): number {
   return height;
 }
 
-// The label sits below the node, its box starting LABEL_OFFSET_Y below the rim and shifted right
-// by half the halo width.
+/** Forgets measured label heights, once the fonts they were measured in have loaded. */
+export const resetLabelMetrics = () => labelBoxHeight.clear();
+
+// The label sits below the node, its box starting LABEL_OFFSET_Y below the edge and shifted right
+// by half the halo width. A `paper` halo keeps it readable where a line crosses it.
 export function drawLabel(
   c: CanvasRenderingContext2D,
   tf: Transform,
@@ -297,7 +355,8 @@ export function drawLabel(
   alpha: number,
 ) {
   if (alpha <= 0.01 || !n.label) return;
-  const font = labelFont(n);
+  const style = labelStyle(n, n.selected);
+  const font = labelFont(style);
   c.setTransform(tf.k, 0, 0, tf.k, tf.ox, tf.oy);
   const ly = y + n.r + LABEL_OFFSET_Y + labelHeight(c, font) / 2;
   c.font = font;
@@ -307,10 +366,9 @@ export function drawLabel(
   c.lineWidth = LABEL_HALO_WIDTH;
   const lx = x + LABEL_HALO_WIDTH / 2;
   c.globalAlpha = alpha;
-  c.strokeStyle = LABEL_HALO;
+  c.strokeStyle = palette().paper;
   c.strokeText(n.label, lx, ly);
-  c.globalAlpha = alpha * LABEL_FILL_OPACITY;
-  c.fillStyle = labelFill(n.kind);
+  c.fillStyle = style.color;
   c.fillText(n.label, lx, ly);
   c.globalAlpha = 1;
 }

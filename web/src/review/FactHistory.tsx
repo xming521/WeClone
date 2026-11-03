@@ -1,3 +1,4 @@
+import { History as HistoryIcon } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../api';
@@ -18,6 +19,9 @@ export function FactHistory({ fact }: { fact: ProfileFact }) {
   return (
     <div className="fact-history">
       <button
+        type="button"
+        className="wc-btn wc-btn--ghost wc-btn--sm"
+        aria-expanded={open}
         onClick={async () => {
           setOpen(!open);
           if (!rows) {
@@ -31,10 +35,11 @@ export function FactHistory({ fact }: { fact: ProfileFact }) {
           }
         }}
       >
+        <HistoryIcon size={13} strokeWidth={1.8} aria-hidden="true" />
         {open ? t(($) => $.history.hide) : t(($) => $.history.show)}
       </button>
       {open && (
-        <div>
+        <div className="history-rows">
           {error ||
             (rows?.length === 0
               ? t(($) => $.history.empty)

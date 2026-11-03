@@ -16,7 +16,7 @@ import {
   type EntrancePlan,
   type NodeFrame,
 } from './entrancePlan';
-import { glowColor, hexToRgb, nodeFill, nodeStroke } from './graphStyle';
+import { EDGE_BEND, glowColor, hexToRgb, nodeFill, nodeStroke } from './graphStyle';
 import { canvasDpr, drawEdge, drawLabel, drawNode, type PearlSlice, type Transform } from './paint';
 
 export type EntranceItem = EntranceInput & {
@@ -328,7 +328,9 @@ export function playEntrance({ host, items, camera, width, height, onReveal }: E
   const plan = buildEntrancePlan(items);
   const { data: particleData, end: particlesEnd } = buildParticles(plan);
   const particles = createParticleLayer(glCanvas, particleData, camera, dpr);
-  const frameOf = new Map<Node, NodeFrame>(plan.nodes.map((n) => [n, { x: n.x, y: n.y, alpha: 1, scale: 1, glow: 1 }]));
+  const frameOf = new Map<Node, NodeFrame>(
+    plan.nodes.map((n) => [n, { x: n.x, y: n.y, alpha: 1, scale: 1, glow: 1, reach: 1 }]),
+  );
 
   const activeNodes: Node[] = [];
   const activeEdges: Node[] = [];
@@ -340,10 +342,11 @@ export function playEntrance({ host, items, camera, width, height, onReveal }: E
   // After the nodes settle, the last particles play out above the map.
   let state: 'playing' | 'trailing' | 'done' = 'playing';
 
-  // Current position and radius of a node that may still be animating.
-  const live = (n: Node, time: number) => {
+  // Current position and radius of a node that may still be animating, and how far along its arc it has come.
+  const live = (n: Node, time: number): { x: number; y: number; r: number; reach?: number } => {
     const f = frameOf.get(n)!;
-    if (time < n.end && nodeFrame(n, time, plan.root, f)) return { x: f.x, y: f.y, r: n.r * f.scale };
+    if (time < n.end && nodeFrame(n, time, plan.root, f, EDGE_BEND))
+      return { x: f.x, y: f.y, r: n.r * f.scale, reach: f.reach };
     return n;
   };
 
@@ -376,13 +379,14 @@ export function playEntrance({ host, items, camera, width, height, onReveal }: E
       let alpha = 1;
       if (n.kind === 'dimension') alpha = smooth(0, 0.25, (time - n.appearAt) / n.dur);
       else grow = easeInOutCubic(clamp((time - n.edgeAt) / (n.edgeEnd - n.edgeAt), 0, 1));
-      drawEdge(ctx, tf, n, live(n.parent!, time), live(n, time), grow, alpha);
+      const child = live(n, time);
+      drawEdge(ctx, tf, n, live(n.parent!, time), child, grow, alpha, child.reach);
     }
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.drawImage(bakedNodes, 0, 0);
     for (const n of activeNodes) {
       const f = frameOf.get(n)!;
-      if (nodeFrame(n, time, plan.root, f)) drawNode(ctx, tf, n, f.x, f.y, f.scale, f.alpha, f.glow);
+      if (nodeFrame(n, time, plan.root, f, EDGE_BEND)) drawNode(ctx, tf, n, f.x, f.y, f.scale, f.alpha, f.glow);
     }
     for (const n of plan.nodes) {
       if (time < n.labelAt) continue;

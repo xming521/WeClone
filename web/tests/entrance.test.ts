@@ -77,13 +77,11 @@ test('nodeLooks sizes nodes by log salience per level and fades low-confidence o
   assert.equal(manual.sal01, 0);
   assert.ok(Math.abs(strong.size - 31 * 1.3) < 1e-9);
   assert.ok(Math.abs(weak.size - 31 * 0.7) < 1e-9);
-  // Confidence 2.5 is below every threshold: the most translucent fill and a dashed outline.
+  // Confidence 2.5 is below every threshold: the most translucent fill.
   assert.equal(weak.clarity, 0);
   assert.ok(Math.abs(weak.fillOpacity - 0.2) < 1e-9);
-  assert.ok(weak.lineDash);
   // Topic confidence is the mean over its attributes: ((3·3 + 4·1) / 4 + 3.5) / 2 = 3.375, above `solid`.
   assert.equal(strong.clarity, 1);
-  assert.equal(strong.lineDash, null);
   assert.equal(manual.clarity, 1);
   // Attributes are normalised among attributes, independently of topics.
   assert.equal(looks.get('a-strong')!.sal01, 1);
@@ -99,7 +97,6 @@ const look = (sal01: number, clarity = 1): NodeLook => ({
   fillOpacity: 1,
   strokeOpacity: 1,
   lineWidth: 1.5,
-  lineDash: null,
   glowBlur: 10,
   glowAlpha: 1,
 });
@@ -167,7 +164,7 @@ test('buildEntrancePlan sweeps the dimensions in turn and brings their stars in 
 
 test('nodeFrame springs dimensions out of the root, glides stars in and settles every node at rest', () => {
   const plan = buildEntrancePlan(inputs());
-  const frame: NodeFrame = { x: 0, y: 0, alpha: 0, scale: 0, glow: 0 };
+  const frame: NodeFrame = { x: 0, y: 0, alpha: 0, scale: 0, glow: 0, reach: 0 };
   const dimension = plan.dimensions[2];
   assert.equal(nodeFrame(dimension, dimension.appearAt - 0.01, plan.root, frame), false);
   nodeFrame(dimension, dimension.appearAt + 0.02, plan.root, frame);
@@ -181,6 +178,6 @@ test('nodeFrame springs dimensions out of the root, glides stars in and settles 
   assert.ok(Math.abs(Math.hypot(frame.x - parent.x, frame.y - parent.y) - (1 - TIMING.approach) * way) < 1e-3 * way);
   for (const node of plan.nodes) {
     assert.equal(nodeFrame(node, node.end + 1e-6, plan.root, frame), true);
-    assert.deepEqual(frame, { x: node.x, y: node.y, alpha: 1, scale: 1, glow: 1 });
+    assert.deepEqual(frame, { x: node.x, y: node.y, alpha: 1, scale: 1, glow: 1, reach: 1 });
   }
 });

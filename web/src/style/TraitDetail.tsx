@@ -1,7 +1,8 @@
-import { useState, type CSSProperties } from 'react';
-import { Sparkles, X } from 'lucide-react';
+import { useState } from 'react';
+import { X } from 'lucide-react';
 import { Trans, useTranslation } from 'react-i18next';
-import { TRAIT_GROUPS, formatPercent, tierOf, type Trait } from './traits';
+import { BrandMark } from '../BrandMark';
+import { TRAIT_GROUPS, formatPercent, groupVars, tierOf, type Trait } from './traits';
 import type { VariationClass } from './types';
 
 export function TraitDetail({ trait: open, onClose }: { trait: Trait | null; onClose: () => void }) {
@@ -17,30 +18,44 @@ export function TraitDetail({ trait: open, onClose }: { trait: Trait | null; onC
     <aside
       className={`detail-panel trait-detail${open ? ' is-open' : ''}`}
       aria-hidden={!open}
-      style={{ '--bubble-color': group?.color } as CSSProperties}
+      data-sec=""
+      style={group ? groupVars(group.id) : undefined}
     >
-      <button className="detail-close" type="button" aria-label={t(($) => $.atlas.detail.close)} onClick={onClose}>
-        <X size={17} />
-      </button>
-      <div className="detail-topline">
-        <span className="detail-kicker">
-          <Sparkles size={14} /> {t(($) => $.style.detail.kicker)}
-        </span>
-        <span className="detail-serial">{group && t(($) => $.style.groups[group.id].name)}</span>
+      <div className="wc-panelhead">
+        <span className="wc-kicker">{t(($) => $.style.detail.kicker)}</span>
+        <span className="wc-serial">WECLONE / 2026</span>
+        <button
+          className="wc-iconbtn wc-iconbtn--sm"
+          type="button"
+          aria-label={t(($) => $.atlas.detail.close)}
+          onClick={onClose}
+        >
+          <X size={16} strokeWidth={1.8} />
+        </button>
       </div>
       {trait && (
-        <div className="detail-content">
-          <div className="trait-hero">
-            {/* The opened bubble again, popping in each time another one is chosen. */}
-            <div key={trait.key} className={`trait-emblem tier-${tier?.id}`}>
-              <span className="trait-bubble-body">
-                <strong>{formatPercent(trait.rate)}</strong>
-              </span>
+        <div className="detail-content detail-scroll">
+          <div className="detail-scope-heading">
+            {group && (
+              <ol className="wc-crumb detail-crumb">
+                <li>
+                  <span className="wc-dot" aria-hidden="true" />
+                </li>
+                <li className="detail-crumb-step">
+                  <span>{t(($) => $.style.groups[group.id].name)}</span>
+                </li>
+              </ol>
+            )}
+            <div className="trait-hero">
+              {/* The opened bubble again, popping in each time another one is chosen. */}
+              <div key={trait.key} className={`trait-emblem tier-${tier?.id}`}>
+                <span className="trait-bubble-body">
+                  <strong>{formatPercent(trait.rate)}</strong>
+                </span>
+              </div>
+              <h2>{t(($) => $.style.traits[trait.id].title)}</h2>
             </div>
-            <div>
-              <h2 className="trait-title">{t(($) => $.style.traits[trait.id].title)}</h2>
-              <p className="trait-note">{t(($) => $.style.traits[trait.id].note)}</p>
-            </div>
+            <p className="detail-description">{t(($) => $.style.traits[trait.id].note)}</p>
           </div>
           <p className="trait-frequency">
             <Trans
@@ -60,19 +75,25 @@ export function TraitDetail({ trait: open, onClose }: { trait: Trait | null; onC
           </p>
 
           {trait.examples.length > 0 && (
-            <section className="trait-section">
-              <h3>{t(($) => $.style.detail.examples)}</h3>
+            <section className="detail-block">
+              <div className="detail-block-head">
+                <h3>{t(($) => $.style.detail.examples)}</h3>
+              </div>
               <div className="trait-examples">
                 {trait.examples.map((example) => (
-                  <span key={example}>{example}</span>
+                  <span key={example} className="wc-bubble" data-from="you">
+                    {example}
+                  </span>
                 ))}
               </div>
             </section>
           )}
 
           {trait.contacts.length > 1 && (
-            <section className="trait-section">
-              <h3>{t(($) => $.style.detail.contacts)}</h3>
+            <section className="detail-block">
+              <div className="detail-block-head">
+                <h3>{t(($) => $.style.detail.contacts)}</h3>
+              </div>
               {trait.variation && trait.variation !== 'insufficient' && (
                 <p className="trait-variation">
                   {t(($) => $.style.variation[trait.variation as Exclude<VariationClass, 'insufficient'>])}
@@ -103,6 +124,10 @@ export function TraitDetail({ trait: open, onClose }: { trait: Trait | null; onC
           </p>
         </div>
       )}
+      <div className="detail-footer">
+        <span className="wc-serial">{t(($) => $.atlas.detail.footer)}</span>
+        <BrandMark variant="favicon" />
+      </div>
     </aside>
   );
 }

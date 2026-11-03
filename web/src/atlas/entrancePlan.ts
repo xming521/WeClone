@@ -87,8 +87,25 @@ export type EntrancePlan<T extends EntranceInput = EntranceInput> = {
   end: number;
 };
 
-/** State of a node at time t: position, alpha, scale and glow factor (1 = settled). */
-export type NodeFrame = { x: number; y: number; alpha: number; scale: number; glow: number };
+/**
+ * State of a node at time t: position, alpha, scale and glow factor (1 = settled), and `reach`, the
+ * share of its arc from the parent it has come along (1 = settled).
+ */
+export type NodeFrame = { x: number; y: number; alpha: number; scale: number; glow: number; reach: number };
+
+/**
+ * Point `u` (0 at a, 1 at b) of the arc between two centres whose control point lies `bend` of their
+ * distance left of their midpoint: the path the map's line from a to b takes. The part of the arc up
+ * to `u` bends about `u · bend` of its own length.
+ */
+export function arcPoint(ax: number, ay: number, bx: number, by: number, u: number, bend: number) {
+  const qx = (ax + bx) / 2 - (by - ay) * bend;
+  const qy = (ay + by) / 2 + (bx - ax) * bend;
+  const a = (1 - u) * (1 - u);
+  const b = 2 * u * (1 - u);
+  const c = u * u;
+  return { x: a * ax + b * qx + c * bx, y: a * ay + b * qy + c * by };
+}
 
 export const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 export const smooth = (edge0: number, edge1: number, x: number) => {
@@ -223,30 +240,34 @@ function dimensionOf<T extends EntranceInput>(node: EntranceNode<T>): EntranceNo
 }
 
 /** Writes the node's state at time t into `out`; false while it has not appeared yet. */
-export function nodeFrame(node: EntranceNode, t: number, root: EntranceNode, out: NodeFrame): boolean {
+export function nodeFrame(node: EntranceNode, t: number, root: EntranceNode, out: NodeFrame, bend = 0): boolean {
   const p = (t - node.appearAt) / node.dur;
   if (p <= 0) return false;
   const q = Math.min(1, p);
   out.x = node.x;
   out.y = node.y;
+  out.reach = 1;
   if (node.kind === 'root') {
     out.alpha = easeOutCubic(q);
     out.scale = 0.6 + 0.4 * easeOutBack(q, 1.4);
     out.glow = 1 + 0.6 * (1 - q) * (1 - q);
   } else if (node.kind === 'dimension') {
-    const k = spring(q);
-    out.x = root.x + (node.x - root.x) * k;
-    out.y = root.y + (node.y - root.y) * k;
+    // Springs out along the arc its line takes (`bend`; 0 for a straight line).
+    out.reach = spring(q);
+    const at = arcPoint(root.x, root.y, node.x, node.y, out.reach, bend);
+    out.x = at.x;
+    out.y = at.y;
     out.alpha = smooth(0, 0.28, q);
     out.scale = 0.55 + 0.45 * easeOutCubic(Math.min(1, q * 1.35));
     out.glow = 1;
   } else {
-    // Glides in from its parent's side, landing exactly where the layout put it.
+    // Glides in from its parent's side along its line's arc, landing exactly where the layout put it.
     const parent = node.parent;
     if (parent && q < 1) {
-      const k = 1 - TIMING.approach * (1 - easeOutCubic(q));
-      out.x = parent.x + (node.x - parent.x) * k;
-      out.y = parent.y + (node.y - parent.y) * k;
+      out.reach = 1 - TIMING.approach * (1 - easeOutCubic(q));
+      const at = arcPoint(parent.x, parent.y, node.x, node.y, out.reach, bend);
+      out.x = at.x;
+      out.y = at.y;
     }
     out.alpha = easeOutCubic(q);
     out.scale = node.look.sal01 > 0.6 ? 0.5 + 0.5 * easeOutBack(q, 1.5) : 0.62 + 0.38 * easeOutCubic(q);

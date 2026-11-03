@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { Download, Plus } from 'lucide-react';
 import { Trans, useTranslation } from 'react-i18next';
 import { exportProfile } from '../data';
+import { toast } from '../feedback/toast';
 import type { ReviewView } from '../data';
 import { useProfileStore } from '../store';
 
@@ -31,25 +32,30 @@ export function ProfileActions() {
     );
     const link = document.createElement('a');
     link.href = url;
-    link.download = `profile_${selection.view}.json`;
+    const file = `profile_${selection.view}.json`;
+    link.download = file;
     document.body.append(link);
     link.click();
     link.remove();
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
     close();
+    toast(t(($) => $.toast.downloaded, { file }));
   }
   return (
     <>
       <div className="header-review-actions">
         <button
+          className="wc-iconbtn"
+          type="button"
           disabled={busy}
           onClick={() => edit(null)}
           aria-label={t(($) => $.editor.addTitle)}
           title={t(($) => $.editor.addTitle)}
         >
-          <Plus size={17} />
+          <Plus size={16} strokeWidth={1.8} />
         </button>
         <button
+          className="wc-iconbtn"
           type="button"
           disabled={busy || !input}
           onClick={() => {
@@ -58,7 +64,7 @@ export function ProfileActions() {
           aria-label={t(($) => $.export.action)}
           title={t(($) => $.export.action)}
         >
-          <Download size={17} />
+          <Download size={16} strokeWidth={1.8} />
         </button>
       </div>
       {selection && (
@@ -83,10 +89,10 @@ export function ProfileActions() {
             </p>
             <p className="editor-hint">{t(($) => $.export.hint)}</p>
             <div className="editor-actions">
-              <button type="button" autoFocus onClick={close}>
+              <button className="wc-btn" type="button" autoFocus onClick={close}>
                 {t(($) => $.common.cancel)}
               </button>
-              <button className="primary" type="button" onClick={download}>
+              <button className="wc-btn wc-btn--primary" type="button" onClick={download}>
                 {t(($) => $.export.submit)}
               </button>
             </div>

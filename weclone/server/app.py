@@ -19,6 +19,7 @@ def create_app(
     run: Path | None = None,
     static_dir: Path | None = None,
     inference: bool = False,
+    demo_password: str | None = None,
 ):
     """Serve one build-profile run, the newest one when run is None."""
     inference_app = None
@@ -31,6 +32,7 @@ def create_app(
         run / "profile_hierarchy" / "profile_hierarchy.json" if run is not None else None,
         static_dir,
         inference_router=inference_app.router if inference_app is not None else None,
+        demo_password=demo_password,
     )
     if inference_app is not None:
         app.root_path = inference_app.root_path
@@ -56,7 +58,7 @@ def serve(*, host="127.0.0.1", port=5175, run=None, inference=False, demo=None):
     import uvicorn
 
     with demo_run(demo) if demo else nullcontext(run) as run:
-        app = create_app(run=run, inference=inference)
+        app = create_app(run=run, inference=inference, demo_password=DEMO_PASSWORD if demo else None)
         if demo:
             logger.info(f"演示模式：合成测试数据，退出后删除。登录密码：{DEMO_PASSWORD}")
         uvicorn.run(app, host=host, port=port)

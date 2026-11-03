@@ -18,6 +18,9 @@ from weclone.server.errors import ApiError, error_response, security_response
 from weclone.utils import secure_storage as secure
 
 SESSION_SECONDS = 2 * 60 * 60
+# Bounds of the session length the owner may choose. In encrypted mode a session keeps the data key in memory until
+# it ends, so the upper bound limits that exposure; the lower one keeps a session long enough to finish a review.
+SESSION_RANGE = (15 * 60, 7 * 24 * 60 * 60)
 COOKIE = "weclone_session"
 
 
@@ -41,6 +44,7 @@ class AuthStore:
                     failures INTEGER NOT NULL DEFAULT 0, blocked_until REAL NOT NULL DEFAULT 0
                 );
                 CREATE TABLE IF NOT EXISTS sessions (hash TEXT PRIMARY KEY, expires REAL NOT NULL);
+                CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
             """)
             db.execute("BEGIN IMMEDIATE")
             self._sync_generation(db)
@@ -79,34 +83,64 @@ class AuthStore:
             self._sync_generation(db)
         return self.login(password)
 
+    def session_seconds(self) -> int:
+        with self.connect() as db:
+            row = db.execute("SELECT value FROM settings WHERE key='session_seconds'").fetchone()
+        return int(row[0]) if row else SESSION_SECONDS
+
+    def set_session_seconds(self, seconds: int):
+        with self.connect() as db:
+            db.execute("INSERT OR REPLACE INTO settings VALUES ('session_seconds', ?)", (str(seconds),))
+
+    @contextmanager
+    def attempt(self, db, now):
+        """Checks a password inside the block; five wrong ones in a row lock both sign-in and password change for a
+        minute."""
+        failures, blocked_until = db.execute("SELECT failures, blocked_until FROM auth_state WHERE id=1").fetchone()
+        if blocked_until > now:
+            raise ApiError(429, "too_many_attempts", "尝试次数过多，请一分钟后再试")
+        try:
+            yield
+        except secure.InvalidPassword:
+            failures = (0 if blocked_until else failures) + 1
+            db.execute(
+                "UPDATE auth_state SET failures=?, blocked_until=? WHERE id=1",
+                (failures, now + 60 if failures >= 5 else 0),
+            )
+            db.commit()
+            raise ApiError(401, "password_wrong", "密码错误") from None
+        db.execute("UPDATE auth_state SET failures=0, blocked_until=0 WHERE id=1")
+
+    def change_password(self, old_password: str, new_password: str, confirmation: str):
+        """Keeps the data key and every encrypted file; every session ends, and a new one starts for this request."""
+        if new_password != confirmation:
+            raise ApiError(422, "password_mismatch", "两次输入的密码不一致")
+        if not secure.is_initialized():
+            raise ApiError(409, "not_set_up", "请先设置密码")
+        with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            self._sync_generation(db)
+            with self.attempt(db, time.time()):
+                secure.change_password(old_password, new_password)
+            # The manifest has a new auth revision: this ends the sessions and forgets their keys.
+            self._sync_generation(db)
+        return self.login(new_password)
+
     def login(self, password: str):
         if not secure.is_initialized():
             raise ApiError(409, "not_set_up", "请先设置密码")
         now = time.time()
+        seconds = self.session_seconds()
         with self.connect() as db:
             db.execute("BEGIN IMMEDIATE")
             self._sync_generation(db)
-            failures, blocked_until = db.execute(
-                "SELECT failures, blocked_until FROM auth_state WHERE id=1"
-            ).fetchone()
-            if blocked_until > now:
-                raise ApiError(429, "too_many_attempts", "尝试次数过多，请一分钟后再试")
-            try:
+            with self.attempt(db, now):
                 verified_key = secure.unlock_key(password)
-            except secure.InvalidPassword:
-                failures = (0 if blocked_until else failures) + 1
-                db.execute(
-                    "UPDATE auth_state SET failures=?, blocked_until=? WHERE id=1",
-                    (failures, now + 60 if failures >= 5 else 0),
-                )
-                db.commit()
-                raise ApiError(401, "password_wrong", "密码错误")
             key = None
             if secure.is_encrypted_mode():
                 key = verified_key
-            db.execute("UPDATE auth_state SET failures=0, blocked_until=0 WHERE id=1")
             token = secrets.token_urlsafe(32)
-            expires = now + SESSION_SECONDS
+            expires = now + seconds
             self.prune_keys(now)
             db.execute("DELETE FROM sessions WHERE expires<=?", (now,))
             digest = self.digest(token)
@@ -191,7 +225,17 @@ class Setup(Login):
     confirmation: str = Field(min_length=1, max_length=256)
 
 
-def install_auth(app, database: Path):
+class PasswordChange(BaseModel):
+    old_password: str = Field(min_length=1, max_length=256)
+    password: str = Field(min_length=1, max_length=256)
+    confirmation: str = Field(min_length=1, max_length=256)
+
+
+class SessionLength(BaseModel):
+    seconds: int = Field(ge=SESSION_RANGE[0], le=SESSION_RANGE[1])
+
+
+def install_auth(app, database: Path, demo_password: str | None = None):
     store = AuthStore(database)
     app.state.auth_store = store
     public = {"/api/auth/status", "/api/auth/setup", "/api/auth/login", "/api/auth/session"}
@@ -242,7 +286,7 @@ def install_auth(app, database: Path):
         response.set_cookie(
             COOKIE,
             token,
-            max_age=SESSION_SECONDS,
+            max_age=max(1, int(expires - time.time())),
             httponly=True,
             secure=request.url.scheme == "https",
             samesite="strict",
@@ -255,6 +299,10 @@ def install_auth(app, database: Path):
         return {
             "initialized": secure.is_initialized(),
             "storage_mode": "encrypted" if secure.is_encrypted_mode() else "plaintext",
+            # Only the demo's fixed password, shown on the sign-in page.
+            "demo_password": demo_password,
+            "session_seconds": store.session_seconds(),
+            "session_range": SESSION_RANGE,
         }
 
     @app.post("/api/auth/setup")
@@ -264,6 +312,19 @@ def install_auth(app, database: Path):
     @app.post("/api/auth/login")
     def login(body: Login, request: Request):
         return session_response(*store.login(body.password), request)
+
+    @app.post("/api/auth/password")
+    def change_password(body: PasswordChange, request: Request):
+        if demo_password is not None:
+            raise ApiError(409, "demo_password_fixed", "演示模式的密码固定，不能修改")
+        return session_response(*store.change_password(body.old_password, body.password, body.confirmation), request)
+
+    @app.put("/api/auth/session-length")
+    def session_length(body: SessionLength):
+        if demo_password is not None:
+            raise ApiError(409, "demo_settings_fixed", "演示模式不能修改这项设置")
+        store.set_session_seconds(body.seconds)
+        return {"session_seconds": body.seconds}
 
     @app.get("/api/auth/session")
     def session(request: Request):

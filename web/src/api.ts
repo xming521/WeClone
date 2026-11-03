@@ -16,8 +16,10 @@ async function request<T>(
         }),
   });
   if (!response.ok) {
-    if (response.status === 401 && path !== 'auth/login') window.dispatchEvent(new Event('weclone-unauthorized'));
     const data = await response.json().catch(() => null);
+    // A wrong password on sign-in or password change is no expired session.
+    if (response.status === 401 && data?.code !== 'password_wrong')
+      window.dispatchEvent(new Event('weclone-unauthorized'));
     throw new Error(errorMessage(data, response.status));
   }
   return response.json() as Promise<T>;

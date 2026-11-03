@@ -2,10 +2,14 @@ import { useCallback, useEffect, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { api } from '../api';
 import { LogoutButton } from '../Auth';
+import { AppBrand, BrandMark } from '../BrandMark';
 import { LanguageSwitch } from '../LanguageSwitch';
+import { SettingsLink } from '../settings/SettingsLink';
 import { ModeSwitch } from '../ModeSwitch';
 import { CopyField, TokenCard, type TokenState } from '../assistant/accessParts';
+import { ClonePlayground } from './ClonePlayground';
 import '../assistant/assistant.css';
+import './bots.css';
 import '../summary/summary.css';
 
 // Shape of GET /api/bots, served by weclone/server/bots.py.
@@ -66,16 +70,18 @@ export function BotsApp() {
   if (!view && error)
     return (
       <div className="load-state">
-        <span>✳</span>
+        <BrandMark />
         <h1>{t(($) => $.bots.loadFailed)}</h1>
         <p>{error}</p>
-        <button onClick={() => void load()}>{t(($) => $.common.retry)}</button>
+        <button className="wc-btn" type="button" onClick={() => void load()}>
+          {t(($) => $.common.retry)}
+        </button>
       </div>
     );
   if (!view)
     return (
       <div className="load-state">
-        <span className="loading-mark">✳</span>
+        <BrandMark className="loading-mark" />
         <h1>{t(($) => $.bots.loading)}</h1>
       </div>
     );
@@ -84,6 +90,7 @@ export function BotsApp() {
     <div className="summary-page">
       <header className="summary-topbar">
         <div className="topbar-leading">
+          <AppBrand />
           <ModeSwitch mode="bots" />
           <div className="topbar-heading">
             <span className="topbar-divider">/</span>{' '}
@@ -92,6 +99,7 @@ export function BotsApp() {
         </div>
         <div className="topbar-actions">
           <LanguageSwitch />
+          <SettingsLink />
           <LogoutButton />
         </div>
       </header>
@@ -107,14 +115,17 @@ export function BotsApp() {
             {view.encrypted && t(($) => $.bots.encrypted)}
           </p>
           {!view.inference && (
-            <p className="summary-hint summary-warning">
-              <Trans i18nKey={($) => $.bots.noInference} components={{ code: <code /> }} />
+            <p className="assistant-strip clone" role="status">
+              <span className="wc-clone" aria-hidden="true" />
+              <span>
+                <Trans i18nKey={($) => $.bots.noInference} components={{ code: <code /> }} />
+              </span>
             </p>
           )}
           {error && (
             <div className="summary-error" role="alert">
               <span>{error}</span>
-              <button type="button" onClick={() => setError('')}>
+              <button className="wc-btn wc-btn--ghost wc-btn--sm" type="button" onClick={() => setError('')}>
                 {t(($) => $.common.dismiss)}
               </button>
             </div>
@@ -123,6 +134,7 @@ export function BotsApp() {
 
         <TokenCard
           token={view.token}
+          tone="clone"
           created={Boolean(created)}
           busy={busy}
           unused={t(($) => $.bots.unused)}
@@ -137,12 +149,13 @@ export function BotsApp() {
               <p className="summary-hint">{t(($) => $.bots.setup.key)}</p>
               <CopyField label="API Key" text={created} />
               <p className="summary-hint">{t(($) => $.bots.setup.model)}</p>
-              <button className="assistant-done" type="button" onClick={() => setCreated('')}>
+              <button className="wc-btn assistant-done" type="button" onClick={() => setCreated('')}>
                 {t(($) => $.assistant.setup.done)}
               </button>
             </div>
           )}
         </TokenCard>
+        <ClonePlayground inference={view.inference} />
       </main>
     </div>
   );
