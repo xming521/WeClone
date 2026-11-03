@@ -2,13 +2,13 @@ import { useMemo, useState, type CSSProperties } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { ChevronLeft, Compass, Fingerprint, Heart, Layers, LayoutGrid, Orbit, Target } from 'lucide-react';
 import { Trans, useTranslation } from 'react-i18next';
-import { collectFacts, DIMENSIONS, displayProfileText, type DimensionId } from '../data';
+import { collectFacts, DIMENSIONS, displayProfileText, type MapDimensionId } from '../data';
 import type { Grouping, ReviewStatus } from '../data';
 import { useRun } from '../settings/useRun';
 import { useProfileStore } from '../store';
 import { scopeColor } from './scopeColor';
 
-const DIMENSION_ICONS: Record<DimensionId, LucideIcon> = {
+const DIMENSION_ICONS: Record<MapDimensionId, LucideIcon> = {
   1: Fingerprint,
   3: Target,
   4: Layers,
@@ -106,7 +106,7 @@ export function LeftPanel({
       >
         {viewModel.dimensionIds.map((id, index) => {
           const node = viewModel.nodes.get(id)!;
-          const Icon = byDomain ? null : DIMENSION_ICONS[node.dim as DimensionId];
+          const Icon = byDomain ? null : DIMENSION_ICONS[node.dim as MapDimensionId];
           const counts = review.perItem.get(id);
           const pending = counts?.pending ?? 0;
           const share = counts?.facts ? counts.approved / counts.facts : 0;

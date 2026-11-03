@@ -104,8 +104,8 @@ def allowed_dimensions(record: dict) -> tuple[int, ...]:
         return (8,)
     if record["type"] == "goal":
         return (1, 3, 4, 5, 6)
-    # Habits arrive as stable facts, recent ones as current states.
-    return (1, 3, 4, 6, 8)
+    # Habits and skills arrive as stable facts, recent ones as current states.
+    return (1, 2, 3, 4, 6, 8)
 
 
 def read_memories(input_dir: Path) -> tuple[list[dict], dict[str, dict]]:

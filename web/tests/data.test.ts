@@ -277,7 +277,7 @@ test('toggling a level expands branching nodes down to it, then collapses it and
 test('dimensionColor returns configured colours and falls back to dimension 1', () => {
   assert.equal(dimensionColor(1), '#118f83');
   assert.equal(dimensionColor(8), '#3a76b4');
-  assert.equal(dimensionColor(2), '#118f83');
+  assert.equal(dimensionColor(6), '#118f83');
   assert.equal(dimensionColor(null), '#118f83');
 });
 
@@ -296,7 +296,7 @@ test('buildModel skips dimensions that are not configured', () => {
       dimensions: [
         ...input.dimensions,
         {
-          dim: 2,
+          dim: 6,
           name: '未配置',
           groups: [{ id: 'topic-x', name: '其他', items: [{ id: 'attr-x', attr: 'x', fact_indices: [] }] }],
         },
@@ -305,7 +305,7 @@ test('buildModel skips dimensions that are not configured', () => {
     labels,
   );
   assert.deepEqual(model.dimensionIds, ['dimension:8']);
-  assert.equal(model.nodes.has('dimension:2'), false);
+  assert.equal(model.nodes.has('dimension:6'), false);
   assert.equal(model.nodes.has('attr-x'), false);
 });
 
@@ -392,6 +392,33 @@ test('domain grouping merges topics across dimensions and keeps the stored attri
   );
   assert.equal(model.attributeIds.length, 5);
   assert.equal(model.nodes.get('root')!.attributeCount, 5);
+});
+
+test('a domain-only dimension shows in the domain view and stays off the dimension map', () => {
+  const withSkills: ProfileInput = {
+    ...domainInput,
+    dimensions: [
+      ...domainInput.dimensions,
+      {
+        dim: 2,
+        name: '技能',
+        groups: [
+          {
+            id: 'd2-work',
+            name: '工作',
+            items: [
+              { id: 'd2-work-jobs', name: '求职', items: [{ id: 'attr-skill', attr: '技能', fact_indices: [0] }] },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+  const byDomain = buildModel(withSkills, labels, 'domain');
+  assert.equal(byDomain.nodes.get('attr-skill')!.parentId, byDomain.nodes.get(byDomain.dimensionIds[0])!.childIds[0]);
+  const byDimension = buildModel(withSkills, labels);
+  assert.equal(byDimension.nodes.has('dimension:2'), false);
+  assert.equal(byDimension.nodes.has('attr-skill'), false);
 });
 
 test('buildModel names the root, the dimensions and the direct groups from the labels', () => {

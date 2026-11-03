@@ -1,11 +1,11 @@
 """Domain summaries of the reviewed profile for B's personal assistant to keep in context, one per life domain and
 level, written by the LLM from the domain's facts.
 
-The full level summarises every fact still true and is written by build-profile as its last stage. The public and
-normal levels are shorter, written from identity, goals, conditions and preferences at or below that privacy level.
-A summary keeps the hash of the prompt it was written from: the domain's facts under the current rules. Once either
-changes it is stale and leaves the export until it is regenerated and approved again. Each summary is stored as soon
-as it comes back, so a model that fails on some domains still leaves the others done.
+The full level summarises every fact still true and is written by build-profile as its last stage. The public and normal
+levels are shorter, written from identity, skills, goals, conditions and preferences at or below that privacy level. A
+summary keeps the hash of the prompt it was written from: the domain's facts under the current rules. Once either
+changes it is stale and leaves the export until it is regenerated and approved again. Each summary is stored as soon as
+it comes back, so a model that fails on some domains still leaves the others done.
 """
 
 import argparse
@@ -31,8 +31,9 @@ Level = Literal["full", "normal", "public"]
 LENGTHS = {"full": "long", "normal": "short", "public": "short"}
 # Privacy levels an assistant's summary draws on. Private facts never go into its always-on text.
 ASSISTANT_LEVELS = {"normal": ("public", "normal"), "public": ("public",)}
-# Identity, goals, conditions and preferences. Plans and commitments date too fast for an assistant's always-on text.
-ASSISTANT_DIMS = (1, 3, 4, 8)
+# Identity, skills, goals, conditions and preferences. Plans and commitments date too fast for an assistant's
+# always-on text.
+ASSISTANT_DIMS = (1, 2, 3, 4, 8)
 # Facts of one domain the model reads, most supported first. The model picks what the assistant needs, often a fact
 # mentioned once, so it reads every fact of a real domain. The cap only keeps a runaway domain within INPUT_TOKENS.
 SUMMARY_FACTS = 150

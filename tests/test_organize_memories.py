@@ -134,9 +134,9 @@ def test_reader_rejects_samples_without_a_contact_id(tmp_path, chat_with_id):
 
 
 @pytest.mark.parametrize("kind,type_,dims", [
-    ("S", "stable_fact", (1, 3, 4, 6, 8)),
+    ("S", "stable_fact", (1, 2, 3, 4, 6, 8)),
     ("S", "goal", (1, 3, 4, 5, 6)),
-    ("S", "current_state", (1, 3, 4, 6, 8)),
+    ("S", "current_state", (1, 2, 3, 4, 6, 8)),
     ("S", "preference", (8,)),
     ("ES", "ES", (5, 7)),
     ("EI", "EI", (5, 7)),

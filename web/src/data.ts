@@ -118,10 +118,19 @@ export const DIMENSIONS = [
   { dim: 8, token: 'preference', color: '#3a76b4' },
 ] as const;
 
-export type DimensionId = (typeof DIMENSIONS)[number]['dim'];
+// Dimensions the domain view shows under their domains but the dimension view leaves out, so the map keeps
+// the dimensions above. They have a name, no colour or icon.
+export const DOMAIN_ONLY_DIMENSIONS = [2] as const;
+
+export type MapDimensionId = (typeof DIMENSIONS)[number]['dim'];
+export type DimensionId = MapDimensionId | (typeof DOMAIN_ONLY_DIMENSIONS)[number];
+
+export function isMapDimension(dim: number | null | undefined): dim is MapDimensionId {
+  return DIMENSIONS.some((entry) => entry.dim === dim);
+}
 
 export function isDimensionId(dim: number | null | undefined): dim is DimensionId {
-  return DIMENSIONS.some((entry) => entry.dim === dim);
+  return isMapDimension(dim) || DOMAIN_ONLY_DIMENSIONS.some((entry) => entry === dim);
 }
 
 export const ROOT_COLOR = '#626871'; // --ink-3: the centre has no colour of its own
@@ -318,11 +327,11 @@ export function buildModel(input: ProfileInput, labels: ModelLabels, grouping: G
   const topLevel: TopLevelInput[] =
     grouping === 'domain'
       ? domainLevel(input, labels)
-      : // Dimensions not listed in DIMENSIONS are skipped. Keep in sync with `PROFILE_DIMS` in
-        // weclone/prompts/memory_organization.py. Their names and the `:direct` group's come from the labels,
-        // not the server.
+      : // Dimensions not listed in DIMENSIONS are skipped. DIMENSIONS and DOMAIN_ONLY_DIMENSIONS together
+        // follow `PROFILE_DIMS` in weclone/prompts/memory_organization.py. Their names and the `:direct`
+        // group's come from the labels, not the server.
         input.dimensions.flatMap((dimension) =>
-          isDimensionId(dimension.dim)
+          isMapDimension(dimension.dim)
             ? [
                 {
                   ...dimension,

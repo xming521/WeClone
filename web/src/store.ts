@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { api } from './api';
 import {
   DIMENSIONS,
+  DOMAIN_ONLY_DIMENSIONS,
   REVIEW_SORTS,
   PRIVACY_LEVELS,
   ancestors,
@@ -31,7 +32,10 @@ function modelLabels(): ModelLabels {
   return {
     root: i18n.t(($) => $.model.root),
     dimensions: Object.fromEntries(
-      DIMENSIONS.map(({ dim }) => [dim, i18n.t(($) => $.model.dimensions[dim])]),
+      [...DIMENSIONS.map(({ dim }) => dim), ...DOMAIN_ONLY_DIMENSIONS].map((dim) => [
+        dim,
+        i18n.t(($) => $.model.dimensions[dim]),
+      ]),
     ) as Record<DimensionId, string>,
     unassignedDomain: i18n.t(($) => $.model.unassignedDomain),
     directTopic: i18n.t(($) => $.model.directTopic),

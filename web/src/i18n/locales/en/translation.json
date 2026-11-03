@@ -96,6 +96,7 @@
     "root": "My portrait",
     "dimensions": {
       "1": "Demographics and identity",
+      "2": "Knowledge, skills and limits",
       "3": "Needs, motives and goals",
       "4": "Resources and constraints",
       "5": "Key plans and commitments",
@@ -555,7 +556,7 @@
     "title": "Background for your personal assistant",
     "intro": {
       "full": "One summary per domain of your life, from every entry in it that still holds, private and sensitive ones included. The last step of build-profile generates this level.",
-      "short": "A shorter summary per domain of your life, from identity, goals, circumstances and preferences at or below the chosen privacy level. Plans, commitments and outdated information are left out.",
+      "short": "A shorter summary per domain of your life, from identity, skills, goals, circumstances and preferences at or below the chosen privacy level. Plans, commitments and outdated information are left out.",
       "review": "Only approved summaries go into the export text and to assistants. Once the portrait behind a summary or the summary rules change, it stops being exported until it is regenerated and approved again."
     },
     "level": "Up to privacy level",
