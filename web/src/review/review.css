@@ -58,6 +58,38 @@
   margin-top: var(--space-1);
 }
 
+/* The keys of the review shortcuts, for pointers that come with a keyboard. */
+.review-keys {
+  display: none;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  margin: 0 0 var(--space-3);
+  color: var(--ink-3);
+  font: var(--text-caption);
+}
+
+.review-keys span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.review-keys .wc-kbd {
+  margin: 0;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .review-keys {
+    display: flex;
+  }
+}
+
+/* The card the shortcuts act on. */
+.fact-card[data-marked] {
+  box-shadow: 0 0 0 2px var(--you);
+  scroll-margin: var(--space-4);
+}
+
 /* ── Fact card (wc-memory) ─────────────────────────────────────────────────────────── */
 .fact-card {
   margin-bottom: var(--space-3);

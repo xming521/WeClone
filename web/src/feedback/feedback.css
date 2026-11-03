@@ -1,0 +1,96 @@
+/* Notices of what an action did, at the bottom centre of every page, above panels and dialogs' backdrops. */
+.toast-region {
+  position: fixed;
+  z-index: 60;
+  left: 50%;
+  bottom: var(--space-6);
+  transform: translateX(-50%);
+  max-width: calc(100vw - 2 * var(--space-4));
+  pointer-events: none;
+}
+
+.wc-toast {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 40px;
+  padding: 4px 6px 4px 16px;
+  box-sizing: border-box;
+  border-radius: var(--radius-sheet);
+  background: var(--ink-1);
+  color: var(--paper);
+  font: 500 13px/18px var(--font-sans);
+  box-shadow: var(--shadow-3);
+  pointer-events: auto;
+  animation: toast-in 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.wc-toast[data-tone='error'] {
+  background: var(--danger);
+}
+
+.wc-toast__text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.wc-toast__action,
+.wc-toast__close {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 5px;
+  height: 30px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: inherit;
+  font: 600 12.5px/1 var(--font-sans);
+  cursor: pointer;
+}
+
+.wc-toast__close {
+  width: 30px;
+  padding: 0;
+  justify-content: center;
+  opacity: 0.7;
+}
+
+.wc-toast__action:hover,
+.wc-toast__close:hover {
+  background: color-mix(in srgb, var(--paper) 14%, transparent);
+  opacity: 1;
+}
+
+.wc-toast__action:focus-visible,
+.wc-toast__close:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.wc-toast .wc-kbd {
+  border-color: color-mix(in srgb, currentColor 30%, transparent);
+  background: color-mix(in srgb, currentColor 14%, transparent);
+  box-shadow: none;
+  color: inherit;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wc-toast {
+    animation: none;
+  }
+}
+
+@media (max-width: 650px) {
+  .toast-region {
+    bottom: var(--space-4);
+  }
+}

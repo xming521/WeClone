@@ -1,6 +1,6 @@
 import { ArrowUpRight, Check, ChevronRight, MessageSquare, MessagesSquare, Pencil, Undo2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { displayProfileText, factTags, isDimensionId } from '../data';
+import { displayProfileText, factTags, isDimensionId, latestSourceTime } from '../data';
 import type { ProfileFact } from '../data';
 import { useProfileStore } from '../store';
 import { FactHistory } from './FactHistory';
@@ -10,16 +10,18 @@ import { MARK_STATUS } from './status';
 
 export function FactCard({
   fact,
+  marked = false,
   checked,
   onCheckedChange,
 }: {
   fact: ProfileFact;
+  /** The card the review shortcuts act on. */
+  marked?: boolean;
   checked: boolean;
   onCheckedChange: (checked: boolean) => void;
 }) {
   const { t } = useTranslation();
   const sources = useProfileStore((state) => state.input?.sources);
-  const busy = useProfileStore((state) => state.busy);
   const review = useProfileStore((state) => state.review);
   const edit = useProfileStore((state) => state.edit);
   const openChat = useProfileStore((state) => state.openChat);
@@ -30,14 +32,16 @@ export function FactCard({
   const dimensionName = byDomain && isDimensionId(dim) ? t(($) => $.model.dimensions[dim]) : undefined;
   const meta = [dimensionName, fact.origin === 'manual' && t(($) => $.review.fact.manual)].filter(Boolean).join(' · ');
   const status = MARK_STATUS[fact.status];
-  // The newest of the source times, as a date; ISO times sort as text.
-  const latest = fact.source_ids
-    .map((id) => sources?.[id]?.sample_time?.slice(0, 10))
-    .filter((time): time is string => !!time)
-    .sort()
-    .at(-1);
+  const latest = latestSourceTime(fact, sources)?.slice(0, 10);
   return (
-    <article className="wc-memory fact-card" data-status={status} aria-label={fact.attr}>
+    <article
+      className="wc-memory fact-card"
+      data-status={status}
+      data-fact-id={fact.id}
+      data-marked={marked || undefined}
+      aria-current={marked || undefined}
+      aria-label={fact.attr}
+    >
       <div className="wc-memory__head">
         <label className="wc-check">
           <input
@@ -63,7 +67,6 @@ export function FactCard({
           <button
             type="button"
             className="wc-btn wc-btn--adopt wc-btn--sm"
-            disabled={busy}
             onClick={() => void review([fact], 'approved')}
           >
             <Check size={13} strokeWidth={1.8} aria-hidden="true" />
@@ -71,37 +74,22 @@ export function FactCard({
           </button>
         )}
         {fact.status !== 'pending' && (
-          <button
-            type="button"
-            className="wc-btn wc-btn--sm"
-            disabled={busy}
-            onClick={() => void review([fact], 'pending')}
-          >
+          <button type="button" className="wc-btn wc-btn--sm" onClick={() => void review([fact], 'pending')}>
             <Undo2 size={13} strokeWidth={1.8} aria-hidden="true" />
             {t(($) => $.review.fact.unreview)}
           </button>
         )}
         {fact.status === 'rejected' && (
-          <button
-            type="button"
-            className="wc-btn wc-btn--sm"
-            disabled={busy}
-            onClick={() => void review([fact], 'approved')}
-          >
+          <button type="button" className="wc-btn wc-btn--sm" onClick={() => void review([fact], 'approved')}>
             {t(($) => $.review.approve)}
           </button>
         )}
         {fact.status !== 'rejected' && (
-          <button
-            type="button"
-            className="wc-btn wc-btn--sm"
-            disabled={busy}
-            onClick={() => void review([fact], 'rejected')}
-          >
+          <button type="button" className="wc-btn wc-btn--sm" onClick={() => void review([fact], 'rejected')}>
             {t(($) => $.review.reject)}
           </button>
         )}
-        <button type="button" className="wc-btn wc-btn--ghost wc-btn--sm" disabled={busy} onClick={() => edit(fact)}>
+        <button type="button" className="wc-btn wc-btn--ghost wc-btn--sm" onClick={() => edit(fact)}>
           <Pencil size={13} strokeWidth={1.8} aria-hidden="true" />
           {t(($) => $.review.fact.edit)}
         </button>

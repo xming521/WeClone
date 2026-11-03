@@ -3,8 +3,10 @@
 import hashlib
 import json
 import sqlite3
+import tomllib
 from contextlib import contextmanager
 from datetime import datetime, timezone
+from importlib import metadata
 from pathlib import Path
 from typing import Literal
 from uuid import uuid4
@@ -50,6 +52,18 @@ def review_paths(database: Path | None = None, source: Path | None = None) -> tu
         )
         source = selected / "profile_hierarchy.json"
     return database or source.parent / "profile_review.sqlite3", source
+
+
+def weclone_version():
+    # A checkout is installed editable, whose package metadata keeps the version of the first install.
+    try:
+        return tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]["version"]
+    except (OSError, KeyError, tomllib.TOMLDecodeError):
+        pass
+    try:
+        return metadata.version("WeClone")
+    except metadata.PackageNotFoundError:
+        return None
 
 
 def encode(value):
@@ -318,6 +332,25 @@ class ReviewStore:
             raise ApiError(404, "source_not_found", "来源记录不存在")
         return source_chat(source_id, source)
 
+    def run_info(self):
+        """Which build-profile run the server shows and when it was made and last reviewed."""
+        run = self.source.parent.parent
+        source = secure.resolve_path(self.source)
+        try:
+            with self.connect() as db:
+                reviewed = db.execute("SELECT MAX(at) FROM history").fetchone()[0]
+        except FileNotFoundError:
+            reviewed = None
+        return {
+            "name": run.name,
+            "path": str(run),
+            "generated_at": (
+                datetime.fromtimestamp(source.stat().st_mtime, timezone.utc).isoformat() if source.is_file() else None
+            ),
+            "reviewed_at": reviewed,
+            "style": style_view.complete(run / "style"),
+        }
+
     def intro(self):
         profile = self.profile()
         with self.connect() as db:
@@ -420,6 +453,15 @@ def create_app(
     @app.get("/api/profile")
     def profile():
         return store.profile()
+
+    @app.get("/api/run")
+    def run_info():
+        demo = demo_password is not None
+        info = store.run_info()
+        # The demo is open to anyone with its published password: the server's directories stay out of it.
+        if demo:
+            info["path"] = None
+        return {**info, "demo": demo, "version": weclone_version()}
 
     @app.get("/api/profile/intro")
     def intro():

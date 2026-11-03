@@ -14,13 +14,17 @@ import { ReviewOverlays } from './review/ReviewOverlays';
 import { DIMENSIONS } from './data';
 import { useProfileStore } from './store';
 import { AuthGate, LogoutButton } from './Auth';
-import { BrandMark } from './BrandMark';
+import { AppBrand, BrandMark } from './BrandMark';
 import { LanguageSwitch } from './LanguageSwitch';
 import { ModeSwitch, modeFromHash } from './ModeSwitch';
 import { StyleApp } from './style/StyleApp';
 import { AssistantApp } from './assistant/AssistantApp';
 import { BotsApp } from './bots/BotsApp';
 import { SummaryApp } from './summary/SummaryApp';
+import { AboutApp } from './settings/AboutApp';
+import { SettingsApp } from './settings/SettingsApp';
+import { SettingsLink } from './settings/SettingsLink';
+import { Toaster } from './feedback/Toaster';
 
 function Atlas() {
   const { t } = useTranslation();
@@ -45,6 +49,7 @@ function Atlas() {
   return (
     <Tooltip.Provider>
       <div className={`app-shell${leftOpen ? ' left-open' : ''}${detailOpen ? ' detail-open' : ''}`}>
+        <AppBrand />
         <LeftPanel
           open={leftOpen}
           onClose={() => {
@@ -90,6 +95,7 @@ function Atlas() {
               <SearchBox />
               <ProfileActions />
               <LanguageSwitch />
+              <SettingsLink />
               <LogoutButton />
             </div>
           </div>
@@ -150,12 +156,19 @@ function useMode() {
 
 export default function App() {
   const mode = useMode();
-  const Page = { profile: ProfileApp, style: StyleApp, summary: SummaryApp, assistant: AssistantApp, bots: BotsApp }[
-    mode
-  ];
+  const Page = {
+    profile: ProfileApp,
+    style: StyleApp,
+    summary: SummaryApp,
+    assistant: AssistantApp,
+    bots: BotsApp,
+    settings: SettingsApp,
+    about: AboutApp,
+  }[mode];
   return (
     <AuthGate>
       <Page />
+      <Toaster />
     </AuthGate>
   );
 }

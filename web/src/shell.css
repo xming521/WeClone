@@ -5,6 +5,9 @@
 .app-shell {
   --left-panel-width: var(--rail-left);
   --detail-panel-width: var(--rail-detail);
+  /* The lockup lines up with the left panel's content; the topbar starts after it while the panel is closed. */
+  --brand-left: calc(var(--space-4) + var(--space-1));
+  --brand-width: 112px;
   position: relative;
   height: 100dvh;
   min-height: 610px;
@@ -21,6 +24,26 @@
   background: var(--paper);
 }
 
+/* ── Brand: the lockup at the top left of every page ───────────────────────── */
+.app-brand {
+  flex: none;
+  text-decoration: none;
+}
+
+.app-brand .wc-brand__mark {
+  width: 39px;
+  height: 28px;
+}
+
+/* With a left panel it stays put: the panel slides in and out under it. */
+.app-shell > .app-brand {
+  position: absolute;
+  z-index: 7;
+  top: var(--space-5);
+  left: var(--brand-left);
+  width: var(--brand-width);
+}
+
 /* ── Topbar: the page switch and heading on the left, the tools on the right ─────────────────── */
 .topbar,
 .summary-topbar {
@@ -31,7 +54,7 @@
   position: absolute;
   z-index: 5;
   top: var(--space-5);
-  left: var(--space-6);
+  left: calc(var(--brand-left) + var(--brand-width) + var(--space-4));
   right: var(--space-6);
   display: flex;
   justify-content: space-between;
@@ -345,10 +368,10 @@
   .app-shell {
     --left-panel-width: 240px;
     --detail-panel-width: 310px;
+    --brand-left: calc(var(--space-3) + var(--space-1));
   }
 
   .topbar {
-    left: var(--space-5);
     right: var(--space-5);
   }
 
@@ -364,12 +387,23 @@
 @media (max-width: 650px) {
   .app-shell {
     --left-panel-width: min(300px, calc(100vw - 24px));
+    --brand-left: var(--space-3);
+    --brand-width: 39px;
     min-height: 0;
+  }
+
+  /* Only the mark: the page switch needs the room. */
+  .app-brand .wc-brand__name {
+    display: none;
+  }
+
+  .app-shell > .app-brand {
+    top: var(--space-2);
   }
 
   .topbar {
     top: var(--space-2);
-    left: var(--space-3);
+    left: calc(var(--brand-left) + var(--brand-width) + var(--space-2));
     right: var(--space-3);
     flex-wrap: wrap; /* the tools drop below the page switch */
     gap: var(--space-2);

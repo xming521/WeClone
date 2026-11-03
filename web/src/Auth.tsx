@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { api } from './api';
 import { BrandMark } from './BrandMark';
 import { LanguageSwitch } from './LanguageSwitch';
+import { formatDuration } from './settings/duration';
 import { useProfileStore } from './store';
 
 const AuthContext = createContext<() => Promise<void>>(async () => {});
@@ -32,6 +33,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
   const [initialized, setInitialized] = useState<boolean | null>(null);
   const [mode, setMode] = useState<'encrypted' | 'plaintext'>('plaintext');
   const [demoPassword, setDemoPassword] = useState<string | null>(null);
+  const [sessionSeconds, setSessionSeconds] = useState(2 * 3600);
   const [password, setPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
   const [busy, setBusy] = useState(false);
@@ -57,6 +59,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
             initialized: boolean;
             storage_mode: 'encrypted' | 'plaintext';
             demo_password: string | null;
+            session_seconds: number;
           }>('auth/status'),
           api.get<{ expires_at: number | null }>('auth/session'),
         ]);
@@ -64,6 +67,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
           setInitialized(status.initialized);
           setMode(status.storage_mode);
           setDemoPassword(status.demo_password);
+          setSessionSeconds(status.session_seconds);
           if (session.expires_at === null || session.expires_at * 1000 <= Date.now()) clear();
           else setExpires(session.expires_at);
           setError('');
@@ -227,7 +231,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
           <LockOpen size={16} strokeWidth={1.8} />
           {busy ? t(($) => $.auth.verifying) : setup ? t(($) => $.auth.setupSubmit) : t(($) => $.auth.loginSubmit)}
         </button>
-        <p className="auth-note">{t(($) => $.auth.sessionNote)}</p>
+        <p className="auth-note">{t(($) => $.auth.sessionNote, { duration: formatDuration(sessionSeconds) })}</p>
         <footer className="auth-foot">
           <b className="auth-wordmark">WeClone</b>
           <span className="wc-serial">PROFILE ATLAS</span>

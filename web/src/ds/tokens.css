@@ -9,30 +9,30 @@
   --veil: rgba(244,243,239,0.86); /* 浮在图谱上的顶栏与工具条底色，配合 backdrop-filter: blur(12px)。 */
   --line-1: #e5e4e0; /* 分隔线、卡片描边、面板边。纯装饰，不承担识别控件的作用。 */
   --line-2: #d2d2cc; /* 次按钮、输入框、筛选片的描边（低于 3:1，靠文字和图标识别控件）。 */
-  --line-3: #878c94; /* 必须靠描边识别的控件：圆形复选框、单选框、未选中的开关。paper 3.05 · card 3.38 / 深色 card 3.30。 */
-  --ink-1: #212731; /* 标题与正文。paper 13.5 · card 15.0 · sunken 12.6；深色 card 13.6。 */
-  --ink-2: #484f5a; /* 次级文字、未选中的控件文字。paper 7.4 · sunken 6.9；深色 card 9.4。 */
-  --ink-3: #626871; /* 说明、元信息、占位符。paper 5.1 · sunken 4.7 · well 5.2；深色 card 6.1 · well 6.5。 */
+  --line-3: #878c94; /* 必须靠描边识别的控件：圆形复选框、单选框、未选中的开关。paper 3.05 · card 3.38 / 深色 card 3.1。 */
+  --ink-1: #212731; /* 标题与正文。paper 13.5 · card 15.0 · sunken 12.6；深色 card 10.0。 */
+  --ink-2: #484f5a; /* 次级文字、未选中的控件文字。paper 7.4 · sunken 6.9；深色 card 6.9。 */
+  --ink-3: #626871; /* 说明、元信息、占位符。paper 5.1 · sunken 4.7 · well 5.2；深色 card 5.0 · well 5.5。 */
   --ink-4: #93979e; /* 只给禁用文字和非信息性的刻度（2.6:1，不用于可读文字）。 */
-  --you: #0d6db2; /* “你”的颜色：主操作、选中、焦点、眉标与标题强调。作文字在 paper 4.9 · card 5.5；深色在 paper 6.6。来自 Logo 前泡晴蓝。 */
+  --you: #0d6db2; /* “你”的颜色：主操作、选中、焦点、眉标与标题强调。作文字在 paper 4.9 · card 5.5；深色在 paper 5.1。来自 Logo 前泡晴蓝。 */
   --you-hi: #1677be; /* 主按钮渐变的上端（釉面），只和 you 成对使用；其上文字 on-you 4.8 / 深色 7.4。 */
   --you-strong: #085b97; /* 主按钮的描边、按下态、悬停加深。 */
-  --you-ink: #0961a0; /* 链接与选中项文字。card 6.5 · you-tint 5.7；深色 card 8.1 · you-tint 7.3。 */
+  --you-ink: #0961a0; /* 链接与选中项文字。card 6.5 · you-tint 5.7；深色 card 5.9 · you-tint 5.7。 */
   --you-tint: #e4f1fe; /* 选中底：当前筛选、轨道选中项、你发出的聊天气泡。文字用 you-ink 或 ink-1。 */
   --you-line: #b5d4ed; /* you-tint 底上的描边，选中卡片的外圈。 */
   --on-you: #ffffff; /* you / you-hi 填充上的文字与图标。深色主题里主按钮是亮蓝，所以字是深色。 */
   --clone: #e18258; /* 分身本身的颜色：“分身画像”前的 wc-clone 圆点、分身模型和机器人接入的状态点。不标审核状态。只作伴随文字的小记号（paper 2.5，不单独承载信息）。 */
-  --clone-ink: #a95024; /* 分身相关的文字，比如机器人接入页里分身的状态。clone-tint 4.9 · paper 4.9；深色 clone-tint 7.7。 */
+  --clone-ink: #a95024; /* 分身相关的文字，比如机器人接入页里分身的状态。clone-tint 4.9 · paper 4.9；深色 clone-tint 5.9。 */
   --clone-tint: #fdf0e8; /* 分身相关的浅底，比如机器人接入页里分身的状态条。 */
   --pending: var(--ink-3); /* 待审核的记号：12px 虚线小圈、卡片和图谱节点的尾点、审核进度的斜纹、待审核计数的尾点。现在指向 ink-3（中性墨色）；换颜色只改这一个令牌。 */
-  --mark: #efdfa6; /* 证据里那句原话的荧光笔底，只划下半截。其上 ink-1 11.3 / 深色 8.6。 */
+  --mark: #efdfa6; /* 证据里那句原话的荧光笔底，只划下半截。其上 ink-1 11.3 / 深色 6.8。 */
   --adopt: #26795f; /* 采纳：采纳按钮、已采纳圆点、审核进度里已采纳的一段。作文字 paper 4.7。 */
   --adopt-hi: #2a8267; /* 采纳按钮渐变的上端（釉面），只和 adopt 成对使用。 */
   --adopt-strong: #1c654f; /* 采纳按钮的描边、按下态。 */
-  --adopt-ink: #216952; /* “已采纳”文字。card 6.5 · adopt-tint 5.7；深色 card 8.5。 */
+  --adopt-ink: #216952; /* “已采纳”文字。card 6.5 · adopt-tint 5.7；深色 card 6.2。 */
   --adopt-tint: #e3f2ec; /* 已采纳的浅底。 */
   --on-adopt: #ffffff; /* adopt / adopt-hi 填充上的文字与图标。 */
-  --danger: #a23e35; /* 停用、删除、清空等不可逆操作的文字与图标。card 6.4 · danger-tint 5.5；深色 card 6.6。 */
+  --danger: #a23e35; /* 停用、删除、清空等不可逆操作的文字与图标。card 6.4 · danger-tint 5.5；深色 card 4.8。 */
   --danger-strong: #8e332b; /* 危险按钮悬停加深。 */
   --danger-tint: #fceae8; /* 危险按钮的底。 */
   --amber: #b98b49; /* 重要度评分格的填充（伴随数字，paper 2.8）。 */
@@ -63,10 +63,10 @@
   --sec-base: oklch(0.585 0.11 182); /* 板块色的起点：第 0 个板块（内圈）的颜色。其余板块不列成令牌，由 bundle.css 的 [data-sec] 按序号 --i 和个数 --n 算出：色相均分 268° 走到金，奇数号亮 0.09（深色 0.065），最后 20% 再抬亮最多 0.05，彩度不变。 */
   --edge-1: #bfc4cd; /* 图谱里根到维度、维度到板块的主干连线（1.6px）。 */
   --edge-2: #d0d4dc; /* 图谱里板块到属性的细连线（1.1px）。 */
-  --ground-wash-1: #c7e7da65; /* 图谱底面：左上那团青绿淡晕，径向渐变到 42% 处消失。深色主题待定。 */
-  --ground-wash-2: #cbd9ee59; /* 图谱底面：右下那团蓝色淡晕，到 39% 处消失。深色主题待定。 */
-  --ground-wash-3: #f0dfca50; /* 图谱底面：右上那团暖色淡晕，到 31% 处消失。深色主题待定。 */
-  --ground-dot: #8ba49a; /* 图谱底面的点阵：0.7px 圆点、23px 间距、整体 23% 不透明，中间浓、四周渐隐。深色主题待定。 */
+  --ground-wash-1: #c7e7da65; /* 图谱底面：左上那团青绿淡晕，径向渐变到 42% 处消失。夜笺用同一组色相、更淡的一档。 */
+  --ground-wash-2: #cbd9ee59; /* 图谱底面：右下那团蓝色淡晕，到 39% 处消失。夜笺用同一组色相、更淡的一档。 */
+  --ground-wash-3: #f0dfca50; /* 图谱底面：右上那团暖色淡晕，到 31% 处消失。夜笺用同一组色相、更淡的一档。 */
+  --ground-dot: #8ba49a; /* 图谱底面的点阵：0.7px 圆点、23px 间距、整体 23% 不透明，中间浓、四周渐隐。夜笺同样 23% 不透明。 */
   --logo-you-1: #70d1fc; /* Logo 前泡（你）渐变起点，左上。只用于 Logo 与品牌图形。 */
   --logo-you-2: #3ea1f6; /* Logo 前泡（你）渐变终点，右下。 */
   --logo-you-eye: #075690; /* 前泡的眼睛和嘴（40px 以上）。 */
@@ -88,72 +88,72 @@
   --focus-ring: 0 0 0 2px #ffffff, 0 0 0 4px #0d6db2; /* 键盘焦点：2px 底色间隙 + 2px 实心 you（深色用 you-ink）。在所有底色上 ≥4.5:1。 */
 }
 [data-theme="dark"] {
-  --paper: #13171c;
-  --panel: #171c22;
-  --card: #1d232a;
-  --sunken: #0e1115;
-  --well: #191e24;
-  --veil: rgba(19,23,28,0.82);
-  --line-1: #262d35;
-  --line-2: #343c46;
-  --line-3: #6b737e;
-  --ink-1: #eceef1;
-  --ink-2: #c3c8cf;
-  --ink-3: #9aa2ac;
-  --ink-4: #6a727c;
+  --paper: #2b2c2d;
+  --panel: #303133;
+  --card: #38393a;
+  --sunken: #252627;
+  --well: #333335;
+  --veil: rgba(43,44,45,0.82);
+  --line-1: #424345;
+  --line-2: #525355;
+  --line-3: #848587;
+  --ink-1: #edeef0;
+  --ink-2: #c6c8c9;
+  --ink-3: #aaabad;
+  --ink-4: #7d7e80;
   --you: #47a3ec;
   --you-hi: #63b5f3;
   --you-strong: #3b95df;
   --you-ink: #7dc0f5;
-  --you-tint: #142c42;
+  --you-tint: #283e50;
   --you-line: #22496b;
   --on-you: #04213a;
   --clone: #f09068;
   --clone-ink: #f5a985;
-  --clone-tint: #35231a;
+  --clone-tint: #4a3529;
   --pending: var(--ink-3);
-  --mark: #4a4223;
+  --mark: #5b512f;
   --adopt: #42a585;
   --adopt-hi: #55b594;
   --adopt-strong: #399376;
   --adopt-ink: #6dd0ad;
-  --adopt-tint: #163027;
+  --adopt-tint: #2b4236;
   --on-adopt: #062018;
   --danger: #f08b80;
   --danger-strong: #f4a197;
-  --danger-tint: #3a1d1b;
+  --danger-tint: #4f2f2a;
   --amber: #d7a051;
-  --amber-tint: #504532;
+  --amber-tint: #60533d;
   --privacy-public: #a1d1bb;
-  --privacy-public-tint: #1d2a24;
-  --privacy-public-mid: #62927d;
+  --privacy-public-tint: #333d34;
+  --privacy-public-mid: #6b9a83;
   --privacy-normal: #abc7e7;
-  --privacy-normal-tint: #202730;
-  --privacy-normal-mid: #6f89a5;
+  --privacy-normal-tint: #363a3f;
+  --privacy-normal-mid: #7790ab;
   --privacy-private: #e6bb8f;
-  --privacy-private-tint: #2f2418;
-  --privacy-private-mid: #a47e4d;
+  --privacy-private-tint: #453727;
+  --privacy-private-mid: #ad8653;
   --privacy-sensitive: #fdaba5;
-  --privacy-sensitive-tint: #36201e;
-  --privacy-sensitive-mid: #b4716c;
+  --privacy-sensitive-tint: #4c332d;
+  --privacy-sensitive-mid: #bc7872;
   --dim-identity: #54b8ac;
-  --dim-identity-tint: #263b3f;
+  --dim-identity-tint: #384b4c;
   --dim-goal: #a792f6;
-  --dim-goal-tint: #33354b;
+  --dim-goal-tint: #464558;
   --dim-condition: #d6954b;
-  --dim-condition-tint: #3b352f;
+  --dim-condition-tint: #4e453c;
   --dim-plan: #e48494;
-  --dim-plan-tint: #3d333b;
+  --dim-plan-tint: #504348;
   --dim-preference: #6fa9e7;
-  --dim-preference-tint: #2a3848;
+  --dim-preference-tint: #3d4855;
   --on-dim: #0e1115;
   --sec-base: oklch(0.7 0.1 182);
-  --edge-1: #3e4652;
-  --edge-2: #2f3640;
+  --edge-1: #5a5b5d;
+  --edge-2: #4c4d4f;
   --ground-wash-1: #2fa59522;
   --ground-wash-2: #47a3ec1c;
   --ground-wash-3: #e8946b16;
-  --ground-dot: #6b737e;
+  --ground-dot: #7e7f81;
   --shadow-1: 0 1px 2px rgba(0,0,0,0.40);
   --shadow-2: 0 10px 28px rgba(0,0,0,0.45), 0 2px 6px rgba(0,0,0,0.30);
   --shadow-3: 0 20px 48px rgba(0,0,0,0.55), 0 4px 12px rgba(0,0,0,0.35);
@@ -161,7 +161,7 @@
   --lift-you: 0 1px 2px rgba(0,0,0,0.40), 0 6px 16px -6px rgba(71,163,236,0.45);
   --lift-adopt: 0 1px 2px rgba(0,0,0,0.40), 0 6px 16px -6px rgba(66,165,133,0.45);
   --inset-track: inset 0 1px 2px rgba(0,0,0,0.35);
-  --focus-ring: 0 0 0 2px #13171c, 0 0 0 4px #7dc0f5;
+  --focus-ring: 0 0 0 2px #2b2c2d, 0 0 0 4px #7dc0f5;
 }
 :root {
   --space-1: 4px; /* 图标与文字、计数与标签之间。 */

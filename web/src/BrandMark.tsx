@@ -15,3 +15,15 @@ export function BrandMark({ className, variant = 'mark' }: { className?: string;
     />
   );
 }
+
+/** The lockup at the top left of every page: the mark and the name, linking to the profile map. */
+export function AppBrand() {
+  return (
+    <a className="wc-brand app-brand" href="#/">
+      <BrandMark className="wc-brand__mark" variant="small" />
+      <span className="wc-brand__name">
+        <b>WeClone</b>
+      </span>
+    </a>
+  );
+}

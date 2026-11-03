@@ -140,6 +140,22 @@
 }
 
 /* Review rail: wc-rail draws it, floating a card's margin off the map's left edge. */
+/* The rail's last item starts a review round, apart from the counts. */
+.review-start-sep {
+  height: 1px;
+  margin: 2px 8px;
+  background: var(--line-1);
+}
+
+.review-start[aria-disabled='true'] {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.review-start .wc-rail__label {
+  text-align: center;
+}
+
 .review-bar {
   position: absolute;
   z-index: 4;

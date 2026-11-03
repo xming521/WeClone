@@ -31,6 +31,7 @@ import {
 } from './atlasFlow';
 import { inkStrength, supportWidth, type NodeMetrics } from './atlasMetrics';
 import type { Camera, EntranceItem } from './entrance';
+import { arcPoint } from './entrancePlan';
 import {
   DENSE_NODE_COUNT,
   clusterCenters,
@@ -47,6 +48,7 @@ import {
 } from './graphLayout';
 import {
   BALL,
+  EDGE_BEND,
   EDGE_GAP,
   LABEL_LINE_HEIGHT,
   LABEL_OFFSET_Y,
@@ -55,6 +57,7 @@ import {
   hexToRgb,
   labelFont,
   labelStyle,
+  palette,
   type LabelRole,
 } from './graphStyle';
 import type { NodeLook } from './nodeLook';
@@ -76,6 +79,8 @@ import {
 export interface AtlasControls {
   zoomBy(factor: number): void;
   fit(): void;
+  /** The map as on screen, on the page colour, as a PNG. */
+  snapshot(): Promise<Blob | null>;
 }
 
 /** A node to preview at (x, y), in pixels from the map's top left, inside a `width` × `height` area. */
@@ -114,6 +119,8 @@ type MapNode = SimulationNodeDatum &
     delay: number;
     /** Progress 0…1 of growing out of the parent after an expansion. */
     enterT: number;
+    /** Share of the arc from its parent it has come along while it grows out; 1 at rest. */
+    reach: number;
     /** 1, or less while another branch is hovered or selected. */
     emph: number;
     scale: number;
@@ -133,6 +140,8 @@ type Ghost = {
   y: number;
   a: number;
   scale: number;
+  /** Share of the arc from `into` still left to go back along. */
+  reach: number;
 };
 type Ring = { n: MapNode; start: number; soft: boolean };
 type View = { x: number; y: number; k: number };
@@ -393,7 +402,17 @@ export class AtlasEngine implements AtlasControls {
           selected: false,
           section: n.section,
         };
-        this.ghosts.push({ n, paint, into: into ?? null, start: now, x: n.rx, y: n.ry, a: n.vis * n.emph, scale: 1 });
+        this.ghosts.push({
+          n,
+          paint,
+          into: into ?? null,
+          start: now,
+          x: n.rx,
+          y: n.ry,
+          a: n.vis * n.emph,
+          scale: 1,
+          reach: 1,
+        });
       }
     }
     if (this.drag && !next.has(this.drag.id)) this.drag = null;
@@ -531,6 +550,27 @@ export class AtlasEngine implements AtlasControls {
     this.requestDraw();
   }
 
+  /** Draws again with the current tokens, after the colour scheme changed. */
+  repaint() {
+    this.draw();
+  }
+
+  snapshot(): Promise<Blob | null> {
+    this.draw();
+    const out = document.createElement('canvas');
+    out.width = this.canvas.width;
+    out.height = this.canvas.height;
+    const g = out.getContext('2d')!;
+    g.fillStyle = palette().paper;
+    g.fillRect(0, 0, out.width, out.height);
+    // The washes blend onto the paper as the page blends them: multiplied, or screened at night.
+    g.globalCompositeOperation = getComputedStyle(this.wash).mixBlendMode as GlobalCompositeOperation;
+    g.drawImage(this.wash, 0, 0, out.width, out.height);
+    g.globalCompositeOperation = 'source-over';
+    g.drawImage(this.canvas, 0, 0);
+    return new Promise((resolve) => out.toBlob(resolve, 'image/png'));
+  }
+
   destroy() {
     this.stop();
     this.destroyed = true;
@@ -579,6 +619,7 @@ export class AtlasEngine implements AtlasControls {
       born: this.time,
       delay: 0,
       enterT: 1,
+      reach: 1,
       emph: 1,
       scale: 1,
       vis: 1,
@@ -927,18 +968,21 @@ export class AtlasEngine implements AtlasControls {
       const x = n.x + n.ox;
       const y = n.y + n.oy;
       if (n.enterT < 1) {
-        // Grows out of its parent, which comes earlier in `order` and is placed already.
+        // Grows out of its parent, which comes earlier in `order` and is placed already, along the
+        // arc its line takes.
         n.enterT = clamp((now - n.born - n.delay) / ENTER_MS);
         const parent = n.node.parentId ? this.nodes.get(n.node.parentId) : undefined;
-        const e = easeOutCubic(n.enterT);
-        n.rx = parent ? lerp(parent.rx, x, e) : x;
-        n.ry = parent ? lerp(parent.ry, y, e) : y;
+        n.reach = parent ? easeOutCubic(n.enterT) : 1;
+        const at = parent ? arcPoint(parent.rx, parent.ry, x, y, n.reach, EDGE_BEND) : { x, y };
+        n.rx = at.x;
+        n.ry = at.y;
         n.scale = n.enterT <= 0 ? 0 : 0.3 + 0.7 * easeOutBack(n.enterT);
         n.vis = clamp(n.enterT * 2.2);
         changed = true;
       } else {
         n.rx = x;
         n.ry = y;
+        n.reach = 1;
         n.scale = 1;
         n.vis = 1;
       }
@@ -948,8 +992,13 @@ export class AtlasEngine implements AtlasControls {
       this.ghosts = this.ghosts.filter((g) => now - g.start < EXIT_MS);
       for (const g of this.ghosts) {
         const e = easeInCubic(clamp((now - g.start) / EXIT_MS));
-        g.x = g.into ? lerp(g.n.rx, g.into.rx, e) : g.n.rx;
-        g.y = g.into ? lerp(g.n.ry, g.into.ry, e) : g.n.ry;
+        // Goes back along the arc from the node it shrinks into.
+        g.reach = g.into ? 1 - e : 1;
+        const at = g.into
+          ? arcPoint(g.into.rx, g.into.ry, g.n.rx, g.n.ry, g.reach, EDGE_BEND)
+          : { x: g.n.rx, y: g.n.ry };
+        g.x = at.x;
+        g.y = at.y;
         g.a = (1 - e) * g.n.vis * g.n.emph;
         g.scale = 1 - 0.7 * e;
       }
@@ -1272,11 +1321,11 @@ export class AtlasEngine implements AtlasControls {
       const hot = this.isHot(e) ? settle : 0;
       if (hot < 1) {
         const style = edgeStyle(c.kind, c.dim);
-        strokeEdge(ctx, tf, from, to, style.color, style.width, style.opacity * a * (1 - hot));
+        strokeEdge(ctx, tf, from, to, style.color, style.width, style.opacity * a * (1 - hot), 1, c.reach);
       }
       if (hot > 0) {
         const style = edgeOnStyle(c.dim);
-        strokeEdge(ctx, tf, from, to, style.color, style.width, style.opacity * a * hot);
+        strokeEdge(ctx, tf, from, to, style.color, style.width, style.opacity * a * hot, 1, c.reach);
       }
     }
     // A removed node keeps its line to its parent, which may be on its way out as well.
@@ -1299,7 +1348,7 @@ export class AtlasEngine implements AtlasControls {
       to.y = g.y;
       to.r = g.n.r * g.scale;
       const style = edgeStyle(g.n.kind, g.n.dim);
-      strokeEdge(ctx, tf, from, to, style.color, style.width, style.opacity * g.a);
+      strokeEdge(ctx, tf, from, to, style.color, style.width, style.opacity * g.a, 1, g.reach);
     }
   }
 
@@ -1336,7 +1385,11 @@ export class AtlasEngine implements AtlasControls {
       if ((end - start) * k < 6) continue;
       const span = swellSpan(progress, start, end);
       if (!span) continue;
-      const curve = edgeCurve({ x: p.rx, y: p.ry, r: p.r * p.scale }, { x: c.rx, y: c.ry, r: c.r * c.scale });
+      const curve = edgeCurve(
+        { x: p.rx, y: p.ry, r: p.r * p.scale },
+        { x: c.rx, y: c.ry, r: c.r * c.scale },
+        EDGE_BEND * c.reach,
+      );
       if (!curve) continue;
       const hot = this.isHot(e);
       const emph = isLocal ? 1 : Math.min(c.emph, p.emph);

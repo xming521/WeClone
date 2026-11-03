@@ -164,7 +164,7 @@ test('buildEntrancePlan sweeps the dimensions in turn and brings their stars in 
 
 test('nodeFrame springs dimensions out of the root, glides stars in and settles every node at rest', () => {
   const plan = buildEntrancePlan(inputs());
-  const frame: NodeFrame = { x: 0, y: 0, alpha: 0, scale: 0, glow: 0 };
+  const frame: NodeFrame = { x: 0, y: 0, alpha: 0, scale: 0, glow: 0, reach: 0 };
   const dimension = plan.dimensions[2];
   assert.equal(nodeFrame(dimension, dimension.appearAt - 0.01, plan.root, frame), false);
   nodeFrame(dimension, dimension.appearAt + 0.02, plan.root, frame);
@@ -178,6 +178,6 @@ test('nodeFrame springs dimensions out of the root, glides stars in and settles 
   assert.ok(Math.abs(Math.hypot(frame.x - parent.x, frame.y - parent.y) - (1 - TIMING.approach) * way) < 1e-3 * way);
   for (const node of plan.nodes) {
     assert.equal(nodeFrame(node, node.end + 1e-6, plan.root, frame), true);
-    assert.deepEqual(frame, { x: node.x, y: node.y, alpha: 1, scale: 1, glow: 1 });
+    assert.deepEqual(frame, { x: node.x, y: node.y, alpha: 1, scale: 1, glow: 1, reach: 1 });
   }
 });

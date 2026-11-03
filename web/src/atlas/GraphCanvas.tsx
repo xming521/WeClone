@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject }
 import { useTranslation } from 'react-i18next';
 import { visibleNodes } from '../data';
 import { useProfileStore } from '../store';
+import { useTheme } from '../theme';
 import { AtlasEngine, type AtlasControls, type HoverInfo, type Insets } from './atlasEngine';
 import { nodeMetrics } from './atlasMetrics';
 import { playEntrance, type EntranceConfig } from './entrance';
@@ -138,6 +139,12 @@ export function GraphCanvas({ atlasRef }: Props) {
   useEffect(() => {
     engineRef.current?.setModel(viewModel, view, looks, metrics);
   }, [viewModel, view, looks, metrics]);
+
+  // The canvas reads the tokens when it draws: another colour scheme needs a new picture.
+  const theme = useTheme((state) => state.theme);
+  useEffect(() => {
+    engineRef.current?.repaint();
+  }, [theme]);
 
   // A change during the entrance ends it: the entrance shows the map as first laid out.
   useEffect(() => {

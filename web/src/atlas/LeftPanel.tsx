@@ -2,9 +2,9 @@ import { useMemo, useState, type CSSProperties } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { ChevronLeft, Compass, Fingerprint, Heart, Layers, LayoutGrid, Orbit, Target } from 'lucide-react';
 import { Trans, useTranslation } from 'react-i18next';
-import { BrandMark } from '../BrandMark';
 import { collectFacts, DIMENSIONS, displayProfileText, type DimensionId } from '../data';
 import type { Grouping, ReviewStatus } from '../data';
+import { useRun } from '../settings/useRun';
 import { useProfileStore } from '../store';
 import { scopeColor } from './scopeColor';
 
@@ -33,9 +33,13 @@ export function LeftPanel({
   onInteract: () => void;
   onSelect: () => void;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const viewModel = useProfileStore((state) => state.viewModel)!;
   const fullModel = useProfileStore((state) => state.fullModel)!;
+  const run = useRun();
+  const built = run?.generated_at
+    ? new Date(run.generated_at).toLocaleDateString(i18n.language, { dateStyle: 'medium' })
+    : null;
   const focusedDimension = useProfileStore((state) => state.focusedDimension);
   const reveal = useProfileStore((state) => state.reveal);
   const setGrouping = useProfileStore((state) => state.setGrouping);
@@ -66,12 +70,8 @@ export function LeftPanel({
       onPointerDownCapture={onInteract}
       onFocusCapture={onInteract}
     >
-      <div className="wc-brand">
-        <BrandMark className="wc-brand__mark" variant="small" />
-        <span className="wc-brand__name">
-          <b>WeClone</b>
-          <small>Profile Atlas</small>
-        </span>
+      {/* The shell's lockup sits over the left of this row. */}
+      <div className="left-panel__head">
         <button className="wc-iconbtn" type="button" aria-label={t(($) => $.atlas.left.close)} onClick={onClose}>
           <ChevronLeft size={16} strokeWidth={1.8} />
         </button>
@@ -162,7 +162,15 @@ export function LeftPanel({
           {review.total.pending > 0 && <i data-k="pending" style={{ flex: review.total.pending }} />}
           {review.total.rejected > 0 && <i data-k="rejected" style={{ flex: review.total.rejected }} />}
         </div>
-        <div className="data-footnote">{t(($) => $.review.list.count, { count: fullModel.facts.length })}</div>
+        <div className="data-footnote">
+          <span>{t(($) => $.review.list.count, { count: fullModel.facts.length })}</span>
+          {/* When the data was made, and from the settings which run it is. */}
+          {built && (
+            <a href="#/settings" title={run?.demo ? undefined : run?.name}>
+              {t(($) => $.settings.run.footnote, { date: built })}
+            </a>
+          )}
+        </div>
         <ul className="wc-legend">
           <li>
             <span className="wc-glyph" data-status="adopted" aria-hidden="true" />

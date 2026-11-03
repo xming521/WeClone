@@ -50,6 +50,11 @@
   mix-blend-mode: multiply;
 }
 
+/* On the night paper multiplying would darken it to nothing: the wash lightens it instead. */
+[data-theme='dark'] .graph-wash {
+  mix-blend-mode: screen;
+}
+
 .graph-entrance {
   position: absolute;
   inset: 0;

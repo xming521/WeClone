@@ -10,7 +10,12 @@
     "dismiss": "知道了",
     "copy": "复制",
     "copied": "已复制",
-    "copyBlocked": "浏览器不允许直接复制，请在文本框里全选后手动复制"
+    "copyBlocked": "浏览器不允许直接复制，请在文本框里全选后手动复制",
+    "duration": {
+      "minutes_other": "{{count}} 分钟",
+      "hours_other": "{{count}} 小时",
+      "days_other": "{{count}} 天"
+    }
   },
   "errors": {
     "password_mismatch": "两次输入的密码不一致",
@@ -40,7 +45,9 @@
     "summary_batch_changed": "总结已被修改，整批操作未保存，请刷新后重试",
     "summary_batch_stale": "有板块的画像或总结规则已变动，请先重新生成总结再确认",
     "assistant_plaintext": "数据是明文存储的，令牌有效时助手就能读取，不需要打开",
-    "api_not_found": "接口不存在"
+    "api_not_found": "接口不存在",
+    "demo_password_fixed": "演示模式的密码固定，不能修改",
+    "demo_settings_fixed": "演示模式不能修改这项设置"
   },
   "app": {
     "title": "我的画像 · WeClone",
@@ -76,7 +83,7 @@
     "verifying": "正在验证…",
     "setupSubmit": "设置并解锁",
     "loginSubmit": "解锁",
-    "sessionNote": "登录有效期为 2 小时，到期后需重新输入密码。请在自己的设备上使用。"
+    "sessionNote": "登录有效期为 {{duration}}，到期后需重新输入密码。请在自己的设备上使用。"
   },
   "model": {
     "root": "我的画像",
@@ -137,7 +144,8 @@
       "zoomOut": "缩小",
       "fit": "适应画布",
       "reset": "复原",
-      "replayIntro": "重放开场动画"
+      "replayIntro": "重放开场动画",
+      "saveImage": "保存为图片"
     },
     "search": {
       "placeholder": "搜索主题、属性或内容",
@@ -196,7 +204,36 @@
     "bookmarkTip_other": "{{label}} · {{count}} 条画像",
     "bookmarkCloneTip_other": "{{label}} · {{count}} 条画像 · <clone>分身画像</clone>",
     "filterLabel_other": "筛选审核状态：{{label}}，{{count}} 条",
-    "refresh": "刷新数据"
+    "refresh": "刷新数据",
+    "sort": {
+      "label": "排序：{{order}}",
+      "title": "排序",
+      "short": {
+        "default": "默认",
+        "confidence": "可信度",
+        "importance": "重要度",
+        "recent": "时间"
+      },
+      "orders": {
+        "default": "默认顺序",
+        "confidence": "可信度从低到高",
+        "importance": "重要度从高到低",
+        "recent": "来源从新到旧"
+      }
+    },
+    "keys": {
+      "label": "快捷键",
+      "next": "下一条",
+      "previous": "上一条",
+      "approve": "采纳",
+      "reject": "不采纳",
+      "edit": "编辑",
+      "select": "选中",
+      "undo": "撤销"
+    },
+    "start": "逐条审核",
+    "startTip_other": "从第一条开始逐条审核 {{count}} 条待审核画像，可用键盘操作",
+    "startDone": "没有待审核的画像了"
   },
   "history": {
     "show": "查看修改历史",
@@ -618,6 +655,103 @@
       "once": "令牌只显示这一次。在机器人平台新增一个 OpenAI 类型的模型服务，API Base URL 填：",
       "key": "API Key 填：",
       "model": "模型名称随意填写，例如 gpt-3.5-turbo。微调后的模型不会调用工具，请在平台上关掉工具和插件。机器人平台跑在 Docker 里时，地址里的 127.0.0.1 要换成宿主机在 Docker 网络里的地址（例如 172.17.0.1），并在启动服务时用 --host 指定这个地址。"
+    },
+    "playground": {
+      "title": "试用分身",
+      "restart": "新对话",
+      "hint": "在这里和分身聊几句，听听它说话像不像你。回复用的是机器人调用的同一个模型和设置。",
+      "unavailable": "服务没有加载分身模型，用 weclone-cli server --inference 启动后才能试用。",
+      "empty": "发一句话开始对话",
+      "placeholder": "输入消息，Enter 发送，Shift+Enter 换行",
+      "send": "发送",
+      "stop": "停止",
+      "typing": "正在输入…"
     }
+  },
+  "toast": {
+    "undo": "撤销",
+    "undone": "已撤销",
+    "approved_other": "已采纳 {{count}} 条",
+    "rejected_other": "已标为不采纳 {{count}} 条",
+    "pending_other": "已移回待审核 {{count}} 条",
+    "saved": "已保存",
+    "added": "已添加",
+    "downloaded": "已下载 {{file}}"
+  },
+  "settings": {
+    "title": "设置",
+    "actions": "页面操作",
+    "intro": "外观和审核偏好保存在这个浏览器里，安全设置保存在本机的服务里。",
+    "aboutHint": "版本、项目主页、文档和社群",
+    "appearance": {
+      "title": "外观",
+      "theme": "配色",
+      "themeHint": "跟随系统时，随设备的浅色或深色模式切换。",
+      "themes": {
+        "system": "跟随系统",
+        "light": "浅色",
+        "dark": "深色"
+      }
+    },
+    "review": {
+      "title": "审核",
+      "privacy": "默认显示的隐私度",
+      "privacyHint": "打开审核列表时先显示这些隐私度的条目，不选显示全部。列表里随时可以改。"
+    },
+    "security": {
+      "title": "安全",
+      "storage": "数据存储",
+      "encrypted": "画像和聊天数据加密保存，密码同时用于登录和解密。",
+      "plaintext": "数据以明文保存，密码只用于登录网页。",
+      "encryptedState": "加密",
+      "plaintextState": "明文"
+    },
+    "session": {
+      "title": "登录有效期",
+      "hint": "对之后的登录生效。加密模式下，登录期间服务在内存里保留数据密钥，时间越长风险越大。",
+      "saved": "登录有效期改为 {{duration}}，下次登录生效"
+    },
+    "password": {
+      "title": "修改密码",
+      "hint": "已有数据和机器人令牌都保留，其他设备上的登录会退出。忘记密码只能重新抽取全部数据。",
+      "demo": "演示模式的密码固定为 demo，不能修改。",
+      "current": "当前密码",
+      "next": "新密码",
+      "submit": "修改密码",
+      "done": "密码已修改，其他设备上的登录已退出"
+    },
+    "run": {
+      "title": "数据来源",
+      "name": "运行",
+      "path": "目录",
+      "generated": "画像生成于",
+      "reviewed": "最近审核",
+      "notReviewed": "还没有审核",
+      "style": "语言风格",
+      "styleYes": "已抽取",
+      "styleNo": "这次运行没有抽取",
+      "demo": "演示数据（合成，退出后删除）",
+      "none": "未知",
+      "update": "用新的聊天记录更新画像：运行 weclone-cli build-profile 生成新的一次运行，再用 weclone-cli server 打开，默认打开最新的一次，用 --run 指定其他目录。",
+      "footnote": "生成于 {{date}}"
+    }
+  },
+  "about": {
+    "title": "关于 WeClone",
+    "tagline": "WeClone 从你的数字生活中提炼身份、目标、偏好与近况，整理成一份可审核、可追溯、按需授权的人生画像，并分析你的语言风格。",
+    "local": "画像、审核记录和设置都保存在运行服务的这台电脑上。",
+    "project": "项目",
+    "home": "项目主页",
+    "docs": "文档",
+    "issues": "问题反馈",
+    "issuesText": "在 GitHub 提交 Issue",
+    "community": "社群",
+    "qq": "QQ 群",
+    "telegramText": "加入群组",
+    "xiaohongshu": "小红书",
+    "help": "遇到问题可以先查阅",
+    "faq": "常见问题",
+    "credits": "许可与致谢",
+    "licenseLine": "WeClone 以 <license>AGPL-3.0</license> 许可开源，并受益于这些开源项目："
   }
 }

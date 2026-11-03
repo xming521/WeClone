@@ -1,4 +1,5 @@
-/* 人生画像的左栏：BrandHeader、DimensionNav 和底部的审核进度（Distribution），样式主要来自 ds/components.css 的 wc-* 类 */
+/* 人生画像和语言风格的左栏：DimensionNav 和底部的审核进度（Distribution），样式主要来自 ds/components.css 的 wc-* 类。
+   品牌标识不在左栏里，由 shell.css 的 .app-brand 固定在左上角，左栏滑进滑出都在它下面。 */
 .left-panel {
   position: absolute;
   z-index: 6;
@@ -28,17 +29,19 @@
   box-shadow: var(--focus-ring);
 }
 
-.left-panel .wc-brand {
-  padding: 0 var(--space-1);
-}
-
-.left-panel .wc-brand__mark {
-  width: 39px;
-  height: 28px;
-}
-
-.left-panel .wc-brand .wc-iconbtn {
-  margin-left: auto;
+/* 第一行留给品牌标识，右边是收起按钮。滚动时贴住顶部、盖住下面的内容，标识不会压在文字上。 */
+.left-panel__head {
+  position: sticky;
+  z-index: 1;
+  top: calc(-1 * var(--space-5));
+  flex: none;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  height: calc(40px + var(--space-5));
+  margin: calc(-1 * var(--space-5)) calc(-1 * var(--space-4)) 0;
+  padding: var(--space-5) var(--space-4) 0;
+  background: var(--panel);
 }
 
 .intro-block {
@@ -191,8 +194,30 @@
   font-variant-numeric: tabular-nums;
 }
 
+.data-footnote a {
+  min-width: 0;
+  overflow: hidden;
+  color: inherit;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.data-footnote a::before {
+  content: '·';
+  margin-right: var(--space-2);
+}
+
+.data-footnote a:hover {
+  color: var(--ink-1);
+}
+
 @media (max-width: 1220px) {
   .left-panel {
+    padding-inline: var(--space-3);
+  }
+  .left-panel__head {
+    margin-inline: calc(-1 * var(--space-3));
     padding-inline: var(--space-3);
   }
   .intro-block {
@@ -210,7 +235,7 @@
 }
 
 @media (max-width: 650px) {
-  .left-panel .wc-brand {
+  .left-panel__head {
     margin-bottom: var(--space-2);
   }
   .intro-block {

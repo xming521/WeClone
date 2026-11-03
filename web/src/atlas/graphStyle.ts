@@ -159,6 +159,15 @@ export const BALL = {
   haloOpacity: 0.09,
 };
 
+/** A topic is a smaller ball of the same material: the same sheen, a fainter highlight and a thinner rim. */
+export const BEAD = {
+  sheenOpacity: BALL.sheenOpacity,
+  glossOpacity: 0.55,
+  rimOpacity: 0.3,
+  rimWidth: 0.8 * DS_SCALE,
+  rimInset: 0.5 * DS_SCALE,
+};
+
 export const nodeFill = (kind: NodeKind, dim: number | null) =>
   kind === 'root' ? ROOT_COLOR : kind === 'attribute' ? palette().card : dimensionColor(dim);
 export const nodeStroke = (kind: NodeKind, dim: number | null) => (kind === 'root' ? ROOT_COLOR : dimensionColor(dim));

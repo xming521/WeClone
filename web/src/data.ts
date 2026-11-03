@@ -480,8 +480,48 @@ export function factTags(fact: ProfileFact, sources: Record<string, ProfileSourc
   return [...counts].sort((a, b) => b[1] - a[1]).map(([tag]) => tag);
 }
 
+/** Every privacy level a fact can have, the unrated ones last. */
+export const PRIVACY_LEVELS: PrivacyLevel[] = [...SENSITIVITY_LEVELS, 'unrated'];
+
 export function privacyLevel(fact: ProfileFact): PrivacyLevel {
   return fact.sensitivity && SENSITIVITY_LEVELS.includes(fact.sensitivity) ? fact.sensitivity : 'unrated';
+}
+
+/** Orders of the review list: as stored, least confident first, most important first, newest source first. */
+export type ReviewSort = 'default' | 'confidence' | 'importance' | 'recent';
+export const REVIEW_SORTS: ReviewSort[] = ['default', 'confidence', 'importance', 'recent'];
+
+/** The newest source time of a fact; ISO times sort as text. */
+export function latestSourceTime(fact: ProfileFact, sources: Record<string, ProfileSource> | undefined) {
+  return fact.source_ids
+    .map((id) => sources?.[id]?.sample_time)
+    .filter((time): time is string => !!time)
+    .sort()
+    .at(-1);
+}
+
+/** The facts in the chosen order. Facts without the value sorted on go last; ties keep the stored order. */
+export function sortFacts(
+  facts: ProfileFact[],
+  sort: ReviewSort,
+  sources: Record<string, ProfileSource> | undefined,
+): ProfileFact[] {
+  if (sort === 'default') return facts;
+  const key = (fact: ProfileFact): number | string | undefined =>
+    sort === 'confidence'
+      ? fact.source_confidence_mean
+      : sort === 'importance'
+        ? fact.source_importance_mean
+        : latestSourceTime(fact, sources);
+  // Ascending for confidence, descending for the others.
+  const sign = sort === 'confidence' ? 1 : -1;
+  const keyed = facts.map((fact) => ({ fact, key: key(fact) }));
+  return keyed
+    .sort((a, b) => {
+      if (a.key === undefined || b.key === undefined) return a.key === b.key ? 0 : a.key === undefined ? 1 : -1;
+      return a.key < b.key ? -sign : a.key > b.key ? sign : 0;
+    })
+    .map(({ fact }) => fact);
 }
 
 /** Facts whose level is one of `levels`; no levels keeps them all. */

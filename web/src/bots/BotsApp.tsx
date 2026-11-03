@@ -2,11 +2,14 @@ import { useCallback, useEffect, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { api } from '../api';
 import { LogoutButton } from '../Auth';
-import { BrandMark } from '../BrandMark';
+import { AppBrand, BrandMark } from '../BrandMark';
 import { LanguageSwitch } from '../LanguageSwitch';
+import { SettingsLink } from '../settings/SettingsLink';
 import { ModeSwitch } from '../ModeSwitch';
 import { CopyField, TokenCard, type TokenState } from '../assistant/accessParts';
+import { ClonePlayground } from './ClonePlayground';
 import '../assistant/assistant.css';
+import './bots.css';
 import '../summary/summary.css';
 
 // Shape of GET /api/bots, served by weclone/server/bots.py.
@@ -87,6 +90,7 @@ export function BotsApp() {
     <div className="summary-page">
       <header className="summary-topbar">
         <div className="topbar-leading">
+          <AppBrand />
           <ModeSwitch mode="bots" />
           <div className="topbar-heading">
             <span className="topbar-divider">/</span>{' '}
@@ -95,6 +99,7 @@ export function BotsApp() {
         </div>
         <div className="topbar-actions">
           <LanguageSwitch />
+          <SettingsLink />
           <LogoutButton />
         </div>
       </header>
@@ -150,6 +155,7 @@ export function BotsApp() {
             </div>
           )}
         </TokenCard>
+        <ClonePlayground inference={view.inference} />
       </main>
     </div>
   );

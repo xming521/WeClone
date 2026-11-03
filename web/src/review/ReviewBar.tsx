@@ -1,4 +1,4 @@
-import { Layers } from 'lucide-react';
+import { Layers, ListChecks } from 'lucide-react';
 import { Trans, useTranslation } from 'react-i18next';
 import { Tip } from '../atlas/IconButton';
 import { useProfileStore } from '../store';
@@ -9,6 +9,7 @@ export function ReviewBar() {
   const input = useProfileStore((state) => state.input)!;
   const currentView = useProfileStore((state) => state.view);
   const setView = useProfileStore((state) => state.setView);
+  const startReview = useProfileStore((state) => state.startReview);
   const counts = { all: input.facts.length, pending: 0, approved: 0, rejected: 0 };
   input.facts.forEach((fact) => counts[fact.status]++);
   return (
@@ -74,6 +75,26 @@ export function ReviewBar() {
             </Tip>
           );
         })}
+        <span className="review-start-sep" aria-hidden="true" />
+        <Tip
+          side="right"
+          align="center"
+          content={
+            counts.pending ? t(($) => $.review.startTip, { count: counts.pending }) : t(($) => $.review.startDone)
+          }
+        >
+          <button
+            type="button"
+            className="wc-rail__item review-start"
+            aria-disabled={!counts.pending}
+            onClick={() => counts.pending && startReview()}
+          >
+            <span className="wc-rail__n" aria-hidden="true">
+              <ListChecks size={15} strokeWidth={1.8} />
+            </span>
+            <span className="wc-rail__label">{t(($) => $.review.start)}</span>
+          </button>
+        </Tip>
       </nav>
     </div>
   );

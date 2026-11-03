@@ -13,6 +13,7 @@ import {
   reconcileNavigation,
   retainedSelection,
   sectionColor,
+  sortFacts,
   toggleLevelExpansion,
   withinLevel,
 } from '../src/data.ts';
@@ -436,4 +437,19 @@ test('filterPrivacy keeps the chosen levels, counts unknown levels as unrated, a
   assert.deepEqual(ids([]), ['a', 'b', 'c', 'd']);
   assert.deepEqual(ids(['public', 'normal']), ['a']);
   assert.deepEqual(ids(['unrated', 'sensitive']), ['b', 'c', 'd']);
+});
+
+test('sortFacts orders by confidence up, importance and newest source down, missing values last, ties stable', () => {
+  const facts = [
+    { id: 'a', source_ids: ['s1'], source_confidence_mean: 3, source_importance_mean: 2 },
+    { id: 'b', source_ids: ['s2', 's3'], source_confidence_mean: 2.5 },
+    { id: 'c', source_ids: [], source_importance_mean: 4 },
+    { id: 'd', source_ids: ['s1'], source_confidence_mean: 3, source_importance_mean: 2 },
+  ] as unknown as ProfileFact[];
+  const sources = { s1: { sample_time: '2024-01-02T10:00:00' }, s2: { sample_time: '2023-05-01' }, s3: {} };
+  const ids = (sort: Parameters<typeof sortFacts>[1]) => sortFacts(facts, sort, sources).map((fact) => fact.id);
+  assert.deepEqual(ids('default'), ['a', 'b', 'c', 'd']);
+  assert.deepEqual(ids('confidence'), ['b', 'a', 'd', 'c']);
+  assert.deepEqual(ids('importance'), ['c', 'a', 'd', 'b']);
+  assert.deepEqual(ids('recent'), ['a', 'd', 'b', 'c']);
 });

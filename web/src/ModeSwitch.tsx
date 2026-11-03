@@ -2,12 +2,15 @@ import { useEffect, useRef } from 'react';
 import { Bot, LayoutList, MessagesSquare, Orbit, Plug } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
-export type AppMode = 'profile' | 'style' | 'summary' | 'assistant' | 'bots';
+/** The pages: the five of the page switch, then settings and about, which the gear in the topbar opens. */
+export type AppMode = 'profile' | 'style' | 'summary' | 'assistant' | 'bots' | 'settings' | 'about';
 
 export function modeFromHash(hash: string): AppMode {
   if (hash.startsWith('#/style')) return 'style';
   if (hash.startsWith('#/assistant')) return 'assistant';
   if (hash.startsWith('#/bots')) return 'bots';
+  if (hash.startsWith('#/settings')) return 'settings';
+  if (hash.startsWith('#/about')) return 'about';
   return hash.startsWith('#/summary') ? 'summary' : 'profile';
 }
 

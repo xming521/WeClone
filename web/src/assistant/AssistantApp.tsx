@@ -3,8 +3,9 @@ import { Lock, LockOpen } from 'lucide-react';
 import { Trans, useTranslation } from 'react-i18next';
 import { api } from '../api';
 import { LogoutButton } from '../Auth';
-import { BrandMark } from '../BrandMark';
+import { AppBrand, BrandMark } from '../BrandMark';
 import { LanguageSwitch } from '../LanguageSwitch';
+import { SettingsLink } from '../settings/SettingsLink';
 import { ModeSwitch } from '../ModeSwitch';
 import '../summary/summary.css';
 import { CopyField, LevelSwitch, TokenCard, moment, type TokenState } from './accessParts';
@@ -153,6 +154,7 @@ export function AssistantApp() {
     <div className="summary-page">
       <header className="summary-topbar">
         <div className="topbar-leading">
+          <AppBrand />
           <ModeSwitch mode="assistant" />
           <div className="topbar-heading">
             <span className="topbar-divider">/</span>{' '}
@@ -165,6 +167,7 @@ export function AssistantApp() {
         </div>
         <div className="topbar-actions">
           <LanguageSwitch />
+          <SettingsLink />
           <LogoutButton />
         </div>
       </header>

@@ -4,8 +4,9 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../api';
 import { LevelSwitch } from '../assistant/accessParts';
 import { LogoutButton } from '../Auth';
-import { BrandMark } from '../BrandMark';
+import { AppBrand, BrandMark } from '../BrandMark';
 import { LanguageSwitch } from '../LanguageSwitch';
+import { SettingsLink } from '../settings/SettingsLink';
 import { ModeSwitch } from '../ModeSwitch';
 import { SUMMARY_LEVELS, stateCounts, summaryState } from './summaryState';
 import type {
@@ -297,6 +298,7 @@ export function SummaryApp() {
     <div className="summary-page">
       <header className="summary-topbar">
         <div className="topbar-leading">
+          <AppBrand />
           <ModeSwitch mode="summary" />
           <div className="topbar-heading">
             <span className="topbar-divider">/</span>{' '}
@@ -305,6 +307,7 @@ export function SummaryApp() {
         </div>
         <div className="topbar-actions">
           <LanguageSwitch />
+          <SettingsLink />
           <LogoutButton />
         </div>
       </header>

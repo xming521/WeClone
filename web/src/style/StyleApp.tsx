@@ -4,8 +4,9 @@ import { Info, Keyboard, MessagesSquare, Smile, Type } from 'lucide-react';
 import { Trans, useTranslation } from 'react-i18next';
 import { api } from '../api';
 import { LogoutButton } from '../Auth';
-import { BrandMark } from '../BrandMark';
+import { AppBrand, BrandMark } from '../BrandMark';
 import { LanguageSwitch } from '../LanguageSwitch';
+import { SettingsLink } from '../settings/SettingsLink';
 import { ModeSwitch } from '../ModeSwitch';
 import { BubbleField } from './BubbleField';
 import { TraitDetail } from './TraitDetail';
@@ -78,14 +79,9 @@ export function StyleApp() {
 
   return (
     <div className={`app-shell left-open style-shell${trait ? ' detail-open' : ''}`}>
+      <AppBrand />
       <aside className="left-panel">
-        <div className="wc-brand">
-          <BrandMark className="wc-brand__mark" variant="small" />
-          <span className="wc-brand__name">
-            <b>WeClone</b>
-            <small>Style</small>
-          </span>
-        </div>
+        <div className="left-panel__head" />
         <div className="intro-block">
           <div className="wc-eyebrow eyebrow">{t(($) => $.style.eyebrow)}</div>
           <h1 className="wc-hero">
@@ -153,6 +149,7 @@ export function StyleApp() {
           </div>
           <div className="topbar-actions">
             <LanguageSwitch />
+            <SettingsLink />
             <LogoutButton />
           </div>
         </div>

@@ -4,6 +4,7 @@
 import type { NodeKind } from '../data';
 import {
   BALL,
+  BEAD,
   EDGE_BEND,
   EDGE_GAP,
   LABEL_HALO_WIDTH,
@@ -100,17 +101,6 @@ function glowOff(c: CanvasRenderingContext2D) {
   c.shadowBlur = 0;
 }
 
-// A section or topic: a solid disc of its colour, 20% to 100% filled by confidence.
-function drawDisc(c: CanvasRenderingContext2D, n: PaintNode, alpha: number, glow: number) {
-  c.beginPath();
-  c.arc(0, 0, n.r, 0, TAU);
-  c.globalAlpha = alpha * n.look.fillOpacity;
-  const shadow = glowOn(c, n, 1, glow);
-  c.fillStyle = nodeFill(n.kind, n.dim);
-  c.fill();
-  if (shadow) glowOff(c);
-}
-
 // An attribute: a hollow ring, its `card` body and its outline both fading with confidence.
 function drawAttribute(c: CanvasRenderingContext2D, n: PaintNode, alpha: number, glow: number) {
   const look = n.look;
@@ -127,13 +117,15 @@ function drawAttribute(c: CanvasRenderingContext2D, n: PaintNode, alpha: number,
   c.stroke();
 }
 
-// A dimension (or section, in the domain view): a solid ball with a sheen from the upper left, the
-// Logo's highlight scaled to it and a white rim.
+// A dimension (or section, in the domain view) or a topic: a solid ball with a sheen from the upper
+// left, the Logo's highlight scaled to it and a white rim. A topic's ball is 20% to 100% opaque by
+// confidence, and its highlight and rim are fainter (BEAD).
 function drawBall(c: CanvasRenderingContext2D, n: PaintNode, alpha: number, glow: number) {
   const r = n.r;
+  const finish = n.kind === 'dimension' ? BALL : BEAD;
   c.beginPath();
   c.arc(0, 0, r, 0, TAU);
-  c.globalAlpha = alpha;
+  c.globalAlpha = alpha * n.look.fillOpacity;
   const shadow = glowOn(c, n, 1, glow);
   c.fillStyle = nodeFill(n.kind, n.dim);
   c.fill();
@@ -142,20 +134,20 @@ function drawBall(c: CanvasRenderingContext2D, n: PaintNode, alpha: number, glow
   const sx = -r + 0.64 * r;
   const sy = -r + 0.48 * r;
   const sheen = c.createRadialGradient(sx, sy, 0, sx, sy, 1.4 * r);
-  sheen.addColorStop(0, `${WHITE}${BALL.sheenOpacity})`);
+  sheen.addColorStop(0, `${WHITE}${finish.sheenOpacity})`);
   sheen.addColorStop(0.55, `${WHITE}0)`);
   sheen.addColorStop(1, `${WHITE}0)`);
   c.fillStyle = sheen;
   c.fill();
   c.save();
   c.scale(r / 12, r / 12);
-  c.fillStyle = `${WHITE}${BALL.glossOpacity * alpha})`;
+  c.fillStyle = `${WHITE}${finish.glossOpacity})`;
   c.fill(logoShapes().gloss);
   c.restore();
   c.beginPath();
-  c.arc(0, 0, r - BALL.rimInset, 0, TAU);
-  c.lineWidth = BALL.rimWidth;
-  c.strokeStyle = `${WHITE}${BALL.rimOpacity * alpha})`;
+  c.arc(0, 0, r - finish.rimInset, 0, TAU);
+  c.lineWidth = finish.rimWidth;
+  c.strokeStyle = `${WHITE}${finish.rimOpacity})`;
   c.stroke();
 }
 
@@ -241,9 +233,8 @@ export function drawNode(
   if (n.kind === 'root') drawRoot(c, n, alpha, glow);
   else {
     if (n.selected) drawSelectionRing(c, n, alpha);
-    if (n.kind === 'dimension') drawBall(c, n, alpha, glow);
-    else if (n.kind === 'attribute') drawAttribute(c, n, alpha, glow);
-    else drawDisc(c, n, alpha, glow);
+    if (n.kind === 'attribute') drawAttribute(c, n, alpha, glow);
+    else drawBall(c, n, alpha, glow);
   }
   if (n.selected && n.kind !== 'root') drawSelectionRim(c, n, alpha);
   c.globalAlpha = 1;
@@ -256,9 +247,10 @@ export type EdgeCurve = { x0: number; y0: number; qx: number; qy: number; x1: nu
 
 /**
  * The curve between two nodes, null while they overlap. It leaves the straight line between their
- * centres, stopping EDGE_GAP short of each edge, and bends to the left of the direction from parent to child.
+ * centres, stopping EDGE_GAP short of each edge, and bends `bend` of their distance to the left of
+ * the direction from parent to child.
  */
-export function edgeCurve(parent: Circle, child: Circle): EdgeCurve | null {
+export function edgeCurve(parent: Circle, child: Circle, bend = EDGE_BEND): EdgeCurve | null {
   const dx = child.x - parent.x;
   const dy = child.y - parent.y;
   const d = Math.hypot(dx, dy) || 1;
@@ -269,8 +261,8 @@ export function edgeCurve(parent: Circle, child: Circle): EdgeCurve | null {
   const y0 = parent.y + uy * (parent.r + EDGE_GAP);
   const x1 = child.x - ux * (child.r + EDGE_GAP);
   const y1 = child.y - uy * (child.r + EDGE_GAP);
-  const bend = EDGE_BEND * d;
-  return { x0, y0, x1, y1, qx: (x0 + x1) / 2 - uy * bend, qy: (y0 + y1) / 2 + ux * bend };
+  const offset = bend * d;
+  return { x0, y0, x1, y1, qx: (x0 + x1) / 2 - uy * offset, qy: (y0 + y1) / 2 + ux * offset };
 }
 
 /** The point `u` (0 at the parent's end, 1 at the child's) of the curve. Its distance along the straight line is linear in `u`. */
@@ -281,7 +273,10 @@ export function curvePoint(curve: EdgeCurve, u: number): { x: number; y: number 
   return { x: a * curve.x0 + b * curve.qx + e * curve.x1, y: a * curve.y0 + b * curve.qy + e * curve.y1 };
 }
 
-/** A line from the parent's edge towards the child's; `grow` 0…1 extends it out of the parent. */
+/**
+ * A line from the parent's edge towards the child's; `grow` 0…1 extends it out of the parent. A child
+ * still on its way along its arc has come `reach` of it, and its line is that part of the arc.
+ */
 export function strokeEdge(
   c: CanvasRenderingContext2D,
   tf: Transform,
@@ -291,8 +286,9 @@ export function strokeEdge(
   width: number,
   alpha: number,
   grow = 1,
+  reach = 1,
 ) {
-  const curve = edgeCurve(parent, child);
+  const curve = edgeCurve(parent, child, EDGE_BEND * reach);
   if (!curve || grow <= 0 || alpha <= 0) return;
   c.setTransform(tf.k, 0, 0, tf.k, tf.ox, tf.oy);
   c.globalAlpha = alpha;
@@ -319,10 +315,11 @@ export function drawEdge(
   child: Circle,
   grow = 1,
   alpha = 1,
+  reach = 1,
 ) {
   if (alpha <= 0.002) return;
   const style = edgeStyle(n.kind, n.dim);
-  strokeEdge(c, tf, parent, child, style.color, style.width, style.opacity * alpha, grow);
+  strokeEdge(c, tf, parent, child, style.color, style.width, style.opacity * alpha, grow, reach);
 }
 
 // ───────────────────────── labels ─────────────────────────

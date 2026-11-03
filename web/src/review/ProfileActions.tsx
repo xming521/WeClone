@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { Download, Plus } from 'lucide-react';
 import { Trans, useTranslation } from 'react-i18next';
 import { exportProfile } from '../data';
+import { toast } from '../feedback/toast';
 import type { ReviewView } from '../data';
 import { useProfileStore } from '../store';
 
@@ -31,12 +32,14 @@ export function ProfileActions() {
     );
     const link = document.createElement('a');
     link.href = url;
-    link.download = `profile_${selection.view}.json`;
+    const file = `profile_${selection.view}.json`;
+    link.download = file;
     document.body.append(link);
     link.click();
     link.remove();
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
     close();
+    toast(t(($) => $.toast.downloaded, { file }));
   }
   return (
     <>
