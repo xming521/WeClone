@@ -10,6 +10,7 @@ import logging
 import re
 import subprocess
 from collections import Counter, defaultdict
+from itertools import chain
 from pathlib import Path
 from statistics import fmean
 from time import perf_counter
@@ -382,43 +383,66 @@ def classification_batches(
     tags = [set(row["tags"]) for row in records]
     counts = Counter(tag for row in tags for tag in row)
     weights = {tag: float(np.log((len(records) + 1) / (count + 1))) for tag, count in counts.items()}
+    holders: dict[str, set[int]] = defaultdict(set)
+    for i, row in enumerate(tags):
+        for tag in row:
+            holders[tag].add(i)
     partitions: dict[tuple[int, ...], list[int]] = defaultdict(list)
     for i, row in enumerate(records):
         partitions[allowed_dimensions(row)].append(i)
+    samples = [row["sample"] for row in records]
+    prompt_rows: dict[int, tuple[str, int]] = {}
+    # tiktoken encodings (named, not loaded from a tokenizer file) emit at least one byte per token,
+    # so a prompt whose UTF-8 size is within the limit fits without being tokenized.
+    byte_bounded = type(budget) is InputBudget and not Path(budget.tokenizer).is_absolute()
     batches = []
     for dims, indices in partitions.items():
-        remaining = set(indices)
-        while remaining:
-            seed = min(remaining)
-            candidates = sorted(remaining - {seed})
-            scores = matrix[candidates] @ matrix[seed] if candidates else []
-            nearest = sorted(zip(candidates, scores), key=lambda pair: (-pair[1], pair[0]))[:neighbors]
-            overlap = {i: sum(weights[tag] for tag in tags[i] & tags[seed]) for i in candidates}
-            tagged = sorted((i for i in candidates if overlap[i] > 0), key=lambda i: (-overlap[i], i))[
+        # classify_prompt ends with the compact JSON list of records, so extend that list as text
+        # instead of re-serialising every selected record for each budget check.
+        prefix = classify_prompt([], dims).removesuffix("]")
+        prefix_size = len(prefix.encode())
+        # Indices are ascending, so the pending list stays sorted as records get batched.
+        pending = indices
+        while pending:
+            seed, candidates = pending[0], pending[1:]
+            scores = matrix[candidates] @ matrix[seed] if candidates else np.empty(0)
+            # Stable sort on negated scores keeps ties in ascending index order.
+            ranked = np.asarray(candidates, dtype=int)[np.argsort(-scores, kind="stable")].tolist()
+            remaining = set(candidates)
+            shared = set().union(*(holders[tag] for tag in tags[seed])) & remaining
+            overlap = {i: sum(weights[tag] for tag in tags[i] & tags[seed]) for i in shared}
+            tagged = sorted((i for i in overlap if overlap[i] > 0), key=lambda i: (-overlap[i], i))[
                 :neighbors
             ]
             ranks: dict[int, float] = defaultdict(float)
-            for channel in ([i for i, _ in nearest], tagged):
+            for channel in (ranked[:neighbors], tagged):
                 for rank, i in enumerate(channel, 1):
                     ranks[i] += 1 / rank
-            same_sample = [i for i in candidates if records[i]["sample"] == records[seed]["sample"]]
-            rest = [i for i, _ in sorted(zip(candidates, scores), key=lambda pair: (-pair[1], pair[0]))]
-            order = list(
-                dict.fromkeys([seed] + same_sample + sorted(ranks, key=lambda i: (-ranks[i], i)) + rest)
-            )
+            same_sample = [i for i in candidates if samples[i] == samples[seed]]
+            # Walk the deduplicated order lazily; usually only the first few candidates are needed.
+            head = dict.fromkeys([seed] + same_sample + sorted(ranks, key=lambda i: (-ranks[i], i)))
+            order = chain(head, (i for i in ranked if i not in head))
             selected = []
+            listed, listed_size = prefix, prefix_size
             for i in order:
                 if len(selected) >= max_records:
                     break
-                proposed = selected + [i]
-                prompt = classify_prompt([prompt_record(records[j]) for j in proposed], dims)
-                if budget and not budget.fits(prompt):
-                    if not selected:
-                        raise ValueError(f"Record {records[i]['id']} exceeds the token input budget")
-                    continue
-                selected = proposed
+                if budget:
+                    if i not in prompt_rows:
+                        text = json.dumps(prompt_record(records[i]), ensure_ascii=False, separators=(",", ":"))
+                        prompt_rows[i] = text, len(text.encode())
+                    text, size = prompt_rows[i]
+                    small = byte_bounded and listed_size + size + 1 <= budget.max_tokens
+                    if not small and not budget.fits(listed + text + "]"):
+                        if not selected:
+                            raise ValueError(f"Record {records[i]['id']} exceeds the token input budget")
+                        continue
+                    listed += text + ","
+                    listed_size += size + 1
+                selected.append(i)
             batches.append([records[i] for i in selected])
-            remaining.difference_update(selected)
+            chosen = set(selected)
+            pending = [i for i in pending if i not in chosen]
     return batches
 
 
