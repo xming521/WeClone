@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import { LockOpen, LogOut } from 'lucide-react';
+import { Eye, EyeOff, LockOpen, LogOut } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { api } from './api';
 import { BrandMark } from './BrandMark';
@@ -36,14 +36,23 @@ export function AuthGate({ children }: { children: ReactNode }) {
   const [sessionSeconds, setSessionSeconds] = useState(2 * 3600);
   const [password, setPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
+  const [shown, setShown] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
+  // Leaves the fields alone: signing in already empties them, and the check on window focus runs while one may
+  // be typing the password.
   function clear() {
     setExpires(null);
-    setPassword('');
-    setConfirmation('');
     useProfileStore.getState().resetSession();
+  }
+
+  function toggleShown() {
+    const field = document.activeElement instanceof HTMLInputElement ? document.activeElement : null;
+    const [start, end] = [field?.selectionStart ?? null, field?.selectionEnd ?? null];
+    setShown(!shown);
+    // Once the field's type changes, the browser moves the caret to the start; it goes back where it was.
+    requestAnimationFrame(() => field?.setSelectionRange(start, end));
   }
 
   useEffect(() => {
@@ -152,6 +161,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
             );
             setPassword('');
             setConfirmation('');
+            setShown(false);
             setInitialized(true);
             setExpires(session.expires_at);
           } catch (reason) {
@@ -182,7 +192,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
             <input
               id="access-password"
               name="password"
-              type="password"
+              type={shown ? 'text' : 'password'}
               autoComplete={setup ? 'new-password' : 'current-password'}
               required
               autoFocus
@@ -191,6 +201,17 @@ export function AuthGate({ children }: { children: ReactNode }) {
               disabled={busy || initialized === null}
               aria-describedby={error && lastField === 'password' ? errorId : undefined}
             />
+            <button
+              type="button"
+              className="wc-iconbtn wc-iconbtn--sm"
+              // Keeps the caret in the field, so typing goes on after a look.
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={toggleShown}
+              title={shown ? t(($) => $.auth.hidePassword) : t(($) => $.auth.showPassword)}
+              aria-label={shown ? t(($) => $.auth.hidePassword) : t(($) => $.auth.showPassword)}
+            >
+              {shown ? <EyeOff size={16} strokeWidth={1.8} /> : <Eye size={16} strokeWidth={1.8} />}
+            </button>
           </div>
           {error && lastField === 'password' && (
             <p className="wc-field__hint" data-tone="danger" id={errorId} role="alert">
@@ -207,7 +228,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
               <input
                 id="confirm-password"
                 name="confirmation"
-                type="password"
+                type={shown ? 'text' : 'password'}
                 autoComplete="new-password"
                 required
                 value={confirmation}
