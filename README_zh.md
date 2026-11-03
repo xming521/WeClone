@@ -26,6 +26,13 @@
 
 WeClone 从你的数字生活中提炼身份、目标、偏好与近况，按工作、家庭、健康等板块整理成一份可审核、可追溯、按需授权的人生画像，并分析你的语言风格。画像可以作为 AI 助理的长期记忆，也将驱动具有你个人风格的数字分身。目前支持聊天记录，更多数据源持续接入中。
 
+<a href="https://docs.weclone.love/img/screenshots/atlas-light.webp">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://docs.weclone.love/img/screenshots/atlas-dark.webp">
+    <img alt="人生画像网页" src="https://docs.weclone.love/img/screenshots/atlas-light.webp">
+  </picture>
+</a>
+
 ## ✨ 核心功能
 
 - 🗺️ **交互式人生画像**：画像按板块与主题逐层组织，每条事实均可追溯原文，支持逐条审核与修改。可通过 Codex 或任意 OpenAI 兼容 API 抽取画像。

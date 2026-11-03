@@ -27,6 +27,13 @@
 
 WeClone distills your identity, goals, preferences and current situation from your digital life into a portrait of your life, organized into domains such as work, family and health, that you can review, trace to its sources and share on your own terms. It also analyzes your speaking style. The portrait works as long-term memory for your AI assistants and will power clones with your personal style. Chat history is supported today, with more data sources coming.
 
+<a href="https://docs.weclone.love/img/screenshots/atlas-light-en.webp">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://docs.weclone.love/img/screenshots/atlas-dark-en.webp">
+    <img alt="Life portrait in the web UI" src="https://docs.weclone.love/img/screenshots/atlas-light-en.webp">
+  </picture>
+</a>
+
 ## ✨ Core Features
 
 - 🗺️ **Interactive life portrait**: your portrait is organized by domain and topic. Every fact traces back to its source and can be reviewed and edited. Extraction runs through Codex or any OpenAI-compatible API.
