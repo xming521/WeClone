@@ -432,7 +432,8 @@ def classification_batches(
                         text = json.dumps(
                             prompt_record(records[i]), ensure_ascii=False, separators=(",", ":")
                         )
-                        prompt_rows[i] = text, len(text.encode())
+                        # tiktoken replaces a lone surrogate with U+FFFD, which is also 3 bytes.
+                        prompt_rows[i] = text, len(text.encode(errors="surrogatepass"))
                     text, size = prompt_rows[i]
                     small = byte_bounded and listed_size + size + 1 <= budget.max_tokens
                     if not small and not budget.fits(listed + text + "]"):
