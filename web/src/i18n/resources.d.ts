@@ -37,8 +37,8 @@ export default interface Resources {
       "dimensionOverview": "{{count, zhNumeral}}维总览",
       "domainOverview": "{{count, zhNumeral}}个板块总览",
       "emptyView": "当前视图没有画像记录",
-      "loadFailed": "画像地图暂时无法打开",
-      "loading": "正在展开画像地图",
+      "loadFailed": "画像暂时无法打开",
+      "loading": "正在读取画像",
       "openLeftPanel": "展开左栏",
       "title": "我的画像 · WeClone"
     },
@@ -101,13 +101,13 @@ export default interface Resources {
     },
     "atlas": {
       "attributes": "{{count}} 项画像属性",
-      "canvas": "可交互的画像知识图谱",
+      "canvas": "可交互的画像图谱",
       "detail": {
         "all": "全部画像",
         "attributes": "画像属性",
         "close": "关闭右侧栏",
-        "dimensionHint": "选择左侧维度，逐层展开画像地图。",
-        "domainHint": "选择左侧板块，逐层展开画像地图。",
+        "dimensionHint": "选择左侧维度，逐层展开。",
+        "domainHint": "选择左侧板块，逐层展开。",
         "explore": "继续探索",
         "facts": "画像事实",
         "footer": "PERSONAL KNOWLEDGE MAP",

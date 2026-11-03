@@ -56,8 +56,8 @@
     "dimensionOverview_other": "{{count, zhNumeral}}维总览",
     "emptyView": "当前视图没有画像记录",
     "canvasHelp": "悬停点亮归属路径 · 点击展开并聚焦，再点一次收起 · 拖动节点牵动图谱",
-    "loadFailed": "画像地图暂时无法打开",
-    "loading": "正在展开画像地图"
+    "loadFailed": "画像暂时无法打开",
+    "loading": "正在读取画像"
   },
   "modes": {
     "label": "页面",
@@ -129,11 +129,11 @@
       "reviewed": "已审核画像",
       "progressCounts": "待审核 {{pending}} · 已采纳 {{approved}} · 未采纳 {{rejected}}",
       "explore": "继续探索",
-      "domainHint": "选择左侧板块，逐层展开画像地图。",
-      "dimensionHint": "选择左侧维度，逐层展开画像地图。",
+      "domainHint": "选择左侧板块，逐层展开。",
+      "dimensionHint": "选择左侧维度，逐层展开。",
       "footer": "PERSONAL KNOWLEDGE MAP"
     },
-    "canvas": "可交互的画像知识图谱",
+    "canvas": "可交互的画像图谱",
     "toolbar": {
       "pickDimension": "先点击一个维度",
       "pickDomain": "先点击一个板块",

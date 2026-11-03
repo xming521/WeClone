@@ -60,9 +60,9 @@
     "dimensionOverview_one": "Overview of {{count}} dimension",
     "dimensionOverview_other": "Overview of {{count}} dimensions",
     "emptyView": "No entries in this view",
-    "canvasHelp": "Hover to light up a path · Click to expand and focus, click again to collapse · Drag a node to pull the map",
-    "loadFailed": "The portrait map can't be opened right now",
-    "loading": "Unfolding the portrait map"
+    "canvasHelp": "Hover to light up a path · Click to expand and focus, click again to collapse · Drag a node to pull the graph",
+    "loadFailed": "Your portrait can't be opened right now",
+    "loading": "Reading your portrait"
   },
   "modes": {
     "label": "Pages",
@@ -138,11 +138,11 @@
       "reviewed": "Reviewed",
       "progressCounts": "Pending {{pending}} · Adopted {{approved}} · Rejected {{rejected}}",
       "explore": "Keep exploring",
-      "domainHint": "Pick a domain on the left to unfold the map level by level.",
-      "dimensionHint": "Pick a dimension on the left to unfold the map level by level.",
+      "domainHint": "Pick a domain on the left to expand it level by level.",
+      "dimensionHint": "Pick a dimension on the left to expand it level by level.",
       "footer": "PERSONAL KNOWLEDGE MAP"
     },
-    "canvas": "Interactive map of your portrait",
+    "canvas": "Interactive graph of your portrait",
     "toolbar": {
       "pickDimension": "Click a dimension first",
       "pickDomain": "Click a domain first",
