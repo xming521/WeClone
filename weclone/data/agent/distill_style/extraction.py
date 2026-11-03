@@ -110,6 +110,7 @@ class Judge:
                 command=options["command"],
                 sandbox=options["sandbox"],
                 isolated_cwd=True,
+                config_path=settings,
             )
         else:
             options = config["make_dataset_args"]

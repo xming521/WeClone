@@ -314,3 +314,12 @@ def test_repair_calls_are_cached_apart_from_the_first_call(tmp_path, monkeypatch
     assert judge.call("p", {"x": 1}, attempt=1)["data"] == repair["data"] and len(calls) == 2
     judge.call("p", {"x": 1}, refresh=True, attempt=1)
     assert len(calls) == 3
+
+
+def test_codex_pacing_comes_from_the_given_settings(tmp_path):
+    settings = tmp_path / "elsewhere.jsonc"
+    backend = {"model": "fake", "effort": "low", "timeout": 1, "command": "codex", "sandbox": "read-only"}
+    backend |= {"request_interval_seconds": 7, "capacity_cooldown_seconds": 3}
+    settings.write_text(json.dumps({"codex_exec_args": backend}))
+    client = extraction.Judge(settings, tmp_path / "cache", protocol="test-protocol").client
+    assert (client.request_interval_seconds, client.capacity_cooldown_seconds) == (7, 3)
