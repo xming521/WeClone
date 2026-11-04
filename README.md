@@ -1,4 +1,7 @@
-![WeClone](https://github.com/user-attachments/assets/cd4a87c6-1649-4ce5-bce8-bd5b08b278de)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://docs.weclone.love/img/banner-dark.webp">
+  <img alt="WeClone" src="https://docs.weclone.love/img/banner-light.webp">
+</picture>
 
 <h3 align="center">Build a portrait of your life. Assistants that know you. Clones that talk like you.</h3>
 
