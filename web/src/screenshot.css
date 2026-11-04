@@ -1,0 +1,12 @@
+/* The README screenshot (?screenshot, see screenshot.ts): the map alone, its labels at reading size. */
+:root[data-screenshot] {
+  --text-node-root: 700 26px/32px var(--font-sans);
+  --text-node-dim: 700 23px/29px var(--font-sans);
+  --text-node-section: 600 19px/24px var(--font-sans);
+  --text-node-attr: 500 15px/19px var(--font-sans);
+}
+
+:root[data-screenshot] .app-shell > :not(.atlas-main),
+:root[data-screenshot] .atlas-main > :is(.topbar, .review-bar, .canvas-toolbar, .canvas-help) {
+  display: none;
+}

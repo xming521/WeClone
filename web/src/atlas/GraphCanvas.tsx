@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 import { visibleNodes } from '../data';
+import { SCREENSHOT } from '../screenshot';
 import { useProfileStore } from '../store';
 import { useTheme } from '../theme';
 import { AtlasEngine, type AtlasControls, type HoverInfo, type Insets } from './atlasEngine';
@@ -86,7 +87,7 @@ export function GraphCanvas({ atlasRef }: Props) {
 
   // The first visit opens on a night sky, which has to cover the page before its first paint.
   useLayoutEffect(() => {
-    introRef.current = openNightIntro();
+    introRef.current = SCREENSHOT ? null : openNightIntro();
     return () => {
       introRef.current?.close();
       introRef.current = null;
@@ -98,13 +99,19 @@ export function GraphCanvas({ atlasRef }: Props) {
     const main = host.parentElement;
     const canvas = canvasRef.current!;
     const wash = washRef.current!;
-    const engine = new AtlasEngine(canvas, wash, {
-      onNodeClick: (id) => useProfileStore.getState().clickNode(id),
-      onBackgroundClick: () => useProfileStore.getState().clearSelection(),
-      onHover: setHovered,
-    });
+    const engine = new AtlasEngine(
+      canvas,
+      wash,
+      {
+        onNodeClick: (id) => useProfileStore.getState().clickNode(id),
+        onBackgroundClick: () => useProfileStore.getState().clearSelection(),
+        onHover: setHovered,
+      },
+      { screenshot: SCREENSHOT },
+    );
     engineRef.current = engine;
     atlasRef.current = engine;
+    if (SCREENSHOT) window.atlasCapture = engine;
     // The overlay lets pointer events through to the map, so a click, drag or wheel ends the
     // entrance and acts at once.
     const interrupt = () => stopEntrance(stopEntranceRef);
@@ -131,6 +138,7 @@ export function GraphCanvas({ atlasRef }: Props) {
       engine.destroy();
       engineRef.current = null;
       atlasRef.current = null;
+      if (window.atlasCapture === engine) delete window.atlasCapture;
       mountedRef.current = false;
       fadeOutMap(main, [wash, canvas], root);
     };
@@ -162,11 +170,12 @@ export function GraphCanvas({ atlasRef }: Props) {
     engineRef.current?.setInsets(panelInsets(hostRef.current!, detailOpen));
   }, [detailOpen]);
 
-  // Once laid out, the map builds itself up under the entrance, or on the first visit the night intro.
+  // Once laid out, the map builds itself up under the entrance, or on the first visit the night intro;
+  // the screenshot shows it at once.
   useEffect(() => {
     const engine = engineRef.current!;
     mountedRef.current = true;
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    if (SCREENSHOT || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       engine.reveal(false);
       return;
     }

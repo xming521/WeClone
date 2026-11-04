@@ -156,6 +156,60 @@ export function shiftClusters(model: ProfileModel, positions: Positions, centers
   return shifted;
 }
 
+/** Room a node takes round its position: its disc and the label under it. */
+export type Extent = { left: number; right: number; top: number; bottom: number };
+
+type MovingNode = { x: number; y: number; vx?: number; vy?: number };
+
+/**
+ * Keeps nodes' extents apart the way d3-force's forceCollide keeps circles apart: two boxes that would
+ * overlap after this tick are pushed apart, the larger one moving less, sideways unless that is more
+ * than `sideways` times as far as up or down. A circle round a wide label also keeps free the space
+ * above and below it, which boxes leave to other labels.
+ */
+export function forceExtents<N extends MovingNode>(extentOf: (node: N) => Extent, iterations = 2, sideways = 1) {
+  let nodes: N[] = [];
+  let extents: Extent[] = [];
+  let areas: number[] = [];
+  function force() {
+    for (let pass = 0; pass < iterations; pass++) {
+      for (let i = 0; i < nodes.length; i++) {
+        const a = nodes[i];
+        const ea = extents[i];
+        const ax = a.x + (a.vx ?? 0);
+        const ay = a.y + (a.vy ?? 0);
+        for (let j = i + 1; j < nodes.length; j++) {
+          const b = nodes[j];
+          const eb = extents[j];
+          const bx = b.x + (b.vx ?? 0);
+          const by = b.y + (b.vy ?? 0);
+          const overlapX = Math.min(ax + ea.right, bx + eb.right) - Math.max(ax - ea.left, bx - eb.left);
+          if (overlapX <= 0) continue;
+          const overlapY = Math.min(ay + ea.bottom, by + eb.bottom) - Math.max(ay - ea.top, by - eb.top);
+          if (overlapY <= 0) continue;
+          // Share of the push that moves a.
+          const share = areas[j] / (areas[i] + areas[j]);
+          if (overlapX < sideways * overlapY) {
+            const side = bx + (eb.right - eb.left) / 2 >= ax + (ea.right - ea.left) / 2 ? 1 : -1;
+            a.vx = (a.vx ?? 0) - side * overlapX * share;
+            b.vx = (b.vx ?? 0) + side * overlapX * (1 - share);
+          } else {
+            const side = by + (eb.bottom - eb.top) / 2 >= ay + (ea.bottom - ea.top) / 2 ? 1 : -1;
+            a.vy = (a.vy ?? 0) - side * overlapY * share;
+            b.vy = (b.vy ?? 0) + side * overlapY * (1 - share);
+          }
+        }
+      }
+    }
+  }
+  force.initialize = (all: N[]) => {
+    nodes = all;
+    extents = all.map(extentOf);
+    areas = extents.map((e) => Math.max(1, (e.left + e.right) * (e.top + e.bottom)));
+  };
+  return force;
+}
+
 export function overviewPositions(model: ProfileModel): Positions {
   const positions: Positions = new Map([['root', { x: 0, y: 0 }]]);
   function placeDescendants(parentId: string, direction: number) {
