@@ -37,17 +37,6 @@ pnpm --dir web build    # updates weclone/web/dist
 
 The built pages in `weclone/web/dist` are committed and shipped with the Python package, so run `pnpm --dir web build` after changing the frontend source.
 
-## README picture
-
-The animated portrait at the top of the repository README is the map opened with `?screenshot` in the address: the map alone, with larger labels and the nodes packed round them so that every one fits. `scripts/screenshot.mjs` records one wave cycle of it in headless Chrome as an animated WebP that loops without a seam:
-
-```sh
-weclone-cli server --demo en --port 5180
-WECLONE_PASSWORD=demo node web/scripts/screenshot.mjs http://127.0.0.1:5180 atlas-light-en.webp
-```
-
-Pass `--locale zh-CN` or `--theme dark` for the other versions, or `--still` for a PNG. The script needs Chrome or chrome-headless-shell (set `CHROME` when it is not on `PATH`) and ffmpeg with libwebp. The README loads the pictures from the documentation site, where they are `docs/public/img/screenshots/atlas-{light,dark}{,-en}.webp` in the WeClone-docs repository.
-
 ## Translations
 
 The UI is in Chinese and English. It follows the browser language until the 中/EN switch saves a choice. UI copy lives in `src/i18n/locales/<language>/translation.json`, with `zh-CN` as the source catalog.

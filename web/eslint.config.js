@@ -18,11 +18,6 @@ export default tseslint.config(
     },
   },
   {
-    files: ['scripts/**/*.mjs'],
-    extends: [js.configs.recommended],
-    languageOptions: { globals: globals.node },
-  },
-  {
     // UI copy lives in src/i18n/locales. Chinese text in code is content logic and says so with a disable comment.
     files: ['src/**/*.{ts,tsx}'],
     ignores: ['src/i18n/**'],

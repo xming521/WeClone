@@ -9,7 +9,6 @@ import {
   computeSeeds,
   dimensionAngle,
   expansionPositions,
-  forceExtents,
   overviewPositions,
   placeNodes,
   sameTree,
@@ -212,39 +211,4 @@ test('shiftClusters moves a whole dimension with its dimension node and ignores 
   assert.deepEqual(shifted.get('topic-c'), { x: -400, y: 0 });
   const unchanged = new Map([['dimension:1', { x: -320, y: 0 }]]);
   assert.equal(shiftClusters(model, positions, unchanged), positions);
-});
-
-test('forceExtents pushes overlapping boxes apart sideways unless that is much farther, the larger box moving less', () => {
-  const wide = { left: 50, right: 50, top: 10, bottom: 10 };
-  const narrow = { left: 20, right: 20, top: 10, bottom: 10 };
-  const near = (value: number, expected: number) =>
-    assert.ok(Math.abs(value - expected) < 1e-9, `${value} ≠ ${expected}`);
-  const push = (at: { x: number; y: number }, sideways: number) => {
-    const nodes = [
-      { x: 0, y: 0, vx: 0, vy: 0, extent: wide },
-      { ...at, vx: 0, vy: 0, extent: narrow },
-    ];
-    const force = forceExtents<(typeof nodes)[number]>((n) => n.extent, 1, sideways);
-    force.initialize(nodes);
-    force();
-    return nodes.map(({ vx, vy }) => ({ vx, vy }));
-  };
-  // Overlapping by 10 sideways and 15 up and down: pushed sideways, the wide box taking 2/7 of the push.
-  const [a, b] = push({ x: 60, y: 5 }, 1);
-  near(a.vx, -20 / 7);
-  near(b.vx, 50 / 7);
-  assert.equal(a.vy, 0);
-  // By 30 sideways and 15 up and down: pushed up and down, or sideways once that may be 2.5 times as far.
-  const [c, d] = push({ x: 40, y: 5 }, 1);
-  near(c.vy, -30 / 7);
-  near(d.vy, 75 / 7);
-  assert.equal(c.vx, 0);
-  const [e, f] = push({ x: 40, y: 5 }, 2.5);
-  near(e.vx, -60 / 7);
-  near(f.vx, 150 / 7);
-  // Boxes that only touch stay where they are.
-  assert.deepEqual(push({ x: 70, y: 0 }, 1), [
-    { vx: 0, vy: 0 },
-    { vx: 0, vy: 0 },
-  ]);
 });
