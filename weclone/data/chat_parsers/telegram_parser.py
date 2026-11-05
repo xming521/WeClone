@@ -10,14 +10,14 @@ from pandas import Timestamp
 
 from weclone.data.models import ChatMessage
 from weclone.utils import secure_storage
-from weclone.utils.config_models import DataModality, WCMakeDatasetConfig
+from weclone.utils.config_models import DataModality, MakeDatasetArgs
 from weclone.utils.log import logger
 
 
 class TelegramChatParser:
     """Telegram chat parser that converts JSON format to data conforming to ChatMessage structure"""
 
-    def __init__(self, config: WCMakeDatasetConfig):
+    def __init__(self, config: MakeDatasetArgs):
         self.config = config
         self.my_user_id = config.telegram_args.my_id if config.telegram_args else None
         self.message_counter = 0
@@ -285,14 +285,14 @@ class TelegramChatParser:
         logger.info(f"Image copying completed: successful {copied_count}, skipped {skipped_count}")
 
 
-def process_telegram_dataset(config: WCMakeDatasetConfig) -> list[str]:
+def process_telegram_dataset(config: MakeDatasetArgs) -> list[str]:
     """
     Process Telegram dataset, traverse all folders under dataset/telegram
     Create corresponding folders for each telegram folder under dataset/csv
 
     Parameters
     ----------
-    config : WCMakeDatasetConfig
+    config : MakeDatasetArgs
         Dataset configuration, contains telegram_args.my_id for determining sender
     """
     telegram_dir = "dataset/telegram"

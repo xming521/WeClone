@@ -17,4 +17,18 @@ export default tseslint.config(
       'react-hooks/exhaustive-deps': 'warn',
     },
   },
+  {
+    // UI copy lives in src/i18n/locales. Chinese text in code is content logic and says so with a disable comment.
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: ['src/i18n/**'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        ...['Literal[value=/CJK/]', 'TemplateElement[value.raw=/CJK/]', 'JSXText[value=/CJK/]'].map((selector) => ({
+          selector: selector.replace('CJK', '[\\u3000-\\u303f\\u4e00-\\u9fff\\uff00-\\uffef]'),
+          message: 'Put UI copy in src/i18n/locales and read it with t().',
+        })),
+      ],
+    },
+  },
 );

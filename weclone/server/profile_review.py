@@ -3,18 +3,32 @@
 import hashlib
 import json
 import sqlite3
+import tomllib
 from contextlib import contextmanager
 from datetime import datetime, timezone
+from importlib import metadata
 from pathlib import Path
 from typing import Literal
 from uuid import uuid4
 
-from fastapi import APIRouter, FastAPI, HTTPException
+from fastapi import APIRouter, FastAPI
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from weclone.server import style_view
+from weclone.server.assistant import install_assistant
 from weclone.server.auth import install_auth
+from weclone.server.bots import install_bots
+from weclone.server.errors import ApiError, error_response, install_errors, security_response
+from weclone.server.profile_intro import profile_intro
+from weclone.server.profile_summary import (
+    Level,
+    SummaryEdit,
+    SummaryGenerate,
+    SummaryReview,
+    SummaryStore,
+)
 from weclone.server.source_chat import source_chat
 from weclone.utils import secure_storage as secure
 
@@ -24,22 +38,32 @@ DEFAULT_STATIC_DIR = Path(__file__).resolve().parents[1] / "web" / "dist"
 
 
 def review_paths(database: Path | None = None, source: Path | None = None) -> tuple[Path, Path]:
-    directory = ROOT / "dataset/res_csv/agent"
     if source is None:
-        legacy = directory / "memory_organization"
-        # Keep an existing legacy snapshot, including when its source was removed.
-        candidates = [legacy, *sorted((directory / "profile_runs").glob("*/profile_hierarchy"), reverse=True)]
+        runs = ROOT / "dataset/res_csv/agent/profile_runs"
+        # The newest build-profile run, including one whose source was removed but whose snapshot is kept.
         selected = next(
             (
-                candidate
-                for candidate in candidates
-                if secure.file_exists(candidate / "profile_hierarchy.json")
-                or secure.file_exists(candidate / "profile_review.sqlite3")
+                run
+                for run in sorted(runs.glob("*/profile_hierarchy"), reverse=True)
+                if secure.file_exists(run / "profile_hierarchy.json")
+                or secure.file_exists(run / "profile_review.sqlite3")
             ),
-            legacy,
+            runs,
         )
         source = selected / "profile_hierarchy.json"
     return database or source.parent / "profile_review.sqlite3", source
+
+
+def weclone_version():
+    # A checkout is installed editable, whose package metadata keeps the version of the first install.
+    try:
+        return tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]["version"]
+    except (OSError, KeyError, tomllib.TOMLDecodeError):
+        pass
+    try:
+        return metadata.version("WeClone")
+    except metadata.PackageNotFoundError:
+        return None
 
 
 def encode(value):
@@ -175,7 +199,7 @@ class ReviewStore:
             (fact_id,),
         ).fetchone()
         if row is None:
-            raise HTTPException(404, "画像记录不存在")
+            raise ApiError(404, "fact_not_found", "画像记录不存在")
         original = json.loads(row["original"])
         return {
             **original,
@@ -216,7 +240,7 @@ class ReviewStore:
             "SELECT * FROM nodes WHERE id=? AND kind IN ('dimension','topic')", (request.group_id,)
         ).fetchone()
         if group is None:
-            raise HTTPException(422, "请选择已有维度或主题")
+            raise ApiError(422, "location_invalid", "请选择已有维度或主题")
         row = db.execute(
             "SELECT id FROM nodes WHERE parent_id=? AND kind='attribute' AND name=?",
             (request.group_id, request.attr),
@@ -254,7 +278,7 @@ class ReviewStore:
             db.execute("BEGIN IMMEDIATE")
             before = self.fact(db, fact_id)
             if before["version"] != request.version:
-                raise HTTPException(409, "记录已被修改，请刷新数据后核对并重试")
+                raise ApiError(409, "fact_changed", "记录已被修改，请刷新数据后核对并重试")
             changed = any(before[key] != getattr(request, key) for key in ("value", "attr", "group_id"))
             status = "approved" if request.approve else "pending" if changed else before["status"]
             if not changed and status == before["status"]:
@@ -273,12 +297,12 @@ class ReviewStore:
 
     def review(self, request):
         if len({item.id for item in request.items}) != len(request.items):
-            raise HTTPException(422, "批量操作不能包含重复记录")
+            raise ApiError(422, "duplicate_facts", "批量操作不能包含重复记录")
         with self.connect() as db:
             db.execute("BEGIN IMMEDIATE")
             before = [self.fact(db, item.id) for item in request.items]
             if any(fact["version"] != item.version for fact, item in zip(before, request.items)):
-                raise HTTPException(409, "记录已被修改，整批操作未保存，请刷新后重试")
+                raise ApiError(409, "batch_changed", "记录已被修改，整批操作未保存，请刷新后重试")
             for fact in before:
                 if fact["status"] != request.status:
                     db.execute(
@@ -305,8 +329,36 @@ class ReviewStore:
             data = json.loads(db.execute("SELECT data FROM snapshot WHERE id=1").fetchone()["data"])
             source = data.get("sources", {}).get(source_id)
         if not isinstance(source, dict):
-            raise HTTPException(404, "来源记录不存在")
+            raise ApiError(404, "source_not_found", "来源记录不存在")
         return source_chat(source_id, source)
+
+    def run_info(self):
+        """Which build-profile run the server shows and when it was made and last reviewed."""
+        run = self.source.parent.parent
+        source = secure.resolve_path(self.source)
+        try:
+            with self.connect() as db:
+                reviewed = db.execute("SELECT MAX(at) FROM history").fetchone()[0]
+        except FileNotFoundError:
+            reviewed = None
+        return {
+            "name": run.name,
+            "path": str(run),
+            "generated_at": (
+                datetime.fromtimestamp(source.stat().st_mtime, timezone.utc).isoformat()
+                if source.is_file()
+                else None
+            ),
+            "reviewed_at": reviewed,
+            "style": style_view.complete(run / "style"),
+        }
+
+    def intro(self):
+        profile = self.profile()
+        with self.connect() as db:
+            snapshot = json.loads(db.execute("SELECT data FROM snapshot WHERE id=1").fetchone()["data"])
+        # Demo profiles carry their message counts beside the facts.
+        return profile_intro({**profile, "_demo": snapshot.get("_demo")})
 
     def profile(self, approved_only=False):
         with self.connect() as db:
@@ -362,6 +414,16 @@ class ReviewStore:
             if not approved_only:
                 result["locations"] = [node for node in nodes if node["kind"] != "attribute"]
                 result["snapshot_sha256"] = snapshot["sha256"]
+                # Each dimension is grouped by domain, then topic. The domain view of the review UI
+                # regroups that tree, taking order and descriptions from here.
+                result["domains"] = [
+                    {
+                        "name": domain["name"],
+                        "description": domain["description"],
+                        "topics": [topic["name"] for topic in domain["topics"]],
+                    }
+                    for domain in source_data["domains"]
+                ]
             return result
 
 
@@ -371,19 +433,21 @@ def create_app(
     static_dir: Path | None = None,
     *,
     inference_router: APIRouter | None = None,
+    demo_password: str | None = None,
 ):
     store = ReviewStore(*review_paths(database, source))
     app = FastAPI(title="WeClone")
-    install_auth(app, store.database)
+    install_errors(app)
+    install_auth(app, store.database, demo_password)
+    install_bots(app, inference=inference_router is not None)
 
     @app.exception_handler(secure.SecurityError)
     async def security_error(request, exc):
-        status = 401 if isinstance(exc, secure.StorageLocked) else 409
-        return JSONResponse({"detail": str(exc)}, status_code=status)
+        return security_response(exc, 401 if isinstance(exc, secure.StorageLocked) else 409)
 
     @app.exception_handler(FileNotFoundError)
     async def missing_profile(request, exc):
-        return JSONResponse({"detail": "画像数据尚未生成，请先完成抽取和整理"}, status_code=404)
+        return error_response(404, "profile_missing", "画像数据尚未生成，请先完成抽取和整理")
 
     if inference_router is not None:
         app.include_router(inference_router)
@@ -391,6 +455,19 @@ def create_app(
     @app.get("/api/profile")
     def profile():
         return store.profile()
+
+    @app.get("/api/run")
+    def run_info():
+        demo = demo_password is not None
+        info = store.run_info()
+        # The demo is open to anyone with its published password: the server's directories stay out of it.
+        if demo:
+            info["path"] = None
+        return {**info, "demo": demo, "version": weclone_version()}
+
+    @app.get("/api/profile/intro")
+    def intro():
+        return store.intro()
 
     @app.get("/api/avatar-profile")
     def avatar(download: bool = False):
@@ -417,9 +494,42 @@ def create_app(
     def review(request: ReviewBatch):
         return store.review(request)
 
+    summaries = SummaryStore(store)
+
+    @app.get("/api/summaries")
+    def summary_view(level: Level = "full"):
+        return summaries.view(level)
+
+    @app.post("/api/summaries/generate")
+    def summary_generate(request: SummaryGenerate):
+        return summaries.generate(request.level)
+
+    @app.patch("/api/summaries")
+    def summary_edit(request: SummaryEdit):
+        return summaries.edit(request)
+
+    @app.post("/api/summaries/review")
+    def summary_review(request: SummaryReview):
+        return summaries.review(request)
+
+    install_assistant(app, store, summaries)
+
+    @app.get("/api/style")
+    def style():
+        # The style of the run the profile comes from. Read per request: the files are read with the session key,
+        # and a style stage that finishes after the server started shows up without a restart.
+        run = store.source.parent.parent / "style"
+        if not style_view.complete(run):
+            raise ApiError(
+                404,
+                "style_missing",
+                "这次运行没有抽取语言风格，做分身请运行 weclone-cli build-profile --purpose clone",
+            )
+        return style_view.build_view(run)
+
     @app.get("/api/{path:path}", include_in_schema=False)
     def unknown_api(path: str):
-        raise HTTPException(404, "接口不存在")
+        raise ApiError(404, "api_not_found", "接口不存在")
 
     static_dir = static_dir or DEFAULT_STATIC_DIR
     if static_dir.is_dir():

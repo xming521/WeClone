@@ -1,7 +1,7 @@
 [project]
 name = "WeClone"
-version = "0.4.01"
-description = "One-stop solution for creating your digital avatar from chat history"
+version = "1.0.1"
+description = "Build a portrait of your life. Assistants that know you. Clones that talk like you."
 authors = [{ name = "xming521" }]
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
@@ -29,13 +29,7 @@ dependencies = [
 
 [tool.weclone]
 # Configuration file version number. This number should be incremented when the configuration file structure or important default values change.
-config_version = "0.4.01"
-
-config_changelog = """
-[0.3.00] - 2025-06-30 - Support TG chat logs, add language parameter, add log level parameter.
-[0.3.02] - 2025-08-15 - Allow the use of the enable_thinking to control offline cleaning..
-[0.3.03] - 2025-11-01 - Add chat member relationship switch.
-"""
+config_version = "1.0.1"
 
 [dependency-groups]
 main = [
@@ -51,6 +45,8 @@ main = [
   "presidio_analyzer[transformers]",
   "presidio_anonymizer",
 ]
+# LTP 4.2 calls batch_encode_plus, which transformers 5 removed.
+style = ["ltp==4.2.14", "scipy", "transformers<5"]
 sparktts = [
   "einops>=0.8.1",
   "einx>=0.3.0",
@@ -70,6 +66,7 @@ dev = ["pytest", "pytest-order", "pyright", "ruff", "pre-commit"]
 weclone-cli = "weclone.cli:cli"
 
 [tool.uv]
+package = true
 
 [tool.uv.pip]
 torch-backend = "auto"
@@ -104,7 +101,7 @@ explicit = true
 [tool.setuptools.packages.find]
 where = ["."]                      
 include = ["weclone*"]             
-exclude = ["*tests*", "*archive*"]
+exclude = ["*tests*", "*archive*", "weclone-cloud*"]
 
 [tool.setuptools.package-data]
 "weclone.web" = ["dist/*", "dist/assets/*"]
@@ -142,4 +139,5 @@ lint.select = [
 target-version = "py312"
 
 [tool.pytest.ini_options]
-addopts = "-x -v -s --tb=short"
+addopts = "-x -v -s --tb=short -m 'not e2e'"
+markers = ["e2e: full SFT pipeline on a GPU with the local models named in tests/configs; run with -m e2e"]

@@ -2,17 +2,21 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { buildModel, visibleNodes } from '../src/data.ts';
 import type { ProfileInput } from '../src/data.ts';
+import { labels } from './modelLabels.ts';
 import {
-  buildGraphData,
+  STAGGER_COUNT,
   clusterCenters,
   computeSeeds,
+  dimensionAngle,
   expansionPositions,
   overviewPositions,
-  sameTopology,
+  placeNodes,
+  sameTree,
   shiftClusters,
 } from '../src/atlas/graphLayout.ts';
 
 const input: ProfileInput = {
+  domains: [],
   dimensions: [
     {
       dim: 8,
@@ -34,8 +38,7 @@ const input: ProfileInput = {
   snapshot_sha256: 'fixture',
 };
 
-const model = buildModel(input);
-const selection = { selectedId: 'root', path: new Set<string>() };
+const model = buildModel(input, labels);
 
 test('overviewPositions places every node with the root at the origin', () => {
   const positions = overviewPositions(model);
@@ -63,25 +66,18 @@ test('expansionPositions keeps existing coordinates and only places new nodes', 
   }
 });
 
-test('sameTopology compares node count, edge count, and edge id plus source', () => {
+test('sameTree compares ids and parents in order', () => {
   const visible = visibleNodes(model, new Set(['root', 'dimension:8']));
-  const { nodes, edges } = buildGraphData(visible, overviewPositions(model), overviewPositions(model), selection);
-  const previous = new Map(nodes.map((node) => [node.id, node.style]));
-  const current = edges.map(({ id, source }) => ({ id, source }));
-
-  assert.equal(sameTopology(false, true, previous, nodes, [...current].reverse(), edges), true);
+  assert.equal(sameTree(visible, [...visible]), true);
+  assert.equal(sameTree(visible, visible.slice(1)), false);
+  assert.equal(sameTree(visible, [...visible].reverse()), false);
   assert.equal(
-    sameTopology(false, true, previous, nodes, [...current, { id: 'edge:extra', source: 'root' }], edges),
+    sameTree(
+      visible,
+      visible.map((node) => ({ ...node, parentId: node.parentId && 'root' })),
+    ),
     false,
   );
-  assert.equal(
-    sameTopology(false, true, previous, nodes, [{ ...current[0], source: 'dimension:1' }, ...current.slice(1)], edges),
-    false,
-  );
-  assert.equal(sameTopology(false, true, previous, nodes, current.slice(1), edges), false);
-  assert.equal(sameTopology(true, true, previous, nodes, current, edges), false);
-  assert.equal(sameTopology(false, false, previous, nodes, current, edges), false);
-  assert.equal(sameTopology(false, true, new Map([...previous].slice(1)), nodes, current, edges), false);
 });
 
 test('computeSeeds reuses current positions in the same view and aligns the root when switching', () => {
@@ -109,20 +105,23 @@ test('computeSeeds reuses current positions in the same view and aligns the root
   assert.deepEqual(fallback.get('root'), previous.get('root'));
 });
 
-test('buildGraphData attaches display data to every node and the target kind to every edge', () => {
+test('placeNodes prefers seeds, then initial positions, then a spot around the parent', () => {
   const visible = visibleNodes(model, new Set(['root', 'dimension:8']));
-  const { nodes, edges } = buildGraphData(visible, new Map(), overviewPositions(model), {
-    selectedId: 'topic-a',
-    path: new Set(['topic-a', 'dimension:8', 'root']),
-  });
-  assert.deepEqual(nodes[0].data, { kind: 'root', dim: null, name: '我的画像' });
-  assert.deepEqual(nodes.find((node) => node.id === 'topic-a')!.states, ['selected']);
-  const edge = edges.find((item) => item.id === 'edge:dimension:8')!;
+  const seeds = new Map([['root', { x: 5, y: 6 }]]);
+  const initial = new Map([
+    ['root', { x: 50, y: 60 }],
+    ['dimension:8', { x: 300, y: 0 }],
+  ]);
+  const positions = placeNodes(visible, seeds, initial);
   assert.deepEqual(
-    [edge.source, edge.target, edge.data, edge.states],
-    ['root', 'dimension:8', { kind: 'dimension', dim: 8 }, ['route']],
+    [...positions.keys()],
+    visible.map((node) => node.id),
   );
-  assert.equal(edges.length, visible.length - 1);
+  assert.deepEqual(positions.get('root'), { x: 5, y: 6 });
+  assert.deepEqual(positions.get('dimension:8'), { x: 300, y: 0 });
+  const topic = positions.get('topic-a')!;
+  assert.ok(Math.abs(Math.hypot(topic.x - 300, topic.y) - 135) < 1e-9);
+  assert.deepEqual(placeNodes(visible, new Map(), new Map()).get('root'), { x: 0, y: 0 });
 });
 
 test('clusterCenters keeps each dimension direction and moves a larger dimension farther out', () => {
@@ -138,6 +137,58 @@ test('clusterCenters keeps each dimension direction and moves a larger dimension
     assert.ok(Math.abs(direction(collapsed.get(id)!) - direction(expanded.get(id)!)) < 1e-9);
   }
   assert.ok(distance(expanded.get('dimension:8')!) > distance(collapsed.get('dimension:8')!));
+});
+
+test('clusterCenters staggers many domains between an inner and an outer ring without overlap', () => {
+  const names = Array.from({ length: STAGGER_COUNT + 4 }, (_, index) => `领域${index}`);
+  const domainModel = buildModel(
+    {
+      dimensions: [
+        {
+          dim: 1,
+          name: '性格',
+          groups: names.map((name, index) => ({
+            id: `group-${index}`,
+            name,
+            items: [
+              { id: `topic-${index}`, name: '主题', items: [{ id: `attr-${index}`, attr: '属性', fact_indices: [] }] },
+            ],
+          })),
+        },
+      ],
+      domains: names.map((name) => ({ name, description: '', topics: ['主题'] })),
+      facts: [],
+      sources: {},
+      locations: [],
+      snapshot_sha256: 'fixture',
+    },
+    labels,
+    'domain',
+  );
+  const ids = domainModel.dimensionIds;
+  assert.equal(ids.length, names.length);
+  const root = { x: 0, y: 0 };
+  const collapsed = clusterCenters(domainModel, visibleNodes(domainModel, new Set(['root'])), root);
+  const distance = (point: { x: number; y: number }) => Math.hypot(point.x, point.y);
+  ids.forEach((id, index) => {
+    const point = collapsed.get(id)!;
+    const angle = dimensionAngle(index, ids.length);
+    assert.ok(Math.abs(Math.atan2(point.y, point.x) - Math.atan2(Math.sin(angle), Math.cos(angle))) < 1e-9);
+    // Collapsed domains are the same size, so the even ones form the inner ring.
+    if (index % 2) assert.ok(distance(point) > distance(collapsed.get(ids[index - 1])!) + 50);
+    for (const other of ids.slice(index + 1)) {
+      const next = collapsed.get(other)!;
+      assert.ok(Math.hypot(point.x - next.x, point.y - next.y) >= 2 * 60 + 50 - 1e-6);
+    }
+  });
+  // Eighty visible nodes in the first domain stand in for its expanded topics.
+  const crowded = [
+    ...visibleNodes(domainModel, new Set(['root'])),
+    ...Array(80).fill(domainModel.nodes.get(domainModel.nodes.get(ids[0])!.childIds[0])!),
+  ];
+  const expanded = clusterCenters(domainModel, crowded, root);
+  assert.ok(distance(expanded.get(ids[0])!) > distance(collapsed.get(ids[0])!));
+  assert.ok(distance(expanded.get(ids[1])!) > distance(collapsed.get(ids[1])!));
 });
 
 test('shiftClusters moves a whole dimension with its dimension node and ignores small offsets', () => {

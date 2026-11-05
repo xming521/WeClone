@@ -1,0 +1,238 @@
+/* What floats on the map: the node hover card, the toolbar, the review rail, the hint and the empty note.
+   Their look comes from the design system (wc-tip, wc-toolbar, wc-rail, wc-hint); this file places them. */
+
+/* Radix tooltips carry data-side; they sit above the panels the map shares the page with. */
+.wc-tip[data-side] {
+  z-index: 40;
+}
+
+/* The rail's tips open to the right and read as one line. */
+.wc-tip[data-side='right'] {
+  max-width: none;
+  white-space: nowrap;
+}
+
+/* Node hover card: the card tooltip, which grows its own width and follows the pointer. */
+.graph-hover-tooltip.wc-tip {
+  position: absolute;
+  z-index: 4;
+  width: 290px;
+  max-width: calc(100% - 24px);
+  font-weight: 400;
+  pointer-events: none;
+}
+
+/* The design system draws four tail corners; a card pushed left of the pointer needs the fifth. */
+.graph-hover-tooltip[data-tail='top-right']::before {
+  top: -9px;
+  right: 13px;
+  bottom: auto;
+  left: auto;
+}
+
+.graph-hover-tooltip[data-tail='top-right']::after {
+  top: -15px;
+  right: 8px;
+  bottom: auto;
+  left: auto;
+}
+
+.node-preview-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.node-preview-heading > .wc-dot {
+  margin-top: 5px;
+}
+
+.node-preview-root {
+  --c: var(--ink-3);
+}
+
+.node-preview-heading strong {
+  font-weight: inherit;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.node-preview-path {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.node-preview-scores {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  margin-top: var(--space-2);
+  color: var(--ink-3);
+}
+
+.node-preview-content {
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--line-1);
+  color: var(--ink-2);
+}
+
+.node-preview-content p {
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.node-preview-content p + p {
+  margin-top: var(--space-1);
+}
+
+.node-preview-full {
+  width: 360px;
+}
+
+.node-preview-full .node-preview-heading strong {
+  display: block;
+  overflow: visible;
+}
+
+.node-preview-full .node-preview-path,
+.node-preview-full .node-preview-content p {
+  white-space: pre-wrap;
+  overflow: visible;
+  overflow-wrap: anywhere;
+}
+
+.node-preview-full .node-preview-content p + p {
+  margin-top: var(--space-2);
+}
+
+/* Toolbar: wc-toolbar draws it; the groups keep the old structure so the phone layout can stack them. */
+.canvas-toolbar {
+  position: absolute;
+  z-index: 3;
+  right: 28px;
+  bottom: 27px;
+}
+
+.level-controls,
+.view-controls {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* A level needs a focused dimension: the button stays focusable so its tooltip can say so. */
+.wc-level.is-disabled {
+  color: var(--ink-4);
+  cursor: not-allowed;
+}
+
+.wc-level.is-disabled:hover {
+  background: transparent;
+  color: var(--ink-4);
+}
+
+/* Review rail: wc-rail draws it, floating a card's margin off the map's left edge. */
+/* The rail's last item starts a review round, apart from the counts. */
+.review-start-sep {
+  height: 1px;
+  margin: 2px 8px;
+  background: var(--line-1);
+}
+
+.review-start[aria-disabled='true'] {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.review-start .wc-rail__label {
+  text-align: center;
+}
+
+.review-bar {
+  position: absolute;
+  z-index: 4;
+  left: 0;
+  top: 50%;
+  margin-left: var(--space-4);
+  transform: translateY(-50%);
+  transition: left 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* 92px fits the Chinese labels; a longer label widens the rail instead of wrapping. */
+.review-bar .wc-rail {
+  width: auto;
+  min-width: 92px;
+}
+
+.wc-rail__label {
+  white-space: nowrap;
+}
+
+/* The "all" mark is a Lucide icon, not a DS glyph: give it the colours of the glyph beside the counts. */
+.wc-rail__n > svg {
+  flex: none;
+  color: var(--ink-3);
+}
+
+.wc-rail__item[aria-pressed='true'] .wc-rail__n > svg {
+  color: var(--you-ink);
+}
+
+/* Hint: wc-hint, set here because the markup is the page's own. */
+.canvas-help {
+  position: absolute;
+  z-index: 2;
+  bottom: 27px;
+  left: 36px;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  max-width: 340px;
+  color: var(--ink-3);
+  font: var(--text-caption);
+  pointer-events: none;
+}
+
+.canvas-help > svg {
+  flex: none;
+  margin-top: 2px;
+  stroke-width: 1.8;
+}
+
+.graph-empty {
+  position: absolute;
+  top: 185px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  color: var(--ink-3);
+  font: var(--text-body);
+  pointer-events: none;
+}
+
+@media (max-width: 650px) {
+  .canvas-help {
+    left: 14px;
+    bottom: 111px;
+    max-width: calc(100% - 28px);
+  }
+  .canvas-toolbar {
+    right: 12px;
+    bottom: 10px;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .canvas-toolbar > .wc-sep {
+    width: auto;
+    height: 1px;
+    margin: var(--space-1);
+  }
+}

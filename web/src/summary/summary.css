@@ -1,0 +1,299 @@
+/* The domain summary page scrolls like a document, on the same flat paper as the rest of the interface. The
+   assistant and bot pages reuse its shell, intro, level switch and hints. */
+.summary-page {
+  position: relative;
+  min-height: 100dvh;
+  background: var(--paper);
+}
+.summary-topbar {
+  position: sticky;
+  z-index: 5;
+  top: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-5);
+  padding: var(--space-4) var(--space-8);
+  background: var(--veil);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--line-1);
+}
+.summary-topbar .topbar-actions {
+  flex: 0 0 auto;
+}
+.summary-main {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-8) var(--space-16);
+}
+.summary-intro h1 {
+  margin: 0 0 var(--space-2);
+  color: var(--ink-1);
+  font: var(--text-title);
+}
+.summary-intro > p {
+  max-width: 760px;
+  margin: 0;
+  color: var(--ink-2);
+  font: var(--text-body);
+}
+.summary-intro > p + p {
+  margin-top: var(--space-2);
+}
+.summary-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+}
+/* The privacy-level switch: a caption, then the segmented control. Each option carries the water-level circle of
+   the degree it reaches. */
+.summary-levels {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.summary-levels > span {
+  color: var(--ink-3);
+  font: var(--text-caption);
+}
+.summary-levels .wc-phase {
+  color: var(--pc);
+}
+.summary-counts {
+  margin-left: auto;
+  color: var(--ink-3);
+  font: var(--text-caption);
+  font-variant-numeric: tabular-nums;
+}
+.summary-hint {
+  margin: var(--space-3) 0 0;
+  color: var(--ink-3);
+  font: var(--text-caption);
+}
+/* A hint that warns about what leaves WeClone starts with the sensitive water-level circle. */
+.summary-hint.summary-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  color: var(--privacy-sensitive);
+}
+.summary-hint.summary-warning .wc-phase {
+  margin-top: var(--space-1);
+}
+.summary-error {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-control);
+  background: var(--danger-tint);
+  color: var(--danger);
+  font: var(--text-caption);
+}
+.summary-error .wc-btn {
+  flex-shrink: 0;
+  color: inherit;
+}
+.summary-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 400px);
+  align-items: start;
+  gap: var(--space-6);
+  margin-top: var(--space-6);
+}
+.summary-list {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.summary-card {
+  position: relative;
+  padding: var(--space-4);
+  border: 1px solid var(--line-1);
+  border-radius: var(--radius-card);
+  background: var(--card);
+  box-shadow: var(--shadow-1);
+}
+/* Waiting for your confirmation: the pending tail dot, as on a profile card that waits for review. */
+.summary-card.pending::after {
+  content: '';
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--pending);
+}
+.summary-card.empty,
+.summary-card.rejected {
+  background: var(--panel);
+  box-shadow: none;
+}
+.summary-card.empty .summary-domain,
+.summary-card.rejected .summary-body > *,
+.summary-card.stale .summary-body > :not(.summary-note) {
+  color: var(--ink-3);
+}
+.summary-card-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  min-height: 20px;
+}
+.summary-domain {
+  color: var(--ink-1);
+  font: var(--text-label);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.summary-meta {
+  overflow: hidden;
+  color: var(--ink-3);
+  font: var(--text-caption);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.summary-meta .wc-mono {
+  font: var(--text-meta);
+}
+.summary-card-head .wc-status,
+.summary-state {
+  flex-shrink: 0;
+  margin-left: auto;
+}
+/* Where generation stands, for the states that are not a decision of yours. */
+.summary-state {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-badge);
+  background: var(--sunken);
+  color: var(--ink-3);
+  font: var(--text-caption);
+  font-weight: 500;
+  white-space: nowrap;
+}
+.summary-state.stale {
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--line-2);
+  color: var(--ink-1);
+}
+.summary-body strong {
+  display: block;
+  margin-top: var(--space-2);
+  color: var(--ink-1);
+  font: var(--text-subtitle);
+}
+.summary-body p {
+  margin: var(--space-1) 0 0;
+  color: var(--ink-2);
+  font: var(--text-body);
+}
+.summary-body p.summary-note {
+  margin-top: var(--space-2);
+  color: var(--ink-2);
+  font: var(--text-caption);
+}
+.summary-placeholder {
+  margin: var(--space-2) 0 0;
+  color: var(--ink-3);
+  font: var(--text-body);
+}
+.summary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+.summary-editor {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+/* The summary is longer than a line, so it is a multi-line field drawn like the single-line TextField. */
+.summary-editor textarea,
+.summary-export textarea {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  padding: var(--space-3);
+  border-radius: var(--radius-control);
+  color: var(--ink-1);
+  font: var(--text-body);
+  resize: vertical;
+}
+.summary-editor textarea {
+  border: 1px solid var(--line-3);
+  background: var(--card);
+  box-shadow: var(--inset-track);
+  transition:
+    border-color var(--wc-t1) var(--wc-ease),
+    box-shadow var(--wc-t1) var(--wc-ease);
+}
+.summary-editor textarea:focus,
+.summary-export textarea:focus {
+  outline: 0;
+  border-color: var(--you);
+  box-shadow: 0 0 0 3px var(--you-tint);
+}
+.summary-count {
+  justify-self: end;
+  font-variant-numeric: tabular-nums;
+}
+.summary-export {
+  position: sticky;
+  top: 88px;
+  padding: var(--space-4);
+  border: 1px solid var(--line-1);
+  border-radius: var(--radius-card);
+  background: var(--card);
+  box-shadow: var(--shadow-1);
+}
+.summary-export h2 {
+  margin: 0;
+  color: var(--ink-1);
+  font: var(--text-subtitle);
+}
+.summary-export textarea {
+  min-height: 360px;
+  max-height: 62vh;
+  margin-top: var(--space-3);
+  border: 1px solid var(--line-1);
+  background: var(--well);
+}
+.summary-export-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: var(--space-3);
+}
+@media (max-width: 980px) {
+  .summary-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .summary-export {
+    position: static;
+  }
+}
+@media (max-width: 640px) {
+  .summary-topbar {
+    padding: var(--space-3) var(--space-4);
+  }
+  .summary-main {
+    padding: var(--space-5) var(--space-4) var(--space-11);
+  }
+  .summary-counts {
+    margin-left: 0;
+  }
+}

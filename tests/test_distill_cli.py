@@ -1,9 +1,8 @@
-import importlib
 import json
 from pathlib import Path
-from types import SimpleNamespace
 from unittest.mock import Mock
 
+import click
 import pytest
 from click.testing import CliRunner
 
@@ -19,7 +18,7 @@ def test_template_preserves_codex_distill_settings():
     }
     assert required <= config.keys()
     assert all(config[key] not in (None, "") for key in required)
-    assert (config["request_interval_seconds"], config["capacity_cooldown_seconds"]) == (0.5, 10.0)
+    assert (config["request_interval_seconds"], config["capacity_cooldown_seconds"]) == (0.5, 20.0)
     assert "max_tokens" not in config
     args = distill_profile.default_args()
     args.config_path = Path("settings.template.jsonc")
@@ -53,28 +52,18 @@ def test_api_provider_does_not_require_codex_exec_settings(tmp_path):
     assert resolved.codex_command is None
 
 
-@pytest.mark.parametrize(
-    "command,module",
-    [("distill-profile", distill_profile), ("distill-event", distill_event)],
-)
+@pytest.mark.parametrize("module", [distill_profile, distill_event])
 @pytest.mark.parametrize("answer,approved", [("", False), ("\n", False), ("n\n", False), ("y\n", True)])
 def test_distillation_requires_consent_before_writes_or_model_calls(
-    tmp_path, monkeypatch, command, module, answer, approved,
+    tmp_path, monkeypatch, module, answer, approved,
 ):
-    cli_module = importlib.import_module("weclone.cli")
-    monkeypatch.setattr(cli_module, "_check_project_root", lambda: None)
-    monkeypatch.setattr(cli_module, "_check_versions", lambda: None)
-    monkeypatch.setattr(cli_module, "load_config", lambda **_: SimpleNamespace(full_log=False))
-    monkeypatch.setattr(cli_module, "configure_log_level_from_config", lambda: None)
-    monkeypatch.setenv("WECLONE_CONFIG_PATH", "settings.jsonc")
-
     config_path = tmp_path / "settings.jsonc"
     config_path.write_text(json.dumps({
         "codex_exec_args": {
             "model": "fixture", "effort": "medium", "batch_size": 1,
             "timeout": 30, "command": "codex", "sandbox": "read-only",
         },
-        "agent_distill_args": {"overwrite": True, "llm_provider": "codex_exec"},
+        "agent_distill_args": {"llm_provider": "codex_exec"},
     }), encoding="utf-8")
     input_dir = tmp_path / "input"
     input_dir.mkdir()
@@ -83,24 +72,24 @@ def test_distillation_requires_consent_before_writes_or_model_calls(
 
     client = Mock()
     build_client = Mock(return_value=client)
-    process_file = Mock(return_value=(0, 0))
+    process_file = Mock(return_value=distill_profile.FileStats())
     monkeypatch.setattr(llm_client, "build_llm_client", build_client)
-    monkeypatch.setattr(module, "process_file", process_file)
+    monkeypatch.setattr(distill_profile, "process_task_file", process_file)
 
-    result = CliRunner().invoke(
-        cli_module.cli,
-        ["--config-path", str(config_path), command,
-         "--input-dir", str(input_dir), "--output-dir", str(output_dir)],
-        input=answer,
-    )
+    @click.command()
+    def distill():
+        module.main(input_dir=input_dir, output_dir=output_dir, config_path=config_path)
+
+    result = CliRunner().invoke(distill, input=answer)
 
     assert "聊天内容可能包含身份、联系方式和私密对话" in result.output
-    assert "overwrite=true" in result.output
+    assert "已经抽取过的聊天样本直接读取缓存结果" in result.output
     assert str(input_dir) in result.output
     if approved:
         assert result.exit_code == 0, result.output
         build_client.assert_called_once()
         process_file.assert_called_once()
+        assert process_file.call_args.kwargs["task"] == module.TASK
         assert output_dir.exists()
     else:
         assert result.exit_code == 1, result.output

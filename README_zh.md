@@ -1,6 +1,8 @@
-![download](https://github.com/user-attachments/assets/cd4a87c6-1649-4ce5-bce8-bd5b08b278de)
-<h3 align="center">🚀 One-stop solution for creating your digital avatar from chat history 💡</h3>  
-<h3 align="center">🚀从聊天记录创造数字分身的一站式解决方案💡</h3>  
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://docs.weclone.love/img/banner-dark.webp">
+  <img alt="WeClone" src="https://docs.weclone.love/img/banner-light.webp">
+</picture>
+<h3 align="center">绘制你的人生画像，让助理懂你，让分身像你</h3>
 
 
 <div align="center">
@@ -16,281 +18,165 @@
 
 <a href="https://hellogithub.com/repository/12ab209b56cb4cfd885c8cfd4cfdd53e" target="_blank"><img src="https://abroad.hellogithub.com/v1/widgets/recommend.svg?rid=12ab209b56cb4cfd885c8cfd4cfdd53e&claim_uid=RThlPDoGrFvdMY5" alt="Featured｜HelloGitHub" style="width: 150px; height: 28px;" /></a>
 <a href="https://trendshift.io/repositories/13759" target="_blank"><img src="https://trendshift.io/api/badge/repositories/13759" alt="xming521%2FWeClone | Trendshift" style="width: 220px; height: 50px;" /></a>
-<a href="https://deepwiki.com/xming521/WeClone"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"  style="width: 134px; height: 23px;margin-bottom: 3px;"></a>
 </div>
 
 <p align="center">
 简体中文｜
   <a href="https://github.com/xming521/WeClone/blob/master/README.md" target="_blank">English</a>｜
   <a href="https://www.weclone.love/" target="_blank"> 项目主页 </a> ｜
-  <a href="https://docs.weclone.love/docs/introduce/what-is-weclone.html" target="_blank"> 项目文档 </a>
-  
+  <a href="https://docs.weclone.love/zh/docs/introduce/what-is-weclone" target="_blank"> 项目文档 </a>
 </p>
 
+WeClone 从你的数字生活中提炼身份、目标、偏好、近况，按工作、家庭、健康等板块整理成可审核、追溯、授权的人生画像。画像可以作为 AI 助手的长期记忆，也将驱动具有你个人风格的数字分身。
 
-## ✨核心功能
-- 💫 涵盖打造数字分身的全链路方案，包括聊天数据导出、预处理、模型训练、部署
-- 💬 使用聊天记录微调LLM，支持图片模态数据，让大模型有"那味儿"
-- 🔗 绑定到Discord, Telegram, Slack, Feishu等，实现自己的数字分身
-- 🛡️ 隐私信息过滤，本地化微调部署，数据安全可控
+<a href="https://docs.weclone.love/img/screenshots/atlas-light.webp">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://docs.weclone.love/img/screenshots/atlas-dark.webp">
+    <img alt="人生画像网页" src="https://docs.weclone.love/img/screenshots/atlas-light.webp">
+  </picture>
+</a>
 
+## ✨ 核心功能
 
----
+- 🗺️ **交互式人生画像**：画像按板块与主题逐层组织，每条事实均可追溯原文，支持逐条审核与修改。可通过 Codex 或任意 OpenAI 兼容 API 抽取画像。
+- 🎭 **专属数字分身**：基于聊天记录微调开源模型，并通过 AstrBot、LangBot 部署至 Telegram、Discord、Slack、飞书等平台。训练数据经过隐私信息过滤。
+- 🧠 **接入 AI 助理**：Claude Code、Codex 等助手可通过 MCP 读取你的画像与板块总结，能读哪些板块、读到哪个隐私级别由你设定。
+- 🗣️ **语言风格分析**：覆盖词汇、句式、语气、情绪、修辞、互动节奏等十大类、179 项风格特征。
+- 🤖 **Agent 分身**（开发中）：无需训练，由大模型结合画像、记忆与语言风格实时驱动。
+- 🔒 **隐私优先**：默认本地加密存储，每条事实标注隐私级别，导出与授权范围由你决定。
 
-### WeClone × Infistar.cc 无限星河｜全模型 API · 为 AI 数字分身持续注入智能
+<a href="https://docs.weclone.love/img/architecture/overview-light.webp">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://docs.weclone.love/img/architecture/overview-compact-dark.webp">
+    <img alt="WeClone 功能概览" src="https://docs.weclone.love/img/architecture/overview-compact-light.webp">
+  </picture>
+</a>
 
-感谢 Infistar.cc 无限星河 赞助本项目！<br>
-⚡ 稳定高效的模型服务：价格低至官方渠道 1 折，模型倍率公开透明，多节点冗余保障，降低限流、429 与服务中断的影响；<br>
-🧠 主流模型一站式接入：一个 API Key 即可调用 Claude、ChatGPT、Gemini、Kimi、GLM、DeepSeek 等模型；<br>
-👤 助力数字分身生态扩展：适用于对话效果测试、人格提示词优化、内容生成及机器人能力扩展，为 WeClone 数字分身提供更多模型选择；<br>
-🎁 WeClone 用户专属福利：通过 [专属推广链接](https://www.infistar.cc/register?aff=RYD228HX&ref_source=link) 注册即可领取 5 美元等值测试额度 / 首充专属优惠，快速体验多模型 API 服务！
+> [!NOTE]
+> WeClone 现在不只做微调分身。原有的微调流程完整保留，见[微调分身](docs/zh/finetune.md)。
 
----
+## 📰 近期更新
 
+- [26/11/03] 人生画像：`build-profile` 一条命令完成画像抽取、整理与板块总结，并在网页上逐条审核
+- [26/11/03] 助手接入：通过 MCP 向 Claude Code、Codex 等助手提供人生画像
+- [26/11/03] 数据默认加密存储，聊天机器人通过令牌调用分身
+- [25/07/10] 数据源增加 Telegram
+- [25/06/05] 支持图片模态数据微调
 
-## 📋特性与说明
+## 📥 数据源平台适配
 
-### 数据源平台适配
+人生画像只读取文字消息，下表是微调分身支持的消息类型。导出和配置方法见[准备数据](docs/zh/data.md)。
 
-| 平台 | 文字 | 图片 | 语音 | 视频 | 动画表情 | 链接(分享) | 引用 | 转发 | 位置 | 文件 |
+| 平台 | 文字 | 图片 | 语音 | 视频 | 动画表情 | 链接（分享） | 引用 | 转发 | 位置 | 文件 |
 |------|------|------|------|------|----------|-----------|------|------|------|------|
-| Telegram | ✅ | ✅ | ❌ | ❌ | ⚠️转为Emjoy | ❌ | ❌ | ✅ | ✅ | ❌ |
+| Telegram | ✅ | ✅ | ❌ | ❌ | ⚠️ 转为 Emoji | ❌ | ❌ | ✅ | ✅ | ❌ |
 | WhatsApp | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 |
 | Discord | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 |
 | Slack | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 |
 
-### 部署平台支持
-| 平台 | 部署支持 |
-|------|------|
-| 个人微信 |✅ (基于 **openclaw-weixin**)|
-| Telegram | ✅ | 
-| WhatsApp | 🚧 | 
-| Discord | ✅ | 
-| Slack | ✅ | 
+其他平台的聊天记录可以转换成 WeClone 的通用 CSV 格式，放进 `dataset/csv/` 使用，格式见文档站的[准备数据](https://docs.weclone.love/zh/docs/deploy/export-chat-history#%E9%80%9A%E7%94%A8-csv-%E6%A0%BC%E5%BC%8F)。
 
-> [!IMPORTANT]
-> - WeClone仍在快速迭代期，当前效果不代表最终效果。  
-> - 微调LLM效果很大程度取决于模型大小、聊天数据的数量和质量，理论上模型越大，数据越多，效果越好。
-> - 7B模型效果一般，14B及以上的模型效果会更好。   
-> - Windows环境未进行严格测试，可以使用WSL作为运行环境。
+## 🚀 快速开始
 
-### 近期更新
-[25/06/05]支持图片模态数据微调   
-[25/07/10]数据源增加Telegram
+### 1. 安装
 
-### 硬件要求
+需要 Python 3.12，推荐使用 [uv](https://docs.astral.sh/uv/)：
 
-项目默认使用Qwen2.5-7B-Instruct模型，LoRA方法对sft阶段微调，大约需要16GB显存。也可以使用[LLaMA Factory](https://github.com/hiyouga/LLaMA-Factory/blob/main/README_zh.md#%E6%A8%A1%E5%9E%8B)支持的其他模型和方法。
-
-需要显存的估算值：
-| 方法                             | 精度 |   7B  |  14B  |  30B  |   70B  |   `x`B  |
-| ------------------------------- | ---- | ----- | ----- | ----- | ------ | ------- |
-| Full (`bf16` or `fp16`)         |  32  | 120GB | 240GB | 600GB | 1200GB | `18x`GB |
-| Full (`pure_bf16`)              |  16  |  60GB | 120GB | 300GB |  600GB |  `8x`GB |
-| Freeze/LoRA/GaLore/APOLLO/BAdam |  16  |  16GB |  32GB |  64GB |  160GB |  `2x`GB |
-| QLoRA                           |   8  |  10GB |  20GB |  40GB |   80GB |   `x`GB |
-| QLoRA                           |   4  |   6GB |  12GB |  24GB |   48GB | `x/2`GB |
-| QLoRA                           |   2  |   4GB |   8GB |  16GB |   24GB | `x/4`GB |
-
-
-## 环境搭建
-1.cuda安装(已安装可跳过，**要求版本12.6及以上**)：[LLaMA Factory](https://llamafactory.readthedocs.io/zh-cn/latest/getting_started/installation.html#cuda) 
-
-2.建议使用 [uv](https://docs.astral.sh/uv/)安装依赖，这是一个非常快速的 Python 环境管理器。安装uv后，您可以使用以下命令创建一个新的Python环境并安装依赖项，速度较慢可以开启代理：
 ```bash
 git clone https://github.com/xming521/WeClone.git && cd WeClone
 uv venv .venv --python=3.12
-source .venv/bin/activate # windows下执行 .venv\Scripts\activate
-uv pip install --group main -e . # 国内用户使用镜像：-i https://pypi.tuna.tsinghua.edu.cn/simple/ 
-uv pip install https://github.com/explosion/spacy-models/releases/download/zh_core_web_sm-3.8.0/zh_core_web_sm-3.8.0-py3-none-any.whl
-```
-
-3.将配置文件模板复制一份并重命名为`settings.jsonc`，后续配置修改在此文件进行：
-```bash
+source .venv/bin/activate   # Windows 下执行 .venv\Scripts\activate
+uv pip install -e .         # 国内镜像：-i https://pypi.tuna.tsinghua.edu.cn/simple/
 cp settings.template.jsonc settings.jsonc
 ```
-- 微调**多模态模型**时，请使用[examples/mllm.template.jsonc](https://github.com/xming521/WeClone/blob/master/examples/mllm.template.jsonc)作为配置文件。
 
-> [!NOTE]
-> 训练以及推理相关配置统一在文件`settings.jsonc`
+所有配置都在 `settings.jsonc` 中。基础安装即可绘制人生画像和接入助理。画像默认通过 [Codex CLI](https://github.com/openai/codex) 调用模型，需要先安装并登录，也可以改用任意 OpenAI 兼容 API，见[安装与配置](docs/zh/installation.md)。
 
-4.使用以下命令测试CUDA环境是否正确配置并可被PyTorch识别，Mac不需要：
-```bash
-python -c "import torch; print('CUDA是否可用:', torch.cuda.is_available());"
-```
+### 2. 准备数据
 
-5.（可选）安装FlashAttention，加速训练和推理：`uv pip install flash-attn --no-build-isolation` 版本问题可以使用[prebuild-wheels](https://github.com/mjun0812/flash-attention-prebuild-wheels/releases)的预编译包安装。
+目前支持 Telegram 聊天记录：用 Telegram Desktop 以 JSON 格式导出，把 `ChatExport_*` 文件夹放进 `dataset/telegram/`，在 `settings.jsonc` 中把 `platform` 设为 `telegram`，并在 `telegram_args.my_id` 填写你的用户 ID。其他平台的聊天记录可以转换成通用 CSV 格式，放进 `dataset/csv/`。详见[准备数据](docs/zh/data.md)。
 
-## 模型下载
-中国境内推荐使用[ModelScope](https://www.modelscope.cn/docs/models/download)下载模型。例如下载WeClone默认模型：
-```bash
-modelscope download --model Qwen/Qwen2.5-7B-Instruct --local_dir ./models/Qwen2.5-7B-Instruct
-```
-
-## 数据准备
-
-### Telegram
-请使用[Telegram Desktop](https://desktop.telegram.org/)导出聊天记录，点击右上角点击导出聊天记录，选择照片类型，格式选择JSON。可以导出多个联系人（不建议使用群聊记录），然后将导出的`ChatExport_*`文件夹放在`./dataset/telegram`目录即可，也就是不同人聊天记录的文件夹一起放在 `./dataset/telegram`。
-
-
-## 数据预处理
-- 首先根据需要修改配置文件中的`language`、`platform`、`include_type`。
-- 项目默认通过Microsoft Presidio去除了数据中的`电话号码、电子邮件地址、信用卡号码（12-19位数字）、IP地址、地理位置名称、国际银行账户号码、加密货币钱包地址、年龄信息、通用身份证号码`,但是不能保证100%过滤识别。
-- 所以在`settings.jsonc`中提供了一个禁用词词库`blocked_words`，可以自行添加需要过滤的词句（会默认去掉包括禁用词的整句）。
-> [!IMPORTANT]
-> 🚨 请一定注意保护个人隐私，不要泄露个人信息！
-
-- 执行以下命令对数据进行处理，可以先根据自己的聊天风格修改settings.jsonc的`make_dataset_args`。
-```bash
-weclone-cli make-dataset
-```
-数据处理更多参数说明：[数据预处理](https://docs.weclone.love/zh/docs/deploy/data_preprocessing.html#%E7%9B%B8%E5%85%B3%E5%8F%82%E6%95%B0)
-
-### 一键生成用户画像
-
-在项目根目录执行：
-```bash
-weclone-cli build-profile
-```
-执行时选择仅抽取画像（默认）或同时抽取事件。两者信息可能重叠，Token 预算有限时建议仅抽取画像；也可直接指定：
-```bash
-weclone-cli build-profile --profile-only
-weclone-cli build-profile --with-events
-```
-结果默认保存在 `dataset/res_csv/agent/profile_runs/`，完成后打印画像文件路径。可用 `--output-dir <新目录>` 指定结果目录；API 模型需用 `--max-context-tokens <上限>` 指定输入 Token 上限。
-
-运行 `weclone-cli server` 查看和审核画像；指定画像使用 `weclone-cli server --source <画像文件路径>`。
-
-### 数据加密与密码
-
-在 `settings.jsonc` 中设置：
-```json
-"security_args": {
-    "storage_mode": "encrypted"
-}
-```
-新模板默认 `encrypted`（加密模式），也可选 `plaintext`（明文模式）；旧配置未设置此项时使用明文。加密模式暂不支持分布式训练。
-
-首次运行加密任务或访问网页时设置共用密码，后续任务和网页登录均使用该密码。
-
-加密产物以 `.enc` 结尾；原始聊天和手动导出的明文文件仍需自行保管。请保留 `.weclone/` 目录，其中的密钥是读取加密数据所必需的。
-
-导出明文、修改或重置密码：
-```bash
-weclone-cli decrypt --input <加密文件> --output <新的明文文件>
-weclone-cli security-change-password  # 使用旧密码修改，保留数据
-weclone-cli server-reset-password     # 忘记密码时重置
-```
-忘记密码无法恢复旧密文；重置密码或切换存储模式后，需在新输出目录从原始聊天重新生成数据。
-
-## 配置参数并微调模型
-
-- (可选)修改 `settings.jsonc` 的 `model_name_or_path` 、`template`、 `lora_target`选择本地下载好的其他模型。  
-- 修改`per_device_train_batch_size`以及`gradient_accumulation_steps`来调整显存占用。  
-- 可以根据自己数据集的数量和质量修改`train_sft_args`的`num_train_epochs`、`lora_rank`、`lora_dropout`等参数。
-
-### 单卡训练
-```bash
-weclone-cli train-sft
-```
-
-### 多卡训练
-取消`settings.jsonc`中`deepspeed`行代码注释，使用以下命令多卡训练：
-```bash
-uv pip install "deepspeed<=0.16.9"
-deepspeed --num_gpus=使用显卡数量 weclone/train/train_sft.py
-```
-
-### 使用浏览器demo简单推理
-测试出合适的temperature、top_p值，修改settings.jsonc的`infer_args`后，供后续推理时使用。
-```bash
-weclone-cli webchat-demo
-```
-
-### 使用接口进行推理
+### 3. 绘制人生画像，接入 AI 助理
 
 ```bash
-weclone-cli server --inference --port 8005
+weclone-cli build-profile --purpose assistant
+weclone-cli server
 ```
 
-### 使用常见聊天问题测试
-不包含询问个人信息的问题，仅有日常聊天。测试结果在test_result-my.txt。
+打开 http://127.0.0.1:5175 逐条审核画像，在「板块总结」页确认总结，再到「助手接入」页生成令牌，按页面上的命令配置 Claude Code 或 Codex。详见[人生画像与助手接入](docs/zh/profile.md)。
+
+### 4. 微调数字分身
+
+需要 NVIDIA GPU，默认的 Qwen2.5-7B-Instruct 以 LoRA 微调约需 16GB 显存。按[微调分身](docs/zh/finetune.md)安装依赖、下载模型后执行：
+
 ```bash
-weclone-cli server --inference --port 8005
-weclone-cli test-model
+weclone-cli make-dataset                     # 生成训练数据，同时过滤隐私信息
+weclone-cli train-sft                        # LoRA 微调
+weclone-cli server --inference --port 8005   # 启动 OpenAI 兼容接口
 ```
 
-## 🖼️ 微调效果
-> [!TIP] 
-> **社群内有部署好的Qwen2.5VL 32B Bot，可以体验效果。** 
+训练好的分身可以通过 AstrBot、LangBot 接入聊天平台，见[接入聊天机器人](docs/zh/chatbot.md)。
 
+> [!TIP]
+> **社群内有部署好的 Qwen2.5-VL 32B Bot，可以体验微调效果。**
 
-## 🤖 部署到聊天机器人
+## 🔒 隐私与数据安全
 
-### AstrBot
+- **抽取时调用模型服务**：绘制画像时，聊天内容会发送给你配置的模型服务，开始前会请你确认。已抽取过的内容读取本地缓存，不会再次发送。
+- **默认加密存储**：聊天快照、画像、训练数据和微调模型加密保存在本地，网页和命令行共用一个密码。
+- **按需授权**：每条事实带有隐私级别（公开、普通、私密、敏感），助理能读取哪些板块、到哪个级别由你在网页上设定。
+- **训练数据去敏**：微调前通过 Microsoft Presidio 和自定义禁用词过滤隐私信息，但不能保证 100% 识别。
 
-[AstrBot](https://github.com/AstrBotDevs/AstrBot) 是易上手的多平台 LLM 聊天机器人及开发框架 ✨ 平台支持Telegram、飞书等。      
+详见[数据安全](docs/zh/security.md)。
 
-使用步骤：
-1. 部署 AstrBot
-2. 在 AstrBot 中部署消息平台
-3. 执行 `weclone-cli server --inference --port 8005` 启动api服务
-4. 在 AstrBot 中新增服务提供商，类型选择OpenAI，API Base URL 根据AstrBot部署方式填写（例如docker部署可能为http://172.17.0.1:8005/v1） ，模型填写gpt-3.5-turbo,API Key随意填写一个
-5. 微调后不支持工具调用，请先关掉默认的工具，消息平台发送指令： `/tool off_all`，否则会没有微调后的效果。 
-6. 根据微调时使用的default_system，在 AstrBot 中设置系统提示词。
-![5](https://github.com/user-attachments/assets/19de7072-076a-4cdf-8ae6-46b9b89f536a)
-> [!IMPORTANT]
-> 检查api_service的日志，尽量保证大模型服务请求的参数和微调时一致，tool插件能力都关掉。
+## 🏗️ 架构
 
-### LangBot
+<details>
+<summary>展开架构图：各模块、数据流和每一步输出的文件，点击图片可查看大图</summary>
 
-[LangBot](https://github.com/RockChinQ/LangBot) 是一个开源的接入全球多种即时通信平台的 LLM 机器人平台，适合各种场景使用。
+<a href="https://docs.weclone.love/img/architecture/architecture-light.webp">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://docs.weclone.love/img/architecture/architecture-dark.webp">
+    <img alt="WeClone 架构与实现" src="https://docs.weclone.love/img/architecture/architecture-light.webp">
+  </picture>
+</a>
 
-<img width="450px" alt="image" src="https://github.com/user-attachments/assets/04ceeacf-8a14-40a9-b07a-2f03f257eee6" />
+</details>
 
+## 📚 文档
 
-1. [部署 LangBot](https://github.com/RockChinQ/LangBot#-%E5%BC%80%E5%A7%8B%E4%BD%BF%E7%94%A8)
-2. 执行 `weclone-cli server --inference --port 8005` 启动 WeClone API 服务
-3. 在 LangBot 中添加一个机器人
-4. 在模型页添加新模型，名称`gpt-3.5-turbo`，供应商选择 OpenAI，填写 请求 URL 为 WeClone 的地址，详细连接方式可以参考[文档](https://docs.langbot.app/zh/workshop/network-details.html)，API Key 任意填写。
+| 文档 | 内容 |
+|---|---|
+| [安装与配置](docs/zh/installation.md) | 按用途安装、模型后端、语言风格与微调依赖 |
+| [准备数据](docs/zh/data.md) | 支持的数据源、Telegram 导出、通用 CSV 格式 |
+| [人生画像与助手接入](docs/zh/profile.md) | build-profile、网页审核、板块总结、MCP |
+| [微调分身](docs/zh/finetune.md) | 硬件、模型下载、训练数据、训练与推理 |
+| [接入聊天机器人](docs/zh/chatbot.md) | 机器人令牌、AstrBot、LangBot |
+| [数据安全](docs/zh/security.md) | 存储模式、密码、密钥与令牌、请求日志 |
 
-<img width="400px" alt="image" src="https://github.com/user-attachments/assets/fc167dea-7c93-4d94-9c5f-db709d0320ba" />
-
-6. 在流水线配置中选择刚才添加的模型，或修改提示词配置
-
-<img width="400px" alt="image" src="https://github.com/user-attachments/assets/dbb0fd0a-f760-42db-acd0-bb99c859b52e" />
+更完整的教程、配置说明和常见问题见[文档站](https://docs.weclone.love/zh/)。
 
 ## 📌 路线图
+
+- [x] 人生画像：画像抽取、审核与板块总结
+- [x] 通过 MCP 为 AI 助理提供长期记忆
+- [ ] Agent 分身：结合画像、记忆与语言风格驱动分身
 - [ ] 支持更多数据源
-- [ ] 更丰富的上下文：包括上下文对话、聊天对象信息、时间等 
-- [ ] Memory 支持
-- [ ] 支持多模态:已支持图片
+- [ ] 更丰富的上下文：包括上下文对话、聊天对象信息、时间等
+- [ ] 支持多模态：已支持图片
 - [ ] 数据增强
-- [ ] 支持GUI
-- [ ] 支持COT思考
 
+## 💬 问题解决
 
-## 问题解决
-#### [官方文档FAQ](https://docs.weclone.love/docs/introduce/FAQ.html)    
-同时建议使用[DeepWiki](https://deepwiki.com/xming521/WeClone)解决问题。
+- 先查阅[官方文档 FAQ](https://docs.weclone.love/zh/docs/introduce/FAQ)，也可以使用 [DeepWiki](https://deepwiki.com/xming521/WeClone) 解决问题。
+- 欢迎加入页面顶部的 QQ 群和 Telegram 群交流。
 
 ## ❤️ 贡献代码
 
-欢迎任何 Issues/Pull Requests！
-
-你可以通过查看Issues或帮助审核 PR（拉取请求）来贡献。对于新功能的添加，请先通过 Issue 讨论。   
-开发环境：
-```bash
-uv pip install --group dev -e .
-pre-commit install
-```
-
-项目使用`pytest`测试，`pyright`检查类型，`ruff`检查代码格式。  
-提交代码前你应该先运行`pytest tests`确保所有测试通过。
+欢迎提交 Issue 和 Pull Request，也欢迎帮助审核 PR。新功能请先通过 Issue 讨论。开发环境、测试和前端构建见[贡献指南](docs/CONTRIBUTING.md)。
 
 ## 🙏 致谢
-BUPT VCIS Lab的支持
-感谢以下代码贡献者和社区里其他成员的贡献
+感谢 BUPT VCIS Lab 的支持，以及以下代码贡献者和社区其他成员的贡献。
 
 <a href="https://github.com/xming521/WeClone/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=xming521/WeClone" />
@@ -299,72 +185,23 @@ BUPT VCIS Lab的支持
 同时本项目受益于[LLaMA-Factory](https://github.com/hiyouga/LLaMA-Factory)、[AstrBot](https://github.com/AstrBotDevs/AstrBot)、[LangBot](https://github.com/RockChinQ/LangBot)等优秀开源项目。
 
 ## ⚠️ 免责声明
-> [!CAUTION]
-> **本项目仅供学习、研究和实验用途，用于生产环境存在较大风险，请谨慎评估。请勿用于非法用途，后果自负。**   
-> [针对违规获取及利用微信终端用户数据行为的打击公告](https://mp.weixin.qq.com/s/A6h4ZLTE2EPrY7kJ5fHE2g)
-
-
 > [!IMPORTANT]
-> #### WeClone 目前未与任何平台合作，未发行任何数字货币。唯一官方网站：[weclone.love](https://www.weclone.love)，谨防仿冒。
+> 本项目主要面向学习与研究。用于生产环境或对外提供服务前，请自行评估风险。
+
 <details>
 <summary>点击查看免责条款</summary>
 
-### 1. 使用风险自担
-- 用户在使用本项目时，应充分理解并承担所有相关风险
-- **本项目作者不对因使用本项目而产生的任何直接或间接损失承担责任**
-- 包括但不限于：数据丢失、经济损失、法律纠纷、个人名誉损害、社会关系影响、心理创伤、职业发展受阻、商业信誉受损等
+- **按现状提供**：本项目不附带任何明示或暗示的保证，作者不对使用本项目造成的直接或间接损失负责，也不承诺持续维护或技术支持。
+- **数据与授权**：聊天记录包含他人的消息。请确保数据的收集和使用符合当地法律法规，并取得相关人员的授权。
+- **大模型抽取画像**：绘制人生画像时，聊天内容（包括对方的消息）会发送给你配置的模型服务，并按该服务的数据政策处理。请选择可信的服务商，了解其数据保留和训练使用条款。不希望发送的聊天，请勿放入数据目录。
+- **画像内容**：画像会汇总和推断与你相关的个人信息，也会涉及你身边的人，可能包含健康、情感等敏感内容。请妥善保管结果目录和导出文件，授权给助理前先审核。
+- **模型输出**：画像、总结和分身的回复均由模型生成，可能不准确，不代表本人或他人的真实观点。
+- **身份标识**：数字分身与他人对话时，建议明确标识为 AI，避免对方误以为在与真人交流。
+- **合法使用**：请勿将本项目用于任何违法用途。
 
-### 2. 生产环境风险警告
-- **用于商业用途或对外提供服务需自行承担全部风险**
-- 生产环境使用可能导致的所有后果（包括但不限于服务中断、数据安全问题、用户投诉、法律责任等）完全由用户承担
-- **建议在生产环境使用前进行充分的测试、验证和风险评估**
-
-### 3. 模型输出不可靠性
-- 微调后的模型可能产生不准确、有害或误导性的内容
-- 模型输出不代表真实人物的观点或意图
-- 用户应对模型输出进行人工审核和验证
-
-### 4. 数据安全与隐私
-- 用户应确保上传的聊天记录等数据符合相关法律法规
-- 用户应获得**数据相关人员的适当授权**
-- 本项目不对**数据泄露或隐私侵犯**承担责任
-
-### 5. 法律合规
-- **用户应确保使用本项目符合当地法律法规**
-- 涉及人工智能、数据保护、知识产权等相关法律
-- **违法使用造成的后果由用户承担**
-
-### 6. 技术支持限制
-- 本项目按"现状"提供，不提供任何明示或暗示的保证
-- 作者不承诺提供持续的技术支持或维护
-- 不保证项目的稳定性、可靠性或适用性
-
-## 使用建议
-
-### 强制性Bot身份标识
-**使用本项目生成的数字分身时，强烈建议：**
-- 在每次对话开始时明确标识为"AI Bot"或"数字分身"
-- 在用户界面显著位置标注"此为AI生成内容"
-- 避免让用户误认为是真实人类在对话，从而造成风险
-
-### 风险评估建议
-
-如确需在生产环境使用，建议：
-1. 进行全面的安全性测试
-2. 建立完善的内容审核机制
-3. 制定应急响应预案
-4. 购买相应的保险保障
-5. 咨询法律专业人士意见
-
-
-本免责声明可能随项目更新而修订，用户应定期查看最新版本。继续使用本项目即表示同意最新的免责声明条款。
-
-**一旦您下载、克隆、修改、分发或以任何方式使用本项目的代码或模型，即表示您已完整阅读、理解并同意无条件接受本免责声明的全部条款。**
+本声明可能随项目更新而修订。
 
 </details>
-
-**请用户慎重阅读并理解本免责声明的所有内容，确保在使用本项目时严格遵守相关规定。**
-<br>  
 
 ## ⭐ Star History
 > [!TIP] 

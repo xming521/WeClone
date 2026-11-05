@@ -7,20 +7,21 @@ import secrets
 import sqlite3
 import threading
 import time
-from contextlib import contextmanager
+from contextlib import asynccontextmanager, contextmanager
 from pathlib import Path
 
 from fastapi import HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
+from weclone.server.errors import ApiError, error_response, security_response
 from weclone.utils import secure_storage as secure
 
 SESSION_SECONDS = 2 * 60 * 60
+# Bounds of the session length the owner may choose. In encrypted mode a session keeps the data key in memory until
+# it ends, so the upper bound limits that exposure; the lower one keeps a session long enough to finish a review.
+SESSION_RANGE = (15 * 60, 7 * 24 * 60 * 60)
 COOKIE = "weclone_session"
-DEFAULT_DATABASE = (
-    Path(__file__).resolve().parents[2] / "dataset/res_csv/agent/memory_organization/profile_review.sqlite3"
-)
 
 
 class AuthStore:
@@ -31,6 +32,9 @@ class AuthStore:
         os.close(fd)
         self.path.chmod(0o600)
         self._keys: dict[str, tuple[float, bytes]] = {}
+        # Until when personal assistants may read, with the key of the session that allowed it in encrypted mode.
+        # Like session keys it lives only in memory, so a restart ends it.
+        self._assistant: tuple[float, bytes | None] | None = None
         self._key_lock = threading.RLock()
         self._generation = ""
         with self.connect() as db:
@@ -40,13 +44,9 @@ class AuthStore:
                     failures INTEGER NOT NULL DEFAULT 0, blocked_until REAL NOT NULL DEFAULT 0
                 );
                 CREATE TABLE IF NOT EXISTS sessions (hash TEXT PRIMARY KEY, expires REAL NOT NULL);
+                CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
             """)
             db.execute("BEGIN IMMEDIATE")
-            # Old generated passwords and 30-day cookies are no longer valid.
-            if db.execute("PRAGMA user_version").fetchone()[0] < 2:
-                db.execute("DELETE FROM sessions")
-                db.execute("DROP TABLE IF EXISTS credentials")
-                db.execute("PRAGMA user_version=2")
             self._sync_generation(db)
 
     @contextmanager
@@ -64,17 +64,16 @@ class AuthStore:
         if row is None or row[0] != generation:
             db.execute("DELETE FROM sessions")
             db.execute("INSERT OR REPLACE INTO auth_state VALUES (1,?,0,0)", (generation,))
-            with self._key_lock:
-                self._keys.clear()
+            self.forget_keys()
         self._generation = generation
 
     def setup(self, password: str, confirmation: str):
         if password != confirmation:
-            raise HTTPException(422, "两次输入的密码不一致")
+            raise ApiError(422, "password_mismatch", "两次输入的密码不一致")
         with self.connect() as db:
             db.execute("BEGIN IMMEDIATE")
             if secure.is_initialized():
-                raise HTTPException(409, "已设置密码，请使用现有密码登录")
+                raise ApiError(409, "already_set_up", "已设置密码，请使用现有密码登录")
             try:
                 secure.ensure_initialized(password)
             except secure.SecurityError as exc:
@@ -84,34 +83,66 @@ class AuthStore:
             self._sync_generation(db)
         return self.login(password)
 
-    def login(self, password: str):
+    def session_seconds(self) -> int:
+        with self.connect() as db:
+            row = db.execute("SELECT value FROM settings WHERE key='session_seconds'").fetchone()
+        return int(row[0]) if row else SESSION_SECONDS
+
+    def set_session_seconds(self, seconds: int):
+        with self.connect() as db:
+            db.execute("INSERT OR REPLACE INTO settings VALUES ('session_seconds', ?)", (str(seconds),))
+
+    @contextmanager
+    def attempt(self, db, now):
+        """Checks a password inside the block; five wrong ones in a row lock both sign-in and password change for a
+        minute."""
+        failures, blocked_until = db.execute(
+            "SELECT failures, blocked_until FROM auth_state WHERE id=1"
+        ).fetchone()
+        if blocked_until > now:
+            raise ApiError(429, "too_many_attempts", "尝试次数过多，请一分钟后再试")
+        try:
+            yield
+        except secure.InvalidPassword:
+            failures = (0 if blocked_until else failures) + 1
+            db.execute(
+                "UPDATE auth_state SET failures=?, blocked_until=? WHERE id=1",
+                (failures, now + 60 if failures >= 5 else 0),
+            )
+            db.commit()
+            raise ApiError(401, "password_wrong", "密码错误") from None
+        db.execute("UPDATE auth_state SET failures=0, blocked_until=0 WHERE id=1")
+
+    def change_password(self, old_password: str, new_password: str, confirmation: str):
+        """Keeps the data key and every encrypted file; every session ends, and a new one starts for this request."""
+        if new_password != confirmation:
+            raise ApiError(422, "password_mismatch", "两次输入的密码不一致")
         if not secure.is_initialized():
-            raise HTTPException(409, "请先设置密码")
-        now = time.time()
+            raise ApiError(409, "not_set_up", "请先设置密码")
         with self.connect() as db:
             db.execute("BEGIN IMMEDIATE")
             self._sync_generation(db)
-            failures, blocked_until = db.execute(
-                "SELECT failures, blocked_until FROM auth_state WHERE id=1"
-            ).fetchone()
-            if blocked_until > now:
-                raise HTTPException(429, "尝试次数过多，请一分钟后再试")
-            try:
+            with self.attempt(db, time.time()):
+                secure.change_password(old_password, new_password)
+            # The manifest has a new auth revision: this ends the sessions and forgets their keys.
+            self._sync_generation(db)
+        return self.login(new_password)
+
+    def login(self, password: str):
+        if not secure.is_initialized():
+            raise ApiError(409, "not_set_up", "请先设置密码")
+        now = time.time()
+        seconds = self.session_seconds()
+        with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            self._sync_generation(db)
+            with self.attempt(db, now):
                 verified_key = secure.unlock_key(password)
-            except secure.InvalidPassword:
-                failures = (0 if blocked_until else failures) + 1
-                db.execute(
-                    "UPDATE auth_state SET failures=?, blocked_until=? WHERE id=1",
-                    (failures, now + 60 if failures >= 5 else 0),
-                )
-                db.commit()
-                raise HTTPException(401, "密码错误")
             key = None
             if secure.is_encrypted_mode():
                 key = verified_key
-            db.execute("UPDATE auth_state SET failures=0, blocked_until=0 WHERE id=1")
             token = secrets.token_urlsafe(32)
-            expires = now + SESSION_SECONDS
+            expires = now + seconds
             self.prune_keys(now)
             db.execute("DELETE FROM sessions WHERE expires<=?", (now,))
             digest = self.digest(token)
@@ -131,6 +162,32 @@ class AuthStore:
             for digest, (expires, _) in list(self._keys.items()):
                 if expires <= now:
                     del self._keys[digest]
+            if self._assistant is not None and self._assistant[0] <= now:
+                self._assistant = None
+
+    def forget_keys(self):
+        with self._key_lock:
+            self._keys.clear()
+            self._assistant = None
+
+    def allow_assistant(self, key: bytes | None, seconds: float) -> float:
+        expires = time.time() + seconds
+        with self._key_lock:
+            self._assistant = (expires, key)
+        return expires
+
+    def stop_assistant(self):
+        with self._key_lock:
+            self._assistant = None
+
+    def assistant_access(self) -> tuple[float, bytes | None] | None:
+        """Until when assistants may read and the key they read with, None when they may not."""
+        self.prune_keys()
+        # A new password ends access as it ends sessions.
+        with self.connect() as db:
+            self._sync_generation(db)
+        with self._key_lock:
+            return self._assistant
 
     def expiry(self, token: str):
         self.prune_keys()
@@ -170,7 +227,17 @@ class Setup(Login):
     confirmation: str = Field(min_length=1, max_length=256)
 
 
-def install_auth(app, database: Path):
+class PasswordChange(BaseModel):
+    old_password: str = Field(min_length=1, max_length=256)
+    password: str = Field(min_length=1, max_length=256)
+    confirmation: str = Field(min_length=1, max_length=256)
+
+
+class SessionLength(BaseModel):
+    seconds: int = Field(ge=SESSION_RANGE[0], le=SESSION_RANGE[1])
+
+
+def install_auth(app, database: Path, demo_password: str | None = None):
     store = AuthStore(database)
     app.state.auth_store = store
     public = {"/api/auth/status", "/api/auth/setup", "/api/auth/login", "/api/auth/session"}
@@ -181,17 +248,17 @@ def install_auth(app, database: Path):
             request.method not in {"GET", "HEAD", "OPTIONS"}
             and request.headers.get("X-WeClone-Request") != "1"
         ):
-            response = JSONResponse({"detail": "请求验证失败"}, status_code=403)
+            response = error_response(403, "request_rejected", "请求验证失败")
         elif path in public:
             response = await call_next(request)
         else:
             token = request.cookies.get(COOKIE, "")
             if not store.expiry(token):
-                response = JSONResponse({"detail": "请先输入访问密码"}, status_code=401)
+                response = error_response(401, "login_required", "请先输入访问密码")
             else:
                 key = store.key(token)
                 if secure.is_encrypted_mode() and key is None:
-                    response = JSONResponse({"detail": "请重新输入密码解锁"}, status_code=401)
+                    response = error_response(401, "unlock_required", "请重新输入密码解锁")
                 elif key is not None:
                     with secure.use_key(key):
                         response = await call_next(request)
@@ -206,9 +273,13 @@ def install_auth(app, database: Path):
         if not private:
             return await call_next(request)
         try:
-            response = await authorize(request, call_next)
+            if path.startswith("/v1/") and COOKIE not in request.cookies:
+                # Chat bots call the clone's model with their token instead of the owner's session.
+                response = await app.state.bot_gate(request, call_next)
+            else:
+                response = await authorize(request, call_next)
         except secure.SecurityError as exc:
-            response = JSONResponse({"detail": str(exc)}, status_code=409)
+            response = security_response(exc, 409)
         response.headers["Cache-Control"] = "no-store"
         return response
 
@@ -217,7 +288,7 @@ def install_auth(app, database: Path):
         response.set_cookie(
             COOKIE,
             token,
-            max_age=SESSION_SECONDS,
+            max_age=max(1, int(expires - time.time())),
             httponly=True,
             secure=request.url.scheme == "https",
             samesite="strict",
@@ -230,6 +301,10 @@ def install_auth(app, database: Path):
         return {
             "initialized": secure.is_initialized(),
             "storage_mode": "encrypted" if secure.is_encrypted_mode() else "plaintext",
+            # Only the demo's fixed password, shown on the sign-in page.
+            "demo_password": demo_password,
+            "session_seconds": store.session_seconds(),
+            "session_range": SESSION_RANGE,
         }
 
     @app.post("/api/auth/setup")
@@ -239,6 +314,21 @@ def install_auth(app, database: Path):
     @app.post("/api/auth/login")
     def login(body: Login, request: Request):
         return session_response(*store.login(body.password), request)
+
+    @app.post("/api/auth/password")
+    def change_password(body: PasswordChange, request: Request):
+        if demo_password is not None:
+            raise ApiError(409, "demo_password_fixed", "演示模式的密码固定，不能修改")
+        return session_response(
+            *store.change_password(body.old_password, body.password, body.confirmation), request
+        )
+
+    @app.put("/api/auth/session-length")
+    def session_length(body: SessionLength):
+        if demo_password is not None:
+            raise ApiError(409, "demo_settings_fixed", "演示模式不能修改这项设置")
+        store.set_session_seconds(body.seconds)
+        return {"session_seconds": body.seconds}
 
     @app.get("/api/auth/session")
     def session(request: Request):
@@ -263,22 +353,23 @@ def install_auth(app, database: Path):
                     with store.connect() as db:
                         store._sync_generation(db)
             except secure.SecurityError:
-                with store._key_lock:
-                    store._keys.clear()
+                store.forget_keys()
 
-    async def start_key_cleanup():
-        app.state.key_cleanup_task = asyncio.create_task(clear_expired_keys())
+    # Wraps whatever lifespan the app already has. Routers included later, such as inference, nest inside it.
+    previous_lifespan = app.router.lifespan_context
 
-    async def stop_key_cleanup():
-        task = getattr(app.state, "key_cleanup_task", None)
-        if task:
+    @asynccontextmanager
+    async def key_cleanup(running_app):
+        task = asyncio.create_task(clear_expired_keys())
+        try:
+            async with previous_lifespan(running_app) as state:
+                yield state
+        finally:
             task.cancel()
             try:
                 await task
             except asyncio.CancelledError:
                 pass
-        with store._key_lock:
-            store._keys.clear()
+            store.forget_keys()
 
-    app.add_event_handler("startup", start_key_cleanup)
-    app.add_event_handler("shutdown", stop_key_cleanup)
+    app.router.lifespan_context = key_cleanup

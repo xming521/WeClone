@@ -1,65 +1,109 @@
 import type { RefObject } from 'react';
-import type { Graph } from '@antv/g6';
-import * as Tooltip from '@radix-ui/react-tooltip';
-import { Maximize2, Minus, Plus, RotateCcw } from 'lucide-react';
+import { ImageDown, Maximize2, Minus, MoonStar, Plus, RotateCcw } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { levelIsExpanded } from '../data';
+import { toast } from '../feedback/toast';
 import { useProfileStore } from '../store';
-import { IconButton } from './IconButton';
+import type { AtlasControls } from './atlasEngine';
+import { IconButton, Tip } from './IconButton';
+import { nightIntroAllowed, replayNightIntro } from './nightIntro';
 
-export function CanvasToolbar({ graphRef }: { graphRef: RefObject<Graph | null> }) {
+export function CanvasToolbar({ atlasRef }: { atlasRef: RefObject<AtlasControls | null> }) {
+  const { t } = useTranslation();
   const viewModel = useProfileStore((state) => state.viewModel)!;
   const focusedDimension = useProfileStore((state) => state.focusedDimension);
   const expandedIds = useProfileStore((state) => state.expandedIds);
   const toggleLevel = useProfileStore((state) => state.toggleLevel);
   const reset = useProfileStore((state) => state.reset);
+  const byDomain = viewModel.grouping === 'domain';
+  // The intro tells the five dimensions apart by colour.
+  const replayShown = nightIntroAllowed() && !byDomain;
+  // The map as it shows now, to share: what is expanded, the zoom and the colour scheme.
+  async function saveImage() {
+    const blob = await atlasRef.current?.snapshot();
+    if (!blob) return;
+    const file = 'weclone-map.png';
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = file;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    toast(t(($) => $.toast.downloaded, { file }));
+  }
+  // Domains hold topics, which hold attributes: there is no third level of groups.
+  const levels = byDomain ? ([1, 2] as const) : ([1, 2, 3] as const);
   return (
-    <div className="canvas-toolbar">
+    <div className="canvas-toolbar wc-toolbar">
       <div className="level-controls">
-        {([1, 2, 3] as const).map((level) => {
+        {levels.map((level) => {
           const expanded = levelIsExpanded(viewModel, expandedIds, level, focusedDimension);
           const action =
-            focusedDimension === null ? '先点击一个维度' : `${expanded ? '收起' : '展开'}当前维度的${level}级节点`;
+            focusedDimension === null
+              ? byDomain
+                ? t(($) => $.atlas.toolbar.pickDomain)
+                : t(($) => $.atlas.toolbar.pickDimension)
+              : byDomain
+                ? expanded
+                  ? t(($) => $.atlas.toolbar.collapseDomain, { level })
+                  : t(($) => $.atlas.toolbar.expandDomain, { level })
+                : expanded
+                  ? t(($) => $.atlas.toolbar.collapseDimension, { level })
+                  : t(($) => $.atlas.toolbar.expandDimension, { level });
           return (
-            <Tooltip.Root key={level} delayDuration={250}>
-              <Tooltip.Trigger asChild>
-                <button
-                  className={`level-button${expanded ? ' is-active' : ''}${focusedDimension === null ? ' is-disabled' : ''}`}
-                  type="button"
-                  aria-label={action}
-                  aria-disabled={focusedDimension === null}
-                  aria-pressed={expanded}
-                  onClick={() => toggleLevel(level)}
-                >
-                  {level}级
-                </button>
-              </Tooltip.Trigger>
-              <Tooltip.Portal>
-                <Tooltip.Content className="tooltip" sideOffset={8}>
-                  {action}
-                  <Tooltip.Arrow className="tooltip-arrow" />
-                </Tooltip.Content>
-              </Tooltip.Portal>
-            </Tooltip.Root>
+            <Tip key={level} content={action}>
+              <button
+                className={`wc-level${focusedDimension === null ? ' is-disabled' : ''}`}
+                type="button"
+                aria-label={action}
+                aria-disabled={focusedDimension === null}
+                aria-pressed={expanded}
+                onClick={() => toggleLevel(level)}
+              >
+                <i className={`wc-i wc-i-orbit-${level}`} aria-hidden="true" />
+                {t(($) => $.atlas.toolbar.level, { level })}
+              </button>
+            </Tip>
           );
         })}
       </div>
-      <span className="toolbar-separator" />
+      <span className="wc-sep" aria-hidden="true" />
       <div className="view-controls">
-        <IconButton label="放大" onClick={() => void graphRef.current?.zoomBy(1.2, { duration: 250 })}>
-          <Plus size={17} />
+        <IconButton label={t(($) => $.atlas.toolbar.zoomIn)} onClick={() => atlasRef.current?.zoomBy(1.2)}>
+          <Plus size={16} strokeWidth={1.8} aria-hidden="true" />
         </IconButton>
-        <IconButton label="缩小" onClick={() => void graphRef.current?.zoomBy(0.83, { duration: 250 })}>
-          <Minus size={17} />
+        <IconButton label={t(($) => $.atlas.toolbar.zoomOut)} onClick={() => atlasRef.current?.zoomBy(0.83)}>
+          <Minus size={16} strokeWidth={1.8} aria-hidden="true" />
         </IconButton>
-        <span className="toolbar-separator" />
-        <IconButton label="适应画布" onClick={() => void graphRef.current?.fitView()}>
-          <Maximize2 size={16} />
+        <IconButton label={t(($) => $.atlas.toolbar.fit)} onClick={() => atlasRef.current?.fit()}>
+          <Maximize2 size={16} strokeWidth={1.8} aria-hidden="true" />
         </IconButton>
-        <span className="toolbar-separator" />
-        <button className="reset-button" type="button" onClick={() => reset()}>
-          <RotateCcw size={15} />
-          复原
-        </button>
+        <IconButton label={t(($) => $.atlas.toolbar.saveImage)} onClick={() => void saveImage()}>
+          <ImageDown size={16} strokeWidth={1.8} aria-hidden="true" />
+        </IconButton>
+        <span className="wc-sep" aria-hidden="true" />
+        <IconButton
+          label={t(($) => $.atlas.toolbar.reset)}
+          align={replayShown ? 'start' : 'end'}
+          onClick={() => reset()}
+        >
+          <RotateCcw size={16} strokeWidth={1.8} aria-hidden="true" />
+        </IconButton>
+        {replayShown && (
+          // The map starts over as on a first visit, and the intro plays over it.
+          <IconButton
+            label={t(($) => $.atlas.toolbar.replayIntro)}
+            align="end"
+            onClick={() => {
+              replayNightIntro();
+              reset();
+            }}
+          >
+            <MoonStar size={16} strokeWidth={1.8} aria-hidden="true" />
+          </IconButton>
+        )}
       </div>
     </div>
   );

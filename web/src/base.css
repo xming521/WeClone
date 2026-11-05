@@ -1,0 +1,66 @@
+:root {
+  font-family: var(--font-sans);
+  color: var(--ink-1);
+  background: var(--paper);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  min-width: 320px;
+  height: 100%;
+  margin: 0;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+/* The DS focus ring on every focusable control. Zero specificity, so the wc-* classes keep theirs; the inputs
+   inside .wc-input and .wc-search are left out because those draw the ring on their wrapper. */
+:where(button, input:not(.wc-input input, .wc-search input), summary):focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.brand-mark {
+  display: block;
+  flex: none;
+  width: auto;
+  user-select: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* The DS buttons carry their own disabled look (ink-4 on sunken); only the others dim. */
+button:disabled:not(.wc-btn, .wc-iconbtn) {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.wc-iconbtn:disabled {
+  background: transparent;
+  color: var(--ink-4);
+  cursor: not-allowed;
+}

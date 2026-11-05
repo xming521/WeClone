@@ -1,0 +1,257 @@
+/* 人生画像和语言风格的左栏：DimensionNav 和底部的审核进度（Distribution），样式主要来自 ds/components.css 的 wc-* 类。
+   品牌标识不在左栏里，由 shell.css 的 .app-brand 固定在左上角，左栏滑进滑出都在它下面。 */
+.left-panel {
+  position: absolute;
+  z-index: 6;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: var(--left-panel-width);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding: var(--space-5) var(--space-4) var(--space-4);
+  background: var(--panel);
+  border-right: 1px solid var(--line-1);
+  transition:
+    transform 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0.38s;
+}
+
+.left-panel.is-collapsed {
+  transform: translateX(-100%);
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.left-panel :is(.wc-iconbtn, .wc-seg > button, .wc-dim):focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* 第一行留给品牌标识，右边是收起按钮。滚动时贴住顶部、盖住下面的内容，标识不会压在文字上。 */
+.left-panel__head {
+  position: sticky;
+  z-index: 1;
+  top: calc(-1 * var(--space-5));
+  flex: none;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  height: calc(40px + var(--space-5));
+  margin: calc(-1 * var(--space-5)) calc(-1 * var(--space-4)) 0;
+  padding: var(--space-5) var(--space-4) 0;
+  background: var(--panel);
+}
+
+.intro-block {
+  margin-top: var(--space-11);
+  padding: 0 var(--space-1);
+}
+
+.intro-block h1 {
+  margin: var(--space-3) 0 var(--space-2);
+  font: var(--text-hero);
+}
+
+.intro-block h1 em {
+  color: var(--you);
+  font-style: normal;
+}
+
+.intro-block p {
+  margin: 0;
+  color: var(--ink-3);
+  font: var(--text-label);
+  font-weight: 400;
+  line-height: 1.7;
+}
+
+/* 两种分组的说明长短不一，留足两行，切换时下面的开关不跟着上下跳 */
+.grouping-intro {
+  min-height: 3.4em;
+}
+
+.grouping-intro.is-entering {
+  animation: intro-copy-enter 0.5s ease-out backwards;
+}
+
+@keyframes intro-copy-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+/* 按维度与按板块的切换，兼作列表的标题。滑块（wc-seg--slide 的 ::before）滑到选中的一项下面 */
+.grouping-switch {
+  margin: var(--space-6) 0 var(--space-3);
+}
+
+.grouping-switch > button > svg {
+  flex: none;
+  transition: color 0.25s;
+}
+
+/* 两个图标转半圈都和原样重合：选中时转一下，取消时直接跳回原位，看不出来 */
+.grouping-switch > button[aria-pressed='true'] > svg {
+  color: var(--you);
+  transform: rotate(180deg);
+  transition:
+    color 0.25s,
+    transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* 长名字在格子里省略，不把列表撑出左栏 */
+.left-panel .wc-dims {
+  grid-template-columns: minmax(0, 1fr);
+  margin-bottom: var(--space-4);
+}
+
+.left-panel .wc-dim .wc-count {
+  flex: none;
+}
+
+/* 英文的维度名较长，一行放不下就折成两行，两行也放不下才省略 */
+.left-panel .wc-dim__copy strong {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: normal;
+}
+
+.left-panel .wc-dim {
+  transition:
+    background-color var(--wc-t2) var(--wc-ease),
+    border-color var(--wc-t2) var(--wc-ease),
+    box-shadow var(--wc-t2) var(--wc-ease),
+    transform 0.22s;
+}
+
+.left-panel .wc-dim:hover {
+  transform: translateX(2px);
+}
+
+.domain-initial {
+  font: var(--text-label);
+  font-weight: 600;
+  line-height: 1;
+}
+
+/* 十几个板块时列表收紧，免得左栏拉得太长 */
+.wc-dims.is-compact .wc-dim {
+  min-height: 48px;
+  padding-block: var(--space-1);
+}
+
+.wc-dims.is-compact .wc-disc {
+  width: 30px;
+  height: 30px;
+}
+
+/* 换了分组，新列表从选中一项的那一侧依次滑进来 */
+.wc-dims.is-entering .wc-dim {
+  animation: dimension-item-enter 0.5s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  animation-delay: calc(min(var(--enter-index), 12) * 28ms);
+}
+
+@keyframes dimension-item-enter {
+  from {
+    opacity: 0;
+    transform: translateX(calc(var(--enter-side) * 18px));
+  }
+}
+
+/* 底部：审核进度条（wc-progress）+ 总数 + 图例 */
+.left-bottom {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: auto;
+  padding: var(--space-3) 6px 0;
+  border-top: 1px solid var(--line-1);
+}
+
+.left-bottom .wc-progress {
+  height: 4px;
+}
+
+/* 左栏只有 244px 宽：图例收紧一点，中文一行放得下，英文折成两行 */
+.left-bottom .wc-legend {
+  gap: var(--space-1) var(--space-3);
+}
+
+.left-bottom .wc-legend > li {
+  gap: var(--space-1);
+}
+
+.data-footnote {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--ink-3);
+  font: var(--text-caption);
+  font-variant-numeric: tabular-nums;
+}
+
+.data-footnote a {
+  min-width: 0;
+  overflow: hidden;
+  color: inherit;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.data-footnote a::before {
+  content: '·';
+  margin-right: var(--space-2);
+}
+
+.data-footnote a:hover {
+  color: var(--ink-1);
+}
+
+@media (max-width: 1220px) {
+  .left-panel {
+    padding-inline: var(--space-3);
+  }
+  .left-panel__head {
+    margin-inline: calc(-1 * var(--space-3));
+    padding-inline: var(--space-3);
+  }
+  .intro-block {
+    margin-top: var(--space-8);
+  }
+  .grouping-switch {
+    margin-top: var(--space-5);
+  }
+}
+
+@media (max-width: 900px) {
+  .intro-block h1 {
+    font: var(--text-title);
+  }
+}
+
+@media (max-width: 650px) {
+  .left-panel__head {
+    margin-bottom: var(--space-2);
+  }
+  .intro-block {
+    display: none;
+  }
+  .grouping-switch {
+    margin-top: var(--space-4);
+  }
+  .left-bottom {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* 否则各项要等完各自的延迟才一个个冒出来 */
+  .wc-dims.is-entering .wc-dim {
+    animation: none;
+  }
+}

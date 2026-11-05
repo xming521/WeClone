@@ -13,7 +13,6 @@ from unittest.mock import Mock, patch
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
 from fastapi.testclient import TestClient
-from httpx import Cookies
 
 from weclone.server import api_service, auth
 from weclone.server.app import create_app
@@ -38,11 +37,10 @@ class WebSecurityChecks(unittest.TestCase):
         )
         secure.configure(config)
         secure.lock()
-        self.options = {
-            "database": self.root / "review.sqlite3",
-            "source": self.root / "profile.json",
-            "static_dir": self.root / "web",
-        }
+        run = self.root / "run"
+        self.options = {"run": run, "static_dir": self.root / "web"}
+        self.database = run / "profile_hierarchy" / "profile_review.sqlite3"
+        self.source = run / "profile_hierarchy" / "profile_hierarchy.json"
         self.headers = {"X-WeClone-Request": "1"}
 
     def tearDown(self):
@@ -59,8 +57,9 @@ class WebSecurityChecks(unittest.TestCase):
         self.assertEqual(response.status_code, 200, response.text)
         secure.unlock("x")
         secure.write_json(
-            self.options["source"],
+            self.source,
             {
+                "domains": [],
                 "dimensions": [
                     {
                         "dim": 1,
@@ -105,7 +104,7 @@ class WebSecurityChecks(unittest.TestCase):
         with TestClient(create_app(**self.options)) as client:
             self.assertFalse(client.get("/api/auth/status").json()["initialized"])
             self.assertEqual(client.get("/api/profile").status_code, 401)
-            self.assertFalse(secure.encrypted_path(self.options["database"]).exists())
+            self.assertFalse(secure.encrypted_path(self.database).exists())
             response = self.setup_owner(client)
             expires = response.json()["expires_at"]
             self.assertAlmostEqual(expires - time.time(), 7200, delta=5)
@@ -124,20 +123,19 @@ class WebSecurityChecks(unittest.TestCase):
             self.assertEqual(
                 client.get("/api/avatar-profile").json()["facts"][0]["value"], "synthetic-private-fact"
             )
-            self.assertFalse(self.options["database"].exists())
-            ciphertext = secure.encrypted_path(self.options["database"]).read_bytes()
+            self.assertFalse(self.database.exists())
+            ciphertext = secure.encrypted_path(self.database).read_bytes()
             self.assertTrue(ciphertext.startswith(secure.MAGIC))
             self.assertNotIn(b"synthetic-private", ciphertext)
-            self.assertNotIn(
-                b"synthetic-private", self.options["database"].with_suffix(".auth.sqlite3").read_bytes()
-            )
-            cookies = Cookies(client.cookies)
+            self.assertNotIn(b"synthetic-private", self.database.with_suffix(".auth.sqlite3").read_bytes())
+            # The client's own Cookies class: Starlette 1.x test clients use httpx2, older ones httpx.
+            cookies = type(client.cookies)(client.cookies)
             self.assertEqual(client.post("/api/auth/logout", json={}).status_code, 200)
             client.cookies.update(cookies)
             self.assertEqual(client.get("/api/profile").status_code, 401)
             self.assertEqual(client.post("/api/auth/login", json={"password": "x"}).status_code, 200)
-            cookies = Cookies(client.cookies)
-        secure.encrypted_path(self.options["source"]).unlink()
+            cookies = type(client.cookies)(client.cookies)
+        secure.encrypted_path(self.source).unlink()
         with TestClient(create_app(**self.options)) as restarted:
             restarted.headers.update(self.headers)
             restarted.cookies.update(cookies)

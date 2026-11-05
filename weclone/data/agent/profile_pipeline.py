@@ -2,6 +2,7 @@
 
 from contextlib import contextmanager
 from datetime import datetime
+from importlib.util import find_spec
 from pathlib import Path
 from time import perf_counter
 
@@ -28,21 +29,15 @@ def _stage(label: str):
         )
 
 
-def check_distillation(checkpoint: Path) -> None:
-    state = secure_storage.read_json(checkpoint)
-    failed = [entry for entry in state["entries"].values() if entry.get("status") != "done"]
-    if failed:
-        raise RuntimeError(f"记忆抽取有 {len(failed)} 个样本未完成，停止流水线。详情：{checkpoint}")
-
-
 def run(
     *,
-    with_events: bool,
+    with_style: bool,
     output_dir: Path | None,
     config_path: Path,
     max_context_tokens: int | None = None,
 ) -> Path:
     from weclone.data.agent import distill_profile
+    from weclone.data.agent.distill_style import run as distill_style
 
     secure_storage.configure(config_path)
     args = distill_profile.default_args()
@@ -58,9 +53,20 @@ def run(
     organization_dir = output_dir / "memory_organization"
     hierarchy_dir = output_dir / "profile_hierarchy"
     args.input_dir, args.output_dir = people_dir, distill_dir
+    style_dir = output_dir / "style"
+    style_argv = ["--input-dir", str(people_dir), "--output", str(style_dir), "--settings", str(config_path)]
+    if with_style:
+        # Style needs the local LTP parser, which the profile itself does not.
+        ltp_model = distill_style.parse_args(style_argv).ltp_model
+        if find_spec("ltp") is None or not ltp_model.is_dir():
+            raise RuntimeError(
+                "做分身要抽取语言风格，请先执行 uv pip install --group style --torch-backend cpu -e .，"
+                f"并把 LTP 模型放在 {ltp_model}"
+            )
+    stages = 6 if with_style else 5
     click.echo(f"本次结果目录：{output_dir}")
-    click.echo(f"抽取内容：{'画像和事件' if with_events else '仅画像'}")
-    task = "用户画像和事件记忆" if with_events else "用户画像"
+    click.echo(f"抽取内容：{'画像、事件和语言风格' if with_style else '画像和事件'}")
+    task = "用户画像、事件记忆和语言风格" if with_style else "用户画像和事件记忆"
     if not distill_profile.confirm_distillation(args, task=task, file_count=None):
         raise click.Abort()
 
@@ -71,34 +77,27 @@ def run(
         max_context_tokens = organize_memories.resolve_context_window(args)
     click.echo(f"输入 Token 上限：{max_context_tokens}")
 
-    with _stage("[1/4] 准备聊天数据"):
-        from weclone.data.qa_generator import DataProcessor
+    with _stage(f"[1/{stages}] 准备聊天数据"):
+        from weclone.data.agent import chat_snapshot
 
-        DataProcessor().main(
-            dataset_output_dir=output_dir / "sft",
-            stage2_output_dir=people_dir,
-            strict_stage2=True,
-            calculate_cutoff_len=False,
-        )
+        chat_snapshot.build_snapshot(people_dir, chat_snapshot.load_chat_args(config_path))
 
     source_files = list(distill_profile.iter_chat_files(people_dir))
     if not source_files:
         raise FileNotFoundError(f"没有生成聊天样本：{people_dir}")
     click.echo(f"聊天样本准备完成：{len(source_files)} 个聊天文件。")
 
-    with _stage("[2/4] 抽取画像记忆"):
+    with _stage(f"[2/{stages}] 抽取画像记忆"):
+        # Raises when samples failed. Rerunning build-profile into a new directory asks only for those.
         distill_profile.main(
             input_dir=people_dir, output_dir=distill_dir, config_path=config_path, confirmed=True
         )
-        check_distillation(distill_profile.default_state_path(distill_dir))
-    if with_events:
-        with _stage("[2/4] 抽取事件记忆"):
-            distill_event.main(
-                input_dir=people_dir, output_dir=distill_dir, config_path=config_path, confirmed=True
-            )
-            check_distillation(distill_event.default_event_state_path(distill_dir))
+    with _stage(f"[2/{stages}] 抽取事件记忆"):
+        distill_event.main(
+            input_dir=people_dir, output_dir=distill_dir, config_path=config_path, confirmed=True
+        )
 
-    with _stage("[3/4] 分类、分组和归纳记忆"):
+    with _stage(f"[3/{stages}] 划分板块、分类和汇总记忆"):
         organize_memories.main(
             [
                 "--stage",
@@ -114,7 +113,7 @@ def run(
             ]
         )
 
-    with _stage("[4/4] 生成画像层级"):
+    with _stage(f"[4/{stages}] 把事实分成主题，生成画像层级"):
         llm_profile_hierarchy.main(
             [
                 "--input-path",
@@ -130,4 +129,16 @@ def run(
         result = secure_storage.resolve_path(hierarchy_dir / "profile_hierarchy.json")
         if not result.is_file():
             raise FileNotFoundError(f"没有生成画像文件：{result}")
+
+    # The profile is done by now, so domains left without a summary only get a note.
+    with _stage(f"[5/{stages}] 生成板块总结"):
+        from weclone.server.profile_summary import build_summaries
+
+        missing = build_summaries(hierarchy_dir)
+    if missing:
+        click.echo(f"板块总结：{missing}")
+
+    if with_style:
+        with _stage("[6/6] 抽取语言风格"):
+            distill_style.main(style_argv)
     return result

@@ -1,8 +1,7 @@
-// Pure layout and graph-data helpers. Only type imports are allowed here so the
-// tests can load this file directly with node's type stripping.
-import type { NodeKind, ProfileModel, ProfileNode } from '../data';
+// Pure layout helpers. Only type imports are allowed here so the tests can load this file
+// directly with node's type stripping.
+import type { ProfileModel, ProfileNode } from '../data';
 
-// Type aliases (not interfaces) so they stay assignable to G6's Record<string, unknown> data.
 export type Point = {
   x: number;
   y: number;
@@ -10,48 +9,100 @@ export type Point = {
 
 export type Positions = Map<string, Point>;
 
-export type NodeDatumData = { kind: NodeKind; dim: number | null; name: string };
-
-export type EdgeDatumData = { kind: NodeKind; dim: number | null };
-
-export type SelectionPath = {
-  selectedId: string | null;
-  path: Set<string>;
-};
-
-export type GraphNodeDatum = {
-  id: string;
-  states: string[];
-  data: NodeDatumData;
-  style: Point;
-};
-
-export type GraphEdgeDatum = {
-  id: string;
-  source: string;
-  target: string;
-  states: string[];
-  data: EdgeDatumData;
-};
-
-export function nodeSelection(id: string, { selectedId }: SelectionPath): string[] {
-  return id === selectedId ? ['selected'] : [];
-}
-
-export function edgeSelection(source: string, target: string, { path }: SelectionPath): string[] {
-  return path.has(source) && path.has(target) ? ['route'] : [];
-}
-
 /** Fixed direction of each dimension around the root, starting on the left and going clockwise. */
-function dimensionAngle(index: number, count: number): number {
+export function dimensionAngle(index: number, count: number): number {
   return Math.PI - (index * 2 * Math.PI) / count;
 }
 
-/** Above this many visible nodes attribute labels are hidden and attributes pack closer together. */
+/** Above this many visible nodes attributes pack closer together and their labels show only when zoomed in. */
 export const DENSE_NODE_COUNT = 600;
 
 // Space one visible node takes inside its dimension cluster: a cluster of n nodes spans about this times sqrt(n).
 const clusterSpacing = (visibleCount: number) => (visibleCount > DENSE_NODE_COUNT ? 19 : 31);
+
+/**
+ * From this many dimensions on (the domain view), one ring would leave the middle empty: they
+ * alternate between an inner and an outer ring, and their few topics sit closer to them.
+ */
+export const STAGGER_COUNT = 8;
+// Free space kept between two clusters, and between a cluster and the root.
+const CLUSTER_GAP = 50;
+const ROOT_CLEARANCE = 110;
+
+/** Length of the line from a dimension node to each of its topics. */
+export const topicDistance = (dimensionCount: number) => (dimensionCount >= STAGGER_COUNT ? 130 : 220);
+
+/** Every cluster at the same distance, far enough out that neighbours do not touch. */
+function ringDistances(radii: number[]): number[] {
+  const count = radii.length;
+  // Distance between two neighbouring directions at unit radius.
+  const chord = count > 1 ? 2 * Math.sin(Math.PI / count) : 0;
+  return radii.map((radius, index) => {
+    const neighbour = Math.max(radii[(index + count - 1) % count], radii[(index + 1) % count]);
+    const apart = chord ? (radius + neighbour + CLUSTER_GAP) / chord : 0;
+    return Math.max(330, radius + ROOT_CLEARANCE, apart);
+  });
+}
+
+/**
+ * Even clusters on an inner ring, odd ones on an outer ring between them. Each cluster sits as
+ * close to the root as its own size and its neighbours allow, so the distances differ.
+ */
+function staggeredDistances(radii: number[]): number[] {
+  const count = radii.length;
+  const step = (2 * Math.PI) / count;
+  const angleBetween = (a: number, b: number) => {
+    const turns = Math.abs(a - b) % count;
+    return Math.min(turns, count - turns) * step;
+  };
+  const need = (a: number, b: number) => radii[a] + radii[b] + CLUSTER_GAP;
+  // Distance at which clusters a and b just clear each other when both are that far out.
+  const sharedRing = (a: number, b: number) => need(a, b) / (2 * Math.sin(angleBetween(a, b) / 2));
+  // Distance along its own direction at which cluster b clears cluster a, which sits `away` out.
+  const clearOf = (a: number, away: number, b: number) => {
+    const angle = angleBetween(a, b);
+    const closest = angle >= Math.PI / 2 ? away : away * Math.sin(angle);
+    if (closest >= need(a, b)) return 0;
+    return away * Math.cos(angle) + Math.sqrt(need(a, b) ** 2 - (away * Math.sin(angle)) ** 2);
+  };
+  const inner = radii.map((_, index) => index % 2 === 0);
+  // The next cluster on the same ring in each direction.
+  const ringNeighbours = (index: number) =>
+    [1, -1].map((direction) => {
+      let next = (index + direction + count) % count;
+      while (inner[next] !== inner[index]) next = (next + direction + count) % count;
+      return next;
+    });
+  const distances = radii.map((radius) => radius + ROOT_CLEARANCE);
+  for (const outer of [false, true]) {
+    radii.forEach((_, index) => {
+      if (inner[index] === outer) return;
+      for (const other of ringNeighbours(index)) {
+        if (other !== index) distances[index] = Math.max(distances[index], sharedRing(index, other));
+      }
+      if (!outer) return;
+      radii.forEach((_, other) => {
+        if (inner[other]) distances[index] = Math.max(distances[index], clearOf(other, distances[other], index));
+      });
+    });
+  }
+  // Neighbours on one ring at different distances can still touch: the one farther out moves on.
+  for (let pass = 0; pass < 8; pass++) {
+    let moved = false;
+    for (let a = 0; a < count; a++) {
+      for (let b = a + 1; b < count; b++) {
+        const [near, far] = distances[a] <= distances[b] ? [a, b] : [b, a];
+        const reach = clearOf(near, distances[near], far);
+        if (reach > distances[far] + 0.5) {
+          distances[far] = reach;
+          moved = true;
+        }
+      }
+    }
+    if (!moved) break;
+  }
+  return distances;
+}
 
 /**
  * Target position of every dimension node. Dimensions keep their direction around the
@@ -65,16 +116,18 @@ export function clusterCenters(model: ProfileModel, visible: ProfileNode[], root
     if (node.kind !== 'root' && node.kind !== 'dimension') sizes.set(node.dim, (sizes.get(node.dim) ?? 0) + 1);
   }
   const spacing = clusterSpacing(visible.length);
-  const radii = model.dimensionIds.map((id) => spacing * Math.sqrt(sizes.get(model.nodes.get(id)!.dim)!) + 60);
-  // Distance between two neighbouring directions at unit radius.
-  const chord = count > 1 ? 2 * Math.sin(Math.PI / count) : 0;
+  const staggered = count >= STAGGER_COUNT;
+  // A staggered cluster with any topic shown reaches at least as far as its topics' labels.
+  const reach = staggered ? topicDistance(count) + 40 : 0;
+  const radii = model.dimensionIds.map((id) => {
+    const size = sizes.get(model.nodes.get(id)!.dim)!;
+    return Math.max(spacing * Math.sqrt(size) + 60, size ? reach : 0);
+  });
+  const distances = staggered ? staggeredDistances(radii) : ringDistances(radii);
   return new Map(
     model.dimensionIds.map((id, index) => {
-      const neighbour = Math.max(radii[(index + count - 1) % count], radii[(index + 1) % count]);
-      const apart = chord ? (radii[index] + neighbour + 50) / chord : 0;
-      const distance = Math.max(330, radii[index] + 110, apart);
       const angle = dimensionAngle(index, count);
-      return [id, { x: root.x + distance * Math.cos(angle), y: root.y + distance * Math.sin(angle) }];
+      return [id, { x: root.x + distances[index] * Math.cos(angle), y: root.y + distances[index] * Math.sin(angle) }];
     }),
   );
 }
@@ -183,69 +236,35 @@ export function computeSeeds(
   return seeds;
 }
 
-export function buildGraphData(
-  visible: ProfileNode[],
-  seeds: Positions,
-  initial: Positions,
-  selection: SelectionPath,
-): { nodes: GraphNodeDatum[]; edges: GraphEdgeDatum[] } {
-  const nextPositions: Positions = new Map();
-  const displayed = new Set(visible.map((node) => node.id));
-  const nodes = visible.map((node, index) => {
-    const prior = seeds.get(node.id);
-    const parent = node.parentId ? nextPositions.get(node.parentId) : undefined;
-    const initialPosition = initial.get(node.id);
+/**
+ * Position of every visible node: its seed, else its initial position, else a spot around its
+ * parent (nodes come parent first), else the origin.
+ */
+export function placeNodes(visible: ProfileNode[], seeds: Positions, initial: Positions): Positions {
+  const positions: Positions = new Map();
+  visible.forEach((node, index) => {
+    const parent = node.parentId ? positions.get(node.parentId) : undefined;
     const angle = index * 2.39996;
     const distance = node.kind === 'dimension' ? 210 : node.kind === 'attribute' ? 90 : 135;
-    const position =
-      prior ??
-      initialPosition ??
-      (parent
-        ? {
-            x: parent.x + Math.cos(angle) * distance,
-            y: parent.y + Math.sin(angle) * distance,
-          }
-        : { x: 0, y: 0 });
-    nextPositions.set(node.id, position);
-    return {
-      id: node.id,
-      states: nodeSelection(node.id, selection),
-      data: { kind: node.kind, dim: node.dim, name: node.name },
-      style: position,
-    };
+    positions.set(
+      node.id,
+      seeds.get(node.id) ??
+        initial.get(node.id) ??
+        (parent
+          ? { x: parent.x + Math.cos(angle) * distance, y: parent.y + Math.sin(angle) * distance }
+          : { x: 0, y: 0 }),
+    );
   });
-  const edges = visible
-    .filter((node) => node.parentId && displayed.has(node.parentId))
-    .map((node) => ({
-      id: `edge:${node.id}`,
-      source: node.parentId!,
-      target: node.id,
-      states: edgeSelection(node.parentId!, node.id, selection),
-      data: { kind: node.kind, dim: node.dim },
-    }));
-  return { nodes, edges };
+  return positions;
 }
 
-/**
- * True when the next render keeps the same nodes and the same edges (matched by
- * id and source), so the existing layout can be redrawn without re-running it.
- */
-export function sameTopology(
-  switchingView: boolean,
-  fitted: boolean,
-  previous: Positions,
-  nodes: Array<{ id: string }>,
-  currentEdges: Array<{ id?: string; source: string }>,
-  edges: Array<{ id: string; source: string }>,
+/** True when `next` lists the same nodes under the same parents in the same order as `current`. */
+export function sameTree(
+  current: Array<{ id: string; parentId: string | null }>,
+  next: Array<{ id: string; parentId: string | null }>,
 ): boolean {
-  if (switchingView || !fitted) return false;
-  if (previous.size !== nodes.length || !nodes.every((node) => previous.has(node.id))) return false;
-  if (currentEdges.length !== edges.length) return false;
-  const sourcesById = new Map<string, Set<string>>();
-  for (const edge of edges) {
-    const sources = sourcesById.get(edge.id);
-    if (sources) sources.add(edge.source);
-    else sourcesById.set(edge.id, new Set([edge.source]));
-  }
-  return currentEdges.every((edge) => edge.id !== undefined && sourcesById.get(edge.id)?.has(edge.source) === true);
+  return (
+    current.length === next.length &&
+    current.every((node, index) => node.id === next[index].id && node.parentId === next[index].parentId)
+  );
 }

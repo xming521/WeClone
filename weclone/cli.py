@@ -81,7 +81,7 @@ def apply_common_decorators(capture_output_enabled=False):
 )
 @click.pass_context
 def cli(ctx, config_path):
-    """WeClone: One-stop solution for creating digital avatars from chat history"""
+    """WeClone: Build a portrait of your life. Assistants that know you. Clones that talk like you."""
     # Only show community info when no subcommand is invoked
     if ctx.invoked_subcommand is None:
         show_community_info()
@@ -98,6 +98,7 @@ def cli(ctx, config_path):
     secure.configure(config_path)
     ctx.call_on_close(secure.lock)
     if ctx.invoked_subcommand in {
+        "dev",
         "server",
         "server-reset-password",
         "security-init",
@@ -130,60 +131,56 @@ def qa_generator():
     processor.main()
 
 
-@cli.command("distill-profile", help="Extract profile memories from chat samples.")
-@click.option("--input-dir", type=click.Path(path_type=Path, file_okay=False))
-@click.option("--output-dir", type=click.Path(path_type=Path, file_okay=False))
+@cli.command(
+    "distill-style",
+    help="Extract speaking style from a chat snapshot, such as the people directory of a build-profile run.",
+    context_settings={"ignore_unknown_options": True, "allow_extra_args": True},
+    add_help_option=False,
+)
 @click.pass_context
-def distill_profile(ctx: click.Context, input_dir: Path | None, output_dir: Path | None):
-    from weclone.data.agent import distill_profile as extractor
+def distill_style(ctx: click.Context):
+    from weclone.data.agent.distill_style.run import main
 
     config_path = ctx.parent.params.get("config_path") if ctx.parent else None
-    extractor.main(
-        input_dir=input_dir, output_dir=output_dir, config_path=Path(config_path) if config_path else None
-    )
+    argv = ["--settings", str(config_path)] if config_path else []
+    main(argv + ctx.args)
 
 
-@cli.command("distill-event", help="Extract event memories from chat samples.")
-@click.option("--input-dir", type=click.Path(path_type=Path, file_okay=False))
-@click.option("--output-dir", type=click.Path(path_type=Path, file_okay=False))
-@click.pass_context
-def distill_event(ctx: click.Context, input_dir: Path | None, output_dir: Path | None):
-    from weclone.data.agent import distill_event as extractor
-
-    config_path = ctx.parent.params.get("config_path") if ctx.parent else None
-    extractor.main(
-        input_dir=input_dir, output_dir=output_dir, config_path=Path(config_path) if config_path else None
-    )
-
-
-@cli.command("build-profile", help="从聊天数据依次完成数据准备、记忆抽取、整理和画像生成。")
+@cli.command(
+    "build-profile",
+    help="Build the life portrait from chat data: prepare the chats, extract and organize memories, "
+    "then build the portrait. For a clone, also extract speaking style.",
+)
 @click.option(
-    "--with-events/--profile-only",
-    default=None,
-    help="仅抽取画像或同时抽取画像与事件；两类结果可能存在信息重叠，Token 预算有限时建议仅抽取画像。未指定时交互选择。",
+    "--purpose",
+    type=click.Choice(["assistant", "clone"]),
+    help="assistant: for personal assistants, extracts the portrait and events. clone: for a clone, "
+    "also extracts speaking style and needs the ltp package and LTP model. Asked interactively when omitted.",
 )
 @click.option(
     "--output-dir",
     type=click.Path(path_type=Path, file_okay=False),
-    help="本次流水线的结果目录；默认在 dataset/res_csv/agent/profile_runs 下新建时间戳目录。",
+    help="Result directory for this run; defaults to a new timestamped directory under "
+    "dataset/res_csv/agent/profile_runs.",
 )
 @click.option(
     "--max-context-tokens",
     type=click.IntRange(min=1),
-    help="记忆整理和画像生成的输入 token 上限；默认读取 Codex 上下文长度，API 模型需要显式指定。",
+    help="Input token limit for memory organization and the portrait; defaults to the Codex context length, "
+    "required for API models.",
 )
 @apply_common_decorators()
-def build_profile(with_events: bool | None, output_dir: Path | None, max_context_tokens: int | None):
+def build_profile(purpose: str | None, output_dir: Path | None, max_context_tokens: int | None):
     from weclone.data.agent.profile_pipeline import run
 
-    click.echo("画像与事件的抽取结果可能存在信息重叠。Token 预算有限时，建议仅抽取画像。")
-    if with_events is None:
-        click.echo("1. 仅抽取画像（推荐）\n2. 同时抽取画像与事件")
-        with_events = click.prompt("请选择抽取模式", type=click.Choice(["1", "2"]), default="1") == "2"
+    if purpose is None:
+        click.echo("1. 给个人助理用：抽取画像和事件\n2. 做分身：另外抽取语言风格，需要 ltp 包和 LTP 模型")
+        choice = click.prompt("请选择用途", type=click.Choice(["1", "2"]), default="1")
+        purpose = "clone" if choice == "2" else "assistant"
     config_path = Path(os.environ.get("WECLONE_CONFIG_PATH", "settings.jsonc"))
     try:
         result = run(
-            with_events=with_events,
+            with_style=purpose == "clone",
             output_dir=output_dir,
             config_path=config_path,
             max_context_tokens=max_context_tokens,
@@ -238,13 +235,14 @@ def test_model():
     test_main()
 
 
-@cli.command("server-reset-password", help="重新设置共用密码；旧密文失效，必须从原始聊天重新生成全部数据。")
-@click.option("--database", type=click.Path(path_type=Path, dir_okay=False))
-def server_reset_password(database: Path | None):
+@cli.command(
+    "server-reset-password",
+    help="Reset the shared password. Existing encrypted data becomes unreadable and must be regenerated "
+    "from the original chats.",
+)
+def server_reset_password():
     from weclone.utils import secure_storage as secure
 
-    if database is not None:
-        click.echo("密码作用于当前安全配置；网页会话将在下次请求时自动失效。")
     click.confirm("重置后旧密文无法用新密码读取，必须重新处理全部聊天数据。继续？", abort=True)
     password = click.prompt("设置新的共用密码", hide_input=True, confirmation_prompt=True)
     try:
@@ -254,7 +252,10 @@ def server_reset_password(database: Path | None):
     click.echo("密码已重置。旧文件保留；请使用新输出目录从原始聊天完整重新生成。")
 
 
-@cli.command("security-init", help="按 settings.jsonc 固定存储模式并设置网页、文件读写共用密码。")
+@cli.command(
+    "security-init",
+    help="Fix the storage mode from settings.jsonc and set the password shared by the web UI and file access.",
+)
 def security_init():
     from weclone.utils import secure_storage as secure
 
@@ -267,7 +268,10 @@ def security_init():
     click.echo(f"初始化完成：{secure.configure()['storage_mode']}。密码未明文保存。")
 
 
-@cli.command("security-change-password", help="使用旧密码修改共用密码，保留已有加密数据。")
+@cli.command(
+    "security-change-password",
+    help="Change the shared password with the old one, keeping existing encrypted data.",
+)
 def security_change_password():
     from weclone.utils import secure_storage as secure
 
@@ -280,7 +284,7 @@ def security_change_password():
     click.echo("密码已修改，已有数据保留，旧网页会话失效。")
 
 
-@cli.command("decrypt", help="输入共用密码，将加密文件导出到新的明文文件。")
+@cli.command("decrypt", help="Export an encrypted file to a new plaintext file with the shared password.")
 @click.option(
     "--input", "input_path", required=True, type=click.Path(path_type=Path, exists=True, dir_okay=False)
 )
@@ -298,27 +302,104 @@ def decrypt(input_path: Path, output_path: Path):
 @cli.command("server", help="Start the WeClone server, optionally with model inference.")
 @click.option("--host", default="127.0.0.1", show_default=True)
 @click.option("--port", type=click.IntRange(1, 65535), default=5175, envvar="API_PORT", show_default=True)
-@click.option("--database", type=click.Path(path_type=Path, dir_okay=False))
-@click.option("--source", type=click.Path(path_type=Path, dir_okay=False))
+@click.option(
+    "--run",
+    "run_dir",
+    type=click.Path(path_type=Path, exists=True, file_okay=False),
+    help="build-profile result directory to serve; defaults to the newest one.",
+)
 @click.option(
     "--inference", is_flag=True, help="Load the configured model and enable /v1 inference endpoints."
 )
+@click.option(
+    "--demo",
+    type=click.Choice(["zh", "en"]),
+    is_flag=False,
+    flag_value="zh",
+    help="Serve the synthetic test profile (Chinese, or English with en) in a temporary workspace removed on exit. "
+    "Password: demo.",
+)
 @clear_argv
-def server(host: str, port: int, database: Path | None, source: Path | None, inference: bool):
+def server(host: str, port: int, run_dir: Path | None, inference: bool, demo: str | None):
     from weclone.server.app import serve
 
-    serve(host=host, port=port, database=database, source=source, inference=inference)
+    if demo and run_dir:
+        raise click.UsageError("--demo 和 --run 不能同时使用。")
+    serve(host=host, port=port, run=run_dir, inference=inference, demo=demo)
+
+
+@cli.command("dev", help="Start the backend and frontend development server.")
+@click.option(
+    "--demo",
+    type=click.Choice(["zh", "en"]),
+    is_flag=False,
+    flag_value="zh",
+    help="Have the backend serve the synthetic test profile, as server --demo does.",
+)
+@click.pass_context
+def dev(ctx: click.Context, demo: str | None):
+    import signal
+    import subprocess
+    import time
+
+    processes = []
+    shutdown_signal = None
+
+    def interrupt(signum, _frame):
+        nonlocal shutdown_signal
+        shutdown_signal = signum
+
+    def signal_group(process, signum):
+        try:
+            os.killpg(process.pid, signum)
+        except ProcessLookupError:
+            pass
+
+    handlers = {sig: signal.signal(sig, interrupt) for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)}
+    try:
+        server = [sys.executable, "-m", "weclone.cli", "server", "--port", "5175"]
+        commands = [server + (["--demo", demo] if demo else []), ["pnpm", "--dir", "web", "dev"]]
+        for command in commands:
+            if shutdown_signal is not None:
+                ctx.exit(128 + shutdown_signal)
+            processes.append(subprocess.Popen(command, start_new_session=True))
+        click.echo("前端 dev: http://127.0.0.1:5174\n后端: http://127.0.0.1:5175\n按 Ctrl+C 关闭全部服务。")
+        while shutdown_signal is None:
+            for process in processes:
+                code = process.poll()
+                if code is not None:
+                    ctx.exit(code if code >= 0 else 128 - code)
+            time.sleep(0.1)
+        ctx.exit(128 + shutdown_signal)
+    except OSError as exc:
+        raise click.ClickException(str(exc)) from None
+    finally:
+        for sig in handlers:
+            signal.signal(sig, signal.SIG_IGN)
+        try:
+            for process in processes:
+                signal_group(process, signal.SIGTERM)
+            for process in processes:
+                try:
+                    process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    pass
+                signal_group(process, signal.SIGKILL)
+                process.wait()
+        finally:
+            for sig, handler in handlers.items():
+                signal.signal(sig, handler)
 
 
 @cli.command(
     "organize-memories",
-    help="Classify, group, and summarize extracted memories.",
+    help="Induce life domains, classify, and summarize extracted memories.",
     context_settings={"ignore_unknown_options": True, "allow_extra_args": True},
     add_help_option=False,
 )
 @click.pass_context
 def organize_memories(ctx: click.Context):
-    """Pass stage and embedding options to the memory organization CLI."""
+    """Pass stage options to the memory organization CLI."""
     from weclone.data.agent import organize_memories as organizer
 
     argv = list(ctx.args)
@@ -403,7 +484,6 @@ def _check_versions():
 
     settings_version = None
     config_guide_version = None
-    config_changelog = None
     project_version = None
 
     if SETTINGS_PATH.exists():
@@ -427,7 +507,6 @@ def _check_versions():
                 pyproject_data = tomllib.load(f)
                 weclone_tool_data = pyproject_data.get("tool", {}).get("weclone", {})
                 config_guide_version = weclone_tool_data.get("config_version")
-                config_changelog = weclone_tool_data.get("config_changelog", "N/A")
                 project_version = pyproject_data.get("project", {}).get("version")
         except Exception as e:
             logger.warning(
@@ -440,7 +519,7 @@ def _check_versions():
 
     if not settings_version:
         logger.error(f"Error: 'version' field not found in {SETTINGS_PATH}.")
-        logger.error("Please copy from settings.template.json or update your settings.jsonc file.")
+        logger.error("Please copy from settings.template.jsonc or update your settings.jsonc file.")
         sys.exit(1)
 
     if config_guide_version:
@@ -449,10 +528,8 @@ def _check_versions():
                 f"Warning: Your settings.jsonc file version ({settings_version}) does not match the project's recommended config version ({config_guide_version})."
             )
             logger.warning(
-                "This may cause unexpected behavior or errors. Please copy from settings.template.json or update your settings.jsonc file."
+                "This may cause unexpected behavior or errors. Please copy from settings.template.jsonc or update your settings.jsonc file."
             )
-            # TODO Print update log based on version number
-            logger.warning(f"Config file changelog:\n{config_changelog}")
 
         logger.info(f"📦 Project Version: {project_version}")
         logger.info(f"⚙️  Config Version: {settings_version}")

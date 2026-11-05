@@ -1,4 +1,18 @@
-"""Organize extracted profile/event memories by dimension without reading chat messages."""
+"""Organize extracted profile/event memories by life domain and dimension without reading chat messages.
+
+Stages: prepare reads the extracted memories and notes which chat each peer id stands for (the stable contact id,
+P1, P2, ..., from the people files). domains induces the person's life domains from extraction tags
+and maps the tags to them. peers writes one line per chat peer on how they relate to B, from the memories that
+mention them. classify assigns each memory dimensions and, per dimension, the domains it belongs to, in
+batches grouped by the tags' domains, places what passes between B and a peer by that relation, and gives
+every memory a privacy level.
+summarize writes facts per (domain, dimension), each with its own privacy level and time scope (stable,
+current, superseded or dated); dimension 6 is summarized per chat peer. A large group is summarized in
+time-ordered parts whose facts are then merged. Identity facts of every domain share one request, so the model
+can tell which candidate a later one replaced, and profile groups of different domains that share a memory
+share one request, so its fact is written once. llm_profile_hierarchy later groups the profile facts into
+topics.
+"""
 
 from __future__ import annotations
 
@@ -7,30 +21,51 @@ import asyncio
 import hashlib
 import json
 import logging
+import math
 import re
 import subprocess
 from collections import Counter, defaultdict
+from collections.abc import Callable
 from pathlib import Path
 from statistics import fmean
-from time import perf_counter
 from typing import Any
 
-import numpy as np
-
-from weclone.data.agent import distill_profile, group_state_memories
+from weclone.data.agent import distill_profile
+from weclone.data.agent.contacts import CONTACT_ID
+from weclone.data.agent.llm_cache import LLMCache, cache_key
 from weclone.prompts.memory_organization import (
-    ATTRIBUTE_HIERARCHY_SCHEMA,
     BATCH_SUMMARY_SCHEMA,
     CLASSIFY_SCHEMA,
-    PREFERENCE_ATTRIBUTE_SCHEMA,
+    DOMAIN_SCHEMA,
+    PEER_SCHEMA,
+    PROFILE_DIMS,
+    SENSITIVITY_LEVELS,
     SUMMARY_SCHEMA,
+    TAG_DOMAIN_SCHEMA,
+    TIME_SCOPES,
     batch_summary_prompt,
     classify_prompt,
+    domain_prompt,
+    peer_prompt,
     summarize_prompt,
+    tag_domain_prompt,
 )
 from weclone.utils import secure_storage
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
+STAGES = ("prepare", "domains", "peers", "classify", "summarize")
+# Domain induction and tag mapping read the tags used at least DOMAIN_TAG_MIN_COUNT times, keeping at least
+# DOMAIN_TAG_FLOOR and at most DOMAIN_TAG_LIMIT of the most used tags.
+DOMAIN_TAG_MIN_COUNT = 3
+DOMAIN_TAG_FLOOR = 200
+DOMAIN_TAG_LIMIT = 1000
+TAG_BATCH = 250
+MAX_DOMAINS = 20
+# A peer's relation is read from at most PEER_MEMORY_LIMIT of the memories that mention the peer.
+PEER_MEMORY_LIMIT = 200
+PEER_RELATION_CHARS = 100
+# Extraction writes the chat peer as A; prompts show the peer id in its place.
+PEER_PLACEHOLDER = re.compile(r"(?<![A-Za-zＡ-Ｚａ-ｚ0-9０-９_])[AＡ](?![A-Za-zＡ-Ｚａ-ｚ0-9０-９_]|股)")
 
 
 def digest(value: Any) -> str:
@@ -67,19 +102,18 @@ def allowed_dimensions(record: dict) -> tuple[int, ...]:
         return (5, 7)
     if record["type"] == "preference":
         return (8,)
-    dims = [1, 3, 4, 6]
     if record["type"] == "goal":
-        dims.append(5)
-    return tuple(sorted(dims))
+        return (1, 3, 4, 5, 6)
+    # Habits and skills arrive as stable facts, recent ones as current states.
+    return (1, 2, 3, 4, 6, 8)
 
 
-def read_memories(input_dir: Path, *, preferences_only: bool = False) -> list[dict]:
+def read_memories(input_dir: Path) -> tuple[list[dict], dict[str, dict]]:
+    """Memories passing the score filters, and the chat_with name behind each peer id."""
     records: dict[str, dict] = {}
-    peers: dict[str, str] = {}
+    peers: dict[str, dict] = {}
     sample_ids: dict[str, str] = {}
     for directory, field in (("state_people", "state_memories"), ("event_people", "event_memories")):
-        if preferences_only and field != "state_memories":
-            continue
         for path in secure_storage.iter_files(input_dir / directory):
             if "manifest" in path.name:
                 continue
@@ -88,12 +122,10 @@ def read_memories(input_dir: Path, *, preferences_only: bool = False) -> list[di
                 raise ValueError(f"Expected sample array: {path}")
             for index, sample in enumerate(samples):
                 sid = distill_profile.sample_id_for(sample, index)
-                peer_key = digest(
-                    sample.get("chat_with_id")
-                    or sample.get("chat_with")
-                    or secure_storage.logical_path(path).stem
-                )
-                peer = peers.setdefault(peer_key, f"P{len(peers) + 1}")
+                peer = sample.get("chat_with_id")
+                if not isinstance(peer, str) or not CONTACT_ID.fullmatch(peer):
+                    raise ValueError(f"chat_with_id must be a contact id such as P3: {path}, sample {sid}")
+                peers.setdefault(peer, {"chat_with": sample.get("chat_with")})
                 sample_key = sample_ids.setdefault(
                     digest([peer, sid, sample.get("time", "")]),
                     f"C{len(sample_ids) + 1}",
@@ -149,16 +181,10 @@ def read_memories(input_dir: Path, *, preferences_only: bool = False) -> list[di
                             if key in memory:
                                 record[key] = memory[key]
                         records[memory_key] = record
-    selected = [
-        row
-        for row in records.values()
-        if row["importance"] >= 2
-        and row["confidence"] >= 3
-        and (not preferences_only or row["type"] == "preference")
-    ]
+    selected = [row for row in records.values() if row["importance"] >= 2 and row["confidence"] >= 3]
     if not selected:
         raise ValueError(f"No extracted memories match the input and score filters in {input_dir}")
-    return sorted(selected, key=lambda row: (row["sample_time"], row["sample"], row["id"]))
+    return sorted(selected, key=lambda row: (row["sample_time"], row["sample"], row["id"])), peers
 
 
 def prompt_record(record: dict, *, include_sample_time: bool = False) -> dict:
@@ -168,12 +194,10 @@ def prompt_record(record: dict, *, include_sample_time: bool = False) -> dict:
             row[key] = record[key]
     if include_sample_time and record.get("sample_time"):
         row["sample_time"] = record["sample_time"]
+    if record.get("sensitivity"):
+        row["sensitivity"] = record["sensitivity"]
     if record.get("peer"):
-        row["content"] = re.sub(
-            r"(?<![A-Za-zＡ-Ｚａ-ｚ0-9０-９_])[AＡ](?![A-Za-zＡ-Ｚａ-ｚ0-9０-９_]|股)",
-            lambda _: record["peer"],
-            row["content"],
-        )
+        row["content"] = PEER_PLACEHOLDER.sub(lambda _: record["peer"], row["content"])
         if record["type"] == "preference":
             row["peer"] = record["peer"]
     return row
@@ -233,10 +257,8 @@ def resolve_context_window(args: argparse.Namespace) -> int:
     provider = args.llm_provider or distill_profile.load_agent_distill_config(args.config_path).get(
         "llm_provider"
     )
-    if provider == "codex_exec":
-        config = distill_profile.load_agent_distill_config(args.config_path)
-        if not config.get("model"):
-            config = {**distill_profile.load_codex_exec_config(args.config_path), **config}
+    if distill_profile.normalize_llm_provider(provider) == "codex_exec":
+        config = distill_profile.load_codex_exec_config(args.config_path)
         command = config.get("command", "codex")
         effective_config = asyncio.run(codex_config(command))
         catalog = json.loads(
@@ -290,135 +312,143 @@ class InputBudget:
         return {"chars": len(prompt), "tokens": tokens, "tokenizer": self.tokenizer}
 
 
-def normalized_vectors(vectors: list[list[float]]) -> np.ndarray:
-    array = np.asarray(vectors, dtype=float)
-    if array.ndim != 2 or not np.isfinite(array).all():
-        raise ValueError("Invalid embedding matrix")
-    lengths = np.linalg.norm(array, axis=1, keepdims=True)
-    if np.any(lengths == 0):
-        raise ValueError("Zero embedding vector")
-    return array / lengths
+def record_tags(record: dict) -> list[str]:
+    return list(dict.fromkeys(tag.strip() for tag in record["tags"] if isinstance(tag, str) and tag.strip()))
 
 
-class Embeddings:
-    def __init__(self, args: argparse.Namespace):
-        self.args = group_state_memories.default_args()
-        self.args.config_path = args.config_path
-        self.args.embedding_url = args.embedding_url
-        self.args.auto_start_embedding_service = not args.no_auto_start_embedding_service
-        if args.embedding_batch_size is not None:
-            self.args.embedding_batch_size = args.embedding_batch_size
-        self.args.embedding_service_log_path = args.output_dir / "embedding_service.log"
-        self.batch_dir = args.output_dir / "embeddings"
-        self.process = None
-        self.cache = None
+def tag_counts(records: list[dict]) -> Counter:
+    return Counter(tag for row in records for tag in record_tags(row))
 
-    def get(self, texts: list[str]) -> list[list[float]]:
-        if not texts:
-            return []
-        if self.cache is None:
-            self.url = group_state_memories.service_base_url(self.args)
-            health, self.process = group_state_memories.ensure_embedding_service(self.args, base_url=self.url)
-            identity = {key: health.get(key) for key in ("model", "max_length", "device")}
-            cache = {"identity": identity, "vectors": {}}
-            for path in secure_storage.iter_files(self.batch_dir):
-                shard = load(path)
-                if shard["identity"] != identity:
-                    raise ValueError("Embedding model changed; use a new output directory")
-                cache["vectors"].update(shard["vectors"])
-            self.cache = cache
-        missing = list(dict.fromkeys(text for text in texts if digest(text) not in self.cache["vectors"]))
-        total = len(set(texts))
-        completed = total - len(missing)
-        print(f"embedding: cached={completed}/{total} pending={len(missing)}", flush=True)
-        for batch in distill_profile.batched(missing, self.args.embedding_batch_size):
-            started = perf_counter()
-            vectors = group_state_memories.embed_texts(
-                batch,
-                base_url=self.url,
-                batch_size=self.args.embedding_batch_size,
-                timeout=self.args.request_timeout,
-            )
-            if len(vectors) != len(batch):
-                raise ValueError("Embedding response count mismatch")
-            normalized_vectors(vectors)
-            updates = {digest(text): vector for text, vector in zip(batch, vectors)}
-            embedded = perf_counter()
-            save(
-                self.batch_dir / f"{digest(list(updates))}.json",
-                {
-                    "identity": self.cache["identity"],
-                    "vectors": updates,
-                },
-            )
-            self.cache["vectors"].update(updates)
-            completed += len(batch)
-            print(
-                f"embedding: {completed}/{total} compute={embedded - started:.2f}s "
-                f"save={perf_counter() - embedded:.2f}s",
-                flush=True,
-            )
-        return [self.cache["vectors"][digest(text)] for text in texts]
 
-    def close(self) -> None:
-        if self.process is not None:
-            group_state_memories.stop_embedding_service_process(
-                self.process,
-                timeout=self.args.embedding_service_stop_timeout,
-            )
+def domain_tags(counts: Counter) -> list[str]:
+    ranked = sorted(counts, key=lambda tag: (-counts[tag], tag))
+    frequent = sum(counts[tag] >= DOMAIN_TAG_MIN_COUNT for tag in ranked)
+    return ranked[: min(DOMAIN_TAG_LIMIT, max(frequent, DOMAIN_TAG_FLOOR))]
+
+
+def validate_domains(payload: Any) -> list[dict]:
+    if (
+        not isinstance(payload, dict)
+        or set(payload) != {"domains"}
+        or not isinstance(payload["domains"], list)
+    ):
+        raise ValueError("Domain induction requires domains array")
+    if not 1 <= len(payload["domains"]) <= MAX_DOMAINS:
+        raise ValueError(f"Domain induction must return 1 to {MAX_DOMAINS} domains")
+    domains, names = [], set()
+    for domain in payload["domains"]:
+        if not isinstance(domain, dict) or set(domain) != {"name", "description"}:
+            raise ValueError("Domain requires name and description")
+        name = domain["name"].strip() if isinstance(domain["name"], str) else ""
+        if not chinese_attr(name) or name in names:
+            raise ValueError("Domain names must be unique Chinese names")
+        if not isinstance(domain["description"], str) or not domain["description"].strip():
+            raise ValueError("Domain description is empty")
+        names.add(name)
+        domains.append({"name": name, "description": domain["description"].strip()})
+    return domains
+
+
+def validate_tag_domains(payload: Any, ids: set[int], domain_count: int) -> dict[int, int]:
+    if not isinstance(payload, dict) or set(payload) != {"items"} or not isinstance(payload["items"], list):
+        raise ValueError("Tag mapping requires items array")
+    mapping = {}
+    for item in payload["items"]:
+        if not isinstance(item, dict) or set(item) != {"id", "domain"}:
+            raise ValueError("Tag mapping item requires id and domain")
+        if type(item["id"]) is not int or item["id"] not in ids or item["id"] in mapping:
+            raise ValueError("Unknown or duplicate tag id")
+        if type(item["domain"]) is not int or not 1 <= item["domain"] <= domain_count:
+            raise ValueError("Unknown domain id")
+        mapping[item["id"]] = item["domain"]
+    if len(mapping) != len(ids):
+        raise ValueError("Missing tag ids")
+    return mapping
+
+
+def peer_memories(records: list[dict], limit: int = PEER_MEMORY_LIMIT) -> dict[str, list[dict]]:
+    """Each peer's memories that mention the peer: state memories first, then events by importance, oldest first."""
+    mentions = defaultdict(list)
+    for row in records:
+        if PEER_PLACEHOLDER.search(row["content"]):
+            mentions[row["peer"]].append(row)
+    selected = {}
+    for peer in sorted(mentions, key=lambda peer: (len(peer), peer)):
+        ranked = sorted(
+            mentions[peer],
+            key=lambda row: (row["kind"] != "S", -row["importance"], row["sample_time"], row["id"]),
+        )
+        selected[peer] = sorted(ranked[:limit], key=lambda row: (row["sample_time"], row["id"]))
+    return selected
+
+
+def validate_peer(payload: Any) -> str:
+    """The peer's relation to B in one line; empty when the memories do not show it."""
+    if (
+        not isinstance(payload, dict)
+        or set(payload) != {"relation"}
+        or not isinstance(payload["relation"], str)
+    ):
+        raise ValueError("Peer relation requires relation")
+    relation = " ".join(payload["relation"].split())
+    if len(relation) > PEER_RELATION_CHARS:
+        raise ValueError("Peer relation is too long")
+    return relation
+
+
+def provisional_domains(records: list[dict], mapping: dict[str, int], counts: Counter) -> list[int | None]:
+    """Majority domain of each memory's mapped tags; ties go to the domain of the rarest tag."""
+    domains = []
+    for row in records:
+        tags = [tag for tag in record_tags(row) if tag in mapping]
+        votes = Counter(mapping[tag] for tag in tags)
+        if not votes:
+            domains.append(None)
+            continue
+        best = max(votes.values())
+        rarest = min((tag for tag in tags if votes[mapping[tag]] == best), key=lambda tag: (counts[tag], tag))
+        domains.append(mapping[rarest])
+    return domains
 
 
 def classification_batches(
     records: list[dict],
-    vectors: list[list[float]],
+    domains: list[int | None],
+    counts: Counter,
     *,
     max_records: int,
-    neighbors: int,
+    prompt: Callable[[list[dict], tuple[int, ...]], str],
     budget: InputBudget | None = None,
 ) -> list[list[dict]]:
-    matrix = normalized_vectors(vectors)
-    if len(matrix) != len(records):
-        raise ValueError("Embedding count does not match records")
-    tags = [set(row["tags"]) for row in records]
-    counts = Counter(tag for row in tags for tag in row)
-    weights = {tag: float(np.log((len(records) + 1) / (count + 1))) for tag, count in counts.items()}
-    partitions: dict[tuple[int, ...], list[int]] = defaultdict(list)
-    for i, row in enumerate(records):
-        partitions[allowed_dimensions(row)].append(i)
+    """Batch memories by allowed dimensions, ordered by provisional domain, rarest shared tag and time."""
+
+    def rarest(row):
+        tags = [tag for tag in record_tags(row) if counts[tag] >= 2]
+        return min(tags, key=lambda tag: (counts[tag], tag)) if tags else None
+
+    def fit(rows, dims):
+        if budget is None or budget.fits(prompt(rows, dims)):
+            return [rows]
+        batches, current = [], []
+        for row in rows:
+            if not budget.fits(prompt([row], dims)):
+                raise ValueError(f"Record {row['id']} exceeds the token input budget")
+            if current and not budget.fits(prompt(current + [row], dims)):
+                batches.append(current)
+                current = []
+            current.append(row)
+        return batches + [current]
+
+    partitions: dict[tuple[int, ...], list[tuple[tuple, dict]]] = defaultdict(list)
+    for row, domain in zip(records, domains, strict=True):
+        tag = rarest(row)
+        key = (domain is None, domain or 0, tag is None, tag or "", row["sample_time"], row["id"])
+        partitions[allowed_dimensions(row)].append((key, row))
     batches = []
-    for dims, indices in partitions.items():
-        remaining = set(indices)
-        while remaining:
-            seed = min(remaining)
-            candidates = sorted(remaining - {seed})
-            scores = matrix[candidates] @ matrix[seed] if candidates else []
-            nearest = sorted(zip(candidates, scores), key=lambda pair: (-pair[1], pair[0]))[:neighbors]
-            overlap = {i: sum(weights[tag] for tag in tags[i] & tags[seed]) for i in candidates}
-            tagged = sorted((i for i in candidates if overlap[i] > 0), key=lambda i: (-overlap[i], i))[
-                :neighbors
-            ]
-            ranks: dict[int, float] = defaultdict(float)
-            for channel in ([i for i, _ in nearest], tagged):
-                for rank, i in enumerate(channel, 1):
-                    ranks[i] += 1 / rank
-            same_sample = [i for i in candidates if records[i]["sample"] == records[seed]["sample"]]
-            rest = [i for i, _ in sorted(zip(candidates, scores), key=lambda pair: (-pair[1], pair[0]))]
-            order = list(
-                dict.fromkeys([seed] + same_sample + sorted(ranks, key=lambda i: (-ranks[i], i)) + rest)
-            )
-            selected = []
-            for i in order:
-                if len(selected) >= max_records:
-                    break
-                proposed = selected + [i]
-                prompt = classify_prompt([prompt_record(records[j]) for j in proposed], dims)
-                if budget and not budget.fits(prompt):
-                    if not selected:
-                        raise ValueError(f"Record {records[i]['id']} exceeds the token input budget")
-                    continue
-                selected = proposed
-            batches.append([records[i] for i in selected])
-            remaining.difference_update(selected)
+    for dims, rows in partitions.items():
+        ordered = [row for _, row in sorted(rows, key=lambda pair: pair[0])]
+        for start in range(0, len(ordered), max_records):
+            batches.extend(fit(ordered[start : start + max_records], dims))
     return batches
 
 
@@ -426,35 +456,37 @@ def chinese_attr(value: Any) -> bool:
     return isinstance(value, str) and bool(value.strip()) and bool(re.search(r"[\u3400-\u9fff]", value))
 
 
-def validate_classification(payload: Any, records: list[dict]) -> list[dict]:
+def validate_classification(payload: Any, records: list[dict], domain_count: int) -> list[dict]:
     if not isinstance(payload, dict) or set(payload) != {"items"} or not isinstance(payload["items"], list):
         raise ValueError("Classification requires items array")
     expected = {row["id"]: row for row in records}
     seen = set()
     for item in payload["items"]:
-        if not isinstance(item, dict) or set(item) != {"id", "fields"}:
-            raise ValueError("Classification item requires id and fields")
+        if not isinstance(item, dict) or set(item) != {"id", "fields", "sensitivity"}:
+            raise ValueError("Classification item requires id, fields and sensitivity")
+        if item["sensitivity"] not in SENSITIVITY_LEVELS:
+            raise ValueError("Unknown sensitivity level")
         rid = item["id"]
         if not isinstance(rid, str) or rid not in expected or rid in seen:
             raise ValueError("Unknown or duplicate classification id")
         seen.add(rid)
         if not isinstance(item["fields"], list):
             raise ValueError("fields must be an array")
-        fields = set()
+        pairs = set()
         for field in item["fields"]:
             if (
-                not isinstance(field, list)
-                or len(field) != 2
-                or type(field[0]) is not int
-                or field[0] not in allowed_dimensions(expected[rid])
-                or not chinese_attr(field[1])
+                not isinstance(field, dict)
+                or set(field) != {"dim", "domain"}
+                or type(field["dim"]) is not int
+                or field["dim"] not in allowed_dimensions(expected[rid])
+                or type(field["domain"]) is not int
+                or not 1 <= field["domain"] <= domain_count
             ):
-                raise ValueError("Invalid dimension/source combination or Chinese attribute")
-            pair = (field[0], field[1].strip())
-            if pair in fields:
-                raise ValueError("Duplicate attribute assignment")
-            fields.add(pair)
-            field[1] = pair[1]
+                raise ValueError("Invalid dimension/source combination or domain")
+            pair = (field["dim"], field["domain"])
+            if pair in pairs:
+                raise ValueError("Duplicate dimension and domain assignment")
+            pairs.add(pair)
     if seen != set(expected):
         raise ValueError("Missing classification ids")
     return payload["items"]
@@ -466,8 +498,18 @@ def validate_summary(payload: Any, source_ids: set[str]) -> dict:
     if not isinstance(payload["facts"], list):
         raise ValueError("Summary facts must be an array")
     for fact in payload["facts"]:
-        if not isinstance(fact, dict) or set(fact) != {"attr", "value", "source_ids"}:
-            raise ValueError("Fact requires attr, value and source_ids")
+        if not isinstance(fact, dict) or set(fact) != {
+            "attr",
+            "value",
+            "source_ids",
+            "sensitivity",
+            "time_scope",
+        }:
+            raise ValueError("Fact requires attr, value, source_ids, sensitivity and time_scope")
+        if fact["sensitivity"] not in SENSITIVITY_LEVELS:
+            raise ValueError("Unknown sensitivity level")
+        if fact["time_scope"] not in TIME_SCOPES:
+            raise ValueError("Unknown time scope")
         if not chinese_attr(fact["attr"]) or not isinstance(fact["value"], str) or not fact["value"].strip():
             raise ValueError("Missing Chinese attribute or value")
         ids = fact["source_ids"]
@@ -482,19 +524,40 @@ def validate_summary(payload: Any, source_ids: set[str]) -> dict:
     return payload
 
 
-def validate_preference_attributes(payload: Any, records: list[dict]) -> list[dict]:
-    if not isinstance(payload, dict) or set(payload) != {"items"} or not isinstance(payload["items"], list):
-        raise ValueError("Preference attributes require items array")
-    items = []
-    for item in payload["items"]:
-        if not isinstance(item, dict) or set(item) != {"id", "attrs"} or not isinstance(item["attrs"], list):
-            raise ValueError("Preference attribute item requires id and attrs")
-        items.append({"id": item["id"], "fields": [[8, attr] for attr in item["attrs"]]})
-    return validate_classification({"items": items}, records)
+def summary_groups(classifications: list[dict], by_id: dict[str, dict], domains: list[dict]) -> list[dict]:
+    """Summary units: chat peer for dimension 6, (domain, dimension) for the others, named by the domain."""
+    members: dict[tuple[int, int, str], set[str]] = defaultdict(set)
+    for item in classifications:
+        for field in item["fields"]:
+            if field["dim"] == 6:
+                members[(6, 0, by_id[item["id"]]["peer"])].add(item["id"])
+            else:
+                members[(field["dim"], field["domain"], "")].add(item["id"])
+    groups = []
+    for (dim, domain, peer), ids in sorted(members.items()):
+        label = {"peer": peer} if dim == 6 else {"domain": domains[domain - 1]["name"]}
+        groups.append({"dim": dim, **label, "source_ids": sorted(ids)})
+    return groups
+
+
+def task_schema(task: dict) -> dict:
+    if "schema" in task:
+        return task["schema"]
+    if "members" in task:
+        return BATCH_SUMMARY_SCHEMA
+    return {
+        "domains": DOMAIN_SCHEMA,
+        "tag_domains": TAG_DOMAIN_SCHEMA,
+        "peers": PEER_SCHEMA,
+        "classify": CLASSIFY_SCHEMA,
+    }.get(task["stage"], SUMMARY_SCHEMA)
 
 
 class LLMTasks:
-    def __init__(self, args: argparse.Namespace):
+    """Runs prompt tasks on the configured model. Answers live in an LLM cache keyed by stage, prompt and schema, so
+    tasks answered by an earlier run, or before a failure, are not asked again."""
+
+    def __init__(self, args: argparse.Namespace, cache_path: Path | None = None):
         from weclone.core.inference.llm_client import build_llm_client
 
         options = distill_profile.default_args()
@@ -502,8 +565,7 @@ class LLMTasks:
         options.llm_provider = args.llm_provider
         options = self.options = distill_profile.resolve_llm_args(options)
         self.budget = input_budget(args)
-        self.path = args.output_dir / "llm_checkpoint.json"
-        self.entries = load(self.path) if secure_storage.file_exists(self.path) else {}
+        self.cache = LLMCache(cache_path)
         self.client = build_llm_client(
             options.llm_provider,
             config_path=options.config_path,
@@ -519,24 +581,15 @@ class LLMTasks:
         from weclone.core.inference.llm_client import LLMRequest
 
         input_stats = [self.budget.check(task["prompt"]) for task in tasks]
-        schemas = [
-            ATTRIBUTE_HIERARCHY_SCHEMA
-            if task["stage"] == "attribute_hierarchy"
-            else PREFERENCE_ATTRIBUTE_SCHEMA
-            if task["stage"] == "attributes"
-            else CLASSIFY_SCHEMA
-            if task["stage"] == "classify"
-            else BATCH_SUMMARY_SCHEMA
-            if "members" in task
-            else SUMMARY_SCHEMA
-            for task in tasks
-        ]
-        keys = [digest([task["stage"], task["prompt"], schema]) for task, schema in zip(tasks, schemas)]
-        pending = [
-            i
-            for i, key in enumerate(keys)
-            if self.options.overwrite or self.entries.get(key, {}).get("status") != "done"
-        ]
+        schemas = [task_schema(task) for task in tasks]
+        keys = [cache_key(task["stage"], task["prompt"], schema) for task, schema in zip(tasks, schemas)]
+        answers = self.cache.get_many(keys)
+        # One request per question, even when several tasks ask the same one.
+        first: dict[str, int] = {}
+        for i, key in enumerate(keys):
+            if key not in answers:
+                first.setdefault(key, i)
+        pending = list(first.values())
         if tasks:
             print(
                 f"{tasks[0]['stage']}: tasks={len(tasks)} pending={len(pending)} "
@@ -545,6 +598,7 @@ class LLMTasks:
             )
         for batch in distill_profile.batched(pending, self.options.batch_size):
             retry = list(batch)
+            errors: Counter[str] = Counter()
             for _ in range(2):
                 requests = [
                     LLMRequest.from_prompt(
@@ -561,103 +615,51 @@ class LLMTasks:
                     for i in retry
                 ]
                 responses = list(self.client.generate_batch(requests))
-                failed = []
+                failed, answered = [], []
+                errors.clear()
                 for position, i in enumerate(retry):
-                    error = "Missing response"
                     try:
                         if position >= len(responses):
-                            raise ValueError(error)
+                            raise ValueError("Missing response")
                         response = responses[position]
                         if not response.ok or response.finish_reason in {"length", "max_tokens"}:
                             raise ValueError(response.error or "Failed or truncated response")
                         validate(response.parsed_json, tasks[i])
-                        self.entries[keys[i]] = {
-                            "status": "done",
-                            "stage": tasks[i]["stage"],
-                            "result": response.parsed_json,
-                            "input": input_stats[i],
-                            "usage": response.metadata.get("usage"),
-                            "elapsed_s": response.elapsed_s,
-                            "model": response.model,
-                        }
+                        answers[keys[i]] = response.parsed_json
+                        answered.append((keys[i], tasks[i]["stage"], response.parsed_json, response.model))
                     except ValueError as exc:
-                        self.entries[keys[i]] = {"status": "failed", "error": str(exc)}
+                        errors[str(exc)] += 1
                         failed.append(i)
-                save(self.path, self.entries)
+                self.cache.put_many(answered)
                 retry = failed
                 if not retry:
                     break
             if retry:
-                raise RuntimeError(f"{len(retry)} LLM tasks failed; rerun to resume from {self.path}")
-        results = []
-        for key, task in zip(keys, tasks):
-            payload = self.entries[key]["result"]
-            results.append(validate(payload, task))
-        return results
+                reasons = "; ".join(f"{error} ×{count}" for error, count in errors.most_common(3))
+                raise RuntimeError(
+                    f"{len(retry)} LLM tasks failed ({reasons}). Rerun the same command to retry them, "
+                    f"answered tasks are read from {self.cache.path}"
+                )
+        return [validate(answers[key], task) for key, task in zip(keys, tasks)]
 
     def close(self) -> None:
         self.client.close()
 
 
-def attribute_groups(
-    assignments: list[dict], embed, *, threshold: float, by_id: dict[str, dict]
-) -> list[dict]:
-    attributes: dict[int, dict[str, set[str]]] = defaultdict(lambda: defaultdict(set))
-    relations: dict[str, dict[str, set[str]]] = defaultdict(lambda: defaultdict(set))
-    for item in assignments:
-        for dim, attr in item["fields"]:
-            members = relations[by_id[item["id"]]["peer"]] if dim == 6 else attributes[dim]
-            members[attr].add(item["id"])
-    groups = []
-    for dim, members in sorted(attributes.items()):
-        names = sorted(members)
-        vectors = normalized_vectors(embed(names))
-        similarity = vectors @ vectors.T
-        parents = list(range(len(names)))
-
-        def root(i: int) -> int:
-            while parents[i] != i:
-                parents[i] = parents[parents[i]]
-                i = parents[i]
-            return i
-
-        for i in range(len(names)):
-            for j in np.flatnonzero(similarity[i, :i] >= threshold):
-                left, right = root(i), root(int(j))
-                parents[max(left, right)] = min(left, right)
-        clusters: dict[int, list[int]] = defaultdict(list)
-        for i in range(len(names)):
-            clusters[root(i)].append(i)
-        for cluster in clusters.values():
-            attrs = [names[i] for i in cluster]
-            ids = sorted(set().union(*(members[attr] for attr in attrs)))
-            groups.append({"dim": dim, "attrs": attrs, "source_ids": ids})
-    for peer, members in sorted(relations.items()):
-        groups.append(
-            {
-                "dim": 6,
-                "peer": peer,
-                "attrs": sorted(members),
-                "source_ids": sorted(set().union(*members.values())),
-            }
-        )
-    return sorted(groups, key=lambda group: group["dim"])
-
-
 def pack_summary(
     dim: int,
-    attrs: list[str],
     rows: list[dict],
     *,
     reduced: bool,
     budget: InputBudget | None = None,
     peer: str | None = None,
+    domain: str | None = None,
     max_records: int = 300,
 ) -> list[dict]:
     def fits(items):
         if not reduced and len(items) > max_records:
             return False
-        prompt = summarize_prompt(dim, attrs, items, reduced=reduced, peer=peer)
+        prompt = summarize_prompt(dim, items, reduced=reduced, peer=peer, domain=domain)
         return budget is None or budget.fits(prompt)
 
     batches, current = [], []
@@ -678,9 +680,9 @@ def pack_summary(
         {
             "stage": "reduce" if reduced else "summarize",
             "dim": dim,
-            "attrs": attrs,
+            "domain": domain,
             "rows": batch,
-            "prompt": summarize_prompt(dim, attrs, batch, reduced=reduced, peer=peer),
+            "prompt": summarize_prompt(dim, batch, reduced=reduced, peer=peer, domain=domain),
             "source_ids": sorted(
                 {sid for row in batch for sid in (row["source_ids"] if reduced else [row["id"]])}
             ),
@@ -714,17 +716,64 @@ def validate_summary_batch(payload: Any, task: dict) -> list[dict]:
     return [results[i] for i in range(len(task["members"]))]
 
 
+def summary_partitions(
+    tasks: list[dict], owners: list[int] | None = None
+) -> dict[tuple, list[tuple[int, dict]]]:
+    """Summary tasks that may share a request: one stage and dimension, and one domain unless memories link
+    them. The parts of one group, tasks with the same owner, stay in one partition."""
+    keys = []
+    for task in tasks:
+        # Identity candidates of one person spread over domains (study status under background and under
+        # study, employment under job search and under work), and only one request can see which replaced which.
+        domain = None if task["dim"] == 1 else task.get("domain")
+        keys.append((task["stage"], task["dim"], domain))
+    # A memory classified under several domains feeds a group in each, and separate requests each write its fact.
+    # Profile groups linked by shared memories leave their domains for one partition, so one request writes the fact
+    # once. Dimension 7 is summarized per domain, and linking it would merge whole domains.
+    parent = list(range(len(tasks)))
+
+    def root(i: int) -> int:
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+
+    first: dict[tuple, int] = {}
+    for i, task in enumerate(tasks):
+        if task["dim"] in PROFILE_DIMS:
+            for sid in task["source_ids"]:
+                parent[root(i)] = root(first.setdefault((task["stage"], task["dim"], sid), i))
+        if owners is not None:
+            parent[root(i)] = root(first.setdefault(("owner", owners[i]), i))
+    spans = defaultdict(set)
+    for i, key in enumerate(keys):
+        spans[root(i)].add(key)
+    partitions = defaultdict(list)
+    for i, task in enumerate(tasks):
+        linked = len(spans[root(i)]) > 1
+        partitions[(*keys[i][:2], ("linked", root(i))) if linked else keys[i]].append((i, task))
+    return partitions
+
+
 def run_summary_tasks(
     tasks: list[dict],
     runner: LLMTasks,
     max_groups: int,
     budget: InputBudget | None,
     max_records: int = 300,
+    owners: list[int] | None = None,
 ) -> list[dict]:
-    partitions = defaultdict(list)
-    for i, task in enumerate(tasks):
-        partitions[(task["stage"], task["dim"])].append((i, task))
+    """Each task's result. Tasks with the same owner are parts of one group."""
+    partitions = summary_partitions(tasks, owners)
     requests, positions = [], []
+
+    def fits(batch):
+        source_count = len({sid for _, task in batch for sid in task["source_ids"]})
+        return (
+            len(batch) <= max_groups
+            and (batch[0][1]["stage"] != "summarize" or source_count <= max_records)
+            and (budget is None or budget.fits(batch_summary_prompt([task for _, task in batch])))
+        )
 
     def append(batch):
         members = [task for _, task in batch]
@@ -745,15 +794,16 @@ def run_summary_tasks(
             for entry in entries:
                 append([entry])
             continue
+        # Answered in one request, the parts of a group are merged into a few broad facts that leave most of
+        # their memories uncited, so the k-th parts of the partition's groups share requests and a reduce
+        # merges each group's parts.
+        layer, seen = {}, Counter()
+        for i, _ in entries:
+            owner = i if owners is None else owners[i]
+            layer[i], seen[owner] = seen[owner], seen[owner] + 1
         current = []
-        for entry in entries:
-            proposed = current + [entry]
-            source_count = len({sid for _, task in proposed for sid in task["source_ids"]})
-            if current and (
-                len(proposed) > max_groups
-                or (entry[1]["stage"] == "summarize" and source_count > max_records)
-                or (budget and not budget.fits(batch_summary_prompt([task for _, task in proposed])))
-            ):
+        for entry in sorted(entries, key=lambda entry: layer[entry[0]]):
+            if current and (layer[current[-1][0]] != layer[entry[0]] or not fits(current + [entry])):
                 append(current)
                 current = []
             current.append(entry)
@@ -781,6 +831,7 @@ def summarize_groups(
     budget: InputBudget | None = None,
     max_groups: int = 30,
     max_records: int = 300,
+    part_records: int = 30,
 ) -> list[dict]:
     states = []
     for group in groups:
@@ -794,18 +845,25 @@ def summarize_groups(
         for i, (group, state) in enumerate(zip(groups, states)):
             if state["result"] is not None:
                 continue
+            # Summarized as one long group, a large profile group gets a few broad facts that leave most of
+            # its memories uncited, so it is cut into time-ordered parts of similar size. Identity keeps
+            # every domain in one request, and dimensions 6 and 7 never reach the profile, so their groups
+            # stay whole.
+            rows, limit = state["rows"], max_records
+            if group["dim"] in PROFILE_DIMS and group["dim"] != 1:
+                limit = min(max_records, math.ceil(len(rows) / math.ceil(len(rows) / part_records)))
             batch = pack_summary(
                 group["dim"],
-                group["attrs"],
-                state["rows"],
+                rows,
                 reduced=state["reduced"],
                 budget=budget,
                 peer=group.get("peer"),
-                max_records=max_records,
+                domain=group.get("domain"),
+                max_records=limit,
             )
             tasks.extend(batch)
             owners.extend([i] * len(batch))
-        results = run_summary_tasks(tasks, runner, max_groups, budget, max_records=max_records)
+        results = run_summary_tasks(tasks, runner, max_groups, budget, max_records=max_records, owners=owners)
         by_group = defaultdict(list)
         for i, result in zip(owners, results):
             by_group[i].append(result)
@@ -825,114 +883,116 @@ def summarize_groups(
 
 def run(args: argparse.Namespace) -> dict:
     if args.dry_run:
-        records = read_memories(args.input_dir, preferences_only=args.preferences_only)
+        records, _ = read_memories(args.input_dir)
         return {"records": len(records), "by_kind": dict(Counter(row["kind"] for row in records))}
     budget = input_budget(args)
     print(f"codex_context_tokens={args.max_context_tokens}", flush=True)
     args.output_dir.mkdir(parents=True, exist_ok=True)
     record_path = args.output_dir / "records.json"
+    peer_path = args.output_dir / "peers.json"
+    domain_path = args.output_dir / "domains.json"
+    relation_path = args.output_dir / "peer_relations.json"
     task_path = args.output_dir / "classification_tasks.json"
     classification_path = args.output_dir / "classifications.json"
-    group_path = args.output_dir / "attribute_groups.json"
-    embedding = None
+    stages = STAGES if args.stage == "all" else (args.stage,)
     runner = None
     try:
-        if args.stage in {"prepare", "all"}:
-            records = read_memories(args.input_dir, preferences_only=args.preferences_only)
+        if "prepare" in stages:
+            records, peers = read_memories(args.input_dir)
             if secure_storage.file_exists(record_path) and load(record_path) != records:
                 raise ValueError("Input snapshot changed; use a new output directory")
             save(record_path, records)
-            texts = [
-                group_state_memories.embedding_text_for(
-                    content=row["content"],
-                    memory_type=row["type"],
-                    tags=row["tags"],
-                )
-                for row in records
+            save(peer_path, peers)
+        else:
+            records = load(record_path)
+        by_id = {row["id"]: row for row in records}
+        counts = tag_counts(records)
+        if "domains" in stages:
+            tags = domain_tags(counts)
+            if not tags:
+                raise ValueError("Extracted memories carry no tags; domains cannot be induced")
+            runner = runner or LLMTasks(args)
+            domains = runner.run(
+                [{"stage": "domains", "prompt": domain_prompt([(tag, counts[tag]) for tag in tags])}],
+                lambda payload, _: validate_domains(payload),
+            )[0]
+            tasks = [
+                {
+                    "stage": "tag_domains",
+                    "ids": [i for i, _ in batch],
+                    "prompt": tag_domain_prompt(domains, batch),
+                }
+                for batch in distill_profile.batched(list(enumerate(tags, 1)), TAG_BATCH)
             ]
-            embedding = Embeddings(args)
+            results = runner.run(
+                tasks, lambda payload, task: validate_tag_domains(payload, set(task["ids"]), len(domains))
+            )
+            mapping = {tags[i - 1]: domain for result in results for i, domain in result.items()}
+            save(domain_path, {"domains": domains, "tags": mapping})
+        if "peers" in stages:
+            tasks = [
+                {
+                    "stage": "peers",
+                    "peer": peer,
+                    "prompt": peer_prompt(
+                        peer, [prompt_record(row, include_sample_time=True) for row in rows]
+                    ),
+                }
+                for peer, rows in peer_memories(records).items()
+            ]
+            results = []
+            if tasks:
+                runner = runner or LLMTasks(args)
+                results = runner.run(tasks, lambda payload, _: validate_peer(payload))
+            save(relation_path, {task["peer"]: relation for task, relation in zip(tasks, results)})
+        if set(stages) & {"classify", "summarize"}:
+            state = load(domain_path)
+            domains, mapping = state["domains"], state["tags"]
+        if "classify" in stages:
+            if not secure_storage.file_exists(relation_path):
+                raise ValueError("Run the peers stage before classify")
+            relations = {peer: relation for peer, relation in load(relation_path).items() if relation}
+
+            def prompt(rows, dims):
+                return classify_prompt([prompt_record(row) for row in rows], dims, domains, relations)
+
             batches = classification_batches(
                 records,
-                embedding.get(texts),
+                provisional_domains(records, mapping, counts),
+                counts,
                 max_records=args.max_records,
-                neighbors=args.neighbor_top_k,
+                prompt=prompt,
                 budget=budget,
             )
             tasks = [
                 {
-                    "stage": "attributes" if allowed_dimensions(batch[0]) == (8,) else "classify",
+                    "stage": "classify",
                     "ids": [row["id"] for row in batch],
-                    "prompt": classify_prompt(
-                        [prompt_record(row) for row in batch], allowed_dimensions(batch[0])
-                    ),
+                    "prompt": prompt(batch, allowed_dimensions(batch[0])),
                 }
                 for batch in batches
             ]
             save(task_path, tasks)
-        else:
-            records = load(record_path)
-            if args.preferences_only and any(
-                row["kind"] != "S" or row["type"] != "preference" for row in records
-            ):
-                raise ValueError(
-                    "Snapshot contains non-preference memories; use the preferences output directory"
-                )
-        by_id = {row["id"]: row for row in records}
-        if args.stage in {"classify", "all"}:
-            tasks = load(task_path)
-            results = []
-            if tasks:
-                runner = LLMTasks(args)
-                results = runner.run(
-                    tasks,
-                    lambda payload, task: (
-                        validate_preference_attributes
-                        if task["stage"] == "attributes"
-                        else validate_classification
-                    )(
-                        payload,
-                        [by_id[rid] for rid in task["ids"]],
-                    ),
-                )
-            classifications = [item for batch in results for item in batch]
-            validate_classification({"items": classifications}, records)
-            save(classification_path, classifications)
-        if args.stage in {"group", "all"}:
-            classifications = load(classification_path)
-            validate_classification({"items": classifications}, records)
-            if any(dim != 6 for item in classifications for dim, _ in item["fields"]):
-                embedding = embedding or Embeddings(args)
-            groups = attribute_groups(
-                classifications,
-                embedding.get if embedding else None,
-                threshold=args.attribute_similarity,
-                by_id=by_id,
-            )
-            save(group_path, groups)
-        if args.stage in {"summarize", "all"}:
             runner = runner or LLMTasks(args)
-            classifications = validate_classification({"items": load(classification_path)}, records)
-            expected = defaultdict(set)
-            for item in classifications:
-                for dim, attr in item["fields"]:
-                    peer = by_id[item["id"]]["peer"] if dim == 6 else None
-                    expected[(dim, peer, attr)].add(item["id"])
-            groups = load(group_path)
-            represented = set()
-            facts, unused = [], []
-            for group in groups:
-                peer = group.get("peer") if group["dim"] == 6 else None
-                keys = {(group["dim"], peer, attr) for attr in group["attrs"]}
-                if (
-                    not keys
-                    or represented & keys
-                    or not keys <= expected.keys()
-                    or set(group["source_ids"]) != set().union(*(expected[key] for key in keys))
-                ):
-                    raise ValueError("Attribute group does not match classifications")
-                represented.update(keys)
-            if represented != set(expected):
-                raise ValueError("Missing attribute groups")
+            results = runner.run(
+                tasks,
+                lambda payload, task: validate_classification(
+                    payload, [by_id[rid] for rid in task["ids"]], len(domains)
+                ),
+            )
+            classifications = [item for batch in results for item in batch]
+            validate_classification({"items": classifications}, records, len(domains))
+            save(classification_path, classifications)
+        if "summarize" in stages:
+            classifications = validate_classification(
+                {"items": load(classification_path)}, records, len(domains)
+            )
+            relations = load(relation_path)
+            # Summaries see each memory's privacy level, and the output sources keep it.
+            levels = {item["id"]: item["sensitivity"] for item in classifications}
+            by_id = {rid: {**row, "sensitivity": levels[rid]} for rid, row in by_id.items()}
+            groups = summary_groups(classifications, by_id, domains)
+            runner = runner or LLMTasks(args)
             results = summarize_groups(
                 groups,
                 by_id,
@@ -940,31 +1000,38 @@ def run(args: argparse.Namespace) -> dict:
                 budget=budget,
                 max_groups=args.max_summary_groups,
                 max_records=args.max_summary_records,
+                part_records=args.max_part_records,
             )
             referenced_by_dim = defaultdict(set)
             for group, result in zip(groups, results):
                 referenced_by_dim[group["dim"]].update(
                     sid for fact in result["facts"] for sid in fact["source_ids"]
                 )
+            facts, unused = [], []
             for group, result in zip(groups, results):
+                labels = {"dim": group["dim"], "domain": group.get("domain")}
+                if "peer" in group:
+                    labels["peer"] = group["peer"]
                 facts.extend(
-                    {
-                        "dim": group["dim"],
-                        **fact,
-                        **source_statistics(fact["source_ids"], by_id),
-                    }
+                    {**labels, **fact, **source_statistics(fact["source_ids"], by_id)}
                     for fact in result["facts"]
                 )
                 unreferenced = sorted(set(group["source_ids"]) - referenced_by_dim[group["dim"]])
                 if unreferenced:
-                    unused.append({"dim": group["dim"], "attrs": group["attrs"], "source_ids": unreferenced})
-            facts.sort(key=lambda row: (row["dim"], row["attr"], row["value"]))
+                    unused.append({**labels, "source_ids": unreferenced})
+            order = {domain["name"]: i for i, domain in enumerate(domains, 1)}
+            facts.sort(key=lambda row: (row["dim"], order.get(row["domain"], 0), row["attr"], row["value"]))
             save(
                 args.output_dir / "organized_memories.json",
                 {
+                    "domains": domains,
                     "facts": facts,
                     "unused": unused,
                     "unassigned_ids": [item["id"] for item in classifications if not item["fields"]],
+                    "peers": {
+                        peer: {**info, "relation": relations.get(peer, "")}
+                        for peer, info in load(peer_path).items()
+                    },
                     "sources": by_id,
                 },
             )
@@ -972,25 +1039,17 @@ def run(args: argparse.Namespace) -> dict:
     finally:
         if runner is not None:
             runner.close()
-        if embedding is not None:
-            embedding.close()
 
 
 def main(argv: list[str] | None = None) -> None:
-    defaults = group_state_memories.default_args()
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--stage", choices=("prepare", "classify", "group", "summarize", "all"), default="all"
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
-    parser.add_argument("--input-dir", type=Path, default=Path("dataset/res_csv/agent/distill"))
+    parser.add_argument("--stage", choices=(*STAGES, "all"), default="all")
     parser.add_argument(
-        "--preferences-only", action="store_true", help="Only organize preference profile memories"
+        "--input-dir", type=Path, required=True, help="distill directory of a build-profile run"
     )
-    parser.add_argument(
-        "--output-dir",
-        type=Path,
-        help="Defaults to memory_organization_preferences for --preferences-only, otherwise memory_organization",
-    )
+    parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--config-path", type=Path, default=Path("settings.jsonc"))
     parser.add_argument("--llm-provider", choices=("api", "codex_exec"))
     parser.add_argument(
@@ -1008,32 +1067,29 @@ def main(argv: list[str] | None = None) -> None:
         default=300,
         help="Maximum unique source memories per initial summary request",
     )
-    parser.add_argument("--neighbor-top-k", type=int, default=defaults.neighbor_top_k)
-    parser.add_argument("--attribute-similarity", type=float, default=defaults.min_similarity)
-    parser.add_argument("--embedding-url")
-    parser.add_argument("--embedding-batch-size", type=int)
-    parser.add_argument("--no-auto-start-embedding-service", action="store_true")
+    # Summarized whole, profile groups of up to 30 memories had about 80% of their memories cited and groups
+    # of 100 or more had 64%. Cut into parts of 30, the large groups had 90%.
+    parser.add_argument(
+        "--max-part-records",
+        type=int,
+        default=30,
+        help="Maximum memories per part when a large summary group is cut into time-ordered parts",
+    )
     parser.add_argument(
         "--dry-run", action="store_true", help="Count extracted memories without model calls or writes"
     )
     args = parser.parse_args(argv)
     secure_storage.configure(args.config_path)
-    if args.output_dir is None:
-        name = "memory_organization_preferences" if args.preferences_only else "memory_organization"
-        args.output_dir = Path("dataset/res_csv/agent") / name
     for name in (
         "max_context_tokens",
         "max_records",
         "max_summary_groups",
         "max_summary_records",
-        "neighbor_top_k",
-        "embedding_batch_size",
+        "max_part_records",
     ):
         value = getattr(args, name)
         if value is not None and value < 1:
             parser.error(f"--{name.replace('_', '-')} must be positive")
-    if not 0 <= args.attribute_similarity <= 1:
-        parser.error("--attribute-similarity must be between 0 and 1")
     try:
         print(json.dumps(run(args), ensure_ascii=False, indent=2))
     except (ValueError, FileNotFoundError, RuntimeError) as exc:

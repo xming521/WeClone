@@ -23,7 +23,7 @@ class SecureStorageChecks(unittest.TestCase):
         self.root = Path(self.directory.name)
         self.config = self.root / "settings.jsonc"
         self.document = {
-            "version": "0.4.01",
+            "version": "1.0.1",
             "security_args": {
                 "storage_mode": "encrypted",
                 "state_dir": str(self.root / "state"),
@@ -329,39 +329,33 @@ class SecureStorageChecks(unittest.TestCase):
         self.assertTrue((source / "dataset_info.json").exists())
         self.assertTrue((source / "chat.json.enc").exists())
 
-    def test_stage2_and_checkpoints_use_suffixed_files_on_rerun(self):
-        from weclone.data import make_dataset_stage2 as stage2
-        from weclone.data.agent import distill_profile
+    def test_snapshot_and_checkpoints_use_suffixed_files_on_rerun(self):
+        from weclone.data.agent import chat_snapshot, distill_profile
+        from weclone.data.agent.llm_cache import LLMCache
+        from weclone.utils.config_models import MakeDatasetArgs
 
-        source, people = self.root / "chat.json", self.root / "people"
-        secure.write_json(
-            source,
-            [
-                {
-                    "id": "1",
-                    "chat_with": "synthetic-person",
-                    "messages": [
-                        {"role": "assistant", "content": "a sufficiently long synthetic message"},
-                    ],
-                }
-            ],
+        chats, people, registry = self.root / "csv", self.root / "people", self.root / "contacts.json"
+        (chats / "synthetic-person").mkdir(parents=True)
+        (chats / "synthetic-person" / "synthetic-person_1_1.csv").write_text(
+            "id,MsgSvrID,type_name,is_sender,talker,room_name,msg,src,CreateTime\n"
+            "1,1,文本,0,synthetic-person,,a sufficiently long synthetic message,,2025-01-01 10:00:00\n",
+            encoding="utf-8",
         )
-        with patch.object(stage2, "_load_ltp", return_value=None):
-            groups = stage2.build_stage2_outputs(input_path=source, output_dir=people)
-            self.assertTrue(groups[0]["file_name"].endswith(".json.enc"))
-            self.assertTrue(Path(groups[0]["output_path"]).is_file())
-            self.assertEqual(len(list(distill_profile.iter_chat_files(people))), 1)
-            stage2.build_stage2_outputs(input_path=source, output_dir=people)
-            secure.write_json(people / "unmanaged.json", [])
-            with self.assertRaisesRegex(ValueError, "not listed"):
-                stage2.build_stage2_outputs(input_path=source, output_dir=people)
-        checkpoint = self.root / "checkpoint.json"
-        state = {"version": 1, "entries": {"sample": {"status": "done"}}}
-        secure.write_json(checkpoint, state)
-        loaded = distill_profile.load_state(
-            checkpoint, input_dir=people, output_dir=self.root, overwrite=False
+        args = MakeDatasetArgs(platform="chat", csv_folder=str(chats))
+        chat_snapshot.build_snapshot(people, args, registry_path=registry)
+        self.assertTrue((people / "P1.json.enc").is_file())
+        self.assertTrue((people / f"{chat_snapshot.MANIFEST_NAME}.enc").is_file())
+        self.assertTrue(secure.encrypted_path(registry).is_file())
+        self.assertEqual(len(list(distill_profile.iter_chat_files(people))), 1)
+        with self.assertRaisesRegex(ValueError, "not empty"):
+            chat_snapshot.build_snapshot(people, args, registry_path=registry)
+        cache_path = self.root / "llm_cache.sqlite"
+        LLMCache(cache_path).put_many([("sample", "state", {"memories": ["synthetic-fact"]}, "")])
+        self.assertFalse(cache_path.exists())
+        self.assertTrue(secure.is_encrypted_file(secure.encrypted_path(cache_path)))
+        self.assertEqual(
+            LLMCache(cache_path).get_many(["sample"]), {"sample": {"memories": ["synthetic-fact"]}}
         )
-        self.assertEqual(loaded["entries"], state["entries"])
 
     def test_training_checkpoint_suffixes_and_materialization(self):
         from weclone.train.security import _encrypted_checkpoint
@@ -436,25 +430,23 @@ class SecureStorageChecks(unittest.TestCase):
                 self.assertEqual(secure.read_bytes(output / "adapter.safetensors.enc"), b"synthetic-model")
 
     def test_csv_scan_deduplicates_manual_plaintext_exports(self):
-        from weclone.data.qa_generator import DataProcessor
+        from weclone.data.chat_csv import list_csv_files
 
         folder = self.root / "csv" / "person"
         physical = secure.write_text(folder / "chat_0_1.csv", "synthetic,chat\n")
         secure.decrypt_file(physical, folder / "chat_0_1.csv")
-        processor = DataProcessor.__new__(DataProcessor)
-        processor.csv_folder = str(folder.parent)
-        processor._parsed_csv_files = None
-        self.assertEqual(processor.get_csv_files(), [str(physical)])
+        self.assertEqual(list_csv_files(folder.parent), [str(physical)])
 
-    def test_encrypted_memory_and_grouping_scans_preserve_logical_names(self):
-        from weclone.data.agent import canonicalize_state_memories, group_state_memories, organize_memories
+    def test_encrypted_memory_scan_preserves_logical_names(self):
+        from weclone.data.agent import organize_memories
 
         source = self.root / "distill/state_people/person.json"
-        physical = secure.write_json(
+        secure.write_json(
             source,
             [
                 {
                     "id": "1",
+                    "chat_with_id": "P1",
                     "state_memories": [
                         {
                             "type": "stable_fact",
@@ -466,15 +458,9 @@ class SecureStorageChecks(unittest.TestCase):
                 }
             ],
         )
-        records = organize_memories.read_memories(self.root / "distill")
+        records, _ = organize_memories.read_memories(self.root / "distill")
         self.assertEqual(records[0]["content"], "synthetic-private-fact")
         self.assertEqual(records[0]["origins"][0]["file"], str(source))
-        self.assertEqual(group_state_memories.input_paths_for(source.parent), [source])
-        self.assertEqual(group_state_memories.input_paths_for(physical), [source])
-        grouping = self.root / "grouping/person.prefilter_candidates.json"
-        secure.write_json(grouping, {})
-        self.assertEqual(canonicalize_state_memories.grouping_paths_for(grouping.parent), [grouping])
-        self.assertEqual(canonicalize_state_memories.person_stem(secure.resolve_path(grouping)), "person")
 
     def test_plaintext_keeps_names_and_rejects_existing_encrypted_sqlite(self):
         database = self.root / "review.sqlite3"

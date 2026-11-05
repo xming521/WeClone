@@ -779,6 +779,8 @@ class CodexExecClient(BaseBatchMixin):
             "orchestrator.skills.enabled": False,
             "web_search": "live" if self.enable_web_search else "disabled",
             "features.code_mode_host": True,
+            # Standard routing: do not inherit the Fast (priority) tier from ~/.codex/config.toml.
+            "service_tier": "default",
         }
         if is_encrypted_mode():
             overrides.update(

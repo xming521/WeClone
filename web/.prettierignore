@@ -2,3 +2,5 @@ node_modules
 dev-data
 pnpm-lock.yaml
 README.md
+src/i18n/resources.d.ts
+src/ds/

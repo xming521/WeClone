@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import type { Graph } from '@antv/g6';
 import * as Tooltip from '@radix-ui/react-tooltip';
-import { Menu, Move } from 'lucide-react';
+import { Move, PanelLeft } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import type { AtlasControls } from './atlas/atlasEngine';
 import { CanvasToolbar } from './atlas/CanvasToolbar';
 import { DetailPanel } from './atlas/DetailPanel';
 import { GraphCanvas } from './atlas/GraphCanvas';
@@ -10,13 +11,26 @@ import { SearchBox } from './atlas/SearchBox';
 import { ProfileActions } from './review/ProfileActions';
 import { ReviewBar } from './review/ReviewBar';
 import { ReviewOverlays } from './review/ReviewOverlays';
-import { DIMENSIONS, chineseNumeral } from './data';
+import { DIMENSIONS } from './data';
 import { useProfileStore } from './store';
 import { AuthGate, LogoutButton } from './Auth';
+import { AppBrand, BrandMark } from './BrandMark';
+import { LanguageSwitch } from './LanguageSwitch';
+import { ModeSwitch, modeFromHash } from './ModeSwitch';
+import { StyleApp } from './style/StyleApp';
+import { AssistantApp } from './assistant/AssistantApp';
+import { BotsApp } from './bots/BotsApp';
+import { SummaryApp } from './summary/SummaryApp';
+import { AboutApp } from './settings/AboutApp';
+import { SettingsApp } from './settings/SettingsApp';
+import { SettingsLink } from './settings/SettingsLink';
+import { Toaster } from './feedback/Toaster';
 
 function Atlas() {
+  const { t } = useTranslation();
   const viewModel = useProfileStore((state) => state.viewModel)!;
-  const graphRef = useRef<Graph | null>(null);
+  const domainCount = useProfileStore((state) => state.fullModel!.dimensionIds.length);
+  const atlasRef = useRef<AtlasControls | null>(null);
   const [leftOpen, setLeftOpen] = useState(true);
   const [leftTouched, setLeftTouched] = useState(false);
   const focusedDimension = useProfileStore((state) => state.focusedDimension);
@@ -24,6 +38,7 @@ function Atlas() {
   const detailOpen = useProfileStore((state) => state.detailOpen);
   const closeDetail = useProfileStore((state) => state.closeDetail);
   const active = viewModel.nodes.get(`dimension:${focusedDimension}`);
+  const byDomain = viewModel.grouping === 'domain';
 
   useEffect(() => {
     if (leftTouched) return;
@@ -34,6 +49,7 @@ function Atlas() {
   return (
     <Tooltip.Provider>
       <div className={`app-shell${leftOpen ? ' left-open' : ''}${detailOpen ? ' detail-open' : ''}`}>
+        <AppBrand />
         <LeftPanel
           open={leftOpen}
           onClose={() => {
@@ -52,35 +68,43 @@ function Atlas() {
             <div className="topbar-leading">
               {!leftOpen && (
                 <button
-                  className="sidebar-open"
+                  className="wc-iconbtn wc-iconbtn--outline"
                   type="button"
-                  aria-label="展开左栏"
+                  aria-label={t(($) => $.app.openLeftPanel)}
+                  title={t(($) => $.app.openLeftPanel)}
                   onClick={() => {
                     setLeftTouched(true);
                     setLeftOpen(true);
                   }}
                 >
-                  <Menu size={17} />
-                  <span>画像维度</span>
+                  <PanelLeft size={16} strokeWidth={1.8} />
                 </button>
               )}
+              <ModeSwitch mode="profile" />
               <div className="topbar-heading">
-                <span className="topbar-dot" /> 画像地图 <span className="topbar-divider">/</span>{' '}
-                <strong>{active?.name ?? `${chineseNumeral(DIMENSIONS.length)}维总览`}</strong>
+                <span className="topbar-divider">/</span>{' '}
+                <strong>
+                  {active?.name ??
+                    (byDomain
+                      ? t(($) => $.app.domainOverview, { count: domainCount })
+                      : t(($) => $.app.dimensionOverview, { count: DIMENSIONS.length }))}
+                </strong>
               </div>
             </div>
             <div className="topbar-actions">
               <SearchBox />
               <ProfileActions />
+              <LanguageSwitch />
+              <SettingsLink />
               <LogoutButton />
             </div>
           </div>
           <ReviewBar />
-          {!viewModel.facts.length && <div className="graph-empty">当前视图没有画像记录</div>}
-          <GraphCanvas key={resetVersion} graphRef={graphRef} />
-          <CanvasToolbar graphRef={graphRef} />
+          {!viewModel.facts.length && <div className="graph-empty">{t(($) => $.app.emptyView)}</div>}
+          <GraphCanvas key={resetVersion} atlasRef={atlasRef} />
+          <CanvasToolbar atlasRef={atlasRef} />
           <div className="canvas-help">
-            <Move size={15} /> 拖动节点牵动图谱 · 点击探索
+            <Move size={15} strokeWidth={1.8} /> {t(($) => $.app.canvasHelp)}
           </div>
         </main>
         <ReviewOverlays />
@@ -91,6 +115,7 @@ function Atlas() {
 }
 
 function ProfileApp() {
+  const { t } = useTranslation();
   const loaded = useProfileStore((state) => state.viewModel !== null);
   const error = useProfileStore((state) => state.error);
   const load = useProfileStore((state) => state.load);
@@ -101,26 +126,49 @@ function ProfileApp() {
   if (!loaded && error)
     return (
       <div className="load-state">
-        <span>✳</span>
-        <h1>画像地图暂时无法打开</h1>
+        <BrandMark />
+        <h1>{t(($) => $.app.loadFailed)}</h1>
         <p>{error}</p>
-        <button onClick={() => void reload()}>重试</button>
+        <button className="wc-btn wc-btn--primary" type="button" onClick={() => void reload()}>
+          {t(($) => $.common.retry)}
+        </button>
       </div>
     );
   if (!loaded)
     return (
       <div className="load-state">
-        <span className="loading-mark">✳</span>
-        <h1>正在展开画像地图</h1>
+        <BrandMark className="loading-mark" />
+        <h1>{t(($) => $.app.loading)}</h1>
       </div>
     );
   return <Atlas />;
 }
 
+function useMode() {
+  const [mode, setMode] = useState(() => modeFromHash(window.location.hash));
+  useEffect(() => {
+    const update = () => setMode(modeFromHash(window.location.hash));
+    window.addEventListener('hashchange', update);
+    return () => window.removeEventListener('hashchange', update);
+  }, []);
+  return mode;
+}
+
 export default function App() {
+  const mode = useMode();
+  const Page = {
+    profile: ProfileApp,
+    style: StyleApp,
+    summary: SummaryApp,
+    assistant: AssistantApp,
+    bots: BotsApp,
+    settings: SettingsApp,
+    about: AboutApp,
+  }[mode];
   return (
     <AuthGate>
-      <ProfileApp />
+      <Page />
+      <Toaster />
     </AuthGate>
   );
 }

@@ -1,11 +1,13 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { Download, Plus } from 'lucide-react';
+import { Trans, useTranslation } from 'react-i18next';
 import { exportProfile } from '../data';
+import { toast } from '../feedback/toast';
 import type { ReviewView } from '../data';
 import { useProfileStore } from '../store';
-import { STATUS } from './status';
 
 export function ProfileActions() {
+  const { t } = useTranslation();
   const input = useProfileStore((state) => state.input);
   const view = useProfileStore((state) => state.view);
   const busy = useProfileStore((state) => state.busy);
@@ -30,29 +32,39 @@ export function ProfileActions() {
     );
     const link = document.createElement('a');
     link.href = url;
-    link.download = `profile_${selection.view}.json`;
+    const file = `profile_${selection.view}.json`;
+    link.download = file;
     document.body.append(link);
     link.click();
     link.remove();
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
     close();
+    toast(t(($) => $.toast.downloaded, { file }));
   }
   return (
     <>
       <div className="header-review-actions">
-        <button disabled={busy} onClick={() => edit(null)} aria-label="新增画像" title="新增画像">
-          <Plus size={17} />
+        <button
+          className="wc-iconbtn"
+          type="button"
+          disabled={busy}
+          onClick={() => edit(null)}
+          aria-label={t(($) => $.editor.addTitle)}
+          title={t(($) => $.editor.addTitle)}
+        >
+          <Plus size={16} strokeWidth={1.8} />
         </button>
         <button
+          className="wc-iconbtn"
           type="button"
           disabled={busy || !input}
           onClick={() => {
             if (input) setSelection({ view, profile: exportProfile(input, view) });
           }}
-          aria-label="导出当前视图"
-          title="导出当前视图"
+          aria-label={t(($) => $.export.action)}
+          title={t(($) => $.export.action)}
         >
-          <Download size={17} />
+          <Download size={16} strokeWidth={1.8} />
         </button>
       </div>
       {selection && (
@@ -67,18 +79,21 @@ export function ProfileActions() {
           }}
         >
           <div className="fact-editor export-confirm">
-            <h2 id={titleId}>导出画像</h2>
+            <h2 id={titleId}>{t(($) => $.export.title)}</h2>
             <p id={descriptionId}>
-              是否导出当前“<strong>{STATUS[selection.view]}</strong>”视图中的{' '}
-              <strong>{selection.profile.facts.length}</strong> 条画像？
+              <Trans
+                i18nKey={($) => $.export.confirm}
+                values={{ view: t(($) => $.review.status[selection.view]), count: selection.profile.facts.length }}
+                components={{ strong: <strong /> }}
+              />
             </p>
-            <p className="editor-hint">导出为 JSON 文件，包含画像层级和关联来源。</p>
+            <p className="editor-hint">{t(($) => $.export.hint)}</p>
             <div className="editor-actions">
-              <button type="button" autoFocus onClick={close}>
-                取消
+              <button className="wc-btn" type="button" autoFocus onClick={close}>
+                {t(($) => $.common.cancel)}
               </button>
-              <button className="primary" type="button" onClick={download}>
-                确认导出
+              <button className="wc-btn wc-btn--primary" type="button" onClick={download}>
+                {t(($) => $.export.submit)}
               </button>
             </div>
           </div>

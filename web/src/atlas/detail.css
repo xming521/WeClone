@@ -1,0 +1,335 @@
+/* 画像档案：右侧面板。头、标签页、面包屑、分布条用 ds/components.css 里的 wc- 组件，这里只写面板外壳和总览的排版。 */
+
+.detail-panel {
+  position: absolute;
+  z-index: 7;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: var(--detail-panel-width);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border-left: 1px solid var(--line-1);
+  background: var(--panel);
+  transform: translateX(100%);
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    transform 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0.38s;
+}
+
+.detail-panel.is-open {
+  transform: none;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.detail-tabs {
+  flex: none;
+  margin: var(--space-1) var(--space-5) 0;
+}
+
+.detail-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-4) var(--space-4) var(--space-6) var(--space-5);
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-2) transparent;
+}
+
+/* A fade at the foot of the list says there is more to scroll to; it is part of the content, so it
+   rests below the last line at the end of the scroll and covers nothing in a short panel. */
+.detail-scroll {
+  padding-bottom: 0;
+}
+
+.detail-scroll::after {
+  content: '';
+  position: sticky;
+  bottom: 0;
+  display: block;
+  height: var(--space-11);
+  background: linear-gradient(to bottom, transparent, var(--panel));
+  pointer-events: none;
+}
+
+.detail-content > [role='tabpanel'][hidden] {
+  display: none;
+}
+
+.detail-content .review-list {
+  margin-top: 0;
+}
+
+/* Location, title, description */
+
+.detail-scope-heading {
+  margin-bottom: var(--space-5);
+}
+
+.detail-scope-heading h2 {
+  margin: 0;
+  color: var(--ink-1);
+  font: var(--text-title);
+  overflow-wrap: anywhere;
+}
+
+.detail-crumb + h2 {
+  margin-top: var(--space-1);
+}
+
+.detail-crumb-step {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.detail-crumb-step > svg {
+  flex: none;
+  color: var(--ink-4);
+}
+
+.detail-crumb button {
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-tail);
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.detail-crumb button:hover {
+  color: var(--ink-1);
+}
+
+.detail-scope-heading .detail-description {
+  margin: var(--space-1) 0 0;
+  color: var(--ink-3);
+  font: var(--text-caption);
+}
+
+/* Overview */
+
+.detail-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+
+.detail-metrics > div {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--line-1);
+  border-radius: var(--radius-card);
+  background: var(--card);
+  box-shadow: var(--shadow-1);
+}
+
+.detail-metrics strong {
+  color: var(--ink-1);
+  font: var(--text-numeral);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.detail-metrics span {
+  color: var(--ink-3);
+  font: var(--text-caption);
+}
+
+.detail-section,
+.detail-block {
+  margin-top: var(--space-6);
+}
+
+.detail-block-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.detail-block-head h3 {
+  margin: 0;
+  color: var(--ink-1);
+  font: var(--text-subtitle);
+}
+
+.detail-block-count {
+  color: var(--ink-2);
+  font: var(--text-count);
+  font-variant-numeric: tabular-nums;
+}
+
+.detail-block-note {
+  color: var(--ink-3);
+  font: var(--text-caption);
+}
+
+.detail-block-serial {
+  color: var(--ink-3);
+  font: var(--text-meta);
+  letter-spacing: 0.08em;
+  font-variant-numeric: tabular-nums;
+}
+
+.detail-block .wc-progress {
+  margin-bottom: var(--space-3);
+}
+
+.detail-block .wc-progress:empty {
+  background: var(--sunken);
+}
+
+.detail-legend-unrated .wc-phase {
+  color: var(--ink-3);
+}
+
+.detail-children {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.detail-child {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: var(--control-lg);
+  padding: var(--space-2) var(--space-3);
+  box-sizing: border-box;
+  border: 1px solid var(--line-1);
+  border-radius: var(--radius-control);
+  background: var(--card);
+  color: var(--ink-1);
+  font: var(--text-label);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform 0.2s,
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+
+.detail-child:hover {
+  transform: translateX(2px);
+  border-color: var(--line-2);
+  box-shadow: var(--shadow-1);
+}
+
+.detail-child:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+
+.detail-child-name {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.detail-child > svg {
+  flex: none;
+  color: var(--ink-3);
+}
+
+.detail-hint {
+  margin: var(--space-4) 0 0;
+  color: var(--ink-3);
+  font: var(--text-caption);
+}
+
+/* Footer */
+
+.detail-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: none;
+  height: 48px;
+  padding: 0 var(--space-5);
+  box-sizing: border-box;
+  border-top: 1px solid var(--line-1);
+}
+
+.detail-footer .wc-serial {
+  margin: 0;
+}
+
+.detail-footer .brand-mark {
+  width: 16px;
+  height: 16px;
+}
+
+/* Narrow screens: the panel floats over the canvas as a card, then as a sheet at the bottom. */
+
+@media (max-width: 900px) {
+  .detail-panel {
+    top: 190px;
+    right: 14px;
+    bottom: 14px;
+    width: 310px;
+    border: 1px solid var(--line-1);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-2);
+    transform: translateX(calc(100% + 14px));
+  }
+  .detail-panel.is-open {
+    transform: none;
+  }
+}
+
+@media (max-width: 650px) {
+  .detail-panel {
+    top: auto;
+    left: 7px;
+    right: 7px;
+    bottom: 8px;
+    width: auto;
+    height: min(65dvh, calc(100dvh - 150px));
+    transform: translateY(calc(100% + 8px));
+  }
+  .detail-panel.is-open {
+    transform: none;
+  }
+  /* Only the close button stays, in the corner. */
+  .detail-panel > .wc-panelhead {
+    position: absolute;
+    z-index: 2;
+    top: var(--space-2);
+    right: var(--space-2);
+    height: auto;
+    padding: 0;
+    border: 0;
+  }
+  .detail-panel > .wc-panelhead > :not(.wc-iconbtn),
+  .detail-panel > .detail-footer {
+    display: none;
+  }
+  .detail-tabs {
+    margin: var(--space-2) var(--space-11) 0 var(--space-4);
+  }
+  .detail-scroll {
+    padding: var(--space-4) var(--space-4) 0;
+  }
+  .detail-scope-heading h2 {
+    font: var(--text-subtitle);
+  }
+  .detail-metrics > div {
+    padding: var(--space-2) var(--space-3);
+  }
+  .detail-metrics strong {
+    font-size: 20px;
+    line-height: 24px;
+  }
+  .detail-section,
+  .detail-block {
+    margin-top: var(--space-4);
+  }
+}

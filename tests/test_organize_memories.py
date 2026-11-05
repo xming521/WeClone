@@ -1,12 +1,22 @@
 import json
+from collections import Counter
 from types import SimpleNamespace
 
-import numpy as np
 import pytest
 
 from weclone.core.inference.llm_client import LLMResponse
 from weclone.data.agent import organize_memories as organize
+from weclone.data.agent.llm_cache import LLMCache
 from weclone.prompts import memory_organization as prompts
+
+DOMAINS = [
+    {"name": "出行旅行", "description": "周末郊游和旅行安排"},
+    {"name": "学业", "description": "读博申请和课程"},
+]
+
+
+def field(dim, domain=1):
+    return {"dim": dim, "domain": domain}
 
 
 def test_source_statistics_weights_chats_equally_and_separates_peers():
@@ -25,9 +35,9 @@ def test_source_statistics_weights_chats_equally_and_separates_peers():
 def test_summary_injects_only_current_dimension_time_rule(dim, reduced):
     rows = ([{"attr": "属性", "value": "事实", "source_ids": ["a"]}] if reduced
             else [{"id": "a", "content": "事实", "sample_time": "2025-01-01"}])
-    tasks = [{"dim": dim, "attrs": [attr], "source_ids": ["a"], "rows": rows,
-              "stage": "reduce" if reduced else "summarize"} for attr in ("属性", "同义属性")]
-    for prompt in (prompts.summarize_prompt(dim, ["属性"], rows, reduced=reduced),
+    tasks = [{"dim": dim, "domain": domain, "source_ids": ["a"], "rows": rows,
+              "stage": "reduce" if reduced else "summarize"} for domain in ("学业", "工作")]
+    for prompt in (prompts.summarize_prompt(dim, rows, reduced=reduced),
                    prompts.batch_summary_prompt(tasks)):
         assert f"当前维度{dim}的时间规则：" in prompt
         assert prompt.count(prompts.DIMENSION_TIME_RULES[dim]) == 1
@@ -63,7 +73,7 @@ def test_prompt_record_limits_metadata_without_changing_source(content, expected
 
 def write_input(root):
     sample = {
-        "id": "sample1", "local_id": "0", "chat_with_id": "peer1", "time": "2025-01-01",
+        "id": "sample1", "local_id": "0", "chat_with_id": "P1", "time": "2025-01-01",
         "messages": [{"role": "assistant", "content": "RAW_CHAT_MUST_NOT_ENTER_PROMPTS"}],
     }
     profile = {**sample, "state_memories": [
@@ -92,7 +102,7 @@ def test_reader_filters_scores_without_modifying_sources(tmp_path, kind):
     path = tmp_path / folder / "peer.json"
     path.write_text(json.dumps([{**sample, **payload}], ensure_ascii=False))
     before = path.read_bytes()
-    rows = [row for row in organize.read_memories(tmp_path) if row["kind"] == kind]
+    rows = [row for row in organize.read_memories(tmp_path)[0] if row["kind"] == kind]
     assert [row["content"] for row in rows] == ["记忆2", "记忆3"]
     assert [(row["importance"], row["confidence"]) for row in rows] == [(2, 3), (4, 4)]
     assert [row["origins"][0]["memory_index"] for row in rows] == [2, 3]
@@ -102,19 +112,31 @@ def test_reader_filters_scores_without_modifying_sources(tmp_path, kind):
 def test_reader_excludes_raw_chat_deduplicates_auxiliary_and_retains_origins(tmp_path):
     _, profile = write_input(tmp_path)
     (tmp_path / "state_people" / "duplicate.json").write_text(json.dumps([profile]))
-    rows = organize.read_memories(tmp_path)
+    rows, peers = organize.read_memories(tmp_path)
     assert len(rows) == 2
     assert "RAW_CHAT" not in json.dumps(rows)
     assert len(next(row for row in rows if row["kind"] == "S")["origins"]) == 2
-    other = {**profile, "chat_with_id": "peer2"}
-    (tmp_path / "state_people" / "other.json").write_text(json.dumps([other]))
-    assert len(organize.read_memories(tmp_path)) == 3
+    assert peers == {"P1": {"chat_with": None}}
+    other = {**profile, "chat_with_id": "P3", "chat_with": "同学"}
+    (tmp_path / "state_people" / "other.json").write_text(json.dumps([other], ensure_ascii=False))
+    rows, peers = organize.read_memories(tmp_path)
+    assert len(rows) == 3
+    assert peers == {"P1": {"chat_with": None}, "P3": {"chat_with": "同学"}}
+    assert {peers[row["peer"]]["chat_with"] for row in rows if row["origins"][0]["file"].endswith("other.json")} == {"同学"}
+
+
+@pytest.mark.parametrize("chat_with_id", ["chat_with_0003", "P0", None])
+def test_reader_rejects_samples_without_a_contact_id(tmp_path, chat_with_id):
+    _, profile = write_input(tmp_path)
+    (tmp_path / "state_people" / "peer.json").write_text(json.dumps([{**profile, "chat_with_id": chat_with_id}]))
+    with pytest.raises(ValueError, match="contact id"):
+        organize.read_memories(tmp_path)
 
 
 @pytest.mark.parametrize("kind,type_,dims", [
-    ("S", "stable_fact", (1, 3, 4, 6)),
+    ("S", "stable_fact", (1, 2, 3, 4, 6, 8)),
     ("S", "goal", (1, 3, 4, 5, 6)),
-    ("S", "current_state", (1, 3, 4, 6)),
+    ("S", "current_state", (1, 2, 3, 4, 6, 8)),
     ("S", "preference", (8,)),
     ("ES", "ES", (5, 7)),
     ("EI", "EI", (5, 7)),
@@ -123,168 +145,13 @@ def test_dimension_source_contract(kind, type_, dims):
     assert organize.allowed_dimensions(record("x", kind, type_)) == dims
 
 
-def test_preference_reader_preserves_ids_scores_and_origins_without_reading_events(tmp_path):
-    _, profile = write_input(tmp_path)
-    profile["state_memories"].extend([
-        {"type": "preference", "content": text, "importance": importance, "confidence": confidence}
-        for text, importance, confidence in [("B喜欢徒步。", 2, 3), ("B不喜欢登山。", 3, 4),
-                                             ("B偏好独处。", 1, 4), ("B喜欢热闹。", 3, 2)]
-    ])
-    organize.save(tmp_path / "state_people" / "peer.json", [profile])
-    expected = [row for row in organize.read_memories(tmp_path) if row["type"] == "preference"]
-    (tmp_path / "event_people" / "peer.json").write_text("event input must not be read")
-    before = {p: p.read_bytes() for p in tmp_path.rglob("*.json")}
-    actual = organize.read_memories(tmp_path, preferences_only=True)
-    assert actual == expected
-    assert [row["content"] for row in actual] == ["B喜欢徒步。", "B不喜欢登山。"]
-    assert [row["origins"][0]["memory_index"] for row in actual] == [1, 2]
-    assert all(p.read_bytes() == content for p, content in before.items())
-
-
-def test_preference_reader_reports_no_matching_input(tmp_path):
-    write_input(tmp_path)
-    with pytest.raises(ValueError, match="No extracted memories match"):
-        organize.read_memories(tmp_path, preferences_only=True)
-
-
-@pytest.mark.parametrize("kind,type_", [("S", "stable_fact"), ("S", "goal"), ("ES", "ES")])
-def test_preference_dimension_rejects_other_memory_types(kind, type_):
-    with pytest.raises(ValueError, match="Invalid dimension/source"):
-        organize.validate_classification({"items": [{"id": "a", "fields": [[8, "活动偏好"]]}]},
-                                         [record("a", kind, type_)])
-
-
-def test_preference_pipeline_only_sends_preferences_and_retains_sources(tmp_path, monkeypatch):
-    input_dir, output_dir = tmp_path / "input", tmp_path / "output"
-    _, profile = write_input(input_dir)
-    profile["state_memories"].extend([
-        {"type": "preference", "content": text, "importance": 2, "confidence": 3}
-        for text in ["B喜欢与聊天对象一起徒步。", "B偏好与聊天对象结伴徒步。"]
-    ])
-    organize.save(input_dir / "state_people" / "peer.json", [profile])
-    seen_prompts = []
-
-    class Embeddings:
-        def __init__(self, args):
-            pass
-
-        def get(self, texts):
-            assert all("郊游" not in text for text in texts)
-            return [[1, 0] for _ in texts]
-
-        def close(self):
-            pass
-
-    class Runner:
-        def __init__(self, args):
-            pass
-
-        def run(self, tasks, validate):
-            results = []
-            for task in tasks:
-                seen_prompts.append(task["prompt"])
-                if task["stage"] == "attributes":
-                    payload = {"items": [{"id": rid, "attrs": [attr]}
-                                         for rid, attr in zip(task["ids"], ["活动偏好", "休闲活动偏好"])]}
-                else:
-                    assert task["stage"] in {"summarize", "reduce"}
-                    payload = {"facts": [{"attr": "活动偏好", "value": "B喜欢与P1结伴徒步。",
-                                          "source_ids": task["source_ids"]}]}
-                results.append(validate(payload, task))
-            return results
-
-        def close(self):
-            pass
-
-    monkeypatch.setattr(organize, "Embeddings", Embeddings)
-    monkeypatch.setattr(organize, "LLMTasks", Runner)
-    organize.main(["--preferences-only", "--input-dir", str(input_dir), "--output-dir", str(output_dir),
-                   "--max-context-tokens", "8192"])
-    output = organize.load(output_dir / "organized_memories.json")
-    assert len(output["facts"]) == 1
-    fact = output["facts"][0]
-    assert fact["dim"] == 8
-    assert set(fact["source_ids"]) == set(output["sources"])
-    assert len(output["sources"]) == 2
-    assert {row["type"] for row in output["sources"].values()} == {"preference"}
-    assert fact["support_count"] == 1
-    assert {task["stage"] for task in organize.load(output_dir / "classification_tasks.json")} == {"attributes"}
-    groups = organize.load(output_dir / "attribute_groups.json")
-    assert len(groups) == 1
-    assert set(groups[0]["attrs"]) == {"活动偏好", "休闲活动偏好"}
-    assert all("郊游" not in prompt and "RAW_CHAT" not in prompt for prompt in seen_prompts)
-    assert all('"peer":"P1"' in prompt for prompt in seen_prompts)
-
-
-@pytest.mark.parametrize("preferences_only", [False, True])
-def test_preference_cli_uses_separate_default_output(monkeypatch, preferences_only):
-    captured = []
-    monkeypatch.setattr(organize, "run", lambda args: captured.append(args))
-    organize.main(["--preferences-only"] if preferences_only else [])
-    assert captured[0].output_dir.name == (
-        "memory_organization_preferences" if preferences_only else "memory_organization"
-    )
-
-
-def test_mixed_prepare_separates_preference_naming_from_dimension_classification(tmp_path, monkeypatch):
-    input_dir, output_dir = tmp_path / "input", tmp_path / "output"
-    _, profile = write_input(input_dir)
-    profile["state_memories"].append(
-        {"type": "preference", "content": "B喜欢徒步。", "importance": 2, "confidence": 3}
-    )
-    organize.save(input_dir / "state_people" / "peer.json", [profile])
-
-    class Embeddings:
-        def __init__(self, args):
-            pass
-
-        def get(self, texts):
-            return [[1, 0] for _ in texts]
-
-        def close(self):
-            pass
-
-    monkeypatch.setattr(organize, "Embeddings", Embeddings)
-    organize.main(["--stage", "prepare", "--input-dir", str(input_dir), "--output-dir", str(output_dir),
-                   "--max-context-tokens", "8192"])
-    records = organize.load(output_dir / "records.json")
-    tasks = organize.load(output_dir / "classification_tasks.json")
-    assert len(records) == 3
-    assert {rid for task in tasks if task["stage"] == "classify" for rid in task["ids"]} == {
-        row["id"] for row in records if row["type"] != "preference"
-    }
-    assert {rid for task in tasks if task["stage"] == "attributes" for rid in task["ids"]} == {
-        row["id"] for row in records if row["type"] == "preference"
-    }
-
-
-def test_preference_attributes_fill_fixed_dimension_and_allow_multiple_attributes():
-    rows = [record("a", memory_type="preference"), record("b", memory_type="preference")]
-    payload = {"items": [{"id": "a", "attrs": ["活动偏好", "相处方式偏好"]}, {"id": "b", "attrs": []}]}
-    assert organize.validate_preference_attributes(payload, rows) == [
-        {"id": "a", "fields": [[8, "活动偏好"], [8, "相处方式偏好"]]}, {"id": "b", "fields": []},
-    ]
-
-
-@pytest.mark.parametrize("items", [
-    [{"id": "unknown", "attrs": ["活动偏好"]}],
-    [{"id": "a", "attrs": ["活动偏好", "活动偏好"]}],
-    [{"id": "a", "attrs": [""]}],
-    [{"id": "a", "attrs": "活动偏好"}],
-    [{"id": "a", "attrs": ["活动偏好"], "dim": 1}],
-    [],
-])
-def test_preference_attributes_reject_invalid_fields_and_references(items):
-    with pytest.raises(ValueError):
-        organize.validate_preference_attributes({"items": items}, [record("a", memory_type="preference")])
-
-
 @pytest.mark.parametrize("configured, expected", [(None, 95000), (160000, 152000)])
 def test_context_window_uses_codex_effective_window_not_model_maximum(tmp_path, monkeypatch, configured, expected):
     config = tmp_path / "settings.jsonc"
-    config.write_text(json.dumps({"agent_distill_args": {
-        "llm_provider": "codex_exec", "model": "test-model", "command": "codex"
-    }}))
+    config.write_text(json.dumps({
+        "codex_exec_args": {"model": "test-model", "command": "codex"},
+        "agent_distill_args": {"llm_provider": "codex_exec"},
+    }))
     catalog = {"models": [
         {"slug": "other-model", "max_context_window": 1000000},
         {"slug": "test-model", "context_window": 100000, "max_context_window": 200000,
@@ -308,9 +175,10 @@ def test_context_window_uses_codex_effective_window_not_model_maximum(tmp_path, 
 
 def test_unknown_model_requires_explicit_context_window(tmp_path, monkeypatch):
     config = tmp_path / "settings.jsonc"
-    config.write_text(json.dumps({"agent_distill_args": {
-        "llm_provider": "codex_exec", "model": "unknown-model", "command": "codex"
-    }}))
+    config.write_text(json.dumps({
+        "codex_exec_args": {"model": "unknown-model", "command": "codex"},
+        "agent_distill_args": {"llm_provider": "codex_exec"},
+    }))
     async def effective_config(command):
         return {}
 
@@ -339,32 +207,14 @@ def test_local_budget_does_not_override_codex_context_configuration(tmp_path, mo
     assert captured["max_workers"] == 30
 
 
-def test_token_budget_splits_classification_even_when_characters_fit():
-    rows = [record("a"), record("b", sample="two")]
-    counter = organize.InputBudget(8192, "o200k_base")
-    limit = max(counter.count(organize.classify_prompt(
-        [organize.prompt_record(row)], organize.allowed_dimensions(row),
-    )) for row in rows)
-    budget = organize.InputBudget(limit, "o200k_base")
-    batches = organize.classification_batches(
-        rows, [[1, 0], [1, 0]], max_records=20, neighbors=8, budget=budget,
-    )
-    assert [len(batch) for batch in batches] == [1, 1]
-    budget.max_tokens = limit - 1
-    with pytest.raises(ValueError, match="budget"):
-        organize.classification_batches(
-            rows, [[1, 0], [1, 0]], max_records=20, neighbors=8, budget=budget,
-        )
-
-
 @pytest.mark.parametrize("reduced", [False, True])
 def test_token_budget_splits_summary_and_cross_batch_merge(reduced):
     rows = ([{"attr": "职业", "value": "B从事算法工作。", "source_ids": [rid]} for rid in ("a", "b")]
             if reduced else [organize.prompt_record(record(rid)) for rid in ("a", "b")])
     counter = organize.InputBudget(8192, "o200k_base")
-    limit = max(counter.count(organize.summarize_prompt(1, ["职业"], [row], reduced=reduced)) for row in rows)
+    limit = max(counter.count(organize.summarize_prompt(1, [row], reduced=reduced)) for row in rows)
     budget = organize.InputBudget(limit, "o200k_base")
-    tasks = organize.pack_summary(1, ["职业"], rows, reduced=reduced, budget=budget)
+    tasks = organize.pack_summary(1, rows, reduced=reduced, budget=budget)
     assert [task["source_ids"] for task in tasks] == [["a"], ["b"]]
     assert all(budget.fits(task["prompt"]) for task in tasks)
 
@@ -377,22 +227,136 @@ def test_llm_checks_input_budget_before_sending_or_loading_cache():
         runner.run([{"prompt": "超过一个 token 的完整提示词", "stage": "classify"}], lambda *args: None)
 
 
-def test_classification_batches_use_tag_and_vector_union_without_losing_singletons():
-    rows = [record("a", tags=["读博"]), record("b", sample="two", tags=["读博"]),
-            record("c", sample="three", tags=["博士申请"]),
-            record("event", "ES", "ES", "four"), record("d", sample="five")]
-    vectors = [[1, 0], [0, 1], [0.99, 0.01], [1, 0], [-1, 0]]
-    batches = organize.classification_batches(rows, vectors, max_records=3, neighbors=1)
-    assert {row["id"] for row in batches[0]} == {"a", "b", "c"}
-    assert sorted(row["id"] for batch in batches for row in batch) == sorted(row["id"] for row in rows)
-    for batch in batches:
-        assert len({organize.allowed_dimensions(row) for row in batch}) == 1
+def test_record_tags_strip_and_deduplicate():
+    row = record("a", tags=[" 读博 ", "读博", "", 3, "导师"])
+    assert organize.record_tags(row) == ["读博", "导师"]
+    assert organize.tag_counts([row, record("b", tags=["读博"])]) == Counter({"读博": 2, "导师": 1})
 
 
-@pytest.mark.parametrize("defect", ["missing", "unknown", "duplicate", "wrong_source", "removed_dim", "english_attr", "bool_dim"])
-def test_classification_rejects_lost_ids_and_wrong_source_dimensions(defect):
+def test_domain_tags_keep_frequent_tags_between_floor_and_limit(monkeypatch):
+    monkeypatch.setattr(organize, "DOMAIN_TAG_FLOOR", 2)
+    monkeypatch.setattr(organize, "DOMAIN_TAG_LIMIT", 4)
+    assert organize.domain_tags(Counter({"a": 5, "b": 3, "c": 3, "d": 1, "e": 4, "f": 3})) == ["a", "e", "b", "c"]
+    assert organize.domain_tags(Counter({"a": 3, "b": 1, "c": 1})) == ["a", "b"]
+    assert organize.domain_tags(Counter({"a": 5, "b": 4, "c": 3, "d": 1})) == ["a", "b", "c"]
+
+
+def test_domain_induction_strips_names_and_descriptions():
+    payload = {"domains": [{"name": " 出行旅行 ", "description": " 周末郊游和旅行安排 "}]}
+    assert organize.validate_domains(payload) == [{"name": "出行旅行", "description": "周末郊游和旅行安排"}]
+
+
+@pytest.mark.parametrize("defect", ["empty", "too_many", "duplicate", "english", "no_description", "extra_key"])
+def test_domain_induction_rejects_invalid_domains(defect):
+    domains = [dict(domain) for domain in DOMAINS]
+    if defect == "empty":
+        domains = []
+    elif defect == "too_many":
+        domains = [{"name": f"领域{i}", "description": "描述"} for i in range(organize.MAX_DOMAINS + 1)]
+    elif defect == "duplicate":
+        domains[1]["name"] = domains[0]["name"]
+    elif defect == "english":
+        domains[0]["name"] = "travel"
+    elif defect == "no_description":
+        domains[0]["description"] = " "
+    else:
+        domains[0]["topics"] = []
+    with pytest.raises(ValueError):
+        organize.validate_domains({"domains": domains})
+
+
+@pytest.mark.parametrize("defect", [None, "missing", "unknown", "duplicate", "domain_range", "bool_domain"])
+def test_tag_mapping_covers_each_tag_once_with_known_domains(defect):
+    items = [{"id": 1, "domain": 2}, {"id": 2, "domain": 1}]
+    if defect == "missing":
+        items.pop()
+    elif defect == "unknown":
+        items[1]["id"] = 3
+    elif defect == "duplicate":
+        items[1]["id"] = 1
+    elif defect == "domain_range":
+        items[1]["domain"] = 3
+    elif defect == "bool_domain":
+        items[1]["domain"] = True
+    if defect is None:
+        assert organize.validate_tag_domains({"items": items}, {1, 2}, 2) == {1: 2, 2: 1}
+    else:
+        with pytest.raises(ValueError):
+            organize.validate_tag_domains({"items": items}, {1, 2}, 2)
+
+
+def test_provisional_domain_takes_majority_then_rarest_tag():
+    rows = [record("a", tags=["读博", "导师", "租房"]), record("b", tags=["读博", "租房"]),
+            record("c", tags=["未映射"]), record("d")]
+    mapping = {"读博": 2, "导师": 2, "租房": 1}
+    counts = Counter({"读博": 10, "导师": 3, "租房": 5})
+    assert organize.provisional_domains(rows, mapping, counts) == [2, 1, None, None]
+
+
+def test_classification_batches_follow_domain_then_rarest_shared_tag_then_time():
+    times = {"a": "2025-03-01", "b": "2025-01-01", "c": "2025-02-01", "d": "2025-01-01", "e": "2025-01-01",
+             "g": "2025-04-01"}
+    tags = {"a": ["读博"], "b": ["郊游"], "c": ["读博", "导师"], "d": ["读博"], "e": [], "g": ["导师", "开题"]}
+    rows = [{**record(rid, tags=tags[rid]), "sample_time": times[rid]} for rid in "abcdeg"]
+    rows += [record("ev", "ES", "ES", tags=["读博"]), record("p", memory_type="preference", tags=["郊游"])]
+    domains = [2, 1, 2, 2, None, 2, 2, 1]
+    batches = organize.classification_batches(rows, domains, organize.tag_counts(rows), max_records=3,
+                                              prompt=lambda batch, dims: "")
+    assert [[row["id"] for row in batch] for batch in batches] == [["b", "c", "g"], ["d", "a", "e"], ["ev"], ["p"]]
+
+
+def test_token_budget_splits_classification_even_when_characters_fit():
+    rows = [record("a"), record("b", sample="two")]
+
+    def prompt(batch, dims):
+        return organize.classify_prompt([organize.prompt_record(row) for row in batch], dims, DOMAINS)
+
+    counter = organize.InputBudget(8192, "o200k_base")
+    limit = max(counter.count(prompt([row], organize.allowed_dimensions(row))) for row in rows)
+    budget = organize.InputBudget(limit, "o200k_base")
+    counts = organize.tag_counts(rows)
+    batches = organize.classification_batches(rows, [None, None], counts, max_records=20, prompt=prompt, budget=budget)
+    assert [len(batch) for batch in batches] == [1, 1]
+    budget.max_tokens = limit - 1
+    with pytest.raises(ValueError, match="budget"):
+        organize.classification_batches(rows, [None, None], counts, max_records=20, prompt=prompt, budget=budget)
+
+
+def test_classification_fills_fifty_per_request():
+    rows = [record(str(i), sample=str(i)) for i in range(125)]
+    batches = organize.classification_batches(rows, [None] * 125, Counter(), max_records=50,
+                                              prompt=lambda batch, dims: "")
+    assert [len(batch) for batch in batches] == [50, 50, 25]
+    assert len({row["id"] for batch in batches for row in batch}) == 125
+
+
+def test_classify_prompts_share_rules_and_domains_before_memories():
+    first = organize.classify_prompt([organize.prompt_record(record("a"))], (1, 3, 4, 6), DOMAINS)
+    second = organize.classify_prompt([organize.prompt_record(record("b"))], (1, 3, 4, 6), DOMAINS)
+    prefix = first.split("\n记忆：\n")[0]
+    assert second.startswith(prefix + "\n记忆：\n")
+    assert prefix.startswith(prompts.CLASSIFY_RULES) and "1. 出行旅行：周末郊游和旅行安排" in prefix
+    preference = organize.classify_prompt(
+        [organize.prompt_record(record("p", memory_type="preference"))], (8,), DOMAINS
+    )
+    assert preference.startswith(prompts.PREFERENCE_RULES + prompts.domain_block(DOMAINS))
+    assert "本次维度" not in preference
+
+
+@pytest.mark.parametrize("kind,type_", [("S", "goal"), ("ES", "ES"), ("EI", "EI")])
+def test_preference_dimension_rejects_goals_and_events(kind, type_):
+    with pytest.raises(ValueError, match="Invalid dimension/source"):
+        organize.validate_classification({"items": [{"id": "a", "fields": [field(8)], "sensitivity": "normal"}]},
+                                         [record("a", kind, type_)], 2)
+
+
+@pytest.mark.parametrize("defect", ["missing", "unknown", "duplicate", "wrong_source", "removed_dim", "extra_key",
+                                    "bool_dim", "unknown_domain", "zero_domain", "bool_domain", "pair_field",
+                                    "duplicate_domain", "no_sensitivity", "unknown_sensitivity"])
+def test_classification_rejects_lost_ids_wrong_dimensions_and_domains(defect):
     rows = [record("s"), record("e", "ES", "ES")]
-    payload = {"items": [{"id": "s", "fields": [[1, "职业"]]}, {"id": "e", "fields": [[5, "约定"]]}]}
+    payload = {"items": [{"id": "s", "fields": [field(1)], "sensitivity": "normal"}, {"id": "e", "fields": [field(5)], "sensitivity": "normal"}]}
+    first = payload["items"][0]["fields"]
     if defect == "missing":
         payload["items"].pop()
     elif defect == "unknown":
@@ -400,68 +364,340 @@ def test_classification_rejects_lost_ids_and_wrong_source_dimensions(defect):
     elif defect == "duplicate":
         payload["items"][1]["id"] = "s"
     elif defect == "wrong_source":
-        payload["items"][1]["fields"] = [[1, "职业"]]
+        payload["items"][1]["fields"] = [field(1)]
     elif defect == "removed_dim":
-        payload["items"][1]["fields"] = [[2, "人生经历"]]
-    elif defect == "english_attr":
-        payload["items"][0]["fields"] = [[1, "occupation"]]
+        payload["items"][1]["fields"] = [field(2)]
+    elif defect == "extra_key":
+        first[0]["attr"] = "职业"
+    elif defect == "bool_dim":
+        first[0]["dim"] = True
+    elif defect == "unknown_domain":
+        first[0]["domain"] = 3
+    elif defect == "zero_domain":
+        first[0]["domain"] = 0
+    elif defect == "bool_domain":
+        first[0]["domain"] = True
+    elif defect == "pair_field":
+        payload["items"][0]["fields"] = [[1, 1]]
+    elif defect == "no_sensitivity":
+        del payload["items"][1]["sensitivity"]
+    elif defect == "unknown_sensitivity":
+        payload["items"][1]["sensitivity"] = "secret"
     else:
-        payload["items"][0]["fields"] = [[True, "职业"]]
+        first.append(field(1))
     with pytest.raises(ValueError):
-        organize.validate_classification(payload, rows)
+        organize.validate_classification(payload, rows, 2)
 
 
-def test_open_attributes_multi_assignment_and_empty_result_are_supported():
+def test_multi_assignment_and_empty_result_are_supported():
     rows = [record("a"), record("b")]
     payload = {"items": [
-        {"id": "a", "fields": [[1, "职业"], [4, "照护可用时间"]]},
-        {"id": "b", "fields": []},
+        {"id": "a", "fields": [field(1), field(1, 2), field(4, 2)], "sensitivity": "normal"},
+        {"id": "b", "fields": [], "sensitivity": "normal"},
     ]}
-    assert organize.validate_classification(payload, rows) == payload["items"]
-
-
-@pytest.mark.parametrize("reverse", [False, True])
-def test_attribute_clustering_connects_chains_within_dimension(reverse):
-    assignments = [
-        {"id": "a", "fields": [[1, "甲属性"]]},
-        {"id": "b", "fields": [[1, "乙属性"]]},
-        {"id": "c", "fields": [[1, "丙属性"]]},
-        {"id": "d", "fields": [[6, "甲属性"]]},
-        {"id": "e", "fields": [[1, "甲属性"]]},
-        {"id": "f", "fields": [[1, "丁属性"]]},
-        {"id": "a", "fields": [[1, "乙属性"]]},
-    ]
-    angles = {"甲属性": 0, "乙属性": 30, "丙属性": 60, "丁属性": 180}
-
-    def embed(names):
-        return [[np.cos(np.deg2rad(angles[name])), np.sin(np.deg2rad(angles[name]))] for name in names]
-
-    groups = organize.attribute_groups(assignments[::-1] if reverse else assignments, embed, threshold=0.8,
-                                       by_id={item["id"]: record(item["id"]) for item in assignments})
-    assert len([group for group in groups if group["dim"] == 1]) == 2
-    assert next(group for group in groups if group["dim"] == 6)["source_ids"] == ["d"]
-    connected = next(group for group in groups if "b" in group["source_ids"])
-    assert connected["attrs"] == sorted(["甲属性", "乙属性", "丙属性"])
-    assert connected["source_ids"] == ["a", "b", "c", "e"]
-    assert next(group for group in groups if "f" in group["source_ids"])["source_ids"] == ["f"]
-
-
-def test_relation_groups_collect_each_peer_without_embedding_attributes():
-    rows = {rid: {**record(rid), "peer": peer} for rid, peer in [("a", "P1"), ("b", "P1"), ("c", "P2")]}
-    assignments = [
-        {"id": "a", "fields": [[6, "关系状态"], [6, "互动方式"]]},
-        {"id": "b", "fields": [[6, "导师关系"]]},
-        {"id": "c", "fields": [[6, "关系状态"]]},
+    assert organize.validate_classification(payload, rows, 2) == [
+        {"id": "a", "fields": [field(1), field(1, 2), field(4, 2)], "sensitivity": "normal"},
+        {"id": "b", "fields": [], "sensitivity": "normal"},
     ]
 
-    def embed(names):
-        pytest.fail("Relation attributes must not use embeddings")
 
-    groups = organize.attribute_groups(assignments, embed, threshold=0.83, by_id=rows)
-    assert groups == [
-        {"dim": 6, "peer": "P1", "attrs": sorted(["关系状态", "互动方式", "导师关系"]), "source_ids": ["a", "b"]},
-        {"dim": 6, "peer": "P2", "attrs": ["关系状态"], "source_ids": ["c"]},
+def test_summary_units_follow_domains_and_peers():
+    rows = {rid: {**record(rid, kind), "peer": peer} for rid, kind, peer in
+            [("a", "S", "P1"), ("b", "S", "P2"), ("e", "ES", "P1"), ("f", "ES", "P2"), ("g", "ES", "P1")]}
+    classifications = [
+        {"id": "a", "fields": [field(1, 2), field(3, 2), field(6, 2)]},
+        {"id": "b", "fields": [field(1, 2), field(1), field(6)]},
+        {"id": "e", "fields": [field(5, 2), field(7)]},
+        {"id": "f", "fields": [field(7)]},
+        {"id": "g", "fields": [field(7, 2)]},
     ]
+    assert organize.summary_groups(classifications, rows, DOMAINS) == [
+        {"dim": 1, "domain": "出行旅行", "source_ids": ["b"]},
+        {"dim": 1, "domain": "学业", "source_ids": ["a", "b"]},
+        {"dim": 3, "domain": "学业", "source_ids": ["a"]},
+        {"dim": 5, "domain": "学业", "source_ids": ["e"]},
+        {"dim": 6, "peer": "P1", "source_ids": ["a"]},
+        {"dim": 6, "peer": "P2", "source_ids": ["b"]},
+        {"dim": 7, "domain": "出行旅行", "source_ids": ["e", "f"]},
+        {"dim": 7, "domain": "学业", "source_ids": ["g"]},
+    ]
+
+
+@pytest.mark.parametrize("dim", [1, 3])
+def test_summary_requests_combine_identity_across_domains_and_keep_other_domains_apart(dim):
+    rows = {rid: record(rid) for rid in ("a", "b", "c")}
+    groups = [{"dim": dim, "domain": domain, "source_ids": [rid]}
+              for domain, rid in [("工作", "a"), ("副业", "b"), ("学业", "c")]]
+    requests = []
+
+    class Runner:
+        def run(self, tasks, validate):
+            requests.extend(tasks)
+            return [validate({"groups": [{"id": i, "facts": []} for i in range(len(task["members"]))]}, task)
+                    if "members" in task else validate({"facts": []}, task) for task in tasks]
+
+    organize.summarize_groups(groups, rows, Runner())
+    if dim == 1:
+        assert len(requests) == 1
+        assert [member["domain"] for member in requests[0]["members"]] == ["工作", "副业", "学业"]
+        assert '"domain":"工作"' in requests[0]["prompt"]
+        return
+    assert [request["domain"] for request in requests] == ["工作", "副业", "学业"]
+    assert '领域："学业"' in requests[2]["prompt"]
+
+
+@pytest.mark.parametrize("dim", [3, 7])
+def test_summary_requests_join_groups_of_different_domains_that_share_a_memory(dim):
+    rows = {rid: record(rid) for rid in ("a", "b", "c", "d")}
+    units = [("工作", ["a"]), ("副业", ["b", "c"]), ("学业", ["c", "d"])] if dim == 3 else [
+        ("工作", ["a", "b", "c"]), ("学业", ["c", "d"])]
+    groups = [{"dim": dim, "domain": domain, "source_ids": ids} for domain, ids in units]
+    requests = []
+
+    class Runner:
+        def run(self, tasks, validate):
+            requests.extend(tasks)
+            return [validate({"groups": [{"id": i, "facts": []} for i in range(len(task["members"]))]}, task)
+                    if "members" in task else validate({"facts": []}, task) for task in tasks]
+
+    organize.summarize_groups(groups, rows, Runner())
+    if dim == 7:
+        assert [request["domain"] for request in requests] == ["工作", "学业"]
+        return
+    assert len(requests) == 2
+    assert requests[0]["domain"] == "工作"
+    assert [member["domain"] for member in requests[1]["members"]] == ["副业", "学业"]
+
+
+def test_task_schema_follows_stage_and_overrides():
+    assert organize.task_schema({"stage": "domains"}) is organize.DOMAIN_SCHEMA
+    assert organize.task_schema({"stage": "tag_domains"}) is organize.TAG_DOMAIN_SCHEMA
+    assert organize.task_schema({"stage": "peers"}) is organize.PEER_SCHEMA
+    assert organize.task_schema({"stage": "classify"}) is organize.CLASSIFY_SCHEMA
+    assert organize.task_schema({"stage": "reduce"}) is organize.SUMMARY_SCHEMA
+    assert organize.task_schema({"stage": "summarize", "members": []}) is organize.BATCH_SUMMARY_SCHEMA
+    assert organize.task_schema({"stage": "split_topic", "schema": {"type": "object"}}) == {"type": "object"}
+
+
+def fake_runner(fields_for, seen, *, value="B计划与朋友周末郊游。"):
+    """Stand-in for LLMTasks that answers every organizer stage."""
+
+    class Runner:
+        def __init__(self, args):
+            pass
+
+        def run(self, tasks, validate):
+            results = []
+            for task in tasks:
+                seen.append(task)
+                if task["stage"] == "domains":
+                    payload = {"domains": DOMAINS}
+                elif task["stage"] == "tag_domains":
+                    payload = {"items": [{"id": i, "domain": 1} for i in task["ids"]]}
+                elif task["stage"] == "peers":
+                    payload = {"relation": " B的 朋友 "}
+                elif task["stage"] == "classify":
+                    payload = {"items": [{"id": rid, "fields": fields_for(rid), "sensitivity": "private"} for rid in task["ids"]]}
+                elif "members" in task:
+                    payload = {"groups": [
+                        {"id": i, "facts": [{"attr": "安排", "value": value,
+                                             "source_ids": member["source_ids"], "sensitivity": "normal", "time_scope": "current"}]}
+                        for i, member in enumerate(task["members"])
+                    ]}
+                else:
+                    payload = {"facts": [{"attr": "安排", "value": value,
+                                          "source_ids": task["source_ids"], "sensitivity": "normal", "time_scope": "current"}]}
+                results.append(validate(payload, task))
+            return results
+
+        def close(self):
+            pass
+
+    return Runner
+
+
+def run_args(input_dir, output_dir, stage="all", **overrides):
+    return SimpleNamespace(stage=stage, dry_run=False, input_dir=input_dir,
+                           output_dir=output_dir, max_context_tokens=272000, token_encoding="o200k_base",
+                           tokenizer_file=None, max_records=20, max_summary_groups=30, max_summary_records=300,
+                           max_part_records=30, **overrides)
+
+
+@pytest.mark.parametrize("stagewise", [False, True])
+@pytest.mark.parametrize("extra_sample", [None, "same_peer", "other_peer"])
+def test_full_pipeline_keeps_inputs_and_joins_profile_goals_with_events(tmp_path, monkeypatch, stagewise,
+                                                                       extra_sample):
+    input_dir, output_dir = tmp_path / "input", tmp_path / "output"
+    _, profile = write_input(input_dir)
+    if extra_sample:
+        extra = {**profile, "id": "sample2"} if extra_sample == "same_peer" else {**profile, "chat_with_id": "P2"}
+        organize.save(input_dir / "state_people" / "peer.json", [profile, extra])
+    before = {p: p.read_bytes() for p in input_dir.rglob("*.json")}
+    seen = []
+    monkeypatch.setattr(organize, "LLMTasks", fake_runner(lambda rid: [field(5)], seen))
+    for stage in organize.STAGES if stagewise else ("all",):
+        organize.run(run_args(input_dir, output_dir, stage))
+    output = organize.load(output_dir / "organized_memories.json")
+    assert organize.load(output_dir / "domains.json") == {"domains": DOMAINS, "tags": {"出行旅行": 1}}
+    assert "topics" not in output
+    assert [task["domain"] for task in seen if task["stage"] == "summarize"] == ["出行旅行"]
+    assert len(output["facts"]) == 1
+    fact = output["facts"][0]
+    assert (fact["dim"], fact["domain"]) == (5, "出行旅行") and "topic" not in fact
+    assert len(fact["source_ids"]) == 2 + bool(extra_sample)
+    assert fact["support_count"] == 1 + bool(extra_sample)
+    assert fact["source_confidence_mean"] == 3
+    assert fact["source_importance_mean"] == 2
+    assert output["unused"] == [] and output["unassigned_ids"] == []
+    assert output["domains"] == DOMAINS
+    assert {row["kind"] for row in output["sources"].values()} == {"S", "ES"}
+    assert sorted(output["peers"]) == (["P1", "P2"] if extra_sample == "other_peer" else ["P1"])
+    assert {row["peer"] for row in output["sources"].values()} <= set(output["peers"])
+    assert fact["sensitivity"] == "normal"
+    assert fact["time_scope"] == "current"
+    assert {row["sensitivity"] for row in output["sources"].values()} == {"private"}
+    summaries = [task["prompt"] for task in seen if task["stage"] == "summarize"]
+    assert summaries and all('"sensitivity":"private"' in prompt for prompt in summaries)
+    assert all(prompts.TIME_SCOPE_RULES in prompt for prompt in summaries)
+    assert all(prompts.SENSITIVITY_RULES in task["prompt"] for task in seen if task["stage"] in ("classify", "summarize"))
+    classify = [task["prompt"] for task in seen if task["stage"] == "classify"]
+    assert classify and all(prompts.domain_block(DOMAINS) in prompt for prompt in classify)
+    assert "出行旅行 " in next(task["prompt"] for task in seen if task["stage"] == "domains")
+    assert "RAW_CHAT" not in "\n".join(task["prompt"] for task in seen)
+    assert all(p.read_bytes() == content for p, content in before.items())
+
+
+def test_pipeline_keeps_relations_per_peer_and_events_per_domain(tmp_path, monkeypatch):
+    input_dir, output_dir = tmp_path / "input", tmp_path / "output"
+    sample, profile = write_input(input_dir)
+    organize.save(input_dir / "state_people" / "peer.json", [profile, {**profile, "chat_with_id": "P2"}])
+    events = [{"surface_event": text, "event_types": ["state_event"], "tags": ["出行旅行"], "importance": 2,
+               "confidence": 3} for text in ("周末下雨。", "地铁停运。")]
+    organize.save(input_dir / "event_people" / "peer.json",
+                  [{**sample, "event_memories": {"surface_events": events}}])
+
+    def fields_for(rid):
+        return [field(6)] if rid.startswith("S:") else [field(7, 2)]
+
+    monkeypatch.setattr(organize, "LLMTasks", fake_runner(fields_for, []))
+    organize.run(run_args(input_dir, output_dir))
+    output = organize.load(output_dir / "organized_memories.json")
+    assert [(fact["dim"], fact["domain"], fact.get("peer")) for fact in output["facts"]] == [
+        (6, None, "P1"), (6, None, "P2"), (7, "学业", None),
+    ]
+    assert len(output["facts"][2]["source_ids"]) == 2
+
+
+def test_prepare_rejects_a_changed_input_snapshot(tmp_path):
+    input_dir, output_dir = tmp_path / "input", tmp_path / "output"
+    _, profile = write_input(input_dir)
+    organize.run(run_args(input_dir, output_dir, "prepare"))
+    organize.run(run_args(input_dir, output_dir, "prepare"))
+    profile["state_memories"][0]["content"] = "B计划周末去爬山。"
+    organize.save(input_dir / "state_people" / "peer.json", [profile])
+    with pytest.raises(ValueError, match="snapshot changed"):
+        organize.run(run_args(input_dir, output_dir, "prepare"))
+
+
+def test_domains_require_tagged_memories(tmp_path, monkeypatch):
+    input_dir, output_dir = tmp_path / "input", tmp_path / "output"
+    _, profile = write_input(input_dir)
+    profile["state_memories"][0]["tags"] = []
+    organize.save(input_dir / "state_people" / "peer.json", [profile])
+    (input_dir / "event_people" / "peer.json").unlink()
+    monkeypatch.setattr(organize, "LLMTasks", fake_runner(lambda rid: [], []))
+    with pytest.raises(ValueError, match="no tags"):
+        organize.run(run_args(input_dir, output_dir))
+
+
+def test_classify_stage_sends_preferences_with_preference_rules(tmp_path, monkeypatch):
+    input_dir, output_dir = tmp_path / "input", tmp_path / "output"
+    _, profile = write_input(input_dir)
+    profile["state_memories"].append(
+        {"type": "preference", "content": "B喜欢徒步。", "tags": ["户外运动"], "importance": 2, "confidence": 3}
+    )
+    organize.save(input_dir / "state_people" / "peer.json", [profile])
+
+    def fields_for(rid):
+        return []
+
+    monkeypatch.setattr(organize, "LLMTasks", fake_runner(fields_for, []))
+    for stage in ("prepare", "domains", "peers", "classify"):
+        organize.run(run_args(input_dir, output_dir, stage))
+    records = organize.load(output_dir / "records.json")
+    tasks = organize.load(output_dir / "classification_tasks.json")
+    preference_ids = {row["id"] for row in records if row["type"] == "preference"}
+    assert len(records) == 3 and len(preference_ids) == 1
+    for task in tasks:
+        is_preference = set(task["ids"]) <= preference_ids
+        assert is_preference or not set(task["ids"]) & preference_ids
+        assert task["prompt"].startswith(prompts.PREFERENCE_RULES if is_preference else prompts.CLASSIFY_RULES)
+    assert {rid for task in tasks for rid in task["ids"]} == {row["id"] for row in records}
+    assert organize.load(output_dir / "classifications.json") == [
+        {"id": rid, "fields": [], "sensitivity": "private"} for task in tasks for rid in task["ids"]
+    ]
+
+
+def test_peer_memories_keep_mentions_state_first_then_important_events_in_time_order():
+    rows = [{**record(rid, kind=kind), "peer": peer, "content": content, "importance": importance,
+             "sample_time": time}
+            for rid, kind, peer, content, importance, time in [
+                ("e1", "ES", "P10", "B与A吃饭。", 2, "2024-03"),
+                ("e2", "ES", "P10", "B请A帮忙。", 4, "2024-02"),
+                ("s1", "S", "P10", "B与A是同事。", 2, "2024-04"),
+                ("e3", "ES", "P10", "B看了A股行情。", 5, "2024-01"),
+                ("e4", "ES", "P2", "B与A约饭。", 2, "2024-01"),
+                ("e5", "ES", "P3", "B在学习。", 5, "2024-01"),
+            ]]
+    selected = organize.peer_memories(rows, limit=2)
+    assert list(selected) == ["P2", "P10"]
+    assert [row["id"] for row in selected["P10"]] == ["e2", "s1"]
+    assert [row["id"] for row in selected["P2"]] == ["e4"]
+
+
+@pytest.mark.parametrize("payload,expected", [
+    ({"relation": " B的 同事 "}, "B的 同事"),
+    ({"relation": ""}, ""),
+    ({}, ValueError),
+    ({"relation": "同事", "note": "x"}, ValueError),
+    ({"relation": 1}, ValueError),
+    ({"relation": "关" * 101}, ValueError),
+])
+def test_peer_relation_is_one_short_line(payload, expected):
+    if expected is ValueError:
+        with pytest.raises(ValueError):
+            organize.validate_peer(payload)
+    else:
+        assert organize.validate_peer(payload) == expected
+
+
+def test_peer_relations_reach_classify_prompts_and_organized_peers(tmp_path, monkeypatch):
+    input_dir, output_dir = tmp_path / "input", tmp_path / "output"
+    sample, profile = write_input(input_dir)
+    profile["state_memories"].append(
+        {"type": "goal", "content": "B打算和大学同学A一起去郊游。", "tags": ["出行旅行"], "importance": 2, "confidence": 3}
+    )
+    organize.save(input_dir / "state_people" / "peer.json", [profile, {**profile, "chat_with_id": "P2",
+                                                                       "state_memories": profile["state_memories"][:1]}])
+    seen = []
+    monkeypatch.setattr(organize, "LLMTasks", fake_runner(lambda rid: [field(5)], seen))
+    organize.run(run_args(input_dir, output_dir, "prepare"))
+    organize.run(run_args(input_dir, output_dir, "domains"))
+    with pytest.raises(ValueError, match="peers stage"):
+        organize.run(run_args(input_dir, output_dir, "classify"))
+    for stage in ("peers", "classify", "summarize"):
+        organize.run(run_args(input_dir, output_dir, stage))
+    requests = [task for task in seen if task["stage"] == "peers"]
+    assert [task["peer"] for task in requests] == ["P1"]
+    assert requests[0]["prompt"].startswith(prompts.PEER_RULES)
+    assert "B打算和大学同学P1一起去郊游。" in requests[0]["prompt"] and "B计划周末去郊游" not in requests[0]["prompt"]
+    assert organize.load(output_dir / "peer_relations.json") == {"P1": "B的 朋友"}
+    classify = [task["prompt"] for task in seen if task["stage"] == "classify"]
+    block = prompts.domain_block(DOMAINS) + "\n## 聊天对象\nP1：B的 朋友\n"
+    assert classify and all(block in prompt for prompt in classify)
+    assert all(prompt.index(block) < prompt.index("记忆：") for prompt in classify)
+    output = organize.load(output_dir / "organized_memories.json")
+    assert {peer: info["relation"] for peer, info in output["peers"].items()} == {"P1": "B的 朋友", "P2": ""}
 
 
 @pytest.mark.parametrize("split", [False, True])
@@ -469,12 +705,12 @@ def test_relation_summary_isolates_peers_through_split_and_reduce(split):
     rows = {f"{peer}-{i}": {**record(f"{peer}-{i}"), "peer": peer,
                           "content": "B与聊天对象是同事，王老师是B的导师。" * (150 if split else 1)}
             for peer in ("P1", "P2") for i in range(3)}
-    groups = [{"dim": 6, "peer": peer, "attrs": ["关系状态"],
-               "source_ids": [rid for rid, row in rows.items() if row["peer"] == peer]} for peer in ("P1", "P2")]
+    groups = [{"dim": 6, "peer": peer, "source_ids": [rid for rid, row in rows.items() if row["peer"] == peer]}
+              for peer in ("P1", "P2")]
     budget = organize.InputBudget(8192, "o200k_base")
     if split:
         budget.max_tokens = max(budget.count(prompts.summarize_prompt(
-            6, ["关系状态"], [organize.prompt_record(row, include_sample_time=True)], peer=row["peer"],
+            6, [organize.prompt_record(row, include_sample_time=True)], peer=row["peer"],
         )) for row in rows.values())
     stages = []
 
@@ -490,7 +726,7 @@ def test_relation_summary_isolates_peers_through_split_and_reduce(split):
                 budget.check(task["prompt"])
                 stages.append(task["stage"])
                 results.append(validate({"facts": [
-                    {"attr": "关系状态", "value": f"B与{peer}是同事。", "source_ids": task["source_ids"]},
+                    {"attr": "关系状态", "value": f"B与{peer}是同事。", "source_ids": task["source_ids"], "sensitivity": "normal", "time_scope": "current"},
                 ]}, task))
             return results
 
@@ -502,74 +738,49 @@ def test_relation_summary_isolates_peers_through_split_and_reduce(split):
         assert result["facts"][0]["source_ids"] == group["source_ids"]
 
 
-@pytest.mark.parametrize("defect", [None, "wrong_peer", "mixed_sources"])
-def test_relation_group_validation_distinguishes_same_attribute_across_peers(tmp_path, monkeypatch, defect):
-    rows = [{**record(rid), "peer": peer} for rid, peer in [("a", "P1"), ("b", "P2")]]
-    organize.save(tmp_path / "records.json", rows)
-    organize.save(tmp_path / "classifications.json", [{"id": row["id"], "fields": [[6, "关系状态"]]} for row in rows])
-    groups = [{"dim": 6, "peer": row["peer"], "attrs": ["关系状态"], "source_ids": [row["id"]]} for row in rows]
-    if defect == "wrong_peer":
-        groups[0]["peer"] = "P2"
-    elif defect == "mixed_sources":
-        groups[0]["source_ids"].append("b")
-    organize.save(tmp_path / "attribute_groups.json", groups)
-
-    class Runner:
-        def __init__(self, args):
-            pass
-
-        def run(self, tasks, validate):
-            return [validate({"facts": [{"attr": "关系状态", "value": "关系事实", "source_ids": task["source_ids"]}]}, task)
-                    for task in tasks]
-
-        def close(self):
-            pass
-
-    monkeypatch.setattr(organize, "LLMTasks", Runner)
-    args = SimpleNamespace(stage="summarize", dry_run=False, preferences_only=False,
-                           output_dir=tmp_path, config_path=tmp_path / "config",
-                           embedding_url=None, no_auto_start_embedding_service=True, embedding_batch_size=None,
-                           max_context_tokens=8192, token_encoding="o200k_base", tokenizer_file=None,
-                           max_summary_groups=30, max_summary_records=300)
-    if defect:
-        with pytest.raises(ValueError, match="does not match classifications"):
-            organize.run(args)
-    else:
-        organize.run(args)
-        output = organize.load(tmp_path / "organized_memories.json")
-        assert [fact["source_ids"] for fact in output["facts"]] == [["a"], ["b"]]
-        assert output["unused"] == []
-
-
-@pytest.mark.parametrize("defect", ["unknown", "empty", "duplicate"])
+@pytest.mark.parametrize("defect", ["unknown", "empty", "duplicate", "no_sensitivity", "unknown_sensitivity",
+                                    "no_time_scope", "unknown_time_scope"])
 def test_summary_rejects_invalid_references(defect):
-    result = {"facts": [{"attr": "职业", "value": "B从事算法工作。", "source_ids": ["a"]}]}
+    result = {"facts": [{"attr": "职业", "value": "B从事算法工作。", "source_ids": ["a"], "sensitivity": "normal", "time_scope": "current"}]}
     if defect == "unknown":
         result["facts"][0]["source_ids"] = ["fake"]
     elif defect == "empty":
         result["facts"][0]["source_ids"] = []
-    else:
+    elif defect == "duplicate":
         result["facts"][0]["source_ids"] = ["a", "a"]
+    elif defect == "no_sensitivity":
+        del result["facts"][0]["sensitivity"]
+    elif defect == "unknown_sensitivity":
+        result["facts"][0]["sensitivity"] = "secret"
+    elif defect == "no_time_scope":
+        del result["facts"][0]["time_scope"]
+    else:
+        result["facts"][0]["time_scope"] = "permanent"
     with pytest.raises(ValueError):
         organize.validate_summary(result, {"a", "b"})
 
 
 def test_summary_allows_unreferenced_inputs_without_extra_output_fields():
-    result = {"facts": [{"attr": "职业", "value": "B从事算法工作。", "source_ids": ["a"]}]}
+    result = {"facts": [{"attr": "职业", "value": "B从事算法工作。", "source_ids": ["a"], "sensitivity": "normal", "time_scope": "current"}]}
     assert organize.validate_summary(result, {"a", "b"}) == result
     assert organize.validate_summary({"facts": []}, {"a"}) == {"facts": []}
     assert "unused_ids" not in json.dumps(organize.SUMMARY_SCHEMA)
     assert "unused_ids" not in json.dumps(organize.BATCH_SUMMARY_SCHEMA)
 
 
-def test_llm_retry_truncation_and_content_addressed_resume(tmp_path):
+def bare_runner(cache_path, client):
     runner = organize.LLMTasks.__new__(organize.LLMTasks)
-    runner.path, runner.entries = tmp_path / "checkpoint.json", {}
+    runner.cache = LLMCache(cache_path)
     runner.budget = organize.InputBudget(8192, "o200k_base")
     runner.options = SimpleNamespace(
-        batch_size=2, llm_provider="api", model=None, effort=None, max_tokens=200, timeout=10, overwrite=False,
+        batch_size=2, llm_provider="api", model=None, effort=None, max_tokens=200, timeout=10,
     )
-    payload = {"items": [{"id": "a", "fields": [[1, "职业"]]}]}
+    runner.client = client
+    return runner
+
+
+def test_llm_retry_truncation_and_content_addressed_resume(tmp_path):
+    payload = {"items": [{"id": "a", "fields": [field(1)], "sensitivity": "normal"}]}
 
     class Client:
         calls = 0
@@ -580,36 +791,68 @@ def test_llm_retry_truncation_and_content_addressed_resume(tmp_path):
             self.calls += 1
             return [LLMResponse(ok=True, parsed_json=payload, finish_reason="length" if self.calls == 1 else "stop") for _ in requests]
 
-    runner.client = Client()
+    client = Client()
+    runner = bare_runner(tmp_path / "cache.sqlite", client)
     tasks = [{"prompt": "classify a", "stage": "classify"}]
     def validator(result, task):
-        return organize.validate_classification(result, [record("a")])
+        return organize.validate_classification(result, [record("a")], 2)
 
     runner.run(tasks, validator)
-    assert runner.client.calls == 2
-    runner.entries = organize.load(runner.path)
+    assert client.calls == 2
     runner.run(tasks, validator)
-    assert runner.client.calls == 2
+    assert client.calls == 2
+    # A later run with the same cache, say into a new output directory, asks nothing either.
+    assert bare_runner(tmp_path / "cache.sqlite", client).run(tasks * 2, validator) == [payload["items"]] * 2
+    assert client.calls == 2
     runner.run([{**tasks[0], "prompt": "updated rules: classify a"}], validator)
-    assert runner.client.calls == 3
+    assert client.calls == 3
 
 
-@pytest.mark.parametrize("change", ["comment", "extraction", "execution", "model", "overwrite"])
+def test_failed_tasks_are_not_cached_and_a_rerun_asks_only_them(tmp_path):
+    asked = []
+    broken = {"classify b"}
+
+    class Client:
+        def generate_batch(self, requests):
+            rows = []
+            for request in requests:
+                prompt = request.messages[0]["content"]
+                asked.append(prompt)
+                rid = prompt[-1]
+                payload = {"items": [{"id": rid, "fields": [field(1)], "sensitivity": "normal"}]}
+                rows.append(LLMResponse(ok=False, error="quota") if prompt in broken else LLMResponse(ok=True, parsed_json=payload, finish_reason="stop"))
+            return rows
+
+    tasks = [{"prompt": f"classify {rid}", "stage": "classify", "id": rid} for rid in "ab"]
+
+    def validator(result, task):
+        return organize.validate_classification(result, [record(task["id"])], 2)
+
+    runner = bare_runner(tmp_path / "cache.sqlite", Client())
+    with pytest.raises(RuntimeError, match=r"1 LLM tasks failed \(quota ×1\)"):
+        runner.run(tasks, validator)
+    assert asked == ["classify a", "classify b", "classify b"]
+    broken.clear()
+    assert [result[0]["id"] for result in runner.run(tasks, validator)] == ["a", "b"]
+    assert asked[3:] == ["classify b"]
+
+
+@pytest.mark.parametrize("change", ["comment", "extraction", "execution", "model"])
 def test_llm_resume_ignores_configuration_changes(tmp_path, monkeypatch, change):
     from weclone.core.inference import llm_client
 
     config = tmp_path / "settings.jsonc"
     settings = {
-        "agent_distill_args": {
-            "llm_provider": "codex_exec", "overwrite": False,
+        "codex_exec_args": {
             "model": "model-a", "effort": "low", "batch_size": 2, "max_tokens": 200,
             "timeout": 10, "command": "codex", "sandbox": "read-only",
         },
+        "agent_distill_args": {"llm_provider": "codex_exec"},
     }
     config.write_text(json.dumps(settings))
     args = SimpleNamespace(config_path=config, llm_provider=None, output_dir=tmp_path,
                            max_context_tokens=8192, token_encoding="o200k_base", tokenizer_file=None)
-    payload = {"items": [{"id": "a", "fields": [[1, "职业"]]}]}
+    payload = {"items": [{"id": "a", "fields": [field(1)], "sensitivity": "normal"}]}
 
     class Client:
         calls = 0
@@ -627,7 +870,7 @@ def test_llm_resume_ignores_configuration_changes(tmp_path, monkeypatch, change)
     tasks = [{"prompt": "classify a", "stage": "classify"}]
 
     def validator(result, task):
-        return organize.validate_classification(result, [record("a")])
+        return organize.validate_classification(result, [record("a")], 2)
 
     first = organize.LLMTasks(args)
     assert first.run(tasks, validator) == [payload["items"]]
@@ -637,165 +880,80 @@ def test_llm_resume_ignores_configuration_changes(tmp_path, monkeypatch, change)
     if change == "extraction":
         settings["agent_distill_args"].update(max_samples_per_window=16, max_content_chars=800)
     elif change == "execution":
-        settings["agent_distill_args"].update(batch_size=7, timeout=30)
+        settings["codex_exec_args"].update(batch_size=7, timeout=30)
     elif change == "model":
-        settings["agent_distill_args"].update(model="model-b", effort="high", max_tokens=400)
-    elif change == "overwrite":
-        settings["agent_distill_args"]["overwrite"] = True
+        settings["codex_exec_args"].update(model="model-b", effort="high", max_tokens=400)
     config.write_text("// edited configuration\n" + json.dumps(settings, indent=2))
 
     resumed = organize.LLMTasks(args)
     assert resumed.run(tasks, validator) == [payload["items"]]
-    expected_calls = 2 if change == "overwrite" else 1
-    assert client.calls == expected_calls
+    assert client.calls == 1
     if change == "model":
         assert resumed.options.model == "model-b"
         assert resumed.options.effort == "high"
-    if change == "overwrite":
-        resumed.close()
-        settings["agent_distill_args"]["overwrite"] = False
-        config.write_text(json.dumps(settings))
-        resumed = organize.LLMTasks(args)
-        assert resumed.run(tasks, validator) == [payload["items"]]
-        assert client.calls == expected_calls
 
     monkeypatch.setattr(organize, "CLASSIFY_SCHEMA", {
         **organize.CLASSIFY_SCHEMA, "description": "Updated output protocol",
     })
     resumed.run(tasks, validator)
-    assert client.calls == expected_calls + 1
+    assert client.calls == 2
     resumed.close()
 
 
-@pytest.mark.parametrize("batched", [False, True])
-def test_summary_overwrite_refreshes_current_tasks_and_preserves_other_entries(tmp_path, batched):
-    runner = organize.LLMTasks.__new__(organize.LLMTasks)
-    runner.path, runner.entries = tmp_path / "checkpoint.json", {"other-stage": {"status": "done"}}
-    runner.budget = organize.InputBudget(8192, "o200k_base")
-    runner.options = SimpleNamespace(
-        batch_size=2, llm_provider="api", model=None, effort=None, max_tokens=200, timeout=10, overwrite=False,
-    )
-    task = {"stage": "summarize", "prompt": "summarize a"}
-    if batched:
-        task["members"] = [0]
-
-    class Client:
-        calls = 0
-
-        def generate_batch(self, requests):
-            requests = list(requests)
-            self.calls += 1
-            facts = [{"attr": "职业", "value": f"第{self.calls}次结果", "source_ids": ["a"]}]
-            payload = {"groups": [{"id": 0, "facts": facts}]} if batched else {"facts": facts}
-            return [LLMResponse(ok=True, parsed_json=payload, finish_reason="stop") for _ in requests]
-
-    def validator(result, task):
-        payload = {"facts": result["groups"][0]["facts"]} if batched else result
-        return organize.validate_summary(payload, {"a"})
-
-    runner.client = Client()
-    first = runner.run([task], validator)
-    runner.options.overwrite = True
-    refreshed = runner.run([task], validator)
-    assert runner.client.calls == 2
-    assert first != refreshed
-    runner.entries = organize.load(runner.path)
-    assert runner.entries["other-stage"] == {"status": "done"}
-    runner.options.overwrite = False
-    assert runner.run([task], validator) == refreshed
-    assert runner.client.calls == 2
+def summary_fact(source_ids):
+    return {"attr": "属性", "value": "同一事实", "source_ids": source_ids, "sensitivity": "normal", "time_scope": "current"}
 
 
-@pytest.mark.parametrize("cross_group", [False, True])
-@pytest.mark.parametrize("extra_sample", [None, "same_peer", "other_peer"])
-def test_full_pipeline_keeps_inputs_and_joins_profile_goals_with_events(tmp_path, monkeypatch, cross_group, extra_sample):
-    input_dir, output_dir = tmp_path / "input", tmp_path / "output"
-    _, profile = write_input(input_dir)
-    if extra_sample:
-        extra = {**profile, "id": "sample2"} if extra_sample == "same_peer" else {**profile, "chat_with_id": "peer2"}
-        organize.save(input_dir / "state_people" / "peer.json", [profile, extra])
-    before = {p: p.read_bytes() for p in input_dir.rglob("*.json")}
-    prompts = []
+class FactPerGroupRunner:
+    """Answers every summary group, or part of one, with a single fact citing all its sources."""
 
-    class Embeddings:
-        def __init__(self, args):
-            pass
+    def __init__(self):
+        self.calls = []
 
-        def get(self, texts):
-            return [[0, 1] if cross_group and i % 2 else [1, 0] for i, _ in enumerate(texts)]
-
-        def close(self):
-            pass
-
-    class Runner:
-        def __init__(self, args):
-            pass
-
-        def run(self, tasks, validate):
-            results = []
-            for task in tasks:
-                prompts.append(task["prompt"])
-                if task["stage"] == "classify":
-                    payload = {"items": [{"id": rid, "fields": [[5, "行程安排" if cross_group and rid.startswith("ES:") else "出行安排"]]} for rid in task["ids"]]}
-                elif "members" in task:
-                    ids = sorted({sid for member in task["members"] for sid in member["source_ids"]})
-                    payload = {"groups": [
-                        {"id": 0, "facts": [{"attr": "出行安排", "value": "B计划与朋友周末郊游。", "source_ids": ids}]},
-                        {"id": 1, "facts": []},
-                    ]}
-                else:
-                    payload = {"facts": [{"attr": "出行安排", "value": "B计划与朋友周末郊游。", "source_ids": task["source_ids"]}]}
-                results.append(validate(payload, task))
-            return results
-
-        def close(self):
-            pass
-
-    monkeypatch.setattr(organize, "Embeddings", Embeddings)
-    monkeypatch.setattr(organize, "LLMTasks", Runner)
-    args = SimpleNamespace(stage="all", dry_run=False, preferences_only=False, input_dir=input_dir, output_dir=output_dir,
-                           max_context_tokens=272000, token_encoding="o200k_base",
-                           tokenizer_file=None, max_records=20, max_summary_groups=30, max_summary_records=300,
-                           neighbor_top_k=8, attribute_similarity=0.83)
-    organize.run(args)
-    output = organize.load(output_dir / "organized_memories.json")
-    assert len(output["facts"]) == 1
-    assert output["facts"][0]["dim"] == 5
-    assert len(output["facts"][0]["source_ids"]) == 2 + bool(extra_sample)
-    assert output["facts"][0]["support_count"] == 1 + bool(extra_sample)
-    assert output["facts"][0]["source_confidence_mean"] == 3
-    assert output["facts"][0]["source_importance_mean"] == 2
-    assert output["unused"] == []
-    if cross_group:
-        assert len(organize.load(output_dir / "attribute_groups.json")) == 2
-    assert {row["kind"] for row in output["sources"].values()} == {"S", "ES"}
-    assert "RAW_CHAT" not in "\n".join(prompts)
-    assert all(p.read_bytes() == content for p, content in before.items())
+    def run(self, tasks, validate):
+        results = []
+        for task in tasks:
+            members = task.get("members", [task])
+            self.calls.append((task["stage"], [len(member["source_ids"]) for member in members]))
+            facts = [[summary_fact(member["source_ids"])] for member in members]
+            payload = ({"groups": [{"id": i, "facts": rows} for i, rows in enumerate(facts)]} if "members" in task
+                       else {"facts": facts[0]})
+            results.append(validate(payload, task))
+        return results
 
 
-@pytest.mark.parametrize("dim", [5, 6, 8])
+@pytest.mark.parametrize("dim", [1, 6, 7])
 def test_summary_record_limit_splits_group_and_reduces_all_sources(dim):
     rows = [record(str(i)) for i in range(501)]
-    calls = []
-
-    class Runner:
-        def run(self, tasks, validate):
-            results = []
-            for task in tasks:
-                calls.append((task["stage"], len(task["source_ids"])))
-                payload = {"facts": [{"attr": "属性", "value": "同一事实", "source_ids": task["source_ids"]}]}
-                results.append(validate(payload, task))
-            return results
-
-    group = {"dim": dim, "peer": "P1", "attrs": ["属性"], "source_ids": [row["id"] for row in rows]}
-    result = organize.summarize_groups([group], {row["id"]: row for row in rows}, Runner())
-    assert calls == [("summarize", 300), ("summarize", 201), ("reduce", 501)]
+    runner = FactPerGroupRunner()
+    group = {"dim": dim, "peer": "P1", "source_ids": [row["id"] for row in rows]}
+    result = organize.summarize_groups([group], {row["id"]: row for row in rows}, runner)
+    assert runner.calls == [("summarize", [300]), ("summarize", [201]), ("reduce", [501])]
     assert len(result[0]["facts"]) == 1
     assert set(result[0]["facts"][0]["source_ids"]) == set(group["source_ids"])
 
 
+@pytest.mark.parametrize("dim", [5, 8])
+def test_large_group_parts_go_to_separate_requests_and_reduce(dim):
+    rows = [record(str(i)) for i in range(61)]
+    runner = FactPerGroupRunner()
+    group = {"dim": dim, "domain": "学业", "source_ids": [row["id"] for row in rows]}
+    result = organize.summarize_groups([group], {row["id"]: row for row in rows}, runner)
+    assert runner.calls == [("summarize", [21]), ("summarize", [21]), ("summarize", [19]), ("reduce", [61])]
+    assert len(result[0]["facts"]) == 1
+    assert set(result[0]["facts"][0]["source_ids"]) == set(group["source_ids"])
+
+
+def test_parts_share_requests_with_other_groups_of_their_partition():
+    rows = {str(i): record(str(i)) for i in range(40)}
+    groups = [{"dim": 3, "domain": "工作", "source_ids": list(rows)}, {"dim": 3, "domain": "学业", "source_ids": ["0"]}]
+    runner = FactPerGroupRunner()
+    organize.summarize_groups(groups, rows, runner)
+    assert runner.calls == [("summarize", [20, 1]), ("summarize", [20]), ("reduce", [40])]
+
+
 def test_summary_request_limit_counts_unique_sources_across_groups():
-    tasks = [organize.pack_summary(5, ["属性"], [record(str(i)) for i in ids], reduced=False)[0]
+    tasks = [organize.pack_summary(5, [record(str(i)) for i in ids], reduced=False)[0]
              for ids in (range(200), range(100, 300), range(300, 301))]
     requests = []
 
@@ -809,12 +967,11 @@ def test_summary_request_limit_counts_unique_sources_across_groups():
     assert len(requests) == 2
     assert requests[0]["members"] == tasks[:2]
     assert requests[1] == tasks[2]
-    batches = organize.pack_summary(5, ["属性"], [record(str(i)) for i in range(4)],
-                                    reduced=False, max_records=2)
+    batches = organize.pack_summary(5, [record(str(i)) for i in range(4)], reduced=False, max_records=2)
     assert [task["source_ids"] for task in batches] == [["0", "1"], ["2", "3"]]
 
 
-def test_oversized_attribute_group_reduces_across_batches_without_losing_sources():
+def test_oversized_group_reduces_across_batches_without_losing_sources():
     rows = [record(str(i), memory_type="goal", sample=str(i)) for i in range(5)]
     for row in rows:
         row["content"] = "B计划出行。" * 180
@@ -825,14 +982,14 @@ def test_oversized_attribute_group_reduces_across_batches_without_losing_sources
             results = []
             for task in tasks:
                 stages.append(task["stage"])
-                payload = {"facts": [{"attr": "出行计划", "value": "B计划出行。", "source_ids": task["source_ids"]}]}
+                payload = {"facts": [{"attr": "出行计划", "value": "B计划出行。", "source_ids": task["source_ids"], "sensitivity": "normal", "time_scope": "current"}]}
                 results.append(validate(payload, task))
             return results
 
-    group = {"dim": 5, "attrs": ["出行计划"], "source_ids": [row["id"] for row in rows]}
+    group = {"dim": 5, "domain": "出行旅行", "source_ids": [row["id"] for row in rows]}
     budget = organize.InputBudget(8192, "o200k_base")
     budget.max_tokens = max(budget.count(organize.summarize_prompt(
-        5, group["attrs"], [organize.prompt_record(row, include_sample_time=True)],
+        5, [organize.prompt_record(row, include_sample_time=True)], domain=group["domain"],
     )) for row in rows)
     result = organize.summarize_groups([group], {row["id"]: row for row in rows}, Runner(), budget=budget, max_groups=1)[0]
     assert stages.count("summarize") > 1
@@ -841,32 +998,24 @@ def test_oversized_attribute_group_reduces_across_batches_without_losing_sources
     assert set(result["facts"][0]["source_ids"]) == {row["id"] for row in rows}
 
 
-def test_different_attribute_groups_share_llm_batch():
+def test_groups_of_different_dimensions_share_llm_batch():
     rows = [record("a"), record("b")]
-    groups = [{"dim": dim, "attrs": [attr], "source_ids": [rid]}
-              for dim, attr, rid in ((1, "职业", "a"), (4, "住房", "b"))]
+    groups = [{"dim": dim, "domain": "工作", "source_ids": [rid]} for dim, rid in ((1, "a"), (4, "b"))]
     calls = []
 
     class Runner:
         def run(self, tasks, validate):
             calls.append(len(tasks))
-            return [validate({"facts": [{"attr": "属性", "value": "已有值", "source_ids": task["source_ids"]}]}, task) for task in tasks]
+            return [validate({"facts": [{"attr": "属性", "value": "已有值", "source_ids": task["source_ids"], "sensitivity": "normal", "time_scope": "current"}]}, task) for task in tasks]
 
     results = organize.summarize_groups(groups, {row["id"]: row for row in rows}, Runner())
     assert calls == [2]
     assert [result["facts"][0]["source_ids"] for result in results] == [["a"], ["b"]]
 
 
-def test_classification_fills_fifty_after_related_neighbors():
-    rows = [record(str(i), sample=str(i)) for i in range(125)]
-    batches = organize.classification_batches(rows, [[1, 0]] * 125, max_records=50, neighbors=8)
-    assert [len(batch) for batch in batches] == [50, 50, 25]
-    assert len({row["id"] for batch in batches for row in batch}) == 125
-
-
 def test_summary_combines_thirty_groups_and_restores_reordered_results():
     rows = {str(i): record(str(i)) for i in range(31)}
-    groups = [{"dim": 1, "attrs": [f"属性{i}"], "source_ids": [str(i)]} for i in range(31)]
+    groups = [{"dim": 1, "domain": f"领域{i}", "source_ids": [str(i)]} for i in range(31)]
     sizes = []
 
     class Runner:
@@ -875,8 +1024,8 @@ def test_summary_combines_thirty_groups_and_restores_reordered_results():
             for task in tasks:
                 members = task.get("members", [task])
                 sizes.append(len(members))
-                payloads = [{"id": i, "facts": [{"attr": member["attrs"][0], "value": "已有事实",
-                                                   "source_ids": member["source_ids"]}]}
+                payloads = [{"id": i, "facts": [{"attr": "属性", "value": "已有事实",
+                                                   "source_ids": member["source_ids"], "sensitivity": "normal", "time_scope": "current"}]}
                             for i, member in enumerate(members)]
                 payload = {"groups": list(reversed(payloads))} if "members" in task else {
                     key: value for key, value in payloads[0].items() if key != "id"
@@ -892,7 +1041,7 @@ def test_summary_combines_thirty_groups_and_restores_reordered_results():
 @pytest.mark.parametrize("defect", ["unknown_source", "missing_group", "duplicate_group"])
 def test_combined_summary_rejects_unknown_sources_and_lost_groups(defect):
     task = {"members": [{"source_ids": ["a"]}, {"source_ids": ["b"]}]}
-    payload = {"groups": [{"id": i, "facts": [{"attr": "属性", "value": "事实", "source_ids": [rid]}]} for i, rid in enumerate(("a", "b"))]}
+    payload = {"groups": [{"id": i, "facts": [{"attr": "属性", "value": "事实", "source_ids": [rid], "sensitivity": "normal", "time_scope": "current"}]} for i, rid in enumerate(("a", "b"))]}
     if defect == "unknown_source":
         payload["groups"][0]["facts"][0]["source_ids"] = ["not_in_request"]
     elif defect == "missing_group":
@@ -905,8 +1054,7 @@ def test_combined_summary_rejects_unknown_sources_and_lost_groups(defect):
 
 def test_cross_group_references_warn_and_survive_final_summary(caplog):
     rows = {rid: record(rid) for rid in ("a", "b")}
-    groups = [{"dim": 1, "attrs": [attr], "source_ids": [rid]}
-              for attr, rid in (("职业", "a"), ("身份", "b"))]
+    groups = [{"dim": 1, "domain": domain, "source_ids": [rid]} for domain, rid in (("工作", "a"), ("学业", "b"))]
 
     class Runner:
         calls = 0
@@ -914,7 +1062,7 @@ def test_cross_group_references_warn_and_survive_final_summary(caplog):
         def run(self, tasks, validate):
             self.calls += len(tasks)
             return [validate({"groups": [
-                {"id": 0, "facts": [{"attr": "职业", "value": "已有事实", "source_ids": ["b"]}]},
+                {"id": 0, "facts": [{"attr": "职业", "value": "已有事实", "source_ids": ["b"], "sensitivity": "normal", "time_scope": "current"}]},
                 {"id": 1, "facts": []},
             ]}, task) for task in tasks]
 
@@ -928,7 +1076,7 @@ def test_cross_group_references_warn_and_survive_final_summary(caplog):
 
 def test_combined_summary_deduplicates_shared_memories_and_respects_token_budget():
     row = organize.prompt_record(record("shared"))
-    tasks = [organize.pack_summary(1, [attr], [row], reduced=False)[0] for attr in ("职业", "身份")]
+    tasks = [organize.pack_summary(1, [row], reduced=False, domain=domain)[0] for domain in ("工作", "学业")]
     prompt = organize.batch_summary_prompt(tasks)
     assert prompt.count('"id":"shared"') == 1
     budget = organize.InputBudget(8192, "o200k_base")
@@ -939,79 +1087,8 @@ def test_combined_summary_deduplicates_shared_memories_and_respects_token_budget
         def run(self, requests, validate):
             calls.extend(requests)
             assert all(budget.fits(task["prompt"]) for task in requests)
-            return [validate({"facts": [{"attr": "属性", "value": "已有值", "source_ids": ["shared"]}]}, task) for task in requests]
+            return [validate({"facts": [{"attr": "属性", "value": "已有值", "source_ids": ["shared"], "sensitivity": "normal", "time_scope": "current"}]}, task) for task in requests]
 
     organize.run_summary_tasks(tasks, Runner(), 30, budget)
     assert len(calls) == 2
     assert all("members" not in task for task in calls)
-
-
-def test_embedding_cache_reuses_vectors_and_checks_model_identity(tmp_path, monkeypatch):
-    args = SimpleNamespace(config_path=tmp_path / "config", embedding_url="http://localhost:9999",
-                           no_auto_start_embedding_service=True, embedding_batch_size=None, output_dir=tmp_path)
-    health = {"model": "model1", "max_length": "4096", "device": "cpu"}
-    calls = []
-    monkeypatch.setattr(organize.group_state_memories, "ensure_embedding_service", lambda *a, **kw: (dict(health), None))
-
-    def embed(texts, **kwargs):
-        calls.append(list(texts))
-        return [[1, 0] for _ in texts]
-
-    monkeypatch.setattr(organize.group_state_memories, "embed_texts", embed)
-    instance = organize.Embeddings(args)
-    assert instance.get(["职业", "职业"]) == [[1, 0], [1, 0]]
-    assert calls == [["职业"]]
-    instance.close()
-    assert organize.Embeddings(args).get(["职业"]) == [[1, 0]]
-    assert len(calls) == 1
-    health["model"] = "model2"
-    with pytest.raises(ValueError, match="model changed"):
-        organize.Embeddings(args).get(["职业"])
-
-
-def test_embedding_batches_resume_without_rewriting_history(tmp_path, monkeypatch):
-    args = SimpleNamespace(config_path=tmp_path / "config", embedding_url="http://localhost:9999",
-                           no_auto_start_embedding_service=True, embedding_batch_size=2, output_dir=tmp_path)
-    health = {"model": "model1", "max_length": "4096", "device": "cpu"}
-    monkeypatch.setattr(organize.group_state_memories, "ensure_embedding_service", lambda *a, **kw: (health, None))
-    texts = ["职业", "爱好", "目标", "身份"]
-    calls = []
-
-    def embed(batch, **kwargs):
-        calls.append(list(batch))
-        if len(calls) == 2:
-            raise RuntimeError("interrupted")
-        return [[1, 0] for _ in batch]
-
-    monkeypatch.setattr(organize.group_state_memories, "embed_texts", embed)
-    with pytest.raises(RuntimeError, match="interrupted"):
-        organize.Embeddings(args).get(texts)
-    shards = list((tmp_path / "embeddings").glob("*.json"))
-    assert len(shards) == 1
-    first_bytes = shards[0].read_bytes()
-    expected = [[1, 0]] * 4
-    assert organize.Embeddings(args).get(texts) == expected
-    assert calls == [["职业", "爱好"], ["目标", "身份"], ["目标", "身份"]]
-    assert shards[0].read_bytes() == first_bytes
-    shards = list((tmp_path / "embeddings").glob("*.json"))
-    assert len(shards) == 2
-    assert all(len(organize.load(path)["vectors"]) == 2 for path in shards)
-    assert organize.Embeddings(args).get(texts) == expected
-    assert len(calls) == 3
-    assert not (tmp_path / "embeddings.json").exists()
-
-
-def test_default_embedding_service_starts_as_module_and_keeps_custom_script(tmp_path, monkeypatch):
-    grouping = organize.group_state_memories
-    args = grouping.default_args()
-    args.embedding_service_log_path = tmp_path / "service.log"
-    commands = []
-    monkeypatch.setattr(grouping, "configure_embedding_service_env", lambda *a: {})
-    monkeypatch.setattr(grouping.subprocess, "Popen", lambda command, **kw: commands.append(command))
-    grouping.start_embedding_service(args, "http://localhost:8097")
-    assert commands[0][1:] == ["-m", "weclone.core.inference.embedding_service"]
-    custom = tmp_path / "custom.py"
-    custom.write_text("pass\n")
-    args.embedding_service_script = custom
-    grouping.start_embedding_service(args, "http://localhost:8097")
-    assert commands[1][1:] == [str(custom)]

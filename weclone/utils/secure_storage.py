@@ -43,6 +43,7 @@ CHUNK_SIZE = 1024 * 1024
 HEADER_SIZE = len(MAGIC) + 16 + 16
 _settings: dict[str, Any] | None = None
 _settings_stamp: tuple[str, int] | None = None
+_demo_settings: dict[str, Any] | None = None
 _run_key: tuple[str, str, bytes] | None = None
 _request_key: contextvars.ContextVar[tuple[str, str, bytes] | None] = contextvars.ContextVar(
     "weclone_storage_key", default=None
@@ -77,6 +78,8 @@ def configure(config_path: str | Path | None = None) -> dict[str, Any]:
     global _settings, _settings_stamp
     if config_path is not None:
         os.environ["WECLONE_CONFIG_PATH"] = str(config_path)
+    if _demo_settings is not None:
+        return _demo_settings
     path = Path(os.environ.get("WECLONE_CONFIG_PATH", ROOT / "settings.jsonc")).resolve()
     stamp = (str(path), path.stat().st_mtime_ns if path.exists() else -1)
     if _settings_stamp != stamp:
@@ -105,6 +108,19 @@ def configure(config_path: str | Path | None = None) -> dict[str, Any]:
         _settings_stamp = stamp
     assert _settings is not None
     return _settings
+
+
+@contextlib.contextmanager
+def demo_storage(state_dir: Path) -> Iterator[None]:
+    """Plaintext storage with its own password state in state_dir, whatever security_args say. The settings file
+    still configures everything else, such as the model that writes summaries."""
+    global _demo_settings
+    _demo_settings = {**configure(), "storage_mode": "plaintext", "state_dir": state_dir.resolve()}
+    try:
+        yield
+    finally:
+        lock()
+        _demo_settings = None
 
 
 def _manifest_path() -> Path:
@@ -336,6 +352,49 @@ def storage_context(session_key: bytes | None = None) -> Iterator[None]:
             yield
 
 
+def _sealing_cipher(secret: str) -> AESGCM:
+    # The secret is a random token, so it needs no slow derivation like a password does.
+    return AESGCM(
+        HKDF(algorithm=hashes.SHA256(), length=32, salt=None, info=b"weclone:sealed-key").derive(
+            secret.encode()
+        )
+    )
+
+
+def seal_key(key: bytes, secret: str) -> str:
+    """`key` encrypted under `secret`, so a client presenting the secret later is served without anyone logging in.
+    Whoever holds both the secret and the sealed copy can read all data, as with the password."""
+    if not isinstance(key, UnlockedKey):
+        raise StorageLocked("数据尚未解锁，请输入同一访问密码。")
+    nonce = secrets.token_bytes(12)
+    sealed = _sealing_cipher(secret).encrypt(nonce, key, f"weclone:{key.generation}:sealed".encode())
+    return json.dumps(
+        {
+            "generation": key.generation,
+            "nonce": base64.b64encode(nonce).decode("ascii"),
+            "key": base64.b64encode(sealed).decode("ascii"),
+        }
+    )
+
+
+def open_sealed_key(sealed: str | None, secret: str) -> UnlockedKey:
+    """The key `seal_key` sealed under `secret`. StorageLocked when nothing was sealed or the data has since moved to
+    a new generation (a password reset or a new storage mode)."""
+    generation = get_generation()
+    try:
+        value = json.loads(sealed) if sealed else None
+        if value is None or value["generation"] != generation:
+            raise StorageLocked("数据密码重置过，之前保存的密钥已失效。")
+        key = _sealing_cipher(secret).decrypt(
+            base64.b64decode(value["nonce"], validate=True),
+            base64.b64decode(value["key"], validate=True),
+            f"weclone:{generation}:sealed".encode(),
+        )
+    except (InvalidTag, KeyError, ValueError, TypeError) as exc:
+        raise SecurityError("保存的密钥无效") from exc
+    return UnlockedKey(key, str(configure()["state_dir"]), generation)
+
+
 def ensure_unlocked() -> None:
     if not is_encrypted_mode():
         return
@@ -406,6 +465,31 @@ def resolve_path(path: str | Path) -> Path:
 
 def file_exists(path: str | Path) -> bool:
     return resolve_path(path).is_file()
+
+
+def other_generation(path: str | Path) -> str | None:
+    """The generation of ciphertext at `path` written under an earlier password or storage mode, which this one
+    cannot open. None for no file, a plaintext file, or ciphertext of this generation."""
+    path = resolve_path(path)
+    if path.suffix != ENCRYPTED_SUFFIX or not path.is_file():
+        return None
+    with path.open("rb") as source:
+        header = source.read(HEADER_SIZE)
+    if len(header) != HEADER_SIZE or not header.startswith(MAGIC):
+        return None
+    generation = header[len(MAGIC) : len(MAGIC) + 16].hex()
+    return None if generation == get_generation() else generation
+
+
+def set_aside_other_generation(path: str | Path) -> None:
+    """Rename ciphertext of an earlier generation at `path`, so a file every run shares starts over after a password
+    reset. As with all prior ciphertext, the old file is kept, as `<name>.previous-<generation>`."""
+    generation = other_generation(path)
+    if generation is not None:
+        stored = resolve_path(path)
+        # Another process may have set it aside first.
+        with contextlib.suppress(FileNotFoundError):
+            stored.rename(stored.with_name(f"{stored.name}.previous-{generation}"))
 
 
 def iter_files(directory: str | Path, pattern: str = "*.json", *, recursive: bool = False) -> Iterator[Path]:

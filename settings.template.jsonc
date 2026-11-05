@@ -1,5 +1,5 @@
 {
-    "version": "0.4.01",
+    "version": "1.0.1",
     "security_args": {
         // encrypted：聊天数据及衍生产物加密保存；plaintext：明文。首次初始化后固定，改变模式须重新处理全部数据。
         "storage_mode": "encrypted"
@@ -30,12 +30,10 @@
         "sandbox": "read-only"
     },
     "agent_distill_args": {
-        // false：复用抽取断点；true：重新抽取
-        "overwrite": false,
+        // 抽取和整理的模型结果按输入内容缓存在 dataset/res_csv/agent/llm_cache.sqlite，重跑只请求缺少的；删掉该文件即全部重新请求
         // state/event distill 使用的 LLM 后端：codex_exec 或 api
         "llm_provider": "codex_exec",
-        // 是否执行 LLM 画像归并；false 时仍可分组，但跳过 prepare/run/apply
-        "merge_enabled": false,
+        // api 后端可在此设置 batch_size、timeout、max_tokens，codex_exec 读取 codex_exec_args
         // 每窗同时满足条数和正文字符上限；正文不计 ID、时间、角色标签
         "max_samples_per_window": 8,
         "max_content_chars": 400
@@ -114,15 +112,6 @@
         "temperature": 0.5,
         "max_length": 256,
         "top_p": 0.65
-    },
-    "embedding_service_args": {
-        "model_name_or_path": "./models/Qwen3-Embedding-4B",
-        "device": "cuda:0",
-        "host": "127.0.0.1",
-        "port": 8097,
-        "max_length": 2048,
-        "min_retry_max_length": 512,
-        "request_timeout": 120
     },
     "vllm_args": {
         "gpu_memory_utilization": 0.9,

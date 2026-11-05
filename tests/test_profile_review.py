@@ -3,7 +3,8 @@ import json
 import pytest
 from fastapi.testclient import TestClient
 
-from weclone.server.profile_review import DEFAULT_STATIC_DIR, create_app
+from weclone.server.profile_review import DEFAULT_STATIC_DIR, ReviewStore, create_app
+from weclone.utils import secure_storage
 
 
 def test_bundled_frontend_assets_exist():
@@ -12,8 +13,15 @@ def test_bundled_frontend_assets_exist():
 
 
 @pytest.fixture
-def setup(tmp_path, capsys):
+def setup(tmp_path, monkeypatch):
+    settings = tmp_path / "settings.jsonc"
+    settings.write_text(
+        json.dumps({"security_args": {"storage_mode": "plaintext", "state_dir": str(tmp_path / "state")}})
+    )
+    monkeypatch.setenv("WECLONE_CONFIG_PATH", str(settings))
+    secure_storage.configure()
     data = {
+        "domains": [],
         "dimensions": [{"dim": 8, "name": "兴趣", "groups": [
             {"name": "运动", "items": [{"attr": "运动偏好", "fact_indices": [0, 1]}]},
             {"name": "阅读", "items": [{"attr": "阅读偏好", "fact_indices": [2]}]},
@@ -31,9 +39,9 @@ def setup(tmp_path, capsys):
     source.write_text(json.dumps(data), encoding="utf-8")
     database = tmp_path / "review.sqlite3"
     client = TestClient(create_app(database, source, tmp_path / "no-static"))
-    password = capsys.readouterr().out.strip().split("：")[-1]
     client.headers["X-WeClone-Request"] = "1"
-    assert client.post("/api/auth/login", json={"password": password}).status_code == 200
+    password = {"password": "review-test", "confirmation": "review-test"}
+    assert client.post("/api/auth/setup", json=password).status_code == 200
     return client, database, source
 
 
@@ -114,12 +122,15 @@ def test_batch_conflict_is_atomic_and_stale_edit_rejected(setup):
     client, _, _ = setup
     first, second, _ = facts(client)
     review(client, [second], "rejected")
-    assert review(client, [first, second], "approved").status_code == 409
+    conflict = review(client, [first, second], "approved")
+    assert conflict.status_code == 409 and conflict.json()["code"] == "batch_changed"
     assert [f["status"] for f in facts(client)][:2] == ["pending", "rejected"]
     assert client.get(f"/api/facts/{first['id']}/history").json() == []
-    assert edit(client, second, value="过期页面修改").status_code == 409
+    stale = edit(client, second, value="过期页面修改")
+    assert stale.status_code == 409 and stale.json()["code"] == "fact_changed"
     assert facts(client)[1]["value"] == second["value"]
-    assert review(client, [first, first], "approved").status_code == 422
+    duplicate = review(client, [first, first], "approved")
+    assert duplicate.status_code == 422 and duplicate.json()["code"] == "duplicate_facts"
 
 
 def test_manual_fact_and_direct_dimension_export(setup):
@@ -149,17 +160,37 @@ def test_validation_and_reversing_decision(setup):
     assert len(facts(client)) == 3
 
 
-def test_invalid_snapshot_import_rolls_back(tmp_path, capsys):
+def test_domain_metadata_only_in_review_profile(tmp_path):
+    data = {
+        "domains": [{"name": "兴趣", "description": "B的爱好。", "topics": [
+            {"name": "运动", "fact_indices": [0]}, {"name": "阅读", "fact_indices": [1]},
+        ]}],
+        "dimensions": [{"dim": 8, "name": "兴趣与偏好", "groups": [{"name": "兴趣", "items": [
+            {"name": "运动", "items": [{"attr": "运动偏好", "fact_indices": [0]}]},
+            {"name": "阅读", "items": [{"attr": "阅读偏好", "fact_indices": [1]}]},
+        ]}]}],
+        "facts": [{"dim": 8, "attr": "运动偏好", "value": "喜欢跑步"}, {"dim": 8, "attr": "阅读偏好", "value": "喜欢科幻"}],
+        "sources": {},
+    }
+    source = tmp_path / "domains.json"
+    source.write_text(json.dumps(data), encoding="utf-8")
+    store = ReviewStore(tmp_path / "domains.sqlite3", source)
+    assert store.profile()["domains"] == [{"name": "兴趣", "description": "B的爱好。", "topics": ["运动", "阅读"]}]
+    assert "domains" not in store.profile(approved_only=True)
+
+
+def test_invalid_snapshot_import_rolls_back(tmp_path):
     source = tmp_path / "source.json"
     database = tmp_path / "review.sqlite3"
-    data = {"dimensions": [{"dim": 8, "name": "兴趣", "groups": []}], "facts": [{"value": "未挂载"}], "sources": {}}
+    data = {
+        "domains": [],
+        "dimensions": [{"dim": 8, "name": "兴趣", "groups": []}],
+        "facts": [{"value": "未挂载"}],
+        "sources": {},
+    }
     source.write_text(json.dumps(data))
     with pytest.raises(ValueError, match="every fact"):
-        create_app(database, source)
+        ReviewStore(database, source).profile()
     data["facts"] = []
     source.write_text(json.dumps(data))
-    client = TestClient(create_app(database, source))
-    password = capsys.readouterr().out.strip().split("：")[-1]
-    assert client.post("/api/auth/login", json={"password": password},
-                       headers={"X-WeClone-Request": "1"}).status_code == 200
-    assert facts(client) == []
+    assert ReviewStore(database, source).profile()["facts"] == []

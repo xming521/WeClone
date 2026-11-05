@@ -1,10 +1,10 @@
-import { BadgeCheck, CircleX, FileClock, Layers3 } from 'lucide-react';
-import type { ReviewView } from '../data';
+import type { ReviewStatus, ReviewView } from '../data';
 
-export const STATUS: Record<ReviewView, string> = {
-  all: '全部',
-  pending: '待审核',
-  approved: '已采纳',
-  rejected: '未采纳',
+export const REVIEW_VIEWS: ReviewView[] = ['all', 'pending', 'approved', 'rejected'];
+
+/** The design system names an approved fact `adopted`: the `data-status` value of its marks. */
+export const MARK_STATUS: Record<ReviewStatus, 'pending' | 'adopted' | 'rejected'> = {
+  pending: 'pending',
+  approved: 'adopted',
+  rejected: 'rejected',
 };
-export const VIEW_ICONS = { all: Layers3, pending: FileClock, approved: BadgeCheck, rejected: CircleX };

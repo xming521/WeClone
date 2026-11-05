@@ -1,4 +1,5 @@
 import ast
+import json
 from dataclasses import dataclass
 from pathlib import Path
 from types import SimpleNamespace
@@ -9,6 +10,7 @@ from langchain_core.prompts import PromptTemplate
 from pydantic import BaseModel
 
 from weclone.core.inference import LLMResponse, RetryPolicy
+from weclone.utils import secure_storage
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -82,7 +84,13 @@ def test_cleaning_scores_preserve_alignment_and_parameters():
     client.__exit__.assert_called_once()
 
 
-def test_vision_payload_and_retry_contract(tmp_path):
+def test_vision_payload_and_retry_contract(tmp_path, monkeypatch):
+    settings = tmp_path / "settings.jsonc"
+    settings.write_text(
+        json.dumps({"security_args": {"storage_mode": "plaintext", "state_dir": str(tmp_path / "state")}})
+    )
+    monkeypatch.setenv("WECLONE_CONFIG_PATH", str(settings))
+    secure_storage.configure()
     client = Mock()
     client.__enter__ = Mock(return_value=client)
     client.__exit__ = Mock(return_value=False)
@@ -104,6 +112,7 @@ def test_vision_payload_and_retry_contract(tmp_path):
             "OpenAICompatibleClient": factory,
             "RetryPolicy": RetryPolicy,
             "APIConnectionError": APIConnectionError,
+            "secure_storage": secure_storage,
         },
     )
     image_path = tmp_path / "fixture.png"

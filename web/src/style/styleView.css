@@ -1,0 +1,337 @@
+/* 语言风格页：外壳沿用人生画像的 app-shell、left-panel、topbar 和 detail-panel。 */
+
+/* No search box here, so the actions take only their own width and leave the rest to the heading. */
+.style-shell .topbar-actions {
+  flex: 0 0 auto;
+}
+
+/* Heads the list of groups, the way the DS's switch heads the profile's list. */
+.style-groups-title {
+  margin: var(--space-6) var(--space-1) var(--space-3);
+  color: var(--ink-3);
+  font: var(--text-caption);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+/* How often a trait shows up sets how much of the group colour a bubble holds (the DS's depth encoding).
+   --k-fill / --k-edge are shares of --c over card, read by the bubbles, the emblem and the legend swatches alike. */
+.tier-most {
+  --k-fill: 34%;
+  --k-edge: 52%;
+}
+.tier-often {
+  --k-fill: 22%;
+  --k-edge: 40%;
+}
+.tier-sometimes {
+  --k-fill: 11%;
+  --k-edge: 32%;
+}
+.tier-rarely {
+  --k-fill: 0%;
+  --k-edge: 46%;
+}
+
+/* The frame keeps its size when the detail panel opens. The stage slides instead of shrinking. */
+.bubble-frame {
+  position: absolute;
+  z-index: 1;
+  top: calc(var(--space-11) * 2);
+  bottom: 72px;
+  left: calc(var(--left-panel-width) + var(--space-6));
+  right: var(--space-6);
+}
+.bubble-stage {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform-origin: center;
+  transition: transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Solid circles like the profile map's topic nodes, drawn with a solid line. */
+.trait-bubble {
+  position: absolute;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  animation: bubble-enter 0.7s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  animation-delay: var(--enter-delay);
+  transition:
+    left 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    top 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.4s,
+    filter 0.4s;
+}
+.trait-bubble.is-selected {
+  z-index: 2;
+}
+.bubble-frame.has-selection .trait-bubble:not(.is-selected) {
+  opacity: 0.6;
+}
+.bubble-frame .trait-bubble.is-dimmed:not(.is-selected) {
+  opacity: 0.2;
+  filter: saturate(0.4);
+}
+/* A faded bubble comes back under the pointer, so it reads as the next thing to open. */
+.bubble-frame.has-selection .trait-bubble:not(.is-selected):hover,
+.bubble-frame .trait-bubble.is-dimmed:not(.is-selected):hover {
+  opacity: 0.92;
+  filter: none;
+}
+.trait-bubble:focus-visible {
+  outline: none;
+}
+.trait-bubble-float {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  animation: bubble-float var(--float-duration) ease-in-out infinite;
+  animation-delay: var(--float-delay);
+}
+.trait-bubble-body {
+  --ink: color-mix(in oklab, var(--c) 52%, var(--ink-1));
+  --fill: color-mix(in oklab, var(--c) var(--k-fill), var(--card));
+  --edge: color-mix(in oklab, var(--c) var(--k-edge), var(--card));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 100%;
+  height: 100%;
+  padding: 0 14%;
+  box-sizing: border-box;
+  border: 1.5px solid var(--edge);
+  border-radius: 50%;
+  background: var(--fill);
+  box-shadow: var(--shadow-1);
+  color: var(--ink);
+  text-align: center;
+  transition:
+    transform 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.32s,
+    background-color 0.32s,
+    border-color 0.32s;
+}
+.trait-bubble:hover .trait-bubble-body,
+.trait-bubble:focus-visible .trait-bubble-body {
+  transform: translateY(-3px) scale(1.035);
+  box-shadow: var(--shadow-2);
+}
+.trait-bubble:focus-visible .trait-bubble-body {
+  box-shadow: var(--focus-ring);
+}
+.trait-bubble:active .trait-bubble-body {
+  transform: scale(0.96);
+  transition-duration: 0.12s;
+}
+/* The chosen bubble swells with a little overshoot and takes on a bit more colour, set in the DS's selection ring (a card gap, then a soft halo). Its neighbours step aside in BubbleField. */
+.trait-bubble.is-selected .trait-bubble-body {
+  border-color: color-mix(in oklab, var(--edge) 75%, var(--c));
+  background: color-mix(in oklab, var(--fill) 86%, var(--c));
+  transform: scale(1.2);
+  box-shadow:
+    0 0 0 2px var(--card),
+    0 0 0 8px color-mix(in srgb, var(--c) 20%, transparent),
+    var(--shadow-2);
+  transition:
+    transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.4s,
+    background-color 0.4s,
+    border-color 0.4s;
+}
+.trait-bubble-body strong {
+  font-size: max(13px, calc(var(--r) * 0.19px));
+  font-weight: 600;
+  line-height: 1.25;
+}
+.trait-bubble-body em {
+  font-family: var(--font-brand);
+  font-size: max(12px, calc(var(--r) * 0.135px));
+  font-style: normal;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.72;
+}
+.trait-bubble-body small {
+  max-width: 100%;
+  margin-top: 2px;
+  overflow: hidden;
+  font-size: max(12px, calc(var(--r) * 0.11px));
+  opacity: 0.66;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@keyframes bubble-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+@keyframes bubble-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+}
+@keyframes bubble-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .trait-bubble,
+  .trait-bubble-float,
+  .trait-emblem {
+    animation: none;
+  }
+}
+
+/* Bottom left of the canvas: the shades first (the DS's legend, in neutral ink since the hue only names the group), then how to read the field. */
+.bubble-legend {
+  position: absolute;
+  z-index: 2;
+  bottom: 27px;
+  left: calc(var(--left-panel-width) + 36px);
+  right: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-width: 560px;
+  pointer-events: none;
+}
+.bubble-legend .wc-hint > svg {
+  flex: none;
+  margin-top: 2px;
+}
+.legend-swatch {
+  --c: var(--ink-3);
+  display: block;
+  width: 10px;
+  height: 10px;
+  box-sizing: border-box;
+  border: 1.5px solid color-mix(in oklab, var(--c) var(--k-edge), var(--card));
+  border-radius: 50%;
+  background: color-mix(in oklab, var(--c) var(--k-fill), var(--card));
+}
+
+/* The panel takes the shared detail-panel look. What follows is only what a trait adds to it. */
+.trait-hero {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+.detail-crumb + .trait-hero {
+  margin-top: var(--space-2);
+}
+.detail-scope-heading .trait-hero + .detail-description {
+  margin-top: var(--space-3);
+}
+.trait-emblem {
+  flex: 0 0 auto;
+  width: 78px;
+  height: 78px;
+  animation: bubble-pop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s backwards;
+}
+.trait-emblem .trait-bubble-body {
+  padding: 0;
+}
+.trait-emblem .trait-bubble-body strong {
+  font-family: var(--font-brand);
+  font-size: 19px;
+  font-variant-numeric: tabular-nums;
+}
+.trait-frequency {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  margin: 0;
+  color: var(--ink-2);
+  font: var(--text-caption);
+}
+/* A small badge naming the shade, in the group's own tint. */
+.trait-frequency b {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 7px;
+  box-sizing: border-box;
+  border-radius: var(--radius-badge);
+  background: var(--ct);
+  color: color-mix(in oklab, var(--c) 52%, var(--ink-1));
+  font-size: 11.5px;
+  font-weight: 500;
+}
+/* What was said is what you said in chat, so the examples are your own chat bubbles. */
+.trait-examples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.trait-examples .wc-bubble {
+  align-self: auto;
+  max-width: 100%;
+}
+.trait-variation {
+  margin: 0 0 var(--space-3);
+  color: var(--ink-2);
+  font: var(--text-caption);
+}
+.trait-contacts {
+  display: grid;
+  gap: var(--space-2);
+}
+.trait-contact {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr) 40px;
+  align-items: center;
+  gap: var(--space-3);
+  font: var(--text-caption);
+}
+.trait-contact-name {
+  overflow: hidden;
+  color: var(--ink-2);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.trait-contact-bar {
+  position: relative;
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--sunken);
+}
+.trait-contact-bar i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: var(--radius-pill);
+  background: color-mix(in oklab, var(--c) 62%, var(--card));
+}
+.trait-contact-bar b {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--ink-2);
+}
+.trait-contact-value {
+  color: var(--ink-1);
+  font-family: var(--font-brand);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.trait-source {
+  margin: var(--space-4) 0 0;
+  color: var(--ink-3);
+  font: var(--text-caption);
+}
