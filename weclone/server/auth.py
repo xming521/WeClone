@@ -25,9 +25,11 @@ COOKIE = "weclone_session"
 
 
 class AuthStore:
+    """Sessions and the owner's web settings, shared by every run the server shows."""
+
     def __init__(self, database: Path):
-        self.path = database.with_suffix(".auth.sqlite3")
-        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self.path = database
+        self.path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
         fd = os.open(self.path, os.O_CREAT | os.O_RDWR, 0o600)
         os.close(fd)
         self.path.chmod(0o600)
@@ -83,14 +85,21 @@ class AuthStore:
             self._sync_generation(db)
         return self.login(password)
 
-    def session_seconds(self) -> int:
+    def setting(self, key: str) -> str | None:
         with self.connect() as db:
-            row = db.execute("SELECT value FROM settings WHERE key='session_seconds'").fetchone()
-        return int(row[0]) if row else SESSION_SECONDS
+            row = db.execute("SELECT value FROM settings WHERE key=?", (key,)).fetchone()
+        return row[0] if row else None
+
+    def save_setting(self, key: str, value: str):
+        with self.connect() as db:
+            db.execute("INSERT OR REPLACE INTO settings VALUES (?, ?)", (key, value))
+
+    def session_seconds(self) -> int:
+        value = self.setting("session_seconds")
+        return int(value) if value else SESSION_SECONDS
 
     def set_session_seconds(self, seconds: int):
-        with self.connect() as db:
-            db.execute("INSERT OR REPLACE INTO settings VALUES ('session_seconds', ?)", (str(seconds),))
+        self.save_setting("session_seconds", str(seconds))
 
     @contextmanager
     def attempt(self, db, now):
@@ -237,8 +246,7 @@ class SessionLength(BaseModel):
     seconds: int = Field(ge=SESSION_RANGE[0], le=SESSION_RANGE[1])
 
 
-def install_auth(app, database: Path, demo_password: str | None = None):
-    store = AuthStore(database)
+def install_auth(app, store: AuthStore, demo_password: str | None = None):
     app.state.auth_store = store
     public = {"/api/auth/status", "/api/auth/setup", "/api/auth/login", "/api/auth/session"}
 

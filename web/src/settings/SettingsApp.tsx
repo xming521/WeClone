@@ -1,7 +1,8 @@
-import { useEffect, useId, useState, type FormEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useId, useState, type FormEvent, type ReactNode } from 'react';
 import { ChevronRight, Info, Monitor, Moon, Sun } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../api';
+import type { RunVersion } from '../build/progress';
 import { PRIVACY_LEVELS } from '../data';
 import { toast } from '../feedback/toast';
 import { LanguageSwitch } from '../LanguageSwitch';
@@ -24,8 +25,10 @@ interface AuthStatus {
 
 // Shape of GET /api/run, served by weclone/server/profile_review.py.
 export interface RunInfo {
-  name: string;
-  path: string;
+  /** Null when no run is open, as before the first build. */
+  name: string | null;
+  /** Null as well in the demo, which keeps the server's directories to itself. */
+  path: string | null;
   generated_at: string | null;
   reviewed_at: string | null;
   style: boolean;
@@ -63,15 +66,37 @@ export function SettingsApp() {
   const { t } = useTranslation();
   const [status, setStatus] = useState<AuthStatus | null>(null);
   const [run, setRun] = useState<RunInfo | null>(null);
+  const [versions, setVersions] = useState<RunVersion[]>([]);
+  const [switching, setSwitching] = useState(false);
   const [error, setError] = useState('');
   const theme = useTheme((state) => state.choice);
   const chooseTheme = useTheme((state) => state.choose);
   const privacy = useProfileStore((state) => state.privacy);
 
+  const loadRuns = useCallback(() => {
+    api.get<RunInfo>('run').then(setRun, (reason: Error) => setError(reason.message));
+    api.get<RunVersion[]>('runs').then(setVersions, (reason: Error) => setError(reason.message));
+  }, []);
+
   useEffect(() => {
     api.get<AuthStatus>('auth/status').then(setStatus, (reason: Error) => setError(reason.message));
-    api.get<RunInfo>('run').then(setRun, (reason: Error) => setError(reason.message));
-  }, []);
+    loadRuns();
+  }, [loadRuns]);
+
+  async function switchTo(version: RunVersion) {
+    setSwitching(true);
+    try {
+      await api.put('run', { name: version.name });
+      // The map, the review queue and their selection belonged to the run shown before.
+      useProfileStore.getState().resetSession();
+      toast(t(($) => $.settings.run.switched, { time: formatTime(version.generated_at) ?? version.name }));
+    } catch (reason) {
+      setError((reason as Error).message);
+    } finally {
+      setSwitching(false);
+      loadRuns();
+    }
+  }
 
   async function setSession(seconds: number) {
     try {
@@ -191,7 +216,20 @@ export function SettingsApp() {
           )}
         </Section>
 
-        <Section title={t(($) => $.settings.run.title)}>{run && <RunDetails run={run} />}</Section>
+        <Section title={t(($) => $.settings.run.title)}>
+          {run && (
+            <>
+              {run.name ? (
+                <RunDetails run={run} />
+              ) : (
+                <p className="summary-placeholder">{t(($) => $.settings.run.empty)}</p>
+              )}
+              {!run.demo && (
+                <VersionList versions={versions} busy={switching} onSwitch={(version) => void switchTo(version)} />
+              )}
+            </>
+          )}
+        </Section>
 
         <a className="assistant-card settings-about-link" href="#/about">
           <Info size={18} strokeWidth={1.8} aria-hidden="true" />
@@ -216,7 +254,7 @@ export function RunDetails({ run }: { run: RunInfo }) {
           <dt>{t(($) => $.settings.run.name)}</dt>
           <dd>{run.demo ? t(($) => $.settings.run.demo) : <code>{run.name}</code>}</dd>
         </div>
-        {!run.demo && (
+        {run.path && (
           <div>
             <dt>{t(($) => $.settings.run.path)}</dt>
             <dd>
@@ -237,8 +275,71 @@ export function RunDetails({ run }: { run: RunInfo }) {
           <dd>{run.style ? t(($) => $.settings.run.styleYes) : t(($) => $.settings.run.styleNo)}</dd>
         </div>
       </dl>
-      <p className="summary-hint">{t(($) => $.settings.run.update)}</p>
     </>
+  );
+}
+
+/** Every run under the runs folder, newest first, with the one shown marked and the others a click away. */
+function VersionList({
+  versions,
+  busy,
+  onSwitch,
+}: {
+  versions: RunVersion[];
+  busy: boolean;
+  onSwitch: (version: RunVersion) => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div className="settings-versions">
+      <div className="settings-versions__head">
+        <span className="settings-row__label">{t(($) => $.settings.run.versions)}</span>
+        <a className="wc-btn wc-btn--sm" href="#/build">
+          {t(($) => $.settings.run.build)}
+        </a>
+      </div>
+      {versions.length > 0 && (
+        <ul>
+          {versions.map((version) => (
+            <li key={version.name} aria-current={version.current || undefined}>
+              <div className="settings-row__text">
+                <span className="settings-versions__name">
+                  {formatTime(version.generated_at ?? version.started_at) ?? <code>{version.name}</code>}
+                  {version.current && <span className="assistant-state on">{t(($) => $.settings.run.current)}</span>}
+                  {version.state !== 'succeeded' && (
+                    <span className="assistant-state">{t(($) => $.build.states[version.state])}</span>
+                  )}
+                </span>
+                <span className="settings-row__hint">
+                  {[
+                    version.purpose && t(($) => $.build.purposes[version.purpose!].label),
+                    version.complete &&
+                      (version.reviewed_at
+                        ? t(($) => $.settings.run.reviewedAt, { time: formatTime(version.reviewed_at) ?? '' })
+                        : t(($) => $.settings.run.notReviewed)),
+                    version.style && t(($) => $.settings.run.withStyle),
+                  ]
+                    .filter(Boolean)
+                    .join(t(($) => $.settings.run.separator))}
+                </span>
+              </div>
+              {version.state === 'running' ? (
+                <a className="wc-btn wc-btn--sm" href="#/build">
+                  {t(($) => $.settings.run.progress)}
+                </a>
+              ) : (
+                version.complete &&
+                !version.current && (
+                  <button className="wc-btn wc-btn--sm" type="button" disabled={busy} onClick={() => onSwitch(version)}>
+                    {t(($) => $.settings.run.switch)}
+                  </button>
+                )
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 

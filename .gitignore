@@ -22,6 +22,8 @@ __pycache__/
 # Distribution / packaging
 .Python
 build/
+# Source folder of the web build page, not build output.
+!web/src/build/
 develop-eggs/
 dist/
 !weclone/web/dist/

@@ -974,9 +974,19 @@ def sensitive_runtime(
 
 
 def run_python(script_path: str | Path, args: list[str], **kwargs: Any) -> subprocess.CompletedProcess:
+    return _python(subprocess.run, script_path, args, **kwargs)
+
+
+def popen_python(script_path: str | Path, args: list[str], **kwargs: Any) -> subprocess.Popen:
+    """Starts the script like run_python does and returns without waiting. The child holds the data key until it
+    exits."""
+    return _python(subprocess.Popen, script_path, args, **kwargs)
+
+
+def _python(runner: Any, script_path: str | Path, args: list[str], **kwargs: Any) -> Any:
     script_path = str(Path(script_path).resolve())
     if not is_encrypted_mode():
-        return subprocess.run([sys.executable, script_path, *args], **kwargs)
+        return runner([sys.executable, script_path, *args], **kwargs)
     ensure_unlocked()
     read_fd, write_fd = os.pipe()
     payload = json.dumps(
@@ -1011,7 +1021,7 @@ def run_python(script_path: str | Path, args: list[str], **kwargs: Any) -> subpr
                 for item in inherited:
                     os.set_handle_inheritable(item, True)
                 kwargs["close_fds"] = True
-                return subprocess.run(
+                return runner(
                     [sys.executable, "-c", bootstrap, str(handle), script_path, *args],
                     startupinfo=startup,
                     **kwargs,
@@ -1019,7 +1029,7 @@ def run_python(script_path: str | Path, args: list[str], **kwargs: Any) -> subpr
             finally:
                 for item, previous in inherited.items():
                     os.set_handle_inheritable(item, previous)
-        return subprocess.run(
+        return runner(
             [sys.executable, "-c", bootstrap, str(read_fd), script_path, *args],
             pass_fds=(*extra_fds, read_fd),
             **kwargs,

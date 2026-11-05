@@ -2,8 +2,9 @@ import { useEffect, useRef } from 'react';
 import { Bot, LayoutList, MessagesSquare, Orbit, Plug } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
-/** The pages: the five of the page switch, then settings and about, which the gear in the topbar opens. */
-export type AppMode = 'profile' | 'style' | 'summary' | 'assistant' | 'bots' | 'settings' | 'about';
+/** The pages: the five of the page switch, then settings and about, which the gear in the topbar opens, and the
+ * build page, which settings, the topbar's build status and an empty profile link to. */
+export type AppMode = 'profile' | 'style' | 'summary' | 'assistant' | 'bots' | 'settings' | 'about' | 'build';
 
 export function modeFromHash(hash: string): AppMode {
   if (hash.startsWith('#/style')) return 'style';
@@ -11,6 +12,7 @@ export function modeFromHash(hash: string): AppMode {
   if (hash.startsWith('#/bots')) return 'bots';
   if (hash.startsWith('#/settings')) return 'settings';
   if (hash.startsWith('#/about')) return 'about';
+  if (hash.startsWith('#/build')) return 'build';
   return hash.startsWith('#/summary') ? 'summary' : 'profile';
 }
 

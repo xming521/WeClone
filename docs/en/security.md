@@ -37,10 +37,11 @@ Encrypted data cannot be recovered without the password. After a reset, regenera
 
 ## Keys and tokens
 
-The `.weclone/` directory holds the data key encrypted with your password (`manifest.json`) and the assistant and bot token records (`assistant.sqlite3`, `bots.sqlite3`). Encrypted data cannot be read without it, so keep it and back it up.
+The `.weclone/` directory holds the data key encrypted with your password (`manifest.json`), the assistant and bot token records (`assistant.sqlite3`, `bots.sqlite3`), and the web UI's sign-in sessions and settings (`web.sqlite3`). Encrypted data cannot be read without it, so keep it and back it up.
 
 - Both tokens are stored only as hashes and shown once when generated. If you lose one, generate a new one.
 - The bot token together with `bots.sqlite3` decrypts all data, so keep it as safe as the password. It survives a password change. After a password reset, generate it again.
+- In encrypted mode, a portrait build started on the web gets the data key of your sign-in and holds it until the build ends or is cancelled, even after you sign out. The password can't be reset while a build runs.
 
 ## Request logs
 

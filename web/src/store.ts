@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { api } from './api';
+import { api, errorCode } from './api';
 import {
   DIMENSIONS,
   DOMAIN_ONLY_DIMENSIONS,
@@ -72,6 +72,8 @@ interface ProfileValues {
   /** The review list marks the card its shortcuts act on, once a shortcut was used or a review round started. */
   reviewKeys: boolean;
   error: string;
+  /** The server has no profile yet: none was built, or none is open. */
+  missing: boolean;
   /** A write is running or waiting its turn. */
   busy: boolean;
   // Review UI
@@ -196,6 +198,7 @@ function initialValues(): ProfileValues {
     sort: savedSort(),
     reviewKeys: false,
     error: '',
+    missing: false,
     busy: false,
     editing: null,
     chat: null,
@@ -269,17 +272,20 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
     const epoch = sessionEpoch;
     try {
       await get().refresh();
+      if (epoch === sessionEpoch) set({ missing: false });
     } catch (reason) {
-      if (epoch === sessionEpoch) set({ error: (reason as Error).message });
+      if (epoch === sessionEpoch)
+        set({ error: (reason as Error).message, missing: errorCode(reason) === 'profile_missing' });
     }
   },
   reload: async () => {
     const epoch = sessionEpoch;
     try {
       await get().refresh();
-      if (epoch === sessionEpoch) set({ error: '' });
+      if (epoch === sessionEpoch) set({ error: '', missing: false });
     } catch (reason) {
-      if (epoch === sessionEpoch) set({ error: (reason as Error).message });
+      if (epoch === sessionEpoch)
+        set({ error: (reason as Error).message, missing: errorCode(reason) === 'profile_missing' });
     }
   },
   refresh: async () => {

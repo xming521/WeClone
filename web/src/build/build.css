@@ -1,0 +1,171 @@
+/* The build page: the settings rows for the choices, a stage list for the progress. The topbar pill links to it. */
+.build-card .settings-row:first-of-type {
+  border-top: 0;
+}
+
+.build-card .assistant-card-head + .build-stages {
+  margin-top: var(--space-3);
+}
+
+.build-last {
+  margin: 0 0 var(--space-2);
+}
+
+.build-facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--ink-2);
+  font: var(--text-label);
+}
+
+.build-problem,
+.build-tokens {
+  flex: 1 0 100%;
+  margin: 0;
+}
+
+.build-tokens .wc-input {
+  max-width: 320px;
+}
+
+.build-problems {
+  margin-top: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-control);
+  background: var(--danger-tint);
+  color: var(--danger);
+  font: var(--text-caption);
+}
+
+.build-problems strong {
+  font-weight: 600;
+}
+
+.build-problems ul {
+  margin: var(--space-1) 0 var(--space-2);
+  padding-left: 1.2em;
+}
+
+.build-problems li + li {
+  margin-top: var(--space-1);
+}
+
+.build-problems p {
+  margin: var(--space-1) 0 0;
+  overflow-wrap: anywhere;
+}
+
+/* A paragraph beside its box, so the check's one-line type gives way to the caption's. */
+.wc-check.build-consent {
+  align-items: flex-start;
+  margin-top: var(--space-4);
+  font: var(--text-caption);
+}
+
+.build-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+.build-stages {
+  display: grid;
+  gap: 2px;
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.build-stage {
+  display: grid;
+  grid-template-columns: 16px 2.4em minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-control);
+  color: var(--ink-3);
+  font: var(--text-label);
+}
+
+.build-stage[data-state='running'] {
+  background: var(--you-tint);
+  color: var(--you-ink);
+}
+
+.build-stage[data-state='succeeded'] {
+  color: var(--ink-1);
+}
+
+.build-stage[data-state='succeeded'] .build-stage__icon {
+  color: var(--adopt);
+}
+
+.build-stage[data-state='failed'] {
+  color: var(--danger);
+}
+
+.build-stage[data-state='running'] .build-stage__icon,
+.build-spin {
+  animation: build-spin 1.2s linear infinite;
+}
+
+.build-stage__step,
+.build-stage__count,
+.build-stage__time {
+  font: var(--text-meta);
+  font-variant-numeric: tabular-nums;
+}
+
+.build-stage__count,
+.build-stage__time {
+  text-align: right;
+}
+
+.build-stage__time {
+  min-width: 4.5em;
+}
+
+@keyframes build-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .build-stage[data-state='running'] .build-stage__icon,
+  .build-spin {
+    animation: none;
+  }
+}
+
+.build-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 11px;
+  box-sizing: border-box;
+  border: 1px solid var(--you-line);
+  border-radius: var(--radius-pill);
+  background: var(--you-tint);
+  color: var(--you-ink);
+  font: 500 12px/1 var(--font-sans);
+  white-space: nowrap;
+  text-decoration: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.build-pill--done {
+  border-color: transparent;
+  background: var(--adopt-tint);
+  color: var(--adopt-ink);
+}
+
+.build-pill:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}

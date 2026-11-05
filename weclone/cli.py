@@ -169,8 +169,11 @@ def distill_style(ctx: click.Context):
     help="Input token limit for memory organization and the portrait; defaults to the Codex context length, "
     "required for API models.",
 )
+@click.option(
+    "--yes", is_flag=True, help="Skip the confirmation that chat content goes to the model service."
+)
 @apply_common_decorators()
-def build_profile(purpose: str | None, output_dir: Path | None, max_context_tokens: int | None):
+def build_profile(purpose: str | None, output_dir: Path | None, max_context_tokens: int | None, yes: bool):
     from weclone.data.agent.profile_pipeline import run
 
     if purpose is None:
@@ -184,6 +187,7 @@ def build_profile(purpose: str | None, output_dir: Path | None, max_context_toke
             output_dir=output_dir,
             config_path=config_path,
             max_context_tokens=max_context_tokens,
+            confirmed=yes,
         )
     except (OSError, ValueError, RuntimeError) as exc:
         raise click.ClickException(str(exc)) from exc
@@ -241,8 +245,11 @@ def test_model():
     "from the original chats.",
 )
 def server_reset_password():
+    from weclone.data.agent.profile_pipeline import build_running
     from weclone.utils import secure_storage as secure
 
+    if build_running():
+        raise click.ClickException("有一次画像构建正在运行，等它结束或取消后再重置密码。")
     click.confirm("重置后旧密文无法用新密码读取，必须重新处理全部聊天数据。继续？", abort=True)
     password = click.prompt("设置新的共用密码", hide_input=True, confirmation_prompt=True)
     try:

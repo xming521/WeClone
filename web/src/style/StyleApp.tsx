@@ -2,9 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { Info, Keyboard, MessagesSquare, Smile, Type } from 'lucide-react';
 import { Trans, useTranslation } from 'react-i18next';
-import { api } from '../api';
+import { api, errorCode } from '../api';
 import { LogoutButton } from '../Auth';
 import { AppBrand, BrandMark } from '../BrandMark';
+import { BuildIndicator } from '../build/BuildIndicator';
 import { LanguageSwitch } from '../LanguageSwitch';
 import { SettingsLink } from '../settings/SettingsLink';
 import { ModeSwitch } from '../ModeSwitch';
@@ -25,6 +26,8 @@ export function StyleApp() {
   const { t } = useTranslation();
   const [data, setData] = useState<StyleInput | null>(null);
   const [error, setError] = useState('');
+  // A run without a style, or no run at all, is fixed by a build.
+  const [buildable, setBuildable] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [focus, setFocus] = useState<TraitGroupId | null>(null);
 
@@ -36,7 +39,9 @@ export function StyleApp() {
         if (live) setData(value);
       })
       .catch((reason: Error) => {
-        if (live) setError(reason.message);
+        if (!live) return;
+        setError(reason.message);
+        setBuildable(['style_missing', 'profile_missing'].includes(errorCode(reason) ?? ''));
       });
     return () => {
       live = false;
@@ -59,9 +64,15 @@ export function StyleApp() {
         <BrandMark />
         <h1>{t(($) => $.style.loadFailed)}</h1>
         <p>{error}</p>
-        <a className="wc-btn wc-btn--primary" href="#/">
-          {t(($) => $.style.back)}
-        </a>
+        {buildable ? (
+          <a className="wc-btn wc-btn--primary" href="#/build">
+            {t(($) => $.app.empty.build)}
+          </a>
+        ) : (
+          <a className="wc-btn wc-btn--primary" href="#/">
+            {t(($) => $.style.back)}
+          </a>
+        )}
       </div>
     );
   if (!data)
@@ -148,6 +159,7 @@ export function StyleApp() {
             </div>
           </div>
           <div className="topbar-actions">
+            <BuildIndicator />
             <LanguageSwitch />
             <SettingsLink />
             <LogoutButton />

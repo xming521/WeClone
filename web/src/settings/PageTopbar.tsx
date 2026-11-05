@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { LogoutButton } from '../Auth';
 import { AppBrand } from '../BrandMark';
+import { BuildIndicator } from '../build/BuildIndicator';
 import { LanguageSwitch } from '../LanguageSwitch';
 import { ModeSwitch, type AppMode } from '../ModeSwitch';
 import { SettingsLink } from './SettingsLink';
@@ -18,6 +19,7 @@ export function PageTopbar({ mode, heading }: { mode: AppMode; heading: string }
         </div>
       </div>
       <div className="topbar-actions" aria-label={t(($) => $.settings.actions)}>
+        <BuildIndicator />
         <LanguageSwitch />
         <SettingsLink />
         <LogoutButton />

@@ -8,7 +8,7 @@ import threading
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any, Iterable, NamedTuple
+from typing import Any, Callable, Iterable, NamedTuple
 
 import click
 import pyjson5
@@ -404,7 +404,9 @@ def run_task(
     config_path: Path | None = None,
     confirmed: bool = False,
     dry_run: bool = False,
+    on_file: Callable[[int, int], None] | None = None,
 ) -> FileStats:
+    """on_file is told how many of the chat files are done, and of how many, before the first and after each."""
     args = default_args()
     args.input_dir, args.output_dir = input_dir, output_dir
     if config_path is not None:
@@ -451,6 +453,8 @@ def run_task(
         )
 
     stats = []
+    if on_file is not None:
+        on_file(0, len(source_files))
     try:
         for source_path in source_files:
             stats.append(
@@ -473,6 +477,8 @@ def run_task(
                     indent=args.indent,
                 )
             )
+            if on_file is not None:
+                on_file(len(stats), len(source_files))
     finally:
         if client is not None:
             client.close()
@@ -496,6 +502,7 @@ def main(
     config_path: Path | None = None,
     confirmed: bool = False,
     dry_run: bool = False,
+    on_file: Callable[[int, int], None] | None = None,
 ) -> FileStats:
     return run_task(
         TASK,
@@ -504,4 +511,5 @@ def main(
         config_path=config_path,
         confirmed=confirmed,
         dry_run=dry_run,
+        on_file=on_file,
     )

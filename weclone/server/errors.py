@@ -8,13 +8,16 @@ from weclone.utils import secure_storage as secure
 
 
 class ApiError(HTTPException):
-    def __init__(self, status: int, code: str, detail: str):
+    """`extra` holds fields the UI needs besides the code, sent next to it."""
+
+    def __init__(self, status: int, code: str, detail: str, **extra):
         super().__init__(status, detail)
         self.code = code
+        self.extra = extra
 
 
-def error_response(status: int, code: str, detail: str) -> JSONResponse:
-    return JSONResponse({"detail": detail, "code": code}, status_code=status)
+def error_response(status: int, code: str, detail: str, **extra) -> JSONResponse:
+    return JSONResponse({"detail": detail, "code": code, **extra}, status_code=status)
 
 
 def security_response(exc: secure.SecurityError, status: int) -> JSONResponse:
@@ -27,4 +30,4 @@ def security_response(exc: secure.SecurityError, status: int) -> JSONResponse:
 def install_errors(app):
     @app.exception_handler(ApiError)
     async def api_error(request, exc: ApiError):
-        return error_response(exc.status_code, exc.code, exc.detail)
+        return error_response(exc.status_code, exc.code, exc.detail, **exc.extra)

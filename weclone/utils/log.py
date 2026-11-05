@@ -31,14 +31,26 @@ def _persistent_log_format(record) -> str:
     return prefix + " - {message}\n{exception}"
 
 
+# Set for a process whose terminal output is kept on disk, as a build started from the web is: its terminal output
+# then follows the rule of persistent logs.
+REDACT_ENV = "WECLONE_LOG_REDACT"
+
+
+def _add_stderr_sink(level: str) -> None:
+    if os.getenv(REDACT_ENV) == "1":
+        logger.add(sys.stderr, format=_persistent_log_format, colorize=False, level=level)
+        return
+    logger.add(
+        sys.stderr,
+        format="<green><b>[WeClone]</b></green> <level>{level.name[0]}</level> | <level>{time:HH:mm:ss}</level> | <level>{message}</level>",
+        colorize=True,
+        level=level,
+    )
+
+
 env_log_level = os.getenv("WC_LOG_LEVEL")
 # Initialize basic log configuration, will be reconfigured later by configure_log_level_from_config
-logger.add(
-    sys.stderr,
-    format="<green><b>[WeClone]</b></green> <level>{level.name[0]}</level> | <level>{time:HH:mm:ss}</level> | <level>{message}</level>",
-    colorize=True,
-    level=env_log_level.upper() if env_log_level else "INFO",
-)
+_add_stderr_sink(env_log_level.upper() if env_log_level else "INFO")
 
 
 class InterceptHandler(logging.Handler):
@@ -151,12 +163,7 @@ def configure_log_level_from_config():
 
     logger.remove()
 
-    logger.add(
-        sys.stderr,
-        format="<green><b>[WeClone]</b></green> <level>{level.name[0]}</level> | <level>{time:HH:mm:ss}</level> | <level>{message}</level>",
-        colorize=True,
-        level=log_level.upper(),
-    )
+    _add_stderr_sink(log_level.upper())
 
     logger.add(
         "logs/weclone.log",

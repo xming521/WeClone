@@ -4,6 +4,7 @@ import { Trans, useTranslation } from 'react-i18next';
 import { api } from '../api';
 import { LogoutButton } from '../Auth';
 import { AppBrand, BrandMark } from '../BrandMark';
+import { BuildIndicator } from '../build/BuildIndicator';
 import { LanguageSwitch } from '../LanguageSwitch';
 import { SettingsLink } from '../settings/SettingsLink';
 import { ModeSwitch } from '../ModeSwitch';
@@ -166,6 +167,7 @@ export function AssistantApp() {
           </div>
         </div>
         <div className="topbar-actions">
+          <BuildIndicator />
           <LanguageSwitch />
           <SettingsLink />
           <LogoutButton />
@@ -238,13 +240,18 @@ export function AssistantApp() {
               ))}
             </ul>
           ) : (
-            <p className="summary-placeholder">{t(($) => $.assistant.noDomains)}</p>
+            <p className="summary-placeholder">
+              <Trans
+                i18nKey={($) => $.assistant.noDomains}
+                components={{ a: <a className="wc-link" href="#/build" /> }}
+              />
+            </p>
           )}
           <p className="summary-hint">
             <Trans
               i18nKey={($) => $.assistant.domainsNote}
               count={view.summaries}
-              components={{ link: <a className="wc-link" href="#/summary" /> }}
+              components={{ a: <a className="wc-link" href="#/summary" /> }}
             />
           </p>
         </section>

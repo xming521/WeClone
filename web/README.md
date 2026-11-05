@@ -12,7 +12,7 @@ weclone-cli dev            # Vite dev server on http://127.0.0.1:5174, backend o
 weclone-cli dev --demo     # the same, with the synthetic test portrait (password: demo)
 ```
 
-`weclone-cli server` opens the newest run under `dataset/res_csv/agent/profile_runs/`. Pass `--run <run-directory>` to open another run, or `--demo` (`--demo en` for English) to open the synthetic portrait in `tests/tests_data/`. The demo copies it into a temporary directory that is removed on exit.
+`weclone-cli server` opens the run last picked on the web (Settings → Portrait versions), else the newest run under `dataset/res_csv/agent/profile_runs/`. Builds started on the Build portrait page (`#/build`) add runs there. Pass `--run <run-directory>` to open another run for one start, or `--demo` (`--demo en` for English) to open the synthetic portrait in `tests/tests_data/`. The demo copies it into a temporary directory that is removed on exit.
 
 ## Routes
 

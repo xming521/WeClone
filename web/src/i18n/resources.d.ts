@@ -36,6 +36,11 @@ export default interface Resources {
       "canvasHelp": "悬停点亮归属路径 · 点击展开并聚焦，再点一次收起 · 拖动节点牵动图谱",
       "dimensionOverview": "{{count, zhNumeral}}维总览",
       "domainOverview": "{{count, zhNumeral}}个板块总览",
+      "empty": {
+        "build": "构建画像",
+        "hint": "从聊天记录构建画像后，这里会显示你的人生画像。",
+        "title": "还没有画像"
+      },
       "emptyView": "当前视图没有画像记录",
       "loadFailed": "画像暂时无法打开",
       "loading": "正在读取画像",
@@ -62,7 +67,7 @@ export default interface Resources {
       "domainFacts": "{{count}} 条",
       "domainFactsSummary": "{{count}} 条 · 有总结",
       "domains": "板块",
-      "domainsNote": "勾掉的板块，总结和条目都不给助手。助手现在能读到 {{count}} 段板块总结：这个级别、勾选的板块里、在<link>板块总结页</link>确认过的。改了从助手的下一次调用起生效，不用重新配置。",
+      "domainsNote": "勾掉的板块，总结和条目都不给助手。助手现在能读到 {{count}} 段板块总结：这个级别、勾选的板块里、在<a>板块总结页</a>确认过的。改了从助手的下一次调用起生效，不用重新配置。",
       "hours": "{{count}} 小时",
       "intro": "Claude Code、Codex 等支持 MCP 的助手可以连接这里的 WeClone：weclone_profile 返回你确认过的板块总结，weclone_search 按关键词或板块查画像条目。所有助手共用一个令牌，读到哪些内容由下面选的级别和板块决定，每次调用都会记下返回了什么。",
       "level": "隐私级别",
@@ -82,7 +87,7 @@ export default interface Resources {
       },
       "loadFailed": "助手接入页暂时无法打开",
       "loading": "正在读取助手接入设置",
-      "noDomains": "还没有画像，运行 build-profile 之后这里会列出各个板块。",
+      "noDomains": "还没有画像，<a>构建画像</a>之后这里会列出各个板块。",
       "noToken": "还没有令牌",
       "noTokenHint": "生成令牌后，在运行助手的机器上执行配置命令。",
       "resetDomains": "改回全部板块",
@@ -212,6 +217,110 @@ export default interface Resources {
       "tokenLife": "令牌生成后一直有效，服务重启也不受影响，重新生成或停用后才失效。",
       "unused": "还没有机器人用过"
     },
+    "build": {
+      "files": "{{done}}/{{total}} 个聊天",
+      "finished": {
+        "again": "重新构建",
+        "another": "构建新画像",
+        "cancelled": {
+          "hint": "重新构建会用新的目录重跑，已经拿到的模型结果读缓存，不再请求。",
+          "title": "构建已取消"
+        },
+        "failed": {
+          "hint": "重新构建会用新的目录重跑，已经拿到的模型结果读缓存，不再请求。",
+          "title": "构建失败"
+        },
+        "interrupted": {
+          "hint": "构建进程没有正常结束，可能是机器重启或进程被结束。重新构建时，已经拿到的模型结果读缓存。",
+          "title": "构建中断"
+        },
+        "log": "日志：{{log}}",
+        "open": "打开新画像",
+        "reviewsStay": "当前画像的审核记录留在旧版本里，打开新画像后，可以在设置页的「画像版本」切回。",
+        "stoppedAt": "停在「{{stage}}」",
+        "stoppedBefore": "在第一个阶段开始前停止",
+        "succeeded": {
+          "hint": "打开后各个页面显示新画像。旧版本留在设置页的「画像版本」里，可以切回。",
+          "title": "新画像已生成"
+        }
+      },
+      "indicator": {
+        "done": "新画像已生成",
+        "open": "查看构建",
+        "running": "正在构建 {{step}}/{{steps}}"
+      },
+      "intro": "从聊天记录抽取画像：检查配置、确认发送，然后在这里看进度。构建在后台进行，完成后直接打开，不用重启服务。",
+      "loading": "正在读取构建状态",
+      "prepare": {
+        "backend": "模型后端",
+        "backendHint": "在 settings.jsonc 的 agent_distill_args 里设置",
+        "chatCount": "{{count}} 个聊天",
+        "chats": "聊天记录",
+        "chatsHint": "在 settings.jsonc 的 make_dataset_args 里设置",
+        "checking": "正在检查",
+        "consent": "聊天内容可能包含身份、联系方式和私密对话，模型服务可能记录或留存这些内容。已经抽取过的聊天读取缓存，不会再次发送。我确认有权处理这些聊天记录，并同意把聊天内容发送给 {{backend}}。",
+        "last": "上次构建完成于 {{time}}，已经打开。",
+        "limit": "输入上限 {{count}} Token",
+        "problems": "开始前需要处理",
+        "purpose": "用途",
+        "recheck": "重新检查",
+        "start": "开始构建",
+        "tokens": "模型的输入 Token 上限",
+        "tokensHint": "按模型的上下文长度填写，决定每次请求放多少内容"
+      },
+      "problems": {
+        "api_config_missing": "settings.jsonc 的 make_dataset_args 里没有填 {{keys}}",
+        "build_running": "已经有一次构建在运行",
+        "chats_missing": "{{folder}} 里没有聊天记录，请先按文档导出聊天记录",
+        "codex_logged_out": "Codex CLI 没有登录，请先运行 {{command}} login",
+        "codex_missing": "找不到 Codex CLI：{{command}}",
+        "config_invalid": "settings.jsonc 读取失败：{{detail}}",
+        "context_unknown": "读不到 Codex 模型的上下文长度，请填写输入 Token 上限",
+        "max_context_required": "API 后端要填写模型的输入 Token 上限",
+        "style_deps_missing": "做分身要抽取语言风格，请先运行 uv pip install --group style --torch-backend cpu -e .，并把 LTP 模型放在 {{model_dir}}",
+        "telegram_id_missing": "settings.jsonc 里没有填 make_dataset_args.telegram_args.my_id"
+      },
+      "purposes": {
+        "assistant": {
+          "hint": "抽取画像和事件，供个人助理和板块总结使用",
+          "label": "个人助理"
+        },
+        "clone": {
+          "hint": "另外抽取语言风格，供分身模仿你的说话方式",
+          "label": "做分身"
+        }
+      },
+      "running": {
+        "cancel": "取消构建",
+        "confirmCancel": "确定取消这次构建？已经拿到的模型结果会留在缓存里。",
+        "leave": "关闭网页不会停止构建。日志：{{log}}",
+        "state": "构建中"
+      },
+      "stageStates": {
+        "cancelled": "已取消",
+        "failed": "失败",
+        "pending": "等待",
+        "running": "进行中",
+        "succeeded": "完成"
+      },
+      "stages": {
+        "distill_event": "抽取事件记忆",
+        "distill_profile": "抽取画像记忆",
+        "hierarchy": "生成画像层级",
+        "organize": "划分板块、分类和汇总记忆",
+        "snapshot": "准备聊天数据",
+        "style": "抽取语言风格",
+        "summaries": "生成板块总结"
+      },
+      "states": {
+        "cancelled": "已取消",
+        "failed": "失败",
+        "interrupted": "中断",
+        "running": "构建中",
+        "succeeded": "已完成"
+      },
+      "title": "构建画像"
+    },
     "chat": {
       "close": "关闭聊天记录",
       "footer": "聊天记录",
@@ -259,9 +368,16 @@ export default interface Resources {
       "api_not_found": "接口不存在",
       "assistant_plaintext": "数据是明文存储的，令牌有效时助手就能读取，不需要打开",
       "batch_changed": "记录已被修改，整批操作未保存，请刷新后重试",
+      "build_cancel_unsupported": "Windows 上暂时不能从网页取消构建",
+      "build_check_failed": "运行前检查没有通过，请按提示修改后重试",
+      "build_not_running": "没有正在运行的构建",
+      "build_running": "已经有一次构建在运行",
       "chat_missing": "原始聊天文件不存在或与来源记录不一致，请检查本次抽取的来源文件",
       "chat_unavailable": "该来源未保存聊天定位信息，无法查看原文",
+      "consent_required": "请先勾选同意把聊天内容发送给模型服务",
+      "demo_build_disabled": "演示模式不能构建画像",
       "demo_password_fixed": "演示模式的密码固定，不能修改",
+      "demo_runs_fixed": "演示模式只有一份画像",
       "demo_settings_fixed": "演示模式不能修改这项设置",
       "duplicate_domains": "批量操作不能包含重复板块",
       "duplicate_facts": "批量操作不能包含重复记录",
@@ -272,11 +388,13 @@ export default interface Resources {
       "not_set_up": "请先设置密码",
       "password_mismatch": "两次输入的密码不一致",
       "password_wrong": "密码错误",
-      "profile_missing": "画像数据尚未生成，请先完成抽取和整理",
+      "profile_missing": "还没有画像，请先在「构建画像」页生成",
       "request_rejected": "请求验证失败",
+      "run_incomplete": "这个版本没有构建完成，不能打开",
+      "run_not_found": "没有这个画像版本",
       "source_not_found": "来源记录不存在",
       "storage_locked": "数据尚未解锁，请重新输入密码",
-      "style_missing": "这次运行没有抽取语言风格，做分身请运行 weclone-cli build-profile --purpose clone",
+      "style_missing": "这个画像版本没有抽取语言风格，做分身请在「构建画像」页选「做分身」重新构建",
       "summary_batch_changed": "总结已被修改，整批操作未保存，请刷新后重试",
       "summary_batch_stale": "有板块的画像或总结规则已变动，请先重新生成总结再确认",
       "summary_changed": "总结已被修改，请刷新后核对并重试",
@@ -473,19 +591,28 @@ export default interface Resources {
         "title": "审核"
       },
       "run": {
+        "build": "构建新画像",
+        "current": "当前",
         "demo": "演示数据（合成，退出后删除）",
+        "empty": "还没有画像。",
         "footnote": "生成于 {{date}}",
         "generated": "画像生成于",
         "name": "运行",
         "none": "未知",
         "notReviewed": "还没有审核",
         "path": "目录",
+        "progress": "查看进度",
         "reviewed": "最近审核",
+        "reviewedAt": "最近审核 {{time}}",
+        "separator": " · ",
         "style": "语言风格",
         "styleNo": "这次运行没有抽取",
         "styleYes": "已抽取",
-        "title": "数据来源",
-        "update": "用新的聊天记录更新画像：运行 weclone-cli build-profile 生成新的一次运行，再用 weclone-cli server 打开，默认打开最新的一次，用 --run 指定其他目录。"
+        "switch": "切换到这个版本",
+        "switched": "已切换到 {{time}} 生成的画像",
+        "title": "画像版本",
+        "versions": "全部版本",
+        "withStyle": "含语言风格"
       },
       "security": {
         "encrypted": "画像和聊天数据加密保存，密码同时用于登录和解密。",

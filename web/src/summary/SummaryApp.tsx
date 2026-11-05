@@ -5,6 +5,7 @@ import { api } from '../api';
 import { LevelSwitch } from '../assistant/accessParts';
 import { LogoutButton } from '../Auth';
 import { AppBrand, BrandMark } from '../BrandMark';
+import { BuildIndicator } from '../build/BuildIndicator';
 import { LanguageSwitch } from '../LanguageSwitch';
 import { SettingsLink } from '../settings/SettingsLink';
 import { ModeSwitch } from '../ModeSwitch';
@@ -306,6 +307,7 @@ export function SummaryApp() {
           </div>
         </div>
         <div className="topbar-actions">
+          <BuildIndicator />
           <LanguageSwitch />
           <SettingsLink />
           <LogoutButton />

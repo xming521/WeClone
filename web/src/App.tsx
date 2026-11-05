@@ -22,6 +22,8 @@ import { AssistantApp } from './assistant/AssistantApp';
 import { BotsApp } from './bots/BotsApp';
 import { SummaryApp } from './summary/SummaryApp';
 import { AboutApp } from './settings/AboutApp';
+import { BuildApp } from './build/BuildApp';
+import { BuildIndicator } from './build/BuildIndicator';
 import { SettingsApp } from './settings/SettingsApp';
 import { SettingsLink } from './settings/SettingsLink';
 import { Toaster } from './feedback/Toaster';
@@ -94,6 +96,7 @@ function Atlas() {
             <div className="topbar-actions">
               <SearchBox />
               <ProfileActions />
+              <BuildIndicator />
               <LanguageSwitch />
               <SettingsLink />
               <LogoutButton />
@@ -118,11 +121,23 @@ function ProfileApp() {
   const { t } = useTranslation();
   const loaded = useProfileStore((state) => state.viewModel !== null);
   const error = useProfileStore((state) => state.error);
+  const missing = useProfileStore((state) => state.missing);
   const load = useProfileStore((state) => state.load);
   const reload = useProfileStore((state) => state.reload);
   useEffect(() => {
     void load();
   }, [load]);
+  if (!loaded && missing)
+    return (
+      <div className="load-state">
+        <BrandMark />
+        <h1>{t(($) => $.app.empty.title)}</h1>
+        <p>{t(($) => $.app.empty.hint)}</p>
+        <a className="wc-btn wc-btn--primary" href="#/build">
+          {t(($) => $.app.empty.build)}
+        </a>
+      </div>
+    );
   if (!loaded && error)
     return (
       <div className="load-state">
@@ -164,6 +179,7 @@ export default function App() {
     bots: BotsApp,
     settings: SettingsApp,
     about: AboutApp,
+    build: BuildApp,
   }[mode];
   return (
     <AuthGate>
