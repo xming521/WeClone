@@ -28,16 +28,14 @@ def content_chars(item: dict[str, Any]) -> int:
     return sum(len(content) for _, content in chat_messages(item))
 
 
-def sample_body(item: dict[str, Any], *, target_role: str, include_time: bool) -> str:
-    lines = []
-    if include_time and item.get("time"):
-        lines.append(f"time: {item['time']}")
-    lines.extend(("B:" if role == target_role else "A:") + content for role, content in chat_messages(item))
-    return "\n".join(lines)
+def sample_body(item: dict[str, Any], *, target_role: str) -> str:
+    return "\n".join(
+        ("B:" if role == target_role else "A:") + content for role, content in chat_messages(item)
+    )
 
 
-def render_sample(item: dict[str, Any], *, sample_id: str, target_role: str, include_time: bool) -> str:
-    body = sample_body(item, target_role=target_role, include_time=include_time)
+def render_sample(item: dict[str, Any], *, sample_id: str, target_role: str) -> str:
+    body = sample_body(item, target_role=target_role)
     return f"#{sample_id}\n{body}" if body else f"#{sample_id}"
 
 
@@ -47,7 +45,7 @@ def sample_cache_key(sample: ChatSample, *, task: str, target_role: str) -> str:
         "distill",
         task,
         build_window_extract_prompt(task, include_current_state=sample.include_current_state),
-        sample_body(sample.item, target_role=target_role, include_time=task == "event"),
+        sample_body(sample.item, target_role=target_role),
     )
 
 
@@ -90,10 +88,7 @@ def make_window_request(
     max_tokens: int | None,
 ) -> LLMRequest:
     prompt = build_window_extract_prompt(task, include_current_state=samples[0].include_current_state)
-    body = "\n\n".join(
-        render_sample(s.item, sample_id=s.sample_id, target_role=target_role, include_time=task == "event")
-        for s in samples
-    )
+    body = "\n\n".join(render_sample(s.item, sample_id=s.sample_id, target_role=target_role) for s in samples)
     return LLMRequest.from_prompt(
         prompt.replace("{{CHAT_SAMPLES}}", body),
         provider=provider,
@@ -160,16 +155,16 @@ def split_window_response(response: LLMResponse, samples: list[ChatSample], task
                     raise ValueError("Invalid profile type or current_state outside the time window")
             parsed[sid] = {"memories": value}
         else:
-            if not isinstance(value, dict) or set(value) - {"surface_events", "inferred_events"}:
+            if not isinstance(value, dict) or set(value) - {"surface_events"}:
                 raise ValueError("Invalid event_memories object")
-            for kind, events in value.items():
-                if not isinstance(events, list) or (kind == "surface_events" and len(events) > 1):
-                    raise ValueError(f"Invalid {kind} array")
-                for event in events:
-                    validate_memory(event, content_field=kind[:-1])
-                    types = event.get("event_types")
-                    if not isinstance(types, list) or not types or any(not isinstance(t, str) for t in types):
-                        raise ValueError("Missing or invalid event_types")
+            events = value.get("surface_events", [])
+            if not isinstance(events, list) or len(events) > 1:
+                raise ValueError("Invalid surface_events array")
+            for event in events:
+                validate_memory(event, content_field="surface_event")
+                types = event.get("event_types")
+                if not isinstance(types, list) or not types or any(not isinstance(t, str) for t in types):
+                    raise ValueError("Missing or invalid event_types")
             parsed[sid] = value
     if set(parsed) != set(expected):
         raise ValueError("Missing sample IDs")

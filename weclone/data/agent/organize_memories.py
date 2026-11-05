@@ -136,10 +136,7 @@ def read_memories(input_dir: Path) -> tuple[list[dict], dict[str, dict]]:
                 branches = (
                     [("S", payload, "content")]
                     if field == "state_memories"
-                    else [
-                        ("ES", payload.get("surface_events", []), "surface_event"),
-                        ("EI", payload.get("inferred_events", []), "inferred_event"),
-                    ]
+                    else [("ES", payload.get("surface_events", []), "surface_event")]
                 )
                 for kind, memories, content_field in branches:
                     for memory_index, memory in enumerate(memories):
@@ -173,7 +170,6 @@ def read_memories(input_dir: Path) -> tuple[list[dict], dict[str, dict]]:
                         for key in (
                             "preference_type",
                             "status",
-                            "event_time",
                             "event_types",
                             "people",
                             "locations",
@@ -189,9 +185,8 @@ def read_memories(input_dir: Path) -> tuple[list[dict], dict[str, dict]]:
 
 def prompt_record(record: dict, *, include_sample_time: bool = False) -> dict:
     row = {key: record[key] for key in ("id", "content")}
-    for key in ("event_time", "status"):
-        if record.get(key):
-            row[key] = record[key]
+    if record.get("status"):
+        row["status"] = record["status"]
     if include_sample_time and record.get("sample_time"):
         row["sample_time"] = record["sample_time"]
     if record.get("sensitivity"):

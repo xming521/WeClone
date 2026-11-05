@@ -61,10 +61,9 @@ def record(rid, kind="S", memory_type="stable_fact", sample="one", tags=None):
     ("A与B讨论A股和Ａ股。", "peer1与B讨论A股和Ａ股。"),
 ])
 def test_prompt_record_limits_metadata_without_changing_source(content, expected_content):
-    source = {**record("x"), "content": content, "status": "ongoing",
-              "event_time": {"time_text": "明天"}, "people": ["B"], "event_types": ["daily_event"]}
+    source = {**record("x"), "content": content, "status": "ongoing", "people": ["B"], "event_types": ["daily_event"]}
     original = json.dumps(source)
-    expected = {"id": "x", "content": expected_content, "status": "ongoing", "event_time": {"time_text": "明天"}}
+    expected = {"id": "x", "content": expected_content, "status": "ongoing"}
     assert organize.prompt_record(source) == expected
     assert organize.prompt_record(source, include_sample_time=True) == {**expected, "sample_time": "2025-01-01"}
     assert json.dumps(source) == original
@@ -90,15 +89,15 @@ def write_input(root):
     return sample, profile
 
 
-@pytest.mark.parametrize("kind", ["S", "ES", "EI"])
+@pytest.mark.parametrize("kind", ["S", "ES"])
 def test_reader_filters_scores_without_modifying_sources(tmp_path, kind):
     sample, _ = write_input(tmp_path)
-    content_key = {"S": "content", "ES": "surface_event", "EI": "inferred_event"}[kind]
+    content_key = {"S": "content", "ES": "surface_event"}[kind]
     memories = [{content_key: f"记忆{i}", "type": "stable_fact", "importance": importance, "confidence": confidence}
                 for i, (importance, confidence) in enumerate([(1, 4), (4, 2), (2, 3), (4, 4)])]
     folder = "state_people" if kind == "S" else "event_people"
     payload = {"state_memories": memories} if kind == "S" else {
-        "event_memories": {"surface_events" if kind == "ES" else "inferred_events": memories}}
+        "event_memories": {"surface_events": memories}}
     path = tmp_path / folder / "peer.json"
     path.write_text(json.dumps([{**sample, **payload}], ensure_ascii=False))
     before = path.read_bytes()
@@ -139,7 +138,6 @@ def test_reader_rejects_samples_without_a_contact_id(tmp_path, chat_with_id):
     ("S", "current_state", (1, 2, 3, 4, 6, 8)),
     ("S", "preference", (8,)),
     ("ES", "ES", (5, 7)),
-    ("EI", "EI", (5, 7)),
 ])
 def test_dimension_source_contract(kind, type_, dims):
     assert organize.allowed_dimensions(record("x", kind, type_)) == dims
@@ -343,7 +341,7 @@ def test_classify_prompts_share_rules_and_domains_before_memories():
     assert "本次维度" not in preference
 
 
-@pytest.mark.parametrize("kind,type_", [("S", "goal"), ("ES", "ES"), ("EI", "EI")])
+@pytest.mark.parametrize("kind,type_", [("S", "goal"), ("ES", "ES")])
 def test_preference_dimension_rejects_goals_and_events(kind, type_):
     with pytest.raises(ValueError, match="Invalid dimension/source"):
         organize.validate_classification({"items": [{"id": "a", "fields": [field(8)], "sensitivity": "normal"}]},
