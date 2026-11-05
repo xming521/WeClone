@@ -194,6 +194,40 @@ def build_profile(purpose: str | None, output_dir: Path | None, max_context_toke
     click.echo(f"画像生成完成：{result}")
 
 
+@cli.command(
+    "deep-insights",
+    help="Infer from a built portrait what no fact says: implicit facts about who you are, your situation and "
+    "abilities, and deep insights that sum up what kind of person you are.",
+)
+@click.option(
+    "--run",
+    "run_dir",
+    type=click.Path(path_type=Path, exists=True, file_okay=False),
+    help="build-profile result directory; defaults to the newest one.",
+)
+@click.option(
+    "--max-context-tokens",
+    type=click.IntRange(min=1),
+    help="Input token limit; defaults to the Codex context length, required for API models.",
+)
+@apply_common_decorators()
+def deep_insights(run_dir: Path | None, max_context_tokens: int | None):
+    from weclone.server.deep_insights import OUTPUT_NAME, build_insights
+    from weclone.server.profile_review import newest_run
+
+    run_dir = run_dir or newest_run()
+    if run_dir is None:
+        raise click.ClickException("没有找到画像，请先运行 build-profile")
+    directory = run_dir / "profile_hierarchy"
+    try:
+        result = build_insights(directory, max_context_tokens)
+    except (OSError, ValueError, RuntimeError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo(
+        f"隐含事实 {len(result['implicit_facts'])} 条，深度洞察 {len(result['insights'])} 条：{directory / OUTPUT_NAME}"
+    )
+
+
 @cli.command("train-sft", help="Fine-tune the model using prepared datasets.")
 @apply_common_decorators()
 def train_sft():
