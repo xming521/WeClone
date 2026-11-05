@@ -76,34 +76,20 @@ confidence 只衡量该记忆是否被当前聊天记录充分支持，不衡量
 """
 
 EVENT_RULES = """
-你是一个聊天记录事件抽取器。你的任务是从一段聊天记录（只包含A、B角色）中，抽取和“B”相关的事件。“事件”分两层：
-
-1. 表层事件 surface_event：用一条摘要记录这段聊天显式围绕什么展开、聊了什么。它不是原子事件列表，而是对本段聊天表层内容的概括性总结。它可以概括：
+你是一个聊天记录事件抽取器。你的任务是从一段聊天记录（只包含A、B角色）中，抽取和“B”相关的表层事件 surface_event：用一条摘要记录这段聊天显式围绕什么展开、聊了什么。它不是原子事件列表，而是对本段聊天表层内容的概括性总结。它可以概括：
 - 主要在聊什么话题
 - 围绕什么请求或信息交换展开
 - 讨论了什么计划、结果、状态或关系变化
 - 如果有多个零散话题，只保留和 B 最相关、最能代表这段聊天主旨的内容
 每条聊天数据最多抽取一个 surface_event。尽可能的总结事件，普通日常流水账或短期生活事件也要总结，例如点了个外卖、吃了一顿普通饭、感冒了、睡了一觉、出门取东西等
 
-2. 深层事件 inferred_event：根据聊天上下文可以较可靠推测出的现实中发生的事或者经历。只抽取根据聊天上下文可以较可靠推测出的、有现实意义或后续检索价值的事件。
-不要为已经表达完整的 surface_event 再生成重复的 inferred_event。如果 inferred_event 只是把 surface_event 改写成“B正在/已经/需要/承诺……”之类的同义句，或者只是重复 B 已经明说的完整事件，就不要输出。
-只有当推断能提供额外检索价值时，才生成 inferred_event。
-例如：
-- B已经经历过、做过、去过、吃过、接触过的事情。
-- B去过日本、吃过某家有代表性的餐厅、养过宠物、玩过某类游戏、做过某个项目、曾经和某人交往过等。
-不要过度脑补。不要把普通日常流水账都扩展成深层事件。
-画像-事件边界：
-长期画像、稳定事实、偏好、习惯、能力、长期关系、长期目标、泛化计划、稳定状态等属于画像记忆，不要输出为 inferred_event。
-
 抽取原则：
-以证据支持为先。深层事件不追求数量或推断深度。允许还原上下文明确支持的省略、指代和关系；无法确定的部分不补全。
+以证据支持为先。允许还原上下文明确支持的省略、指代和关系；无法确定的部分不补全。
 保持原文的主体、行动阶段、条件和不确定性；不把假设写成现实，不增加未经支持的时间、因果或普遍性。
 不要把“B提到X”或“B在聊X”自动当成现实事件。只有当 X 能揭示 B 参与、经历、计划、承诺、被影响的现实动作或状态变化，或对后续检索有明确价值时，才值得抽取为事件。
-对于同时包含明说内容和推断补全的 mixed 事件，也按 inferred_event 的门槛判断：只有推断补全部分带来额外检索价值时才输出到 inferred_events；否则只保留 surface_events，不输出对应的 inferred_events。
-surface_event 应是本段聊天的表层摘要，不要拆成多条原子事件。
 
 事件内容可检索性约束：
-1. 每条事件必须满足“脱离原聊天也能检索”：只看 surface_event 或 inferred_event 本身，就能知道 B 与哪个对象、领域、人物、地点、任务、承诺、经历、状态变化或受影响结果有关。
+1. 每条事件必须满足“脱离原聊天也能检索”：只看 surface_event 本身，就能知道 B 与哪个对象、领域、人物、地点、任务、承诺、经历、状态变化或受影响结果有关。
 2. 合格事件必须至少包含一个可检索锚点。允许的锚点包括：明确名称、稳定对象、可复用领域、具体人物/关系、具体地点、具体任务、明确承诺对象、现实动作、状态变化、履约结果、受影响结果、可解析时间。锚点必须来自原文或由原文稳定支持，不能靠读者回看上下文才能补全。
 3. 未解析的指代词和泛名词不能当锚点。凡是事件内容里仍需要依赖“这个/那个/当前/某个/相关/事情/内容/项目/材料/问题/方向/活动/东西/对象”等词才能成立，且原文不能还原具体指向，就不要抽取。
 4. 不要把“聊到、提到、讨论、沟通、确认、判断、进展、流程、状态、数量、权限”等表层谓语或阶段本身当作事件锚点。如果缺少可检索对象，即使 B 表达了想做、做完、没权限、聊过、觉得一般，也不要输出为事件。
@@ -126,14 +112,10 @@ tag 也必须满足“脱离原聊天可独立检索”。不要把一句事件�
 抽取要求：
 1. 只有 B 是事件参与者、承诺方、受影响方、请求接收方，或该事件对 B 有明确后续关系时才抽取。
 2. 一个事件可以有多个事件类型和多个标签
-3. 一段聊天最多抽取一个 surface_event，但可以抽取多个 inferred_event，二者分别输出到 surface_events 和 inferred_events。surface_events 若输出，只能包含一个对象。
-4. surface_event 和 inferred_event 不是一对一关系，不要把它们强行合并在同一个 JSON 对象里。
-5. 对玩笑、反话、夸张、暧昧表达、角色扮演要谨慎，必要时降低 confidence 或不抽取。
-6. surface_event 不做原子化拆分；它应概括本段聊天聊了什么。inferred_event 才在确实存在多个不同现实事件时拆成原子事件，不要把多个无关现实事件合在一条里。
-7. 输出 inferred_event 前先和 surface_event 对照：如果二者指向同一件事，且 inferred_event 没有新增可检索事实，只输出 surface_event。
-8. 输出每条事件前自检：把 surface_event 或 inferred_event 当作未来检索 query 时，是否能检索到一类明确事件？如果只能搜到“当前话题/某个事项/相关内容/沟通进展”这类空泛结果，应丢弃。
-9. 不要输出重复事件。如果同一事件在聊天记录中重复出现，只保留一条。
-10. 没有对应事件时，在 event_memories 内省略对应事件数组。事件对象内没有值的可选字段直接省略，不输出空字符串、空数组或 null。
+3. surface_events 若输出，只能包含一个对象，不要拆成多条原子事件。
+4. 对玩笑、反话、夸张、暧昧表达、角色扮演要谨慎，必要时降低 confidence 或不抽取。
+5. 输出前自检：把 surface_event 当作未来检索 query 时，是否能检索到一类明确事件？如果只能搜到“当前话题/某个事项/相关内容/沟通进展”这类空泛结果，应丢弃。
+6. 事件对象内没有值的可选字段直接省略，不输出空字符串、空数组或 null。
 
 重要程度 importance 取值：
 1：低，普通生活流水账或简单话题，有一定记录价值但后续影响很小。
@@ -146,17 +128,6 @@ confidence只衡量该事件是否被当前聊天记录充分支持，不衡量�
 2：中等支持，需要明显推断。事件不是原文直接陈述，而是由上下文线索、时间地点、请求答复、关系称呼或任务描述推理得出。
 3：强上下文支持，需要少量补全。B没有完整说出事件句，但通过省略、指代、上下文承接等少量推断，可以基本确定事件发生、正在发生或将要发生。
 4：直接支持，无明显歧义。B以认真、肯定、非假设、非玩笑、非转述的方式明确表达事件；或 B 明确确认了 A 对该事件的描述。
-
-# 时间字段规则
-surface_events 不需要输出聊天时间字段。
-inferred_events 可以输出 event_time，只有你可以推理出深层事件的现实发生时间、计划时间时才输出 event_time。
-event_time 不要只写相对时间词。如果能根据原始消息时间解析到具体日期，必须尽量解析成 normalized。如果不能解析，则不输出 time_normalized，只输出time_text。
-event_time 格式：
-{
-  "time_text": "原文中的关于事件发生的时间表达，如 明天/前天/上周/假期/周末",
-  "time_normalized": "YYYY-MM-DD"
-}
-
 
 """
 
@@ -183,7 +154,6 @@ def build_window_extract_prompt(task: str, *, include_current_state: bool = True
         }
         example = {"sample_id": "输入样本ID", "state_memories": [memory]}
         field_rules = "每个结果对象包含 sample_id、state_memories 两个字段。state_memories 是该样本的画像数组，无画像时为 []。画像对象各字段遵循上述定义。"
-        suffix = ""
     elif task == "event":
         rules = EVENT_RULES
         surface = {
@@ -195,22 +165,8 @@ def build_window_extract_prompt(task: str, *, include_current_state: bool = True
             "importance": 0,
             "confidence": 0,
         }
-        inferred = {
-            "event_types": ["other_event"],
-            "inferred_event": "根据上下文推测的现实事件",
-            "event_time": {"time_text": "原文中的关于事件发生的时间表达", "time_normalized": "YYYY-MM-DD"},
-            "locations": ["相关地点"],
-            "people": ["相关人物"],
-            "tags": ["检索标签"],
-            "importance": 0,
-            "confidence": 0,
-        }
-        example = {
-            "sample_id": "输入样本ID",
-            "event_memories": {"surface_events": [surface], "inferred_events": [inferred]},
-        }
-        field_rules = "每个结果对象包含 sample_id、event_memories 两个字段。event_memories 是该样本的事件对象，无事件时为 {}。其中 surface_events 为表层摘要数组，inferred_events 为深层事件数组；没有对应事件时省略该数组。surface_event、inferred_event 为对应事件内容；people、locations 是相关人物、地点数组，有值才输出。其他字段按上述定义。"
-        suffix = "\ntime 是该样本的聊天时间，用于事件相对时间解析。"
+        example = {"sample_id": "输入样本ID", "event_memories": {"surface_events": [surface]}}
+        field_rules = "每个结果对象包含 sample_id、event_memories 两个字段。event_memories 是该样本的事件对象，无事件时为 {}。surface_event 为事件内容；people、locations 是相关人物、地点数组，有值才输出。其他字段按上述定义。"
     else:
         raise ValueError(f"Unknown extraction task: {task}")
     protocol = """\n最终输出协议：
@@ -223,7 +179,6 @@ def build_window_extract_prompt(task: str, *, include_current_state: bool = True
         + field_rules
         + "不得增加 result 包装字段。\n完整输出结构示例，数组元素按样本数量重复：\n"
         + json.dumps({"results": [example]}, ensure_ascii=False, separators=(",", ":"))
-        + suffix
         + "\n独立样本输入：每个样本以单独一行 #ID 开始，ID 对应输出的 sample_id；到下一个 #ID 行或输入结束为止。\n"
         + "{{CHAT_SAMPLES}}"
     )

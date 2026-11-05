@@ -70,9 +70,7 @@ def test_plain_format_counts_only_normalized_chat_content():
         ],
     }
     assert content_chars(item) == 4
-    assert render_sample(item, sample_id="12", target_role="user", include_time=True) == (
-        "#12\ntime: 2025-01-01\nB:甲\n乙\nA:丙"
-    )
+    assert render_sample(item, sample_id="12", target_role="user") == "#12\nB:甲\n乙\nA:丙"
 
 
 @pytest.mark.parametrize("recent", [False, True])
@@ -199,9 +197,9 @@ def test_cache_key_leaves_out_position_and_follows_rules_and_text():
     assert key(item) != key(item, task="event")
     assert key(item) != key(item, role="user")
     assert key(item) != key({**item, "messages": [{"role": "assistant", "content": "别的"}]})
-    # Event rules see the chat time, profile rules do not.
+    # Neither task sees the chat time.
     assert key(item) == key({**item, "time": "2025-02-01"})
-    assert key(item, task="event") != key({**item, "time": "2025-02-01"}, task="event")
+    assert key(item, task="event") == key({**item, "time": "2025-02-01"}, task="event")
 
 
 @pytest.mark.parametrize("task,module", [("state", distill_profile), ("event", distill_event)])

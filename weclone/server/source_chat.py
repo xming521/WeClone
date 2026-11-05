@@ -20,12 +20,11 @@ def matches_memory(sample: dict, origin: dict, source: dict) -> bool:
     kind = origin.get("kind")
     if kind == "S":
         memories, field = sample.get("state_memories"), "content"
-    elif kind in {"ES", "EI"}:
+    elif kind == "ES":
         events = sample.get("event_memories")
         if not isinstance(events, dict):
             return False
-        memories = events.get("surface_events" if kind == "ES" else "inferred_events")
-        field = "surface_event" if kind == "ES" else "inferred_event"
+        memories, field = events.get("surface_events"), "surface_event"
     else:
         return False
     index = origin.get("memory_index")
