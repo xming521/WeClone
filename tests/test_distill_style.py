@@ -14,6 +14,7 @@ import pytest
 
 from weclone.data.agent.distill_style import data, extraction, register_style, run, variation, wire
 from weclone.data.agent.distill_style.batching import JOINT_FIELDS, BatchDispatcher, restore_chat_output
+from weclone.utils import secure_storage
 
 ROOT = Path(__file__).resolve().parents[1]
 LTP_MODEL = ROOT / "models/LTPbase"
@@ -314,6 +315,30 @@ def test_repair_calls_are_cached_apart_from_the_first_call(tmp_path, monkeypatch
     assert judge.call("p", {"x": 1}, attempt=1)["data"] == repair["data"] and len(calls) == 2
     judge.call("p", {"x": 1}, refresh=True, attempt=1)
     assert len(calls) == 3
+
+
+def test_answers_cached_before_a_password_reset_are_asked_again(tmp_path, monkeypatch):
+    settings = tmp_path / "settings.jsonc"
+    backend = {"model": "fake", "effort": "low", "timeout": 1, "command": "codex", "sandbox": "read-only"}
+    security = {"storage_mode": "encrypted", "state_dir": str(tmp_path / "state")}
+    settings.write_text(json.dumps({"security_args": security, "codex_exec_args": backend}))
+    monkeypatch.setenv("WECLONE_CONFIG_PATH", str(settings))
+    calls = []
+
+    def generate(self, prompt, payload, cache_key=None):
+        calls.append(cache_key)
+        return {"state": "ok", "data": {"n": len(calls)}, "raw": "", "model": "fake", "cache_key": cache_key}
+
+    monkeypatch.setattr(extraction.Judge, "_generate", generate)
+    secure_storage.ensure_initialized("style-test")
+    try:
+        judge = extraction.Judge(settings, tmp_path / "cache", protocol="test-protocol")
+        judge.call("p", {"x": 1})
+        secure_storage.reset_password("style-reset")
+        assert judge.call("p", {"x": 1})["data"] == {"n": 2}
+        assert judge.call("p", {"x": 1})["data"] == {"n": 2} and len(calls) == 2
+    finally:
+        secure_storage.lock()
 
 
 def test_codex_pacing_comes_from_the_given_settings(tmp_path):

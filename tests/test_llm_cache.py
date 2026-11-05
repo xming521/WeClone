@@ -55,3 +55,24 @@ def test_encrypted_mode_keeps_answers_encrypted(tmp_path, monkeypatch):
         assert llm_cache.LLMCache(path).get_many(["a"]) == {"a": {"relation": "大学同学"}}
     finally:
         secure_storage.lock()
+
+
+def test_a_password_reset_starts_the_cache_over_and_keeps_the_old_file(tmp_path, monkeypatch):
+    settings = tmp_path / "settings.jsonc"
+    settings.write_text(
+        json.dumps({"security_args": {"storage_mode": "encrypted", "state_dir": str(tmp_path / "state")}})
+    )
+    monkeypatch.setenv("WECLONE_CONFIG_PATH", str(settings))
+    secure_storage.ensure_initialized("cache-test")
+    try:
+        path = tmp_path / "cache.sqlite"
+        llm_cache.LLMCache(path).put_many([("a", "peers", {"relation": "大学同学"}, "")])
+        generation = secure_storage.get_generation()
+        secure_storage.reset_password("cache-reset")
+        cache = llm_cache.LLMCache(path)
+        assert cache.get_many(["a"]) == {}
+        cache.put_many([("a", "peers", {"relation": "同事"}, "")])
+        assert cache.get_many(["a"]) == {"a": {"relation": "同事"}}
+        assert (tmp_path / f"cache.sqlite.enc.previous-{generation}").is_file()
+    finally:
+        secure_storage.lock()

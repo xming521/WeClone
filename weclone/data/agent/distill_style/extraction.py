@@ -17,7 +17,7 @@ from .batching import (
     joint_transport,
     restore_chat_output,
 )
-from .data import digest, write_json
+from .data import cached, digest, write_json
 from .wire import (
     MODULES,
     WIRE_VERSION,
@@ -179,7 +179,7 @@ class Judge:
         if refresh:
             cache_key = digest({"request_key": cache_key, "repeat_id": uuid.uuid4().hex})
             path = self.cache / f"{cache_key}.json"
-        if secure_storage.file_exists(path) and not refresh:
+        if not refresh and cached(path):
             value = secure_storage.read_json(path)
             if value["state"] == "ok" and not value.get("validation_failed", False):
                 if self.batcher is not None:
@@ -429,7 +429,7 @@ class Parser:
         result, missing = {}, []
         for text in dict.fromkeys(texts):
             path = self.cache / (digest({"parser": self.identity, "text": text}) + ".json")
-            if secure_storage.file_exists(path):
+            if cached(path):
                 result[text] = secure_storage.read_json(path)
             elif not text.strip():
                 result[text] = {"cws": [], "pos": [], "starts": [], "ends": []}

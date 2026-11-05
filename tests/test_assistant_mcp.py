@@ -212,6 +212,7 @@ def test_initialize_and_list_read_only_tools(owner):
     )
     assert agent.request("resources/list")["error"]["code"] == -32601
     assert agent.request("tools/call", {"name": "shell"})["error"]["code"] == -32602
+    assert agent.request("tools/call", {"name": []})["error"]["code"] == -32602
 
 
 def test_profile_serves_the_approved_current_summaries_of_the_chosen_level(owner):

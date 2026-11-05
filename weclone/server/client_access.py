@@ -76,13 +76,19 @@ class TokenStore:
         """When the token was made and last used, None without a token. Never the token itself."""
         return {"created": row["created"], "last_used": row["last_used"]} if row["token_sha256"] else None
 
-    def issue(self) -> dict:
-        """A new token in place of the old one. The token itself is returned only here."""
-        token = self.PREFIX + secrets.token_urlsafe(32)
+    def new_token(self) -> str:
+        return self.PREFIX + secrets.token_urlsafe(32)
+
+    def issue(self, token: str | None = None, **columns) -> dict:
+        """`token`, or a new one, in place of the old one, with a subclass's own `columns` set in the same update. The
+        token itself is returned only here."""
+        token = token or self.new_token()
         created = now()
+        extra = "".join(f",{name}=?" for name in columns)
         with self.connect() as db:
             db.execute(
-                "UPDATE access SET token_sha256=?,created=?,last_used=NULL", (self.digest(token), created)
+                f"UPDATE access SET token_sha256=?,created=?,last_used=NULL{extra}",
+                (self.digest(token), created, *columns.values()),
             )
         return {"token": token, "created": created}
 

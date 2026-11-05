@@ -5,7 +5,8 @@ chat sample's text for distillation. A rerun asks only what is missing, so a fai
 new chat export pays for the samples whose text changed, and for profile samples that moved out of their chat's last
 14 days, which are extracted without current states from then on. Only answers that passed validation are stored, so
 failed requests are asked again. The key leaves out the model and request settings, so
-switching models midway keeps the answers given so far. Delete the cache file to ask everything again.
+switching models midway keeps the answers given so far. Delete the cache file to ask everything again. After a
+password reset the old file is set aside unread and the cache starts empty.
 """
 
 import hashlib
@@ -36,6 +37,7 @@ class LLMCache:
     def __init__(self, path: Path | str | None = None):
         # DEFAULT_PATH is read here rather than bound as a default, so tests can redirect it.
         self.path = Path(path) if path is not None else DEFAULT_PATH
+        secure_storage.set_aside_other_generation(self.path)
 
     def get_many(self, keys: Iterable[str]) -> dict[str, Any]:
         keys = list(dict.fromkeys(keys))

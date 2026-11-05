@@ -2,7 +2,8 @@
 
 A contact is keyed by a hash of its source account (platform and partner talker), never by remark name or by the
 order contacts appear in. The registry gives each key a P id once and only grows, so a contact keeps its id across
-chat exports and rebuilds, and prompts, facts and style groups that name P3 keep meaning the same person.
+chat exports and rebuilds, and prompts, facts and style groups that name P3 keep meaning the same person. A password
+reset, after which the old registry cannot be read, sets it aside and numbers contacts from P1 again.
 """
 
 import hashlib
@@ -46,6 +47,7 @@ def assign_contact_ids(
     path = Path(registry_path)
     path.parent.mkdir(parents=True, exist_ok=True)
     with FileLock(f"{path}.lock"):
+        secure_storage.set_aside_other_generation(path)
         registry = _load_registry(path)
         number = max((int(cid[1:]) for cid in registry.values()), default=0)
         new_keys = [key for key in keys if key not in registry]

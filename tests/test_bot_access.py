@@ -11,7 +11,7 @@ from fastapi import APIRouter, FastAPI
 from fastapi.responses import StreamingResponse
 from fastapi.testclient import TestClient
 
-from weclone.server import api_service, app
+from weclone.server import api_service, app, bots
 from weclone.server.profile_review import create_app
 from weclone.utils import secure_storage
 
@@ -213,6 +213,26 @@ def test_encrypted_clone_answers_with_the_token_alone_across_restarts(tmp_path, 
     assert Bot(restarted, renewed).chat().status_code == 200
     assert owner.delete("/api/bots/token").status_code == 200
     assert Bot(restarted, renewed).chat().status_code == 401 and sealed_key(tmp_path) is None
+
+
+def test_tokens_issued_at_once_leave_the_current_token_with_its_own_key(tmp_path, monkeypatch):
+    use_storage(tmp_path, monkeypatch, "encrypted")
+    secure_storage.ensure_initialized("bot-test")
+    key = secure_storage.get_unlocked_key()
+    access = bots.BotAccess(tmp_path / "state" / bots.ACCESS_FILE)
+    seal, issued, sealing_first = secure_storage.seal_key, [], [True]
+
+    def sealing(key, token):
+        # A second request issues while the first one seals.
+        if sealing_first:
+            sealing_first.clear()
+            issued.append(access.issue(key))
+        return seal(key, token)
+
+    monkeypatch.setattr(secure_storage, "seal_key", sealing)
+    issued.append(access.issue(key))
+    current = next(item["token"] for item in issued if access.match(item["token"]))
+    assert secure_storage.open_sealed_key(access.row()["sealed_key"], current) == key
 
 
 def test_a_bot_calling_after_a_restart_loads_the_model_with_the_sealed_key(tmp_path, monkeypatch):

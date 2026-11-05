@@ -7,7 +7,7 @@ from statistics import mean, pvariance
 from weclone.prompts.distill_style import SYNTACTIC_STYLE_ANNOTATION_PROMPT as ANNOTATION_PROMPT
 from weclone.utils import secure_storage
 
-from .data import PRIMARY_CORPUS, digest, write_json
+from .data import PRIMARY_CORPUS, cached, digest, write_json
 from .extraction import annotate_corpora, distinct_records, locate, merge_parses
 from .lexical_choice import vocal_token, word_token
 from .morphosyntax import (
@@ -63,7 +63,7 @@ class SyntaxParser:
         result, missing = {}, []
         for text, value in base.items():
             path = self.cache / (digest({"parser": self.identity, "text": text}) + ".json")
-            if secure_storage.file_exists(path):
+            if cached(path):
                 result[text] = secure_storage.read_json(path)
             elif not value["cws"]:
                 result[text] = dict(value, dep={"head": [], "label": []}, sdp={"head": [], "label": []})

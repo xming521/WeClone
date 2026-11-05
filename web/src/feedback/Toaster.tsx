@@ -12,7 +12,10 @@ export function Toaster() {
   const current = useToasts((state) => state.current);
   const dismiss = useToasts((state) => state.dismiss);
   const undo = useToasts((state) => state.undo);
-  const [held, setHeld] = useState(false);
+  // The notice the pointer or focus is on. A notice removed under the pointer never sees it leave, so the hold is
+  // kept by id and lapses with its notice.
+  const [heldId, setHeldId] = useState<number | null>(null);
+  const held = current !== null && heldId === current.id;
   useEffect(() => {
     if (!current || held) return;
     const timer = window.setTimeout(() => dismiss(current.id), VISIBLE_MS);
@@ -35,10 +38,10 @@ export function Toaster() {
           key={current.id}
           className="wc-toast"
           data-tone={current.tone}
-          onPointerEnter={() => setHeld(true)}
-          onPointerLeave={() => setHeld(false)}
-          onFocus={() => setHeld(true)}
-          onBlur={() => setHeld(false)}
+          onPointerEnter={() => setHeldId(current.id)}
+          onPointerLeave={() => setHeldId(null)}
+          onFocus={() => setHeldId(current.id)}
+          onBlur={() => setHeldId(null)}
         >
           <span className="wc-toast__text">{current.message}</span>
           {current.undo && (

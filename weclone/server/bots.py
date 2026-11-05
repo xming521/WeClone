@@ -34,13 +34,10 @@ class BotAccess(TokenStore):
         return {"token": self.token_state(self.row())}
 
     def issue(self, key: bytes | None) -> dict:
-        """A new token, with `key` sealed under it in encrypted mode."""
-        issued = super().issue()
-        # Nobody has the new token before it is returned, so the key still sealed under the old one goes unused.
-        sealed = None if key is None else secure.seal_key(key, issued["token"])
-        with self.connect() as db:
-            db.execute("UPDATE access SET sealed_key=?", (sealed,))
-        return issued
+        """A new token, with `key` sealed under it in encrypted mode. Both are written in one update, so requests
+        issuing at the same time cannot leave one's token beside a key sealed under another's."""
+        token = self.new_token()
+        return super().issue(token, sealed_key=None if key is None else secure.seal_key(key, token))
 
     def withdraw(self):
         with self.connect() as db:

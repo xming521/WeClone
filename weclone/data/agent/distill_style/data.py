@@ -22,6 +22,11 @@ def digest(value):
     return hashlib.sha256(json.dumps(value, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
 
 
+def cached(path):
+    """Whether the cache holds `path`. An entry written before a password reset cannot be read and is made again."""
+    return secure_storage.file_exists(path) and not secure_storage.other_generation(path)
+
+
 def read_rows(path):
     # Encrypted mode stores inputs as `<name>.enc`; secure storage resolves and decrypts them.
     text = secure_storage.read_text(path)

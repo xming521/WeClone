@@ -33,7 +33,7 @@ weclone-cli security-change-password                                       # req
 weclone-cli server-reset-password                                          # reset a forgotten password
 ```
 
-Encrypted data cannot be recovered without the password. After a reset, regenerate data from the original chats in a new output directory.
+Encrypted data cannot be recovered without the password. After a reset, regenerate data from the original chats in a new output directory. The contact IDs and the model answer cache shared by all runs start over too.
 
 ## Keys and tokens
 

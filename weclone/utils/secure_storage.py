@@ -467,6 +467,31 @@ def file_exists(path: str | Path) -> bool:
     return resolve_path(path).is_file()
 
 
+def other_generation(path: str | Path) -> str | None:
+    """The generation of ciphertext at `path` written under an earlier password or storage mode, which this one
+    cannot open. None for no file, a plaintext file, or ciphertext of this generation."""
+    path = resolve_path(path)
+    if path.suffix != ENCRYPTED_SUFFIX or not path.is_file():
+        return None
+    with path.open("rb") as source:
+        header = source.read(HEADER_SIZE)
+    if len(header) != HEADER_SIZE or not header.startswith(MAGIC):
+        return None
+    generation = header[len(MAGIC) : len(MAGIC) + 16].hex()
+    return None if generation == get_generation() else generation
+
+
+def set_aside_other_generation(path: str | Path) -> None:
+    """Rename ciphertext of an earlier generation at `path`, so a file every run shares starts over after a password
+    reset. As with all prior ciphertext, the old file is kept, as `<name>.previous-<generation>`."""
+    generation = other_generation(path)
+    if generation is not None:
+        stored = resolve_path(path)
+        # Another process may have set it aside first.
+        with contextlib.suppress(FileNotFoundError):
+            stored.rename(stored.with_name(f"{stored.name}.previous-{generation}"))
+
+
 def iter_files(directory: str | Path, pattern: str = "*.json", *, recursive: bool = False) -> Iterator[Path]:
     """Scan plaintext inputs and .enc files, excluding unsuffixed ciphertext."""
     directory = Path(directory)

@@ -73,7 +73,7 @@ def handle(
         return result(message_id, {"tools": listed})
     if method == "tools/call":
         name, arguments = params.get("name"), params.get("arguments") or {}
-        if name not in {tool.name for tool in tools}:
+        if not isinstance(name, str) or name not in {tool.name for tool in tools}:
             return error(message_id, INVALID_PARAMS, f"Unknown tool: {name}")
         if not isinstance(arguments, dict):
             return error(message_id, INVALID_PARAMS, "arguments must be an object")
