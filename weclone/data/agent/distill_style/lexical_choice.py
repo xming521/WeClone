@@ -10,9 +10,7 @@ from datetime import datetime
 import regex
 
 from weclone.prompts.distill_style import DISCOVERY_PROMPT as DISCOVERY_PROMPT
-from weclone.prompts.distill_style import (  # noqa: F401 -- public prompt metadata
-    LEXICAL_CHOICE_ANNOTATION_PROMPT as ANNOTATION_PROMPT,
-)
+from weclone.prompts.distill_style import LEXICAL_CHOICE_ANNOTATION_PROMPT as ANNOTATION_PROMPT  # noqa: F401 -- public prompt metadata
 from weclone.prompts.distill_style import LEXICAL_CHOICE_ITEMS as ITEMS
 from weclone.prompts.distill_style import TOPIC_PROMPT as TOPIC_PROMPT
 from weclone.prompts.distill_style import build_annotation_prompt as build_annotation_prompt
