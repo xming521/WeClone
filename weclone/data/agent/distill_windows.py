@@ -29,7 +29,9 @@ def content_chars(item: dict[str, Any]) -> int:
 
 
 def sample_body(item: dict[str, Any], *, target_role: str) -> str:
-    return "\n".join(("B:" if role == target_role else "A:") + content for role, content in chat_messages(item))
+    return "\n".join(
+        ("B:" if role == target_role else "A:") + content for role, content in chat_messages(item)
+    )
 
 
 def render_sample(item: dict[str, Any], *, sample_id: str, target_role: str) -> str:
