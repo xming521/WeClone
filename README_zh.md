@@ -27,7 +27,7 @@
   <a href="https://docs.weclone.love/zh/docs/introduce/what-is-weclone" target="_blank"> 项目文档 </a>
 </p>
 
-WeClone 从你的数字生活中提炼身份、目标、偏好与近况，按工作、家庭、健康等板块整理成一份可审核、可追溯、按需授权的人生画像，并分析你的语言风格。画像可以作为 AI 助理的长期记忆，也将驱动具有你个人风格的数字分身。目前支持聊天记录，更多数据源持续接入中。
+WeClone 从你的数字生活中提炼身份、目标、偏好、近况，按工作、家庭、健康等板块整理成可审核、追溯、授权的人生画像。画像可以作为 AI 助手的长期记忆，也将驱动具有你个人风格的数字分身。
 
 <a href="https://docs.weclone.love/img/screenshots/atlas-light.webp">
   <picture>

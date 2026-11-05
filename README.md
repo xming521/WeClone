@@ -28,7 +28,7 @@
   <a href="https://docs.weclone.love/en/docs/introduce/what-is-weclone" target="_blank"> Documentation </a> 
 </p>
 
-WeClone distills your identity, goals, preferences and current situation from your digital life into a portrait of your life, organized into domains such as work, family and health, that you can review, trace to its sources and share on your own terms. It also analyzes your speaking style. The portrait works as long-term memory for your AI assistants and will power clones with your personal style. Chat history is supported today, with more data sources coming.
+WeClone distills your identity, goals, preferences and current situation from your digital life into a life portrait, organized into domains such as work, family and health, that you can review, trace and share on your own terms. The portrait serves as long-term memory for your AI assistants and will power clones with your personal style.
 
 <a href="https://docs.weclone.love/img/screenshots/atlas-light-en.webp">
   <picture>
