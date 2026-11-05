@@ -101,7 +101,7 @@ explicit = true
 [tool.setuptools.packages.find]
 where = ["."]                      
 include = ["weclone*"]             
-exclude = ["*tests*", "*archive*"]
+exclude = ["*tests*", "*archive*", "weclone-cloud*"]
 
 [tool.setuptools.package-data]
 "weclone.web" = ["dist/*", "dist/assets/*"]
