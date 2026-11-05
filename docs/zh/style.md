@@ -14,7 +14,7 @@ weclone-cli distill-style --input-dir <运行目录>/people
 
 # 指标说明
 
-正式分类与 `WC-exp_风格评估清单_精简版.md` 一致：九类表层风格和独立的情境比较层，共 180 个清单条目。`taxonomy.py` 保存编号和唯一归属，`reporting.py` 组织输出；原抽取模块继续复用，同一抽取组可以服务多个类别。清单的抽取单元表按本包实际调用分组，并注明未实现、暂缓和停用的项；每次运行的覆盖情况以 `manifest.json` 为准。
+风格清单分为九类表层风格和独立的情境比较层，共 179 项。`taxonomy.py` 保存编号和唯一归属，`reporting.py` 组织输出；原抽取模块继续复用，同一抽取组可以服务多个类别。每次运行的覆盖情况以 `manifest.json` 为准。
 
 | 分类 | `--chapter` | 主要共用抽取模块 |
 | --- | --- | --- |
@@ -42,7 +42,7 @@ weclone-cli distill-style --input-dir <运行目录>/people
 在 WeClone 根目录激活已有环境。入口顶部有默认路径和参数，命令行可以覆盖。
 
 ```bash
-source .venv2/bin/activate
+source .venv/bin/activate
 # 输入是某次 build-profile 的聊天快照
 IN=dataset/res_csv/agent/profile_runs/<运行目录>/people
 # 前 20 个聊天段验证全部类别
@@ -184,7 +184,7 @@ LLM 传输格式由 `wire.py` 统一定义：`states` 为按指定项目顺序�
 
 163 的候选判定按输入顺序输出 decisions 字符串（0 非程度、1 非情绪程度、2 情绪程度、u 程度不明、? 情绪用途不明），不复述候选或证据；程序由候选目标恢复定位并核对完整覆盖。语用事件的空引用、空条件及未表达的 choice/insistence 省略，由程序恢复默认值。
 
-程序将紧凑结果还原后执行原文定位、候选覆盖和跨项一致性校验；漏项目、漏消息、未知 ID、重复 JSON 键或缺少必要事件均为失败，不自动补 absent。修复响应可以返回指定的失败项目，或返回完整原始项目表；两者都必须覆盖完整，且不得出现未知项目。缓存键与 manifest 记录 `style-state-table-v3` 和批量协议 `style-chat-batch-v8`，旧缓存保留，原协议结果不会被当成新协议结果。
+程序将紧凑结果还原后执行原文定位、候选覆盖和跨项一致性校验；漏项目、漏消息、未知 ID、重复 JSON 键或缺少必要事件均为失败，不自动补 absent。修复响应可以返回指定的失败项目，或返回完整原始项目表；两者都必须覆盖完整，且不得出现未知项目。缓存键与 manifest 记录 `style-state-table-v4` 和批量协议 `style-chat-batch-v8`，旧缓存保留，原协议结果不会被当成新协议结果。
 
 网络语、方言、圈内词、缩写、专业术语和叠词没有手写样本词表，提示词只用少量例子划出边界（如 012 的啥、咋不算方言）。固定的是粗标签和统计公式；这是跨样本协议。004,006 的候选由 `discover` 用 LLM 从聊天回复中提出，至少跨两个独立会话复现才接纳：阈值用于排除单片段偶发词串，不证明作者独占或心理偏好。实体/话题词单列，未计入惯用表达集合。更换本人或输入语料应重新发现。发现调用/证据失败时 artifact 标为 incomplete，`--frozen` 拒绝使用。
 
@@ -263,7 +263,7 @@ LLM 一次共享调用同时覆盖 043、051–054、056、060，不重复抽取
 `orthographic_style.py` 实现 078–095 共 18 项，入口为 `run.py --chapter orthographic_style`，默认输出 `dataset/res_csv/agent/distill/style/<时间>_<类别>/extractors/<模块>`。全部是本地统计，不调用 LLM；数字识别复用 LTP 的 CWS/POS，其他表面统计直接读取原文。
 
 ```bash
-source .venv2/bin/activate
+source .venv/bin/activate
 python weclone/data/agent/distill_style/run.py --input-dir "$IN" --chapter orthographic_style
 python weclone/data/agent/distill_style/run.py --input-dir "$IN" --chapter orthographic_style --no-llm
 ```
@@ -293,7 +293,7 @@ python weclone/data/agent/distill_style/run.py --input-dir "$IN" --chapter ortho
 
 092 的数词识别由 LTP 标签决定，不建设汉字数词词表；例如普通名字内的数字字形不会仅凭字符命中就变成数词。日期表面格式支持 `YYYY-MM-DD`、斜线/点分隔同格式、`YYYY年M月D日`，校验公历日期；时钟支持 24 小时 `HH:MM[:SS]`。格式匹配只映射对应全角 ASCII，逐字偏移和原文不变。这些格式与 POS 数词是独立观察轴，不能累加成总数；不声称识别所有地区日期格式，或推断价格、编号、网络暗语。更换语言、解析器或目标日期格式时需更新协议后重跑。
 
-087/088 只保留代码计算的边界数、频率与位置，语境用途标为 partial；095 和 091 的字符表情识别标为 not_run，不触发 LLM 请求。
+087 只保留代码计算的边界数、频率与位置，语境用途标为 partial；088 按发送边界测量，标为 extracted；095 和 091 的字符表情识别标为 not_run，不触发 LLM 请求。
 
 这些类别、Unicode 属性和格式是跨样本的操作性规则，不是从样本回复挑出的触发词；字符表情与替代标点的功能没有手写白名单。更换 Unicode 库版本、语言或 LTP 模型后应记录新的版本及协议，机器用法判断仍需独立质量检查，原文跨度校验只能证明证据可定位。
 
@@ -302,7 +302,7 @@ python weclone/data/agent/distill_style/run.py --input-dir "$IN" --chapter ortho
 `paralinguistic_style.py` 按当前清单的合并版实现：原 097–110 合为五项，111–116 为六项，共 11 项低、中难度指标。JSON 使用 `097-098`、`099-105`、`106-107,109` 等合并键，`source_ids` 保留原编号映射，不为某个汉字、字母、数字或重复长度单设指标。
 
 ```bash
-source .venv2/bin/activate
+source .venv/bin/activate
 python weclone/data/agent/distill_style/run.py --input-dir "$IN" --chapter orthographic_style
 python weclone/data/agent/distill_style/run.py --input-dir "$IN" --chapter orthographic_style --no-llm
 ```
@@ -342,7 +342,7 @@ python weclone/data/agent/distill_style/run.py --input-dir "$IN" --chapter ortho
 `pragmatic_style.py` 共用抽取语气与篇章组织功能，其中 140–145 的正式归属为篇章类。原 117–150 按功能归为 11 项，沿用合并键并保存 `source_ids`；不为清单例词建立触发名单。
 
 ```bash
-source .venv2/bin/activate
+source .venv/bin/activate
 python weclone/data/agent/distill_style/run.py --input-dir "$IN" --chapter pragmatic_style
 python weclone/data/agent/distill_style/run.py --input-dir "$IN" --chapter pragmatic_style --limit 20
 python weclone/data/agent/distill_style/run.py --input-dir "$IN" --chapter pragmatic_style --no-llm
@@ -379,7 +379,7 @@ python weclone/data/agent/distill_style/run.py --input-dir "$IN" --chapter pragm
 `affective_style.py` 共用抽取 151、152、153,160、155、158、159、161、163；155 归情境层 `154-157,270`，163 归语法类；154、156、157、162 保留 deferred。这里只抽取可观察的表达，不恢复真实心理状态或推断人格。
 
 ```bash
-source .venv2/bin/activate
+source .venv/bin/activate
 python weclone/data/agent/distill_style/run.py --input-dir "$IN" --chapter affective_style
 python weclone/data/agent/distill_style/run.py --input-dir "$IN" --chapter affective_style --limit 20
 python weclone/data/agent/distill_style/run.py --input-dir "$IN" --chapter affective_style --no-llm
@@ -419,7 +419,7 @@ python weclone/data/agent/distill_style/run.py --input-dir "$IN" --chapter affec
 ## rhetorical_devices 抽取模块
 
 ```bash
-source .venv2/bin/activate
+source .venv/bin/activate
 python weclone/data/agent/distill_style/run.py --input-dir "$IN" --chapter rhetorical_devices
 # 前 20 个聊天段验证标注链路
 python weclone/data/agent/distill_style/run.py --input-dir "$IN" --chapter rhetorical_devices --limit 20
@@ -443,7 +443,7 @@ python weclone/data/agent/distill_style/run.py --input-dir "$IN" --chapter rheto
 ## interactional_style 抽取模块
 
 ```bash
-source .venv2/bin/activate
+source .venv/bin/activate
 python weclone/data/agent/distill_style/run.py --input-dir "$IN" --chapter interactional_style
 # 工程抽样与长消息阈值覆盖
 python weclone/data/agent/distill_style/run.py --input-dir "$IN" --chapter interactional_style --limit 20 --long-characters 200
@@ -471,7 +471,7 @@ python weclone/data/agent/distill_style/run.py --input-dir "$IN" --chapter inter
 ## register_style 抽取模块
 
 ```bash
-source .venv2/bin/activate
+source .venv/bin/activate
 python weclone/data/agent/distill_style/run.py --input-dir "$IN" --chapter register_style
 python weclone/data/agent/distill_style/run.py --input-dir "$IN" --chapter register_style --limit 20
 ```
@@ -494,7 +494,7 @@ python weclone/data/agent/distill_style/run.py --input-dir "$IN" --chapter regis
 ## information_density 抽取模块
 
 ```bash
-source .venv2/bin/activate
+source .venv/bin/activate
 python weclone/data/agent/distill_style/run.py --input-dir "$IN" --chapter discourse_style
 python weclone/data/agent/distill_style/run.py --input-dir "$IN" --chapter discourse_style --limit 20
 ```
