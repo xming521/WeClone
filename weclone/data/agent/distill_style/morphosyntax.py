@@ -1,11 +1,9 @@
 """Morphosyntax: POS density, positions, nominalization and aspect/time usage."""
 
-from weclone.prompts.distill_style import (
-    MORPHOSYNTAX_ANNOTATION_PROMPT as ANNOTATION_PROMPT,
-)
-
 import re
 from collections import Counter
+
+from weclone.prompts.distill_style import MORPHOSYNTAX_ANNOTATION_PROMPT as ANNOTATION_PROMPT
 
 from .data import PRIMARY_CORPUS, write_json
 from .extraction import annotate_corpora, distinct_records, locate

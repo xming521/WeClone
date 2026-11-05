@@ -345,7 +345,9 @@ class ReviewStore:
             "name": run.name,
             "path": str(run),
             "generated_at": (
-                datetime.fromtimestamp(source.stat().st_mtime, timezone.utc).isoformat() if source.is_file() else None
+                datetime.fromtimestamp(source.stat().st_mtime, timezone.utc).isoformat()
+                if source.is_file()
+                else None
             ),
             "reviewed_at": reviewed,
             "style": style_view.complete(run / "style"),

@@ -1,11 +1,9 @@
 """Register and sociolinguistic style, with reused internet-expression measures."""
 
-from weclone.prompts.distill_style import (
-    REGISTER_STYLE_ANNOTATION_PROMPT as ANNOTATION_PROMPT,
-)
-
 from collections import Counter
 from copy import copy
+
+from weclone.prompts.distill_style import REGISTER_STYLE_ANNOTATION_PROMPT as ANNOTATION_PROMPT
 
 from . import lexical_choice, rhetorical_devices
 from .data import PRIMARY_CORPUS, digest, write_json

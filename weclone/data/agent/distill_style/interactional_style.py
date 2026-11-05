@@ -1,11 +1,9 @@
 """Interactional style: message splitting, questions and contextual responses."""
 
-from weclone.prompts.distill_style import (
-    INTERACTIONAL_STYLE_ANNOTATION_PROMPT as ANNOTATION_PROMPT,
-)
-
 import re
 from collections import Counter
+
+from weclone.prompts.distill_style import INTERACTIONAL_STYLE_ANNOTATION_PROMPT as ANNOTATION_PROMPT
 
 from .data import PRIMARY_CORPUS, UNITS, bubble_spans, write_json
 from .extraction import annotate_corpora, distinct_records, locate
@@ -15,8 +13,8 @@ from .stats import (
     length_bucket,
     length_strata,
     message_texts,
-    nonspace_length,
     missing_messages,
+    nonspace_length,
     quantiles,
     ratio,
     reliability,

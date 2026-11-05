@@ -1,13 +1,10 @@
 """Syntactic style: sentence units, observable structures and contextual annotation."""
 
-from weclone.prompts.distill_style import (
-    SYNTACTIC_STYLE_ANNOTATION_PROMPT as ANNOTATION_PROMPT,
-)
-
 import math
 from collections import Counter, defaultdict
 from statistics import mean, pvariance
 
+from weclone.prompts.distill_style import SYNTACTIC_STYLE_ANNOTATION_PROMPT as ANNOTATION_PROMPT
 from weclone.utils import secure_storage
 
 from .data import PRIMARY_CORPUS, digest, write_json

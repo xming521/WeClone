@@ -498,7 +498,13 @@ def validate_summary(payload: Any, source_ids: set[str]) -> dict:
     if not isinstance(payload["facts"], list):
         raise ValueError("Summary facts must be an array")
     for fact in payload["facts"]:
-        if not isinstance(fact, dict) or set(fact) != {"attr", "value", "source_ids", "sensitivity", "time_scope"}:
+        if not isinstance(fact, dict) or set(fact) != {
+            "attr",
+            "value",
+            "source_ids",
+            "sensitivity",
+            "time_scope",
+        }:
             raise ValueError("Fact requires attr, value, source_ids, sensitivity and time_scope")
         if fact["sensitivity"] not in SENSITIVITY_LEVELS:
             raise ValueError("Unknown sensitivity level")

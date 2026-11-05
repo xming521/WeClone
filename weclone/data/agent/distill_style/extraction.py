@@ -9,7 +9,6 @@ from pathlib import Path
 
 from weclone.utils import secure_storage
 
-from .data import digest, write_json
 from .batching import (
     BATCH_PROMPT,
     BATCH_PROTOCOL,
@@ -18,14 +17,15 @@ from .batching import (
     joint_transport,
     restore_chat_output,
 )
+from .data import digest, write_json
 from .wire import (
     MODULES,
     WIRE_VERSION,
-    schema_for,
+    expand_evidence,
+    expand_output,
     format_prompt,
     pack_input,
-    expand_output,
-    expand_evidence,
+    schema_for,
     unique_object,
 )
 

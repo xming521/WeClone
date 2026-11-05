@@ -1,10 +1,8 @@
 """Pragmatic tone and stance: contextual functions and explicit denominators."""
 
-from weclone.prompts.distill_style import (
-    PRAGMATIC_STYLE_ANNOTATION_PROMPT as ANNOTATION_PROMPT,
-)
-
 from collections import Counter
+
+from weclone.prompts.distill_style import PRAGMATIC_STYLE_ANNOTATION_PROMPT as ANNOTATION_PROMPT
 
 from .data import PRIMARY_CORPUS, write_json
 from .extraction import annotate_corpora, distinct_records, locate

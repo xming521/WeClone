@@ -1,11 +1,5 @@
 """Coalesce independent annotations while retaining per-input cache identities."""
 
-from weclone.prompts.distill_style import (
-    format_joint_prompt as format_joint_prompt,
-    BATCH_PROMPT as BATCH_PROMPT,
-    joint_prompt as joint_prompt,
-)
-
 import json
 import threading
 import time
@@ -13,6 +7,10 @@ import uuid
 from collections import Counter
 from concurrent.futures import Future, ThreadPoolExecutor
 from pathlib import Path
+
+from weclone.prompts.distill_style import BATCH_PROMPT as BATCH_PROMPT
+from weclone.prompts.distill_style import format_joint_prompt as format_joint_prompt
+from weclone.prompts.distill_style import joint_prompt as joint_prompt
 
 from .data import write_json
 from .wire import COMMON_PROMPT, MODULES

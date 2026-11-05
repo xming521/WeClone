@@ -96,7 +96,9 @@ class AuthStore:
     def attempt(self, db, now):
         """Checks a password inside the block; five wrong ones in a row lock both sign-in and password change for a
         minute."""
-        failures, blocked_until = db.execute("SELECT failures, blocked_until FROM auth_state WHERE id=1").fetchone()
+        failures, blocked_until = db.execute(
+            "SELECT failures, blocked_until FROM auth_state WHERE id=1"
+        ).fetchone()
         if blocked_until > now:
             raise ApiError(429, "too_many_attempts", "尝试次数过多，请一分钟后再试")
         try:
@@ -317,7 +319,9 @@ def install_auth(app, database: Path, demo_password: str | None = None):
     def change_password(body: PasswordChange, request: Request):
         if demo_password is not None:
             raise ApiError(409, "demo_password_fixed", "演示模式的密码固定，不能修改")
-        return session_response(*store.change_password(body.old_password, body.password, body.confirmation), request)
+        return session_response(
+            *store.change_password(body.old_password, body.password, body.confirmation), request
+        )
 
     @app.put("/api/auth/session-length")
     def session_length(body: SessionLength):

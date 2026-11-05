@@ -355,9 +355,7 @@ def dev(ctx: click.Context, demo: str | None):
         except ProcessLookupError:
             pass
 
-    handlers = {
-        sig: signal.signal(sig, interrupt) for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)
-    }
+    handlers = {sig: signal.signal(sig, interrupt) for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)}
     try:
         server = [sys.executable, "-m", "weclone.cli", "server", "--port", "5175"]
         commands = [server + (["--demo", demo] if demo else []), ["pnpm", "--dir", "web", "dev"]]

@@ -29,7 +29,8 @@ def _load_registry(path: Path) -> dict[str, str]:
         return {}
     registry = secure_storage.read_json(path)
     if not isinstance(registry, dict) or not all(
-        isinstance(key, str) and isinstance(cid, str) and CONTACT_ID.fullmatch(cid) for key, cid in registry.items()
+        isinstance(key, str) and isinstance(cid, str) and CONTACT_ID.fullmatch(cid)
+        for key, cid in registry.items()
     ):
         raise ValueError(f"Contact registry must map keys to P ids: {path}")
     if len(set(registry.values())) != len(registry):
@@ -37,7 +38,9 @@ def _load_registry(path: Path) -> dict[str, str]:
     return registry
 
 
-def assign_contact_ids(keys: Iterable[str], registry_path: Path | str = DEFAULT_REGISTRY_PATH) -> dict[str, str]:
+def assign_contact_ids(
+    keys: Iterable[str], registry_path: Path | str = DEFAULT_REGISTRY_PATH
+) -> dict[str, str]:
     """P ids for the keys. Known keys keep theirs, new keys take the next numbers in the given order."""
     keys = list(dict.fromkeys(keys))
     path = Path(registry_path)

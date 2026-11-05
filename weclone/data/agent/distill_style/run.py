@@ -26,14 +26,20 @@ from weclone.data.agent.distill_style import (
     rhetorical_devices,
     syntactic_style,
 )
+from weclone.data.agent.distill_style.batching import (
+    BATCH_PROTOCOL,
+    DEFAULT_LLM_BATCH_INPUT_CHARS,
+    DEFAULT_LLM_BATCH_OUTPUT_CHARS,
+    DEFAULT_LLM_BATCH_SIZE,
+)
 from weclone.data.agent.distill_style.data import (
     DEFAULT_WINDOW_DAYS,
     PRIMARY_CORPUS,
     UNITS,
     all_speaker_replies,
     apply_time_window,
-    load_profile_chats,
     digest,
+    load_profile_chats,
     load_training,
     read_rows,
     validate_records,
@@ -62,24 +68,17 @@ from weclone.data.agent.distill_style.lexical_choice import (
     discover,
     validate_frozen,
 )
-from weclone.data.agent.distill_style.taxonomy import CATEGORIES, selected_categories, extractors_for
-from weclone.data.agent.distill_style.stats import LENGTH_STRATA, RELIABILITY
 from weclone.data.agent.distill_style.reporting import write_report
-from weclone.data.agent.distill_style.wire import WIRE_VERSION
 from weclone.data.agent.distill_style.sampling import (
     DEFAULT_GROUP_FLOOR,
     DEFAULT_LLM_SAMPLES,
     DEFAULT_SAMPLE_SEED,
     sample_records,
 )
-from weclone.data.agent.distill_style.batching import (
-    BATCH_PROTOCOL,
-    DEFAULT_LLM_BATCH_SIZE,
-    DEFAULT_LLM_BATCH_INPUT_CHARS,
-    DEFAULT_LLM_BATCH_OUTPUT_CHARS,
-)
+from weclone.data.agent.distill_style.stats import LENGTH_STRATA, RELIABILITY
+from weclone.data.agent.distill_style.taxonomy import CATEGORIES, extractors_for, selected_categories
+from weclone.data.agent.distill_style.wire import WIRE_VERSION
 from weclone.utils import secure_storage
-
 
 ROOT = Path(__file__).resolve().parents[4]
 OUTPUT_ROOT = ROOT / "dataset/res_csv/agent/distill/style"
@@ -555,9 +554,7 @@ def main(argv=None):
             f"({sampling['pooled_selected']} person, group floor {sampling['group_floor']}); seed={args.sample_seed}",
             flush=True,
         )
-    shared_judge = (
-        make_judge(args, None) if args.llm and any(m not in LOCAL_ONLY for m in modules) else None
-    )
+    shared_judge = make_judge(args, None) if args.llm and any(m not in LOCAL_ONLY for m in modules) else None
     # Producers are submitted before the groups that wait for them.
     for name in sorted(modules, key=lambda m: m in AFTER):
         directories[name] = output / "extractors" / name

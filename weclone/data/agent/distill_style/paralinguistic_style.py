@@ -1,9 +1,5 @@
 """Paralinguistic style: merged textual attributes and sequence-level emoji metrics."""
 
-from weclone.prompts.distill_style import (
-    PARALINGUISTIC_STYLE_ANNOTATION_PROMPT as ANNOTATION_PROMPT,
-)
-
 import hashlib
 import re
 import unicodedata
@@ -13,6 +9,8 @@ from functools import lru_cache
 from pathlib import Path
 
 import regex
+
+from weclone.prompts.distill_style import PARALINGUISTIC_STYLE_ANNOTATION_PROMPT as ANNOTATION_PROMPT
 
 from .data import PRIMARY_CORPUS, bubble_spans, write_json
 from .extraction import annotate_corpora, distinct_records, locate

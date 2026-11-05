@@ -1,10 +1,8 @@
 """Rhetorical devices: shared contextual extraction and evidence-based counts."""
 
-from weclone.prompts.distill_style import (
-    RHETORICAL_DEVICES_ANNOTATION_PROMPT as ANNOTATION_PROMPT,
-)
-
 from collections import Counter
+
+from weclone.prompts.distill_style import RHETORICAL_DEVICES_ANNOTATION_PROMPT as ANNOTATION_PROMPT
 
 from .data import PRIMARY_CORPUS, write_json
 from .extraction import annotate_corpora, distinct_records, locate

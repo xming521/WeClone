@@ -1,13 +1,5 @@
 """Lexical Choice: metrics, prompts, annotation and discovery."""
 
-from weclone.prompts.distill_style import (
-    build_annotation_prompt as build_annotation_prompt,
-    LEXICAL_CHOICE_ITEMS as ITEMS,
-    LEXICAL_CHOICE_ANNOTATION_PROMPT as ANNOTATION_PROMPT,  # noqa: F401 -- public prompt metadata
-    TOPIC_PROMPT as TOPIC_PROMPT,
-    DISCOVERY_PROMPT as DISCOVERY_PROMPT,
-)
-
 import math
 import re
 import statistics
@@ -16,6 +8,14 @@ from collections import Counter
 from datetime import datetime
 
 import regex
+
+from weclone.prompts.distill_style import DISCOVERY_PROMPT as DISCOVERY_PROMPT
+from weclone.prompts.distill_style import (  # noqa: F401 -- public prompt metadata
+    LEXICAL_CHOICE_ANNOTATION_PROMPT as ANNOTATION_PROMPT,
+)
+from weclone.prompts.distill_style import LEXICAL_CHOICE_ITEMS as ITEMS
+from weclone.prompts.distill_style import TOPIC_PROMPT as TOPIC_PROMPT
+from weclone.prompts.distill_style import build_annotation_prompt as build_annotation_prompt
 
 from .data import PRIMARY_CORPUS, bubble_spans, digest, target_fingerprints, write_json
 from .extraction import annotate_corpora, distinct_records, locate, parallel_map, queue_order

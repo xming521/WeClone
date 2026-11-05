@@ -353,7 +353,9 @@ class SecureStorageChecks(unittest.TestCase):
         LLMCache(cache_path).put_many([("sample", "state", {"memories": ["synthetic-fact"]}, "")])
         self.assertFalse(cache_path.exists())
         self.assertTrue(secure.is_encrypted_file(secure.encrypted_path(cache_path)))
-        self.assertEqual(LLMCache(cache_path).get_many(["sample"]), {"sample": {"memories": ["synthetic-fact"]}})
+        self.assertEqual(
+            LLMCache(cache_path).get_many(["sample"]), {"sample": {"memories": ["synthetic-fact"]}}
+        )
 
     def test_training_checkpoint_suffixes_and_materialization(self):
         from weclone.train.security import _encrypted_checkpoint

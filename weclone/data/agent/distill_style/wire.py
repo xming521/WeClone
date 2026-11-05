@@ -1,11 +1,9 @@
 """Compact LLM transport; canonical annotations retain the existing validators."""
 
-from weclone.prompts.distill_style import (
-    COMMON_PROMPT as COMMON_PROMPT,
-    format_prompt as format_prompt,
-)
-
 from importlib import import_module
+
+from weclone.prompts.distill_style import COMMON_PROMPT as COMMON_PROMPT
+from weclone.prompts.distill_style import format_prompt as format_prompt
 
 WIRE_VERSION = "style-state-table-v4"
 MODULES = {

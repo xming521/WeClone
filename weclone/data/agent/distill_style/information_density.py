@@ -1,10 +1,8 @@
 """Information density: additional advice relative to visible user requests."""
 
-from weclone.prompts.distill_style import (
-    INFORMATION_DENSITY_ANNOTATION_PROMPT as ANNOTATION_PROMPT,
-)
-
 from collections import Counter
+
+from weclone.prompts.distill_style import INFORMATION_DENSITY_ANNOTATION_PROMPT as ANNOTATION_PROMPT
 
 from .data import PRIMARY_CORPUS, write_json
 from .extraction import annotate_corpora, distinct_records, locate

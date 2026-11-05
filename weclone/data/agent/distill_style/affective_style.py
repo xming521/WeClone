@@ -1,18 +1,16 @@
 """Observable affect, independently conditioned happiness and closed-class degree modifiers."""
 
-from weclone.prompts.distill_style import (
-    AFFECTIVE_STYLE_CONTEXT_PROMPT as CONTEXT_PROMPT,
-    AFFECTIVE_STYLE_ANNOTATION_PROMPT as ANNOTATION_PROMPT,
-)
-
 from collections import Counter
 from copy import copy
 
+from weclone.prompts.distill_style import AFFECTIVE_STYLE_ANNOTATION_PROMPT as ANNOTATION_PROMPT
+from weclone.prompts.distill_style import AFFECTIVE_STYLE_CONTEXT_PROMPT as CONTEXT_PROMPT
+
+from . import paralinguistic_style
 from .data import PRIMARY_CORPUS, digest, write_json
 from .extraction import annotate_corpora, distinct_records, locate, parallel_map, queue_order
 from .lexical_choice import word_token
 from .orthographic_style import punctuation_events
-from . import paralinguistic_style
 from .pragmatic_style import labels_summary
 from .stats import length_strata, missing_entries, nonspace_length, ratio, window_reliability, with_missing
 

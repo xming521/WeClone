@@ -9,7 +9,6 @@ from .stats import LENGTH_STRATA, RELIABILITY
 from .taxonomy import CATALOG, CATEGORIES, PARTS, PROTOCOL_VERSION, extractor_for, metadata, parts
 from .variation import group_variation, summary_counts
 
-
 LEXICAL_FIELDS = {
     "001": ("words", "top_words"),
     "002": ("function_words", "function_rate", "word_tokens"),
