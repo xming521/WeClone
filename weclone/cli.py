@@ -147,22 +147,27 @@ def distill_style(ctx: click.Context):
 
 
 @cli.command(
-    "build-profile", help="从聊天数据依次完成数据准备、记忆抽取、整理和画像生成，做分身时另外抽取语言风格。"
+    "build-profile",
+    help="Build the life portrait from chat data: prepare the chats, extract and organize memories, "
+    "then build the portrait. For a clone, also extract speaking style.",
 )
 @click.option(
     "--purpose",
     type=click.Choice(["assistant", "clone"]),
-    help="assistant：给个人助理用，抽取画像和事件。clone：做分身，另外抽取语言风格，需要 ltp 包和 LTP 模型。未指定时交互选择。",
+    help="assistant: for personal assistants, extracts the portrait and events. clone: for a clone, "
+    "also extracts speaking style and needs the ltp package and LTP model. Asked interactively when omitted.",
 )
 @click.option(
     "--output-dir",
     type=click.Path(path_type=Path, file_okay=False),
-    help="本次流水线的结果目录；默认在 dataset/res_csv/agent/profile_runs 下新建时间戳目录。",
+    help="Result directory for this run; defaults to a new timestamped directory under "
+    "dataset/res_csv/agent/profile_runs.",
 )
 @click.option(
     "--max-context-tokens",
     type=click.IntRange(min=1),
-    help="记忆整理和画像生成的输入 token 上限；默认读取 Codex 上下文长度，API 模型需要显式指定。",
+    help="Input token limit for memory organization and the portrait; defaults to the Codex context length, "
+    "required for API models.",
 )
 @apply_common_decorators()
 def build_profile(purpose: str | None, output_dir: Path | None, max_context_tokens: int | None):
@@ -230,7 +235,11 @@ def test_model():
     test_main()
 
 
-@cli.command("server-reset-password", help="重新设置共用密码；旧密文失效，必须从原始聊天重新生成全部数据。")
+@cli.command(
+    "server-reset-password",
+    help="Reset the shared password. Existing encrypted data becomes unreadable and must be regenerated "
+    "from the original chats.",
+)
 def server_reset_password():
     from weclone.utils import secure_storage as secure
 
@@ -243,7 +252,10 @@ def server_reset_password():
     click.echo("密码已重置。旧文件保留；请使用新输出目录从原始聊天完整重新生成。")
 
 
-@cli.command("security-init", help="按 settings.jsonc 固定存储模式并设置网页、文件读写共用密码。")
+@cli.command(
+    "security-init",
+    help="Fix the storage mode from settings.jsonc and set the password shared by the web UI and file access.",
+)
 def security_init():
     from weclone.utils import secure_storage as secure
 
@@ -256,7 +268,10 @@ def security_init():
     click.echo(f"初始化完成：{secure.configure()['storage_mode']}。密码未明文保存。")
 
 
-@cli.command("security-change-password", help="使用旧密码修改共用密码，保留已有加密数据。")
+@cli.command(
+    "security-change-password",
+    help="Change the shared password with the old one, keeping existing encrypted data.",
+)
 def security_change_password():
     from weclone.utils import secure_storage as secure
 
@@ -269,7 +284,7 @@ def security_change_password():
     click.echo("密码已修改，已有数据保留，旧网页会话失效。")
 
 
-@cli.command("decrypt", help="输入共用密码，将加密文件导出到新的明文文件。")
+@cli.command("decrypt", help="Export an encrypted file to a new plaintext file with the shared password.")
 @click.option(
     "--input", "input_path", required=True, type=click.Path(path_type=Path, exists=True, dir_okay=False)
 )
