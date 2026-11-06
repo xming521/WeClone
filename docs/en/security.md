@@ -21,7 +21,7 @@ Set this in `settings.jsonc`:
 - `encrypted`: the template default. Chat data and everything derived from it (the chat snapshot, portrait, training data and fine-tuned model) are stored encrypted, in files ending in `.enc`. Encrypted mode does not support distributed training yet.
 - `plaintext`: stored as plain files. Older configurations without `security_args` use plaintext.
 
-The storage mode is fixed at first initialization. To switch modes, regenerate all data from the original chats in a new output directory. Original chats and any plaintext exports you make are not managed by WeClone, so protect them yourself.
+The storage mode is fixed at first initialization. To switch modes, regenerate all data from the original chats in a new output directory. Original chats and any plaintext exports you make are not managed by WeClone, so protect them yourself. Chats uploaded on the web are stored in the current mode.
 
 ## Password
 

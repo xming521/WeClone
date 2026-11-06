@@ -26,6 +26,53 @@
   margin: 0;
 }
 
+/* Picked files go up from here; dropped ones anywhere on it. */
+.build-upload {
+  display: flex;
+  flex: 1 0 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px dashed var(--line-2);
+  border-radius: var(--radius-control);
+  color: var(--ink-2);
+  font: var(--text-caption);
+}
+
+.build-upload[data-over] {
+  border-color: var(--you-line);
+  background: var(--you-tint);
+}
+
+.build-upload__icon {
+  flex: none;
+  color: var(--ink-3);
+}
+
+.build-upload__text {
+  flex: 1 1 12em;
+}
+
+.build-upload__actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.build-upload__actions label:focus-within {
+  box-shadow: var(--focus-ring);
+}
+
+.build-upload__actions label[aria-disabled] {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.build-upload__state {
+  flex: 1 0 100%;
+  margin: 0;
+}
+
 .build-tokens .wc-input {
   max-width: 320px;
 }

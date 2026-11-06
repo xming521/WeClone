@@ -11,8 +11,12 @@ async function request<T>(
       ? {}
       : {
           method,
-          headers: { 'Content-Type': 'application/json', 'X-WeClone-Request': '1' },
-          body: JSON.stringify(body),
+          // A file goes as it is, anything else as JSON.
+          headers:
+            body instanceof Blob
+              ? { 'X-WeClone-Request': '1' }
+              : { 'Content-Type': 'application/json', 'X-WeClone-Request': '1' },
+          body: body instanceof Blob ? body : JSON.stringify(body),
         }),
   });
   if (!response.ok) {

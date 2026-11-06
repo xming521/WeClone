@@ -8,6 +8,7 @@ import { PageTopbar } from '../settings/PageTopbar';
 import { useRun } from '../settings/useRun';
 import { useProfileStore } from '../store';
 import { useBuildStatus, useBuildStore } from './buildState';
+import { ChatUpload } from './ChatUpload';
 import {
   clock,
   type BuildCheck,
@@ -139,7 +140,7 @@ function Prepare({ last }: { last: BuildStatus | null }) {
   useEffect(() => {
     void runCheck(purpose, checked);
   }, [purpose, checked, round, runCheck]);
-  const recheck = () => (limit === checked ? setRound(round + 1) : setChecked(limit));
+  const recheck = () => (limit === checked ? setRound((value) => value + 1) : setChecked(limit));
 
   async function start(event: FormEvent) {
     event.preventDefault();
@@ -260,7 +261,11 @@ function Prepare({ last }: { last: BuildStatus | null }) {
       <div className="settings-row">
         <div className="settings-row__text">
           <span className="settings-row__label">{t(($) => $.build.prepare.chats)}</span>
-          <span className="settings-row__hint">{t(($) => $.build.prepare.chatsHint)}</span>
+          <span className="settings-row__hint">
+            {check?.chats.platform === 'chat'
+              ? t(($) => $.build.prepare.chatsUploadHint)
+              : t(($) => $.build.prepare.chatsHint)}
+          </span>
         </div>
         <div className="settings-row__control build-facts">
           {check ? (
@@ -272,6 +277,7 @@ function Prepare({ last }: { last: BuildStatus | null }) {
             <span>{t(($) => $.build.prepare.checking)}</span>
           )}
         </div>
+        {check?.chats.platform === 'chat' && <ChatUpload disabled={busy} onUploaded={recheck} />}
       </div>
 
       {listed.length > 0 && (

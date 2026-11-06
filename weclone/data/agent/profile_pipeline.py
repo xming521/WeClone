@@ -217,6 +217,11 @@ def _problem(code: str, message: str, **params) -> dict:
     return {"code": code, "params": params, "message": message}
 
 
+def csv_folder(chat_args) -> Path:
+    folder = Path(chat_args.csv_folder)
+    return folder if folder.is_absolute() else secure_storage.ROOT / folder
+
+
 def _count_chats(chat_args) -> int:
     """Chat folders stage 1 would read, counted by name without reading them."""
     if str(chat_args.platform) == "telegram":
@@ -227,9 +232,7 @@ def _count_chats(chat_args) -> int:
             for folder in TELEGRAM_DIR.iterdir()
             if folder.is_dir()
         )
-    folder = Path(chat_args.csv_folder)
-    if not folder.is_absolute():
-        folder = secure_storage.ROOT / folder
+    folder = csv_folder(chat_args)
     if not folder.is_dir():
         return 0
     return sum(

@@ -257,6 +257,7 @@ export default interface Resources {
         "chatCount": "{{count}} 个聊天",
         "chats": "聊天记录",
         "chatsHint": "在 settings.jsonc 的 make_dataset_args 里设置",
+        "chatsUploadHint": "每个聊天是一个放着 CSV 的文件夹，以聊天对象命名",
         "checking": "正在检查",
         "consent": "聊天内容可能包含身份、联系方式和私密对话，模型服务可能记录或留存这些内容。已经抽取过的聊天读取缓存，不会再次发送。我确认有权处理这些聊天记录，并同意把聊天内容发送给 {{backend}}。",
         "last": "上次构建完成于 {{time}}，已经打开。",
@@ -319,7 +320,16 @@ export default interface Resources {
         "running": "构建中",
         "succeeded": "已完成"
       },
-      "title": "构建画像"
+      "title": "构建画像",
+      "upload": {
+        "done": "放进了 {{count}} 个聊天",
+        "doneReplaced": "放进了 {{count}} 个聊天，其中 {{replaced}} 个替换了同名的旧聊天",
+        "drop": "把聊天文件夹或 zip 拖到这里",
+        "folder": "选文件夹",
+        "nothing": "没有找到 CSV 聊天记录或 zip",
+        "sending": "正在上传 {{sent}} / {{total}}",
+        "zip": "选 zip"
+      }
     },
     "chat": {
       "close": "关闭聊天记录",
@@ -376,6 +386,7 @@ export default interface Resources {
       "chat_unavailable": "该来源未保存聊天定位信息，无法查看原文",
       "consent_required": "请先勾选同意把聊天内容发送给模型服务",
       "demo_build_disabled": "演示模式不能构建画像",
+      "demo_data_fixed": "演示模式不能上传聊天记录",
       "demo_password_fixed": "演示模式的密码固定，不能修改",
       "demo_runs_fixed": "演示模式只有一份画像",
       "demo_settings_fixed": "演示模式不能修改这项设置",
@@ -402,7 +413,14 @@ export default interface Resources {
       "summary_not_found": "板块总结不存在",
       "summary_stale": "这个板块的画像或总结规则有变动，请先重新生成总结",
       "too_many_attempts": "尝试次数过多，请一分钟后再试",
-      "unlock_required": "请重新输入密码解锁"
+      "unlock_required": "请重新输入密码解锁",
+      "upload_duplicate_chat": "上传的文件里有两个同名的聊天文件夹",
+      "upload_no_chats": "没有找到聊天：每个聊天要是一个放着 CSV 的文件夹，以聊天对象命名",
+      "upload_not_found": "这次上传已经结束，请重新选择文件",
+      "upload_path_invalid": "文件路径必须是相对路径",
+      "upload_too_large": "解压后的文件超过了磁盘剩余空间",
+      "upload_unsupported": "现在只能上传通用 CSV 格式的聊天记录",
+      "upload_zip_invalid": "这个 zip 打不开，可能已损坏或设了密码"
     },
     "export": {
       "action": "导出当前视图",

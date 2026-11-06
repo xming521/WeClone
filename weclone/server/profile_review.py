@@ -23,6 +23,7 @@ from weclone.server.assistant import install_assistant
 from weclone.server.auth import AuthStore, install_auth
 from weclone.server.bots import install_bots
 from weclone.server.errors import ApiError, error_response, install_errors, security_response
+from weclone.server.chat_upload import install_upload
 from weclone.server.profile_build import install_build, reviewed_at, run_complete
 from weclone.server.profile_intro import profile_intro
 from weclone.server.profile_summary import (
@@ -496,6 +497,7 @@ def create_app(
     install_bots(app, inference=inference_router is not None)
     runs = Runs(auth, database, source)
     builds = install_build(app, runs, demo=demo_password is not None, script=build_script)
+    install_upload(app, builds, demo=demo_password is not None)
 
     @app.exception_handler(secure.SecurityError)
     async def security_error(request, exc):

@@ -59,7 +59,15 @@
     "demo_build_disabled": "The demo can't build portraits",
     "demo_runs_fixed": "The demo has only one portrait",
     "run_not_found": "No such portrait version",
-    "run_incomplete": "This version didn't finish building and can't be opened"
+    "run_incomplete": "This version didn't finish building and can't be opened",
+    "upload_path_invalid": "File paths must be relative",
+    "upload_zip_invalid": "This zip can't be opened. It may be damaged or password-protected",
+    "upload_too_large": "The unpacked files would not fit in the free disk space",
+    "upload_no_chats": "No chats found. Each chat is a folder of CSV files, named after the person you chatted with",
+    "upload_duplicate_chat": "Two of the uploaded chat folders have the same name",
+    "upload_unsupported": "Only chats in the generic CSV format can be uploaded for now",
+    "upload_not_found": "This upload has ended. Choose the files again",
+    "demo_data_fixed": "The demo can't take uploaded chats"
   },
   "app": {
     "title": "My portrait · WeClone",
@@ -886,12 +894,24 @@
       "tokensHint": "The model's context length. It decides how much goes into each request",
       "chats": "Chats",
       "chatsHint": "Set in make_dataset_args of settings.jsonc",
+      "chatsUploadHint": "Each chat is a folder of CSV files, named after the person you chatted with",
       "chatCount_one": "{{count}} chat",
       "chatCount_other": "{{count}} chats",
       "problems": "Fix these first",
       "recheck": "Check again",
       "consent": "Chats may contain identities, contact details and private conversations, and the model service may log or keep them. Chats extracted before are read from the cache and not sent again. I confirm I may process these chats and agree to send them to {{backend}}.",
       "start": "Start building"
+    },
+    "upload": {
+      "drop": "Drop chat folders or zips here",
+      "folder": "Choose folder",
+      "zip": "Choose zip",
+      "nothing": "No CSV chats or zips found",
+      "sending": "Uploading {{sent}} of {{total}}",
+      "done_one": "Added 1 chat",
+      "done_other": "Added {{count}} chats",
+      "doneReplaced_one": "Added 1 chat, replacing an older one of the same name",
+      "doneReplaced_other": "Added {{count}} chats, {{replaced}} of them replacing older ones of the same name"
     },
     "running": {
       "state": "Building",

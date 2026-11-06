@@ -15,7 +15,7 @@ Open http://127.0.0.1:5175, set a password and go to the Build portrait page. Th
 - Personal assistant: extracts the portrait and events.
 - Clone: also extracts your speaking style, which needs the [speaking style dependencies](installation.md#speaking-style-dependencies).
 
-The page checks your setup and lists any missing settings with how to fix them. An API backend also needs the model's input token limit. Agree to send your chats to the model service and start the build. It runs in a background process, so closing the page doesn't stop it. The page shows the progress of each stage, and the top bar of other pages shows "Building n/N". The stages are:
+The page checks your setup and lists any missing settings with how to fix them. Chats in the generic CSV format can be uploaded on this page, see [Preparing Data](data.md#generic-csv-format). An API backend also needs the model's input token limit. Agree to send your chats to the model service and start the build. It runs in a background process, so closing the page doesn't stop it. The page shows the progress of each stage, and the top bar of other pages shows "Building n/N". The stages are:
 
 1. Prepare the chat data: group text messages by contact and split them into sessions
 2. Extract profile memories and event memories

@@ -16,6 +16,13 @@ from weclone.utils import secure_storage
 from weclone.utils.log import logger
 
 CHUNK_START = re.compile(r"_(\d+)_\d+\.csv$")
+USERS_FILE = "users.json"
+
+
+def is_chat_file(name: str) -> bool:
+    """Whether a chat folder's file of this name is read here: its CSV chunks and users.json."""
+    name = secure_storage.logical_path(name).name
+    return name == USERS_FILE or name.endswith(".csv")
 
 
 def list_csv_files(csv_folder: str | Path, parsed_files: list[str] | None = None) -> list[str]:
@@ -47,7 +54,7 @@ def read_csv(file_path: str | Path) -> pd.DataFrame:
 
 
 def load_users_data(folder_path: str | Path) -> dict:
-    users_json_path = os.path.join(folder_path, "users.json")
+    users_json_path = os.path.join(folder_path, USERS_FILE)
     if not secure_storage.file_exists(users_json_path):
         return {}
     try:
