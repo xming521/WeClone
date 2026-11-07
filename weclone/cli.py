@@ -180,7 +180,11 @@ def distill_style(ctx: click.Context):
 )
 @apply_common_decorators()
 def build_profile(
-    purpose: str | None, output_dir: Path | None, max_context_tokens: int | None, csv_folder: Path | None, yes: bool
+    purpose: str | None,
+    output_dir: Path | None,
+    max_context_tokens: int | None,
+    csv_folder: Path | None,
+    yes: bool,
 ):
     from weclone.data.agent.profile_pipeline import run
 

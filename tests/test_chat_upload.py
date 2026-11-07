@@ -6,12 +6,12 @@ import zipfile
 import pytest
 from fastapi.testclient import TestClient
 
+from tests.test_profile_build import PASSWORD, configure
 from weclone.data import chat_csv
 from weclone.data.agent import profile_pipeline as pipeline
 from weclone.server import chat_upload, profile_build
 from weclone.server.profile_review import create_app
 from weclone.utils import secure_storage
-from tests.test_profile_build import PASSWORD, configure
 
 ENDPOINT = {"base_url": "u", "llm_api_key": "k", "model_name": "m"}
 CSV = "id,MsgSvrID,type_name,is_sender,talker,msg,src,CreateTime\n1,1,文本,0,alice,你好,,2026-01-01 10:00:00\n"

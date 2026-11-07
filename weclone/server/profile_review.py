@@ -23,8 +23,8 @@ from weclone.server import style_view
 from weclone.server.assistant import install_assistant
 from weclone.server.auth import AuthStore, install_auth
 from weclone.server.bots import install_bots
-from weclone.server.errors import ApiError, error_response, install_errors, security_response
 from weclone.server.chat_upload import install_upload
+from weclone.server.errors import ApiError, error_response, install_errors, security_response
 from weclone.server.profile_build import install_build, reviewed_at, run_complete, same
 from weclone.server.profile_intro import profile_intro
 from weclone.server.profile_summary import (
@@ -601,7 +601,9 @@ def create_app(
         # and a style stage that finishes after the server started shows up without a restart.
         run = runs.store().source.parent.parent / "style"
         if not style_view.complete(run):
-            raise ApiError(404, "style_missing", "这个版本没有抽取语言风格，要用 AI 分身，请在构建画像时选择 AI 分身")
+            raise ApiError(
+                404, "style_missing", "这个版本没有抽取语言风格，要用 AI 分身，请在构建画像时选择 AI 分身"
+            )
         return style_view.build_view(run)
 
     @app.get("/api/{path:path}", include_in_schema=False)
