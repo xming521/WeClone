@@ -775,7 +775,11 @@
       "delete": "删除这个版本",
       "confirmDeleteTitle": "删除这个画像版本？",
       "confirmDelete": "{{time}} 生成的画像、审核记录和总结都会从这台电脑上删除，不能恢复。",
-      "deleted": "已删除 {{time}} 生成的画像版本"
+      "deleted": "已删除 {{time}} 生成的画像版本",
+      "deleteBuild": "删除这次构建",
+      "confirmDeleteBuildTitle": "删除这次构建？",
+      "confirmDeleteBuild": "{{time}} 开始的这次构建没有生成画像，留下的聊天快照和中间结果都会从这台电脑上删除，不能恢复。",
+      "deletedBuild": "已删除 {{time}} 开始的构建"
     }
   },
   "about": {

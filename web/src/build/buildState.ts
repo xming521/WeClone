@@ -27,11 +27,16 @@ interface BuildStore {
 let watchers = 0;
 let timer: number | undefined;
 
-/** While a build runs and the page is visible, the status is fetched again every few seconds. */
+// With no build running the status is fetched less often, so a build started on the command line or in another
+// browser still shows up, and a failed request is tried again. The server answers from a small status file.
+const IDLE_MS = 10000;
+
+/** While the page is visible the status is fetched again: every few seconds while a build runs, less often else. */
 function schedule() {
   window.clearTimeout(timer);
-  if (watchers && !document.hidden && useBuildStore.getState().status?.state === 'running')
-    timer = window.setTimeout(() => void useBuildStore.getState().refresh(), POLL_MS);
+  if (!watchers || document.hidden) return;
+  const running = useBuildStore.getState().status?.state === 'running';
+  timer = window.setTimeout(() => void useBuildStore.getState().refresh(), running ? POLL_MS : IDLE_MS);
 }
 
 export const useBuildStore = create<BuildStore>((set, get) => ({

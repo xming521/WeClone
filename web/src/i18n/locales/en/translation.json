@@ -828,7 +828,11 @@
       "delete": "Delete this version",
       "confirmDeleteTitle": "Delete this portrait version?",
       "confirmDelete": "The portrait built {{time}}, with its reviews and summaries, will be removed from this computer. This can't be undone.",
-      "deleted": "Deleted the portrait built {{time}}"
+      "deleted": "Deleted the portrait built {{time}}",
+      "deleteBuild": "Delete this build",
+      "confirmDeleteBuildTitle": "Delete this build?",
+      "confirmDeleteBuild": "The build started {{time}} made no portrait. The chat snapshot and partial results it left will be removed from this computer. This can't be undone.",
+      "deletedBuild": "Deleted the build started {{time}}"
     }
   },
   "about": {

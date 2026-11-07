@@ -102,17 +102,28 @@ export function SettingsApp() {
 
   async function remove(version: RunVersion) {
     const time = formatTime(version.generated_at ?? version.started_at) ?? version.name;
-    const ok = await confirm({
-      title: t(($) => $.settings.run.confirmDeleteTitle),
-      body: t(($) => $.settings.run.confirmDelete, { time }),
-      action: t(($) => $.common.delete),
-      tone: 'danger',
-    });
+    const ok = await confirm(
+      version.complete
+        ? {
+            title: t(($) => $.settings.run.confirmDeleteTitle),
+            body: t(($) => $.settings.run.confirmDelete, { time }),
+            action: t(($) => $.common.delete),
+            tone: 'danger',
+          }
+        : {
+            title: t(($) => $.settings.run.confirmDeleteBuildTitle),
+            body: t(($) => $.settings.run.confirmDeleteBuild, { time }),
+            action: t(($) => $.common.delete),
+            tone: 'danger',
+          },
+    );
     if (!ok) return;
     setBusy(true);
     try {
       await api.delete(`runs/${encodeURIComponent(version.name)}`);
-      toast(t(($) => $.settings.run.deleted, { time }));
+      toast(
+        version.complete ? t(($) => $.settings.run.deleted, { time }) : t(($) => $.settings.run.deletedBuild, { time }),
+      );
     } catch (reason) {
       setError((reason as Error).message);
     } finally {
@@ -275,8 +286,8 @@ export function SettingsApp() {
   );
 }
 
-/** The runs that have a portrait, or will have once their build ends, newest first: the one shown marked, the
- * others a click away or deleted. Failed and cancelled builds are left out, the build page shows the last one. */
+/** Every run, newest first: the one shown marked, the others a click away or deleted. A build that ended without a
+ * portrait can only be deleted, which clears the chat snapshot and partial results it left. */
 function VersionList({
   versions,
   busy,
@@ -289,11 +300,12 @@ function VersionList({
   onDelete: (version: RunVersion) => void;
 }) {
   const { t } = useTranslation();
-  const shown = versions.filter((version) => version.complete || version.state === 'running');
-  if (!shown.length) return <p className="summary-placeholder">{t(($) => $.settings.run.empty)}</p>;
+  const deleteLabel = (version: RunVersion) =>
+    version.complete ? t(($) => $.settings.run.delete) : t(($) => $.settings.run.deleteBuild);
+  if (!versions.length) return <p className="summary-placeholder">{t(($) => $.settings.run.empty)}</p>;
   return (
     <ul className="settings-versions">
-      {shown.map((version) => (
+      {versions.map((version) => (
         <li key={version.name} aria-current={version.current || undefined}>
           <div className="settings-row__text">
             {/* The run's folder name, for the command line. */}
@@ -322,18 +334,19 @@ function VersionList({
               {t(($) => $.settings.run.progress)}
             </a>
           ) : (
-            version.complete &&
             !version.current && (
               <div className="settings-versions__actions">
-                <button className="wc-btn wc-btn--sm" type="button" disabled={busy} onClick={() => onSwitch(version)}>
-                  {t(($) => $.settings.run.switch)}
-                </button>
+                {version.complete && (
+                  <button className="wc-btn wc-btn--sm" type="button" disabled={busy} onClick={() => onSwitch(version)}>
+                    {t(($) => $.settings.run.switch)}
+                  </button>
+                )}
                 <button
                   className="wc-iconbtn wc-iconbtn--sm settings-versions__delete"
                   type="button"
                   disabled={busy}
-                  aria-label={t(($) => $.settings.run.delete)}
-                  title={t(($) => $.settings.run.delete)}
+                  aria-label={deleteLabel(version)}
+                  title={deleteLabel(version)}
                   onClick={() => onDelete(version)}
                 >
                   <Trash2 size={15} strokeWidth={1.8} aria-hidden="true" />
