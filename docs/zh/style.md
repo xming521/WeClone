@@ -8,7 +8,7 @@ weclone-cli distill-style --input-dir <运行目录>/people
 
 只抽取本人回复的风格特征，不读入也不比较模型回复。
 
-输入是 build-profile 运行目录下的聊天快照 `<运行目录>/people/*.json`（跳过 manifest），用 `--input-dir` 指定，复用画像的聊天读取规则。build-profile 选择做分身（`--purpose clone`）时，最后一步自动运行风格抽取，结果写入 `<运行目录>/style/`，网页的风格页读取同一运行目录。每条源记录作为一个完整对话段，抽取其中全部 B 发言，不会将一段拆成多个前缀样本。模型、并发、批量配置沿用现有设置。
+输入是 build-profile 运行目录下的聊天快照 `<运行目录>/people/*.json`（跳过 manifest），用 `--input-dir` 指定，复用画像的聊天读取规则。build-profile 选择 AI 分身（`--purpose clone`）时，最后一步自动运行风格抽取，结果写入 `<运行目录>/style/`，网页的风格页读取同一运行目录。每条源记录作为一个完整对话段，抽取其中全部 B 发言，不会将一段拆成多个前缀样本。模型、并发、批量配置沿用现有设置。
 
 `--input-dir` 也可以是单个文件。`--output-dir` 指定新输出目录，单独运行时默认输出到 `dataset/res_csv/agent/distill/style/` 下的新运行目录，缓存放在相邻的 `style_cache/`。本地 LTP 模型默认位于 `models/LTPbase`，可用 `--ltp-model` 覆盖。`--limit` 在时间窗之后取前 N 个聊天段，`--no-llm` 只运行本地统计；默认语义抽样数量保持原来的 2000，`--llm-samples 0` 使用全部聊天段。时间窗（`--window-days`，默认 365）、统计单元和联系人分组见“统计单元、时间窗与联系人分组”。
 

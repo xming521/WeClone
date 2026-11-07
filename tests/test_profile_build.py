@@ -6,7 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from weclone.data.agent import profile_pipeline as pipeline
-from weclone.server import profile_review
+from weclone.server import profile_review, profile_summary
 from weclone.server.profile_review import create_app
 from weclone.utils import secure_storage
 
@@ -24,6 +24,7 @@ def configure(tmp_path, monkeypatch, mode="plaintext", extra=None):
     )
     monkeypatch.setenv("WECLONE_CONFIG_PATH", str(settings))
     monkeypatch.setattr(pipeline, "RUNS_DIR", tmp_path / "runs")
+    monkeypatch.setattr(pipeline, "UPLOAD_DIR", tmp_path / "uploaded")
     secure_storage.configure()
     return settings
 
@@ -125,6 +126,30 @@ def test_reviews_keep_the_shown_run_until_the_owner_switches(web, tmp_path, monk
     assert restarted.put("/api/run", json={"name": "../x"}).json()["code"] == "run_not_found"
 
 
+def test_the_owner_deletes_versions_but_not_the_shown_one(web, tmp_path):
+    old, shown = pipeline.RUNS_DIR / "20260101_000000_000000", pipeline.RUNS_DIR / "20260102_000000_000000"
+    write_profile(old, "旧画像")
+    write_profile(shown, "新画像")
+    # A run linked in from elsewhere loses only its link.
+    elsewhere = tmp_path / "experiment"
+    write_profile(elsewhere, "实验画像")
+    linked = pipeline.RUNS_DIR / "20251231_000000_000000"
+    linked.symlink_to(elsewhere)
+    client = web()
+    assert client.put("/api/run", json={"name": old.name}).status_code == 200
+    assert client.put("/api/run", json={"name": shown.name}).status_code == 200
+    with profile_summary.GENERATING:
+        assert client.delete(f"/api/runs/{old.name}").json()["code"] == "summary_generating"
+    assert client.delete(f"/api/runs/{old.name}").json() == {"ok": True}
+    assert client.delete(f"/api/runs/{linked.name}").json() == {"ok": True}
+    assert not old.exists() and not linked.exists() and (elsewhere / "profile_hierarchy").is_dir()
+    assert client.delete(f"/api/runs/{shown.name}").json()["code"] == "run_current"
+    assert client.delete(f"/api/runs/{old.name}").json()["code"] == "run_not_found"
+    assert client.delete("/api/runs/%2E%2E").json()["code"] == "run_not_found"
+    assert [item["name"] for item in client.get("/api/runs").json()] == [shown.name]
+    assert values(client) == ["新画像"]
+
+
 def test_a_running_request_finishes_on_the_run_it_started_with(tmp_path, monkeypatch):
     configure(tmp_path, monkeypatch)
     first, second = pipeline.RUNS_DIR / "1", pipeline.RUNS_DIR / "2"
@@ -161,7 +186,7 @@ def test_a_failed_build_keeps_the_error_and_the_shown_run(web, monkeypatch):
 def test_one_build_at_a_time_and_cancel(web, monkeypatch):
     client = web()
     monkeypatch.setenv("FAKE_BUILD", "wait")
-    build(client)
+    started = build(client)
     wait(client, "running")
     deadline = time.time() + 30
     while client.get("/api/build").json()["stages"][1]["state"] != "running":
@@ -170,6 +195,7 @@ def test_one_build_at_a_time_and_cancel(web, monkeypatch):
     assert pipeline.build_running()
     second = client.post("/api/build", json={"purpose": "assistant", "consent": True})
     assert second.json()["code"] == "build_running"
+    assert client.delete(f"/api/runs/{started['run']}").json()["code"] == "run_building"
     assert client.delete("/api/build").json() == {"ok": True}
     cancelled = wait(client, "cancelled")
     assert cancelled["stages"][1]["state"] == "cancelled"
@@ -234,6 +260,7 @@ def test_the_demo_cannot_build_or_switch(tmp_path, monkeypatch):
             client.put("/api/run", json={"name": "20260101_000000_000000"}).json()["code"]
             == "demo_runs_fixed"
         )
+        assert client.delete("/api/runs/20260101_000000_000000").json()["code"] == "demo_runs_fixed"
 
 
 def fake_codex(tmp_path, login_code, models):
@@ -273,7 +300,7 @@ def test_check_finds_missing_chats_and_api_settings(tmp_path, monkeypatch):
     found = pipeline.check(settings, "assistant")
     assert codes(found) == ["chats_missing", "api_config_missing", "max_context_required"]
     assert found["problems"][1]["params"] == {"keys": ["llm_api_key", "model_name"]}
-    assert found["chats"] == {"platform": "chat", "count": 0}
+    assert found["chats"] == {"platform": "chat", "folder": str(tmp_path / "none"), "count": 0}
 
 
 def test_check_reports_a_config_it_cannot_read(tmp_path, monkeypatch):
@@ -296,7 +323,7 @@ def test_check_counts_chats_and_passes_a_complete_api_setup(tmp_path, monkeypatc
     found = pipeline.check(settings, "assistant", 64000)
     assert found == {
         "backend": {"provider": "api", "model": "m", "max_context_tokens": 64000},
-        "chats": {"platform": "chat", "count": 1},
+        "chats": {"platform": "chat", "folder": str(chats), "count": 1},
         "problems": [],
     }
     lock = pipeline.build_lock()
@@ -324,6 +351,9 @@ def test_check_finds_telegram_without_my_id(tmp_path, monkeypatch, chats):
     monkeypatch.setattr(pipeline, "TELEGRAM_DIR", tmp_path / "telegram")
     found = pipeline.check(settings, "assistant", 64000)
     assert codes(found) == ["telegram_id_missing"] and found["chats"]["count"] == 1
+    # A folder of generic CSV chats is read without the platform's own settings.
+    found = pipeline.check(settings, "assistant", 64000, chats)
+    assert codes(found) == [] and found["chats"] == {"platform": "chat", "folder": str(chats), "count": 1}
 
 
 @pytest.mark.parametrize(

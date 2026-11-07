@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+import shutil
 import sqlite3
 import threading
 import tomllib
@@ -24,9 +25,10 @@ from weclone.server.auth import AuthStore, install_auth
 from weclone.server.bots import install_bots
 from weclone.server.errors import ApiError, error_response, install_errors, security_response
 from weclone.server.chat_upload import install_upload
-from weclone.server.profile_build import install_build, reviewed_at, run_complete
+from weclone.server.profile_build import install_build, reviewed_at, run_complete, same
 from weclone.server.profile_intro import profile_intro
 from weclone.server.profile_summary import (
+    GENERATING,
     Level,
     SummaryEdit,
     SummaryGenerate,
@@ -477,6 +479,24 @@ class Runs:
             self.pair = self.stores(*review_paths(None, run / "profile_hierarchy" / "profile_hierarchy.json"))
             self.settings.save_setting("current_run", str(run.resolve()))
 
+    def remove(self, run: Path):
+        """Removes a run's folder, or only the link when it is linked from elsewhere, with the stores opened on it.
+        Not the run shown, nor one that may be writing its summaries."""
+        with self.lock:
+            if same(self.run_dir(), run):
+                raise ApiError(409, "run_current", "正在显示的版本不能删除")
+            opened = [
+                source for source, (store, _) in self.pairs.items() if same(store.source.parent.parent, run)
+            ]
+            if opened and GENERATING.locked():
+                raise ApiError(409, "summary_generating", "正在生成板块总结，请稍候")
+            for source in opened:
+                del self.pairs[source]
+            if run.is_symlink():
+                run.unlink()
+            else:
+                shutil.rmtree(run)
+
 
 def create_app(
     database: Path | None = None,
@@ -581,7 +601,7 @@ def create_app(
         # and a style stage that finishes after the server started shows up without a restart.
         run = runs.store().source.parent.parent / "style"
         if not style_view.complete(run):
-            raise ApiError(404, "style_missing", "这个版本没有抽取语言风格，做分身要在构建画像时选择做分身")
+            raise ApiError(404, "style_missing", "这个版本没有抽取语言风格，要用 AI 分身，请在构建画像时选择 AI 分身")
         return style_view.build_view(run)
 
     @app.get("/api/{path:path}", include_in_schema=False)

@@ -55,11 +55,24 @@ def config_path() -> Path:
     return Path(os.environ.get("WECLONE_CONFIG_PATH", secure.ROOT / "settings.jsonc"))
 
 
+# upload: the chats uploaded from the web. config: the platform and csv_folder of the config.
+ChatSource = Literal["upload", "config"]
+
+
+def chats_folder(source: ChatSource | None) -> Path | None:
+    """The folder a build reads for this source, None for the config's chats. Without a source, the uploaded chats
+    if there are any."""
+    if source is None:
+        source = "upload" if pipeline.count_csv_chats(pipeline.UPLOAD_DIR) else "config"
+    return pipeline.UPLOAD_DIR if source == "upload" else None
+
+
 class BuildStart(BaseModel):
     model_config = ConfigDict(extra="forbid")
     purpose: Literal["assistant", "clone"]
     consent: bool
     max_context_tokens: int | None = Field(default=None, ge=1)
+    chats: ChatSource | None = None
 
 
 class RunChoice(BaseModel):
@@ -118,10 +131,18 @@ class Builds:
         if run_complete(run) and not self.runs.reviewed():
             self.runs.switch(run)
 
-    def check(self, purpose: str, max_context_tokens: int | None) -> dict:
+    def check(self, purpose: str, max_context_tokens: int | None, source: ChatSource | None) -> dict:
         if self.demo:
             raise ApiError(409, "demo_build_disabled", "演示模式不能构建画像")
-        return pipeline.check(config_path(), purpose, max_context_tokens)
+        folder = chats_folder(source)
+        found = pipeline.check(config_path(), purpose, max_context_tokens, folder)
+        config = pipeline.chat_problems(config_path())[0] if folder else found["chats"]
+        found["chats"] = {
+            "source": "upload" if folder else "config",
+            "upload": {"count": pipeline.count_csv_chats(pipeline.UPLOAD_DIR)},
+            "config": config,
+        }
+        return found
 
     def start(self, request: BuildStart) -> dict | None:
         if self.demo:
@@ -131,7 +152,8 @@ class Builds:
         with self.lock:
             if self.running():
                 raise ApiError(409, "build_running", "已经有一次构建在运行")
-            found = pipeline.check(config_path(), request.purpose, request.max_context_tokens)
+            folder = chats_folder(request.chats)
+            found = pipeline.check(config_path(), request.purpose, request.max_context_tokens, folder)
             if found["problems"]:
                 raise ApiError(422, "build_check_failed", "运行前检查没有通过", problems=found["problems"])
             run = pipeline.new_run_dir()
@@ -142,6 +164,8 @@ class Builds:
             args = ["build-profile", "--purpose", request.purpose, "--output-dir", str(run), "--yes"]
             if request.max_context_tokens is not None:
                 args += ["--max-context-tokens", str(request.max_context_tokens)]
+            if folder is not None:
+                args += ["--csv-folder", str(folder)]
             self.process = self.spawn(run, args)
             self.cancelled = None
         return self.latest()
@@ -245,6 +269,17 @@ class Builds:
             run = latest
         self.runs.switch(run)
 
+    def delete(self, name: str):
+        if self.demo:
+            raise ApiError(409, "demo_runs_fixed", "演示模式只有一份画像")
+        run = pipeline.RUNS_DIR / name
+        if Path(name).name != name or name.startswith(".") or not run.is_dir():
+            raise ApiError(404, "run_not_found", "没有这个版本")
+        with self.lock:
+            if self.running() and same(run, pipeline.last_build()):
+                raise ApiError(409, "run_building", "这个版本还在构建")
+            self.runs.remove(run)
+
 
 def install_build(app: FastAPI, runs, *, demo: bool, script: Path | None = None) -> Builds:
     """`script` replaces weclone/cli.py as the program a web build runs, for tests."""
@@ -252,9 +287,11 @@ def install_build(app: FastAPI, runs, *, demo: bool, script: Path | None = None)
 
     @app.get("/api/build/check")
     def build_check(
-        purpose: Literal["assistant", "clone"] = "assistant", max_context_tokens: int | None = None
+        purpose: Literal["assistant", "clone"] = "assistant",
+        max_context_tokens: int | None = None,
+        chats: ChatSource | None = None,
     ):
-        return builds.check(purpose, max_context_tokens)
+        return builds.check(purpose, max_context_tokens, chats)
 
     @app.get("/api/build")
     def build_status():
@@ -279,5 +316,10 @@ def install_build(app: FastAPI, runs, *, demo: bool, script: Path | None = None)
     def run_choose(request: RunChoice):
         builds.choose(request.name)
         return {"name": request.name}
+
+    @app.delete("/api/runs/{name}")
+    def run_delete(name: str):
+        builds.delete(name)
+        return {"ok": True}
 
     return builds

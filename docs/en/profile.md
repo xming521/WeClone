@@ -28,9 +28,10 @@ The page checks your setup and lists any missing settings with how to fix them. 
 |---|---|
 | `--output-dir <dir>` | Result directory, which must be new. Defaults to a timestamped directory under `dataset/res_csv/agent/profile_runs/` |
 | `--max-context-tokens <limit>` | Input token limit for memory organization and the hierarchy. The Codex backend reads the model's context length by default. The API backend requires it |
+| `--csv-folder <dir>` | Read the chats in this folder as generic CSV, one folder per chat, instead of `platform` and `csv_folder` in the config |
 | `--yes` | Skip the confirmation to send, for scripts |
 
-When the build finishes and the portrait shown has no reviews yet, the web UI switches to the new one. If you have reviewed it, your reviews stay with that version and you switch with **Open the new portrait**. Every version is listed under Settings → Portrait versions, where you can switch back at any time. Only one build runs at a time.
+When the build finishes and the portrait shown has no reviews yet, the web UI switches to the new one. If you have reviewed it, your reviews stay with that version and you switch with **Open the new portrait**. Every version is listed under Settings → Portrait versions, where you can switch back at any time or delete the ones you no longer need, except the one shown. Only one build runs at a time.
 
 Model answers are cached by input content in `dataset/res_csv/agent/llm_cache.sqlite`. After a failed or cancelled build, **Build again** reruns it in a new result directory and only the missing parts are requested. Delete the file to request everything again.
 

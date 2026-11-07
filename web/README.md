@@ -8,7 +8,7 @@ From the repository root:
 
 ```sh
 weclone-cli server         # built pages, http://127.0.0.1:5175
-weclone-cli dev            # Vite dev server on http://127.0.0.1:5174, backend on 5175
+weclone-cli dev            # Vite dev server on http://127.0.0.1:5174, backend on 5175, restarted when weclone/ changes
 weclone-cli dev --demo     # the same, with the synthetic test portrait (password: demo)
 ```
 

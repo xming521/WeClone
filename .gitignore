@@ -21,9 +21,7 @@ __pycache__/
 
 # Distribution / packaging
 .Python
-build/
-# Source folder of the web build page, not build output.
-!web/src/build/
+/build/
 develop-eggs/
 dist/
 !weclone/web/dist/
@@ -176,6 +174,8 @@ settings.jsonc
 settings.json
 dataset/blocked_words.json
 dataset/wechat/*
+dataset/uploaded/
+dataset/.uploads/
 models/*
 .secrets*
 .env*

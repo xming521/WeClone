@@ -30,15 +30,17 @@ LOG_FILE = "build.log"
 # A server writes these into the result directory before it starts the build there.
 BUILD_FILES = {STATUS_FILE, LOG_FILE}
 TELEGRAM_DIR = secure_storage.ROOT / "dataset/telegram"
-# Step, key and label of each stage. Steps follow the [n/N] of the command line, so two stages share step 2.
+# Chats uploaded from the web, kept apart from csv_folder and read as generic CSV.
+UPLOAD_DIR = secure_storage.ROOT / "dataset/uploaded"
+# Step, key and label of each stage, the [n/N] of the command line. Only the clone's build has the last one.
 STAGES = [
     (1, "snapshot", "准备聊天数据"),
     (2, "distill_profile", "抽取画像记忆"),
-    (2, "distill_event", "抽取事件记忆"),
-    (3, "organize", "划分板块、分类和汇总记忆"),
-    (4, "hierarchy", "把事实分成主题，生成画像层级"),
-    (5, "summaries", "生成板块总结"),
-    (6, "style", "抽取语言风格"),
+    (3, "distill_event", "抽取事件记忆"),
+    (4, "organize", "划分板块、分类和汇总记忆"),
+    (5, "hierarchy", "把事实分成主题，生成画像层级"),
+    (6, "summaries", "生成板块总结"),
+    (7, "style", "抽取语言风格"),
 ]
 PROGRESS_SECONDS = 1.0
 
@@ -222,6 +224,28 @@ def csv_folder(chat_args) -> Path:
     return folder if folder.is_absolute() else secure_storage.ROOT / folder
 
 
+def load_chat_args(config_path: Path, chats_folder: Path | None = None):
+    """The chats a build reads: those of the config, or the generic CSV chats of `chats_folder` when given."""
+    from weclone.data.agent import chat_snapshot
+    from weclone.utils.config_models import PlatformType
+
+    chat_args = chat_snapshot.load_chat_args(config_path)
+    if chats_folder is None:
+        return chat_args
+    return chat_args.model_copy(update={"platform": PlatformType.CHAT, "csv_folder": str(chats_folder)})
+
+
+def count_csv_chats(folder: Path) -> int:
+    """Chat folders holding CSV chunks, counted by name without reading them."""
+    if not folder.is_dir():
+        return 0
+    return sum(
+        next(secure_storage.iter_files(chat, "*.csv"), None) is not None
+        for chat in folder.iterdir()
+        if chat.is_dir()
+    )
+
+
 def _count_chats(chat_args) -> int:
     """Chat folders stage 1 would read, counted by name without reading them."""
     if str(chat_args.platform) == "telegram":
@@ -232,23 +256,15 @@ def _count_chats(chat_args) -> int:
             for folder in TELEGRAM_DIR.iterdir()
             if folder.is_dir()
         )
-    folder = csv_folder(chat_args)
-    if not folder.is_dir():
-        return 0
-    return sum(
-        next(secure_storage.iter_files(chat, "*.csv"), None) is not None
-        for chat in folder.iterdir()
-        if chat.is_dir()
-    )
+    return count_csv_chats(csv_folder(chat_args))
 
 
-def _chat_problems(config_path: Path) -> tuple[dict, list[dict]]:
-    from weclone.data.agent import chat_snapshot
-
+def chat_problems(config_path: Path, chats_folder: Path | None = None) -> tuple[dict, list[dict]]:
+    """The chats a build would read, as in `load_chat_args`, and what keeps it from reading them."""
     try:
-        chat_args = chat_snapshot.load_chat_args(config_path)
+        chat_args = load_chat_args(config_path, chats_folder)
     except (OSError, ValueError, KeyError, TypeError) as exc:
-        return {"platform": None, "count": 0}, [
+        return {"platform": None, "folder": None, "count": 0}, [
             _problem("config_invalid", f"配置文件读取失败：{exc}", detail=str(exc))
         ]
     platform = str(chat_args.platform)
@@ -268,7 +284,7 @@ def _chat_problems(config_path: Path) -> tuple[dict, list[dict]]:
         problems.append(
             _problem("chats_missing", f"{folder} 里没有聊天记录", platform=platform, folder=folder)
         )
-    return {"platform": platform, "count": count}, problems
+    return {"platform": platform, "folder": folder, "count": count}, problems
 
 
 def _backend_problems(config_path: Path, max_context_tokens: int | None) -> tuple[dict, list[dict]]:
@@ -341,17 +357,19 @@ def _style_problems(config_path: Path) -> list[dict]:
     return [
         _problem(
             "style_deps_missing",
-            "做分身要抽取语言风格，请先执行 uv pip install --group style --torch-backend cpu -e .，"
+            "AI 分身要抽取语言风格，请先执行 uv pip install --group style --torch-backend cpu -e .，"
             f"并把 LTP 模型放在 {ltp_model}",
             model_dir=str(ltp_model),
         )
     ]
 
 
-def check(config_path: Path, purpose: str, max_context_tokens: int | None = None) -> dict:
+def check(
+    config_path: Path, purpose: str, max_context_tokens: int | None = None, chats_folder: Path | None = None
+) -> dict:
     """What would stop a build before its first model call, found without calling the model."""
     secure_storage.configure(config_path)
-    chats, problems = _chat_problems(config_path)
+    chats, problems = chat_problems(config_path, chats_folder)
     backend, backend_problems = _backend_problems(config_path, max_context_tokens)
     problems += backend_problems
     if purpose == "clone":
@@ -372,13 +390,14 @@ def run(
     config_path: Path,
     max_context_tokens: int | None = None,
     confirmed: bool = False,
+    chats_folder: Path | None = None,
 ) -> Path:
     from weclone.data.agent import distill_profile
     from weclone.data.agent.distill_style import run as distill_style
 
     secure_storage.configure(config_path)
     purpose = "clone" if with_style else "assistant"
-    found = check(config_path, purpose, max_context_tokens)
+    found = check(config_path, purpose, max_context_tokens, chats_folder)
     if found["problems"]:
         raise ValueError(
             "\n".join(["运行前检查没有通过："] + [f"- {item['message']}" for item in found["problems"]])
@@ -422,7 +441,7 @@ def run(
             with build.stage("snapshot"):
                 from weclone.data.agent import chat_snapshot
 
-                chat_snapshot.build_snapshot(people_dir, chat_snapshot.load_chat_args(config_path))
+                chat_snapshot.build_snapshot(people_dir, load_chat_args(config_path, chats_folder))
 
             source_files = list(distill_profile.iter_chat_files(people_dir))
             if not source_files:

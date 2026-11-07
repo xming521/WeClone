@@ -1,7 +1,8 @@
-"""Chats uploaded from the web, as files of folders or as zips, placed into csv_folder for the next build.
+"""Chats uploaded from the web, as files of folders or as zips, kept in their own folder apart from csv_folder.
 
-An upload collects files in its own staging directory, written as the storage mode writes everything, and moves the
-chats it finds into csv_folder when it is done. Staging belongs to the server process and is cleared when it starts.
+An upload collects files in its own staging directory, written as the storage mode writes everything, and replaces
+the uploaded chats with the chats it finds when it is done. Staging belongs to the server process and is cleared when
+it starts.
 """
 
 import secrets
@@ -14,10 +15,8 @@ from fastapi import FastAPI, Request
 from starlette.concurrency import run_in_threadpool
 
 from weclone.data import chat_csv
-from weclone.data.agent import chat_snapshot
 from weclone.data.agent import profile_pipeline as pipeline
 from weclone.server.errors import ApiError
-from weclone.server.profile_build import config_path
 from weclone.utils import secure_storage as secure
 
 STAGING_DIR = secure.ROOT / "dataset" / ".uploads"
@@ -89,19 +88,9 @@ class Uploads:
         self.active: set[str] = set()
         shutil.rmtree(STAGING_DIR, ignore_errors=True)
 
-    def target(self) -> Path:
-        try:
-            chat_args = chat_snapshot.load_chat_args(config_path())
-        except (OSError, ValueError, KeyError, TypeError):
-            chat_args = None
-        if chat_args is None or str(chat_args.platform) != "chat":
-            raise ApiError(409, "upload_unsupported", "只能上传通用 CSV 格式的聊天记录")
-        return pipeline.csv_folder(chat_args)
-
     def start(self) -> str:
         if self.demo:
             raise ApiError(409, "demo_data_fixed", "演示模式不能上传聊天记录")
-        self.target()
         if self.builds.running():
             raise ApiError(409, "build_running", "已经有一次构建在运行")
         upload_id = secrets.token_hex(8)
@@ -117,13 +106,13 @@ class Uploads:
     def finish(self, upload_id: str) -> dict:
         staging = self.staging(upload_id)
         chats = find_chats(staging)
-        folder = self.target()
-        replaced = 0
-        # A build starting now would read a folder half moved.
+        # Hidden names, which no uploaded path has.
+        placed, replaced = staging / ".placed", staging / ".replaced"
+        # A build starting now would read a folder half replaced.
         with self.builds.lock:
+            # Before anything moves, so a refused upload is finished as it was once the build ends.
             if self.builds.running():
                 raise ApiError(409, "build_running", "已经有一次构建在运行")
-            placed = staging / ".placed"
             for name, source in chats.items():
                 # Only the chat's own files: a chat folder can hold another one.
                 chat = placed / name
@@ -131,14 +120,12 @@ class Uploads:
                 for path in source.iterdir():
                     if path.is_file():
                         path.rename(chat / path.name)
-                target = folder / name
-                if target.exists():
-                    shutil.rmtree(target)
-                    replaced += 1
-                folder.mkdir(parents=True, exist_ok=True)
-                shutil.move(chat, target)
+            if pipeline.UPLOAD_DIR.exists():
+                pipeline.UPLOAD_DIR.rename(replaced)
+            pipeline.UPLOAD_DIR.parent.mkdir(parents=True, exist_ok=True)
+            placed.rename(pipeline.UPLOAD_DIR)
         self.discard(upload_id)
-        return {"chats": len(chats), "replaced": replaced}
+        return {"chats": len(chats)}
 
     def discard(self, upload_id: str):
         self.active.discard(upload_id)

@@ -170,14 +170,22 @@ def distill_style(ctx: click.Context):
     "required for API models.",
 )
 @click.option(
+    "--csv-folder",
+    type=click.Path(path_type=Path, file_okay=False, resolve_path=True),
+    help="Read the chats of this folder in the generic CSV format, one folder per chat, instead of the platform "
+    "and csv_folder in make_dataset_args.",
+)
+@click.option(
     "--yes", is_flag=True, help="Skip the confirmation that chat content goes to the model service."
 )
 @apply_common_decorators()
-def build_profile(purpose: str | None, output_dir: Path | None, max_context_tokens: int | None, yes: bool):
+def build_profile(
+    purpose: str | None, output_dir: Path | None, max_context_tokens: int | None, csv_folder: Path | None, yes: bool
+):
     from weclone.data.agent.profile_pipeline import run
 
     if purpose is None:
-        click.echo("1. 给个人助理用：抽取画像和事件\n2. 做分身：另外抽取语言风格，需要 ltp 包和 LTP 模型")
+        click.echo("1. 给个人助理用：抽取画像和事件\n2. AI 分身：另外抽取语言风格，需要 ltp 包和 LTP 模型")
         choice = click.prompt("请选择用途", type=click.Choice(["1", "2"]), default="1")
         purpose = "clone" if choice == "2" else "assistant"
     config_path = Path(os.environ.get("WECLONE_CONFIG_PATH", "settings.jsonc"))
@@ -188,6 +196,7 @@ def build_profile(purpose: str | None, output_dir: Path | None, max_context_toke
             config_path=config_path,
             max_context_tokens=max_context_tokens,
             confirmed=yes,
+            chats_folder=csv_folder,
         )
     except (OSError, ValueError, RuntimeError) as exc:
         raise click.ClickException(str(exc)) from exc
@@ -369,7 +378,7 @@ def server(host: str, port: int, run_dir: Path | None, inference: bool, demo: st
     serve(host=host, port=port, run=run_dir, inference=inference, demo=demo)
 
 
-@cli.command("dev", help="Start the backend and frontend development server.")
+@cli.command("dev", help="Start the backend and frontend development server, each reloading on changes.")
 @click.option(
     "--demo",
     type=click.Choice(["zh", "en"]),
@@ -396,20 +405,58 @@ def dev(ctx: click.Context, demo: str | None):
         except ProcessLookupError:
             pass
 
+    def stop(process):
+        signal_group(process, signal.SIGTERM)
+        try:
+            process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            pass
+        signal_group(process, signal.SIGKILL)
+        process.wait()
+
+    # The frontend reloads by itself. The backend starts again when a Python file of the package changes.
+    package = Path(__file__).resolve().parent
+
+    def sources() -> dict[Path, int]:
+        found = {}
+        for path in package.rglob("*.py"):
+            try:
+                found[path] = path.stat().st_mtime_ns
+            except OSError:
+                # Gone between listing and reading, as during an editor's save.
+                pass
+        return found
+
     handlers = {sig: signal.signal(sig, interrupt) for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)}
     try:
         server = [sys.executable, "-m", "weclone.cli", "server", "--port", "5175"]
-        commands = [server + (["--demo", demo] if demo else []), ["pnpm", "--dir", "web", "dev"]]
-        for command in commands:
+        server += ["--demo", demo] if demo else []
+        for command in (server, ["pnpm", "--dir", "web", "dev"]):
             if shutdown_signal is not None:
                 ctx.exit(128 + shutdown_signal)
             processes.append(subprocess.Popen(command, start_new_session=True))
-        click.echo("前端 dev: http://127.0.0.1:5174\n后端: http://127.0.0.1:5175\n按 Ctrl+C 关闭全部服务。")
+        click.echo(
+            "前端 dev: http://127.0.0.1:5174\n后端: http://127.0.0.1:5175，改了 weclone 的 Python 代码会自动重启\n"
+            "按 Ctrl+C 关闭全部服务。"
+        )
+        seen, checked, ended = sources(), time.monotonic(), False
         while shutdown_signal is None:
-            for process in processes:
-                code = process.poll()
-                if code is not None:
-                    ctx.exit(code if code >= 0 else 128 - code)
+            code = processes[1].poll()
+            if code is not None:
+                ctx.exit(code if code >= 0 else 128 - code)
+            # A backend that stopped, as on a syntax error, starts again with the next change.
+            if not ended and processes[0].poll() is not None:
+                ended = True
+                click.echo("后端已退出，改了代码后会自动重启。")
+            if time.monotonic() - checked >= 1:
+                checked = time.monotonic()
+                found = sources()
+                if found != seen:
+                    seen = found
+                    click.echo("后端代码有改动，正在重启后端。")
+                    stop(processes[0])
+                    processes[0] = subprocess.Popen(server, start_new_session=True)
+                    ended = False
             time.sleep(0.1)
         ctx.exit(128 + shutdown_signal)
     except OSError as exc:
