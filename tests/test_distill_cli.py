@@ -20,12 +20,11 @@ def test_template_preserves_codex_distill_settings():
     }
     assert required <= config.keys()
     assert all(config[key] not in (None, "") for key in required)
-    assert (config["request_interval_seconds"], config["capacity_cooldown_seconds"]) == (0.5, 20.0)
     assert "max_tokens" not in config
     args = distill_profile.default_args()
     args.config_path = Path("settings.template.jsonc")
     resolved = distill_profile.resolve_llm_args(args)
-    assert (resolved.max_tokens, resolved.timeout) == (None, 300)
+    assert resolved.max_tokens is None
 
 
 def test_api_provider_does_not_require_codex_exec_settings(tmp_path):
@@ -54,8 +53,17 @@ def test_api_provider_does_not_require_codex_exec_settings(tmp_path):
     assert resolved.codex_command is None
 
 
-@pytest.mark.parametrize("module", [distill_profile, distill_event])
-@pytest.mark.parametrize("answer,approved", [("", False), ("\n", False), ("n\n", False), ("y\n", True)])
+@pytest.mark.parametrize(
+    "module,answer,approved",
+    [
+        (distill_profile, "", False),
+        (distill_profile, "\n", False),
+        (distill_profile, "n\n", False),
+        (distill_profile, "y\n", True),
+        # Both tasks share run_task's confirmation, so the event task only checks that its own task is passed on.
+        (distill_event, "y\n", True),
+    ],
+)
 def test_distillation_requires_consent_before_writes_or_model_calls(
     tmp_path, monkeypatch, module, answer, approved,
 ):

@@ -11,22 +11,6 @@ from weclone.server.profile_review import create_app
 from weclone.utils import secure_storage
 
 FAKE = Path(__file__).with_name("fake_build.py")
-PASSWORD = {"password": "build-test", "confirmation": "build-test"}
-
-
-def configure(tmp_path, monkeypatch, mode="plaintext", extra=None):
-    # One file per mode: settings are cached by path and modification time.
-    settings = tmp_path / f"settings.{mode}.jsonc"
-    settings.write_text(
-        json.dumps(
-            {"security_args": {"storage_mode": mode, "state_dir": str(tmp_path / "state")}, **(extra or {})}
-        )
-    )
-    monkeypatch.setenv("WECLONE_CONFIG_PATH", str(settings))
-    monkeypatch.setattr(pipeline, "RUNS_DIR", tmp_path / "runs")
-    monkeypatch.setattr(pipeline, "UPLOAD_DIR", tmp_path / "uploaded")
-    secure_storage.configure()
-    return settings
 
 
 def write_profile(run, value):
@@ -48,8 +32,8 @@ def write_profile(run, value):
 
 
 @pytest.fixture
-def web(tmp_path, monkeypatch):
-    configure(tmp_path, monkeypatch)
+def web(tmp_path, monkeypatch, storage, owner_password):
+    storage()
     monkeypatch.setattr(pipeline, "check", lambda *args: {"backend": {}, "chats": {}, "problems": []})
     monkeypatch.setenv("FAKE_BUILD", "succeed")
 
@@ -57,9 +41,12 @@ def web(tmp_path, monkeypatch):
         client = TestClient(create_app(static_dir=tmp_path / "no-static", build_script=FAKE, **options))
         client.headers["X-WeClone-Request"] = "1"
         if not secure_storage.is_initialized():
-            assert client.post("/api/auth/setup", json=PASSWORD).status_code == 200
+            assert client.post("/api/auth/setup", json=owner_password).status_code == 200
         else:
-            assert client.post("/api/auth/login", json={"password": PASSWORD["password"]}).status_code == 200
+            assert (
+                client.post("/api/auth/login", json={"password": owner_password["password"]}).status_code
+                == 200
+            )
         return client
 
     return start
@@ -150,8 +137,8 @@ def test_the_owner_deletes_versions_but_not_the_shown_one(web, tmp_path):
     assert values(client) == ["新画像"]
 
 
-def test_a_running_request_finishes_on_the_run_it_started_with(tmp_path, monkeypatch):
-    configure(tmp_path, monkeypatch)
+def test_a_running_request_finishes_on_the_run_it_started_with(tmp_path, storage):
+    storage()
     first, second = pipeline.RUNS_DIR / "1", pipeline.RUNS_DIR / "2"
     write_profile(first, "一")
     write_profile(second, "二")
@@ -225,8 +212,8 @@ def test_a_build_needs_consent_and_a_passing_check(web, monkeypatch):
     assert client.get("/api/build").json() is None
 
 
-def test_an_encrypted_build_writes_with_the_session_key(web, tmp_path, monkeypatch):
-    configure(tmp_path, monkeypatch, "encrypted")
+def test_an_encrypted_build_writes_with_the_session_key(web, monkeypatch, storage):
+    storage("encrypted")
     client = web()
     build(client)
     done = wait(client, "succeeded")
@@ -241,10 +228,10 @@ def test_an_encrypted_build_writes_with_the_session_key(web, tmp_path, monkeypat
     assert wait(client, "failed")["error"]["message"] == ""
 
 
-def test_the_demo_cannot_build_or_switch(tmp_path, monkeypatch):
+def test_the_demo_cannot_build_or_switch(tmp_path, storage):
     from weclone.server import app
 
-    configure(tmp_path, monkeypatch)
+    storage()
     write_profile(pipeline.RUNS_DIR / "20260101_000000_000000", "真实画像")
     with app.demo_run("zh") as run:
         client = TestClient(
@@ -288,10 +275,8 @@ def chats(tmp_path):
     return folder
 
 
-def test_check_finds_missing_chats_and_api_settings(tmp_path, monkeypatch):
-    settings = configure(
-        tmp_path,
-        monkeypatch,
+def test_check_finds_missing_chats_and_api_settings(tmp_path, storage):
+    settings = storage(
         extra={
             "agent_distill_args": {"llm_provider": "api"},
             "make_dataset_args": {"platform": "chat", "csv_folder": str(tmp_path / "none"), "base_url": "u"},
@@ -303,18 +288,16 @@ def test_check_finds_missing_chats_and_api_settings(tmp_path, monkeypatch):
     assert found["chats"] == {"platform": "chat", "folder": str(tmp_path / "none"), "count": 0}
 
 
-def test_check_reports_a_config_it_cannot_read(tmp_path, monkeypatch):
-    settings = configure(tmp_path, monkeypatch, extra={"make_dataset_args": {"platform": "nope"}})
+def test_check_reports_a_config_it_cannot_read(storage):
+    settings = storage(extra={"make_dataset_args": {"platform": "nope"}})
     found = pipeline.check(settings, "assistant")
     assert codes(found)[0] == "config_invalid"
     assert found["problems"][0]["params"]["detail"]
 
 
-def test_check_counts_chats_and_passes_a_complete_api_setup(tmp_path, monkeypatch, chats):
+def test_check_counts_chats_and_passes_a_complete_api_setup(storage, chats):
     endpoint = {"base_url": "u", "llm_api_key": "k", "model_name": "m"}
-    settings = configure(
-        tmp_path,
-        monkeypatch,
+    settings = storage(
         extra={
             "agent_distill_args": {"llm_provider": "api"},
             "make_dataset_args": {"platform": "chat", "csv_folder": str(chats), **endpoint},
@@ -331,10 +314,8 @@ def test_check_counts_chats_and_passes_a_complete_api_setup(tmp_path, monkeypatc
         assert codes(pipeline.check(settings, "assistant", 64000)) == ["build_running"]
 
 
-def test_check_finds_telegram_without_my_id(tmp_path, monkeypatch, chats):
-    settings = configure(
-        tmp_path,
-        monkeypatch,
+def test_check_finds_telegram_without_my_id(tmp_path, monkeypatch, storage, chats):
+    settings = storage(
         extra={
             "agent_distill_args": {"llm_provider": "api"},
             "make_dataset_args": {
@@ -365,11 +346,9 @@ def test_check_finds_telegram_without_my_id(tmp_path, monkeypatch, chats):
         (0, {"models": [{"slug": "m", "context_window": 1000, "effective_context_window_percent": 90}]}, []),
     ],
 )
-def test_check_finds_what_codex_lacks(tmp_path, monkeypatch, chats, login, models, expected):
+def test_check_finds_what_codex_lacks(tmp_path, monkeypatch, storage, chats, login, models, expected):
     command = fake_codex(tmp_path, login, models) if login is not None else str(tmp_path / "no-codex")
-    settings = configure(
-        tmp_path,
-        monkeypatch,
+    settings = storage(
         extra={
             "codex_exec_args": {"model": "m", "effort": "low", "command": command, "sandbox": "read-only"},
             "make_dataset_args": {"platform": "chat", "csv_folder": str(chats)},
@@ -387,11 +366,9 @@ def test_check_finds_what_codex_lacks(tmp_path, monkeypatch, chats, login, model
         assert found["backend"] == {"provider": "codex_exec", "model": "m", "max_context_tokens": 900}
 
 
-def test_check_wants_the_style_parser_for_a_clone(tmp_path, monkeypatch, chats):
+def test_check_wants_the_style_parser_for_a_clone(monkeypatch, storage, chats):
     endpoint = {"base_url": "u", "llm_api_key": "k", "model_name": "m"}
-    settings = configure(
-        tmp_path,
-        monkeypatch,
+    settings = storage(
         extra={
             "agent_distill_args": {"llm_provider": "api"},
             "make_dataset_args": {"platform": "chat", "csv_folder": str(chats), **endpoint},
@@ -402,8 +379,8 @@ def test_check_wants_the_style_parser_for_a_clone(tmp_path, monkeypatch, chats):
     assert codes(pipeline.check(settings, "assistant", 64000)) == []
 
 
-def test_the_command_line_lists_every_problem_before_asking(tmp_path, monkeypatch):
-    configure(tmp_path, monkeypatch)
+def test_the_command_line_lists_every_problem_before_asking(monkeypatch, storage):
+    storage()
     problems = [
         {"code": "chats_missing", "params": {}, "message": "dataset/csv 里没有聊天记录"},
         {"code": "codex_logged_out", "params": {}, "message": "Codex CLI 没有登录"},

@@ -1,25 +1,22 @@
 import json
+import re
 
 import pytest
 from fastapi.testclient import TestClient
 
 from weclone.server.profile_review import DEFAULT_STATIC_DIR, ReviewStore, create_app
-from weclone.utils import secure_storage
 
 
 def test_bundled_frontend_assets_exist():
-    assert (DEFAULT_STATIC_DIR / "index.html").is_file()
-    assert any((DEFAULT_STATIC_DIR / "assets").iterdir())
+    index = (DEFAULT_STATIC_DIR / "index.html").read_text(encoding="utf-8")
+    referenced = re.findall(r'(?:src|href)="\./(assets/[^"]+)"', index)
+    assert referenced
+    assert [name for name in referenced if not (DEFAULT_STATIC_DIR / name).is_file()] == []
 
 
 @pytest.fixture
-def setup(tmp_path, monkeypatch):
-    settings = tmp_path / "settings.jsonc"
-    settings.write_text(
-        json.dumps({"security_args": {"storage_mode": "plaintext", "state_dir": str(tmp_path / "state")}})
-    )
-    monkeypatch.setenv("WECLONE_CONFIG_PATH", str(settings))
-    secure_storage.configure()
+def setup(tmp_path, storage):
+    storage()
     data = {
         "domains": [],
         "dimensions": [{"dim": 8, "name": "兴趣", "groups": [

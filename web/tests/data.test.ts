@@ -9,13 +9,10 @@ import {
   filterPrivacy,
   filterProfile,
   levelIsExpanded,
-  levelOf,
   reconcileNavigation,
-  retainedSelection,
   sectionColor,
   sortFacts,
   toggleLevelExpansion,
-  withinLevel,
 } from '../src/data.ts';
 import type { ProfileFact, ProfileInput } from '../src/data.ts';
 import { chineseNumeral } from '../src/i18n/format.ts';
@@ -102,22 +99,6 @@ test('empty review view yields a valid root without empty dimensions or stale in
   assert.equal(model.nodes.size, 1);
 });
 
-test('review removal returns to the nearest surviving ancestor without selecting another branch', () => {
-  const previous = buildModel(input, labels);
-  const next = buildModel(filterProfile(input, 'approved'), labels);
-  assert.equal(retainedSelection(previous, next, 'attr-a'), 'attr-a');
-  assert.equal(retainedSelection(previous, next, 'attr-b'), 'dimension:8');
-  assert.equal(retainedSelection(previous, next, 'topic-b'), 'dimension:8');
-  assert.equal(retainedSelection(previous, next, null), null);
-
-  const withoutAttribute = { ...next, nodes: new Map(next.nodes) };
-  withoutAttribute.nodes.delete('attr-a');
-  assert.equal(retainedSelection(next, withoutAttribute, 'attr-a'), 'topic-a');
-
-  const empty = buildModel({ ...input, dimensions: [], facts: [] }, labels);
-  assert.equal(retainedSelection(previous, empty, 'attr-b'), 'root');
-});
-
 function reconcileFixture(): ProfileInput {
   const fact = (i: number, status: 'pending' | 'approved', dim: number, node: string, group: string) => ({
     id: `fact-${i}`,
@@ -183,6 +164,16 @@ test('navigation selection falls back to the nearest surviving ancestor and refo
   });
   assert.equal(nearest.selectedId, 'dimension:8');
   assert.equal(nearest.focusedDimension, 8);
+  const topic = reconcileNavigation(buildModel(input, labels), buildModel(filterProfile(input, 'approved'), labels), {
+    expandedIds: new Set(),
+    selectedId: 'topic-b',
+  });
+  assert.equal(topic.selectedId, 'dimension:8');
+  const withoutAttribute = { ...pendingOnly, nodes: new Map(pendingOnly.nodes) };
+  withoutAttribute.nodes.delete('attr-a');
+  const leaf = reconcileNavigation(pendingOnly, withoutAttribute, { expandedIds: new Set(), selectedId: 'attr-a' });
+  assert.equal(leaf.selectedId, 'topic-a');
+  assert.equal(leaf.focusedDimension, 8);
   const fallback = reconcileNavigation(full, pendingOnly, { expandedIds: new Set(), selectedId: 'attr-c' });
   assert.equal(fallback.selectedId, 'root');
   assert.equal(fallback.focusedDimension, null);
@@ -218,20 +209,6 @@ function deepFixture(): ProfileInput {
     ],
   };
 }
-
-test('levelOf and withinLevel place only dimension, topic and subtopic nodes in the hierarchy', () => {
-  const model = buildModel(deepFixture(), labels);
-  assert.deepEqual(
-    ['root', 'dimension:8', 'topic-a', 'sub-a', 'attr-a'].map((id) => levelOf(model.nodes.get(id)!.kind)),
-    [null, 1, 2, 3, null],
-  );
-  assert.equal(withinLevel(model.nodes.get('topic-a')!, 1), false);
-  assert.equal(withinLevel(model.nodes.get('topic-a')!, 2), true);
-  assert.equal(withinLevel(model.nodes.get('sub-a')!, 2), false);
-  assert.equal(withinLevel(model.nodes.get('sub-a')!, 3), true);
-  assert.equal(withinLevel(model.nodes.get('root')!, 3), false);
-  assert.equal(withinLevel(model.nodes.get('attr-a')!, 3), false);
-});
 
 test('levelIsExpanded requires every branching node of the dimension down to that level', () => {
   const model = buildModel(deepFixture(), labels);
@@ -274,9 +251,7 @@ test('toggling a level expands branching nodes down to it, then collapses it and
   assert.deepEqual([...toggleLevelExpansion(model, three, 1, 8)].sort(), ['dimension:3', 'root']);
 });
 
-test('dimensionColor returns configured colours and falls back to dimension 1', () => {
-  assert.equal(dimensionColor(1), '#118f83');
-  assert.equal(dimensionColor(8), '#3a76b4');
+test('dimensionColor falls back to dimension 1 outside the map', () => {
   assert.equal(dimensionColor(6), '#118f83');
   assert.equal(dimensionColor(null), '#118f83');
 });

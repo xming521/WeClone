@@ -6,7 +6,6 @@ import zipfile
 import pytest
 from fastapi.testclient import TestClient
 
-from tests.test_profile_build import PASSWORD, configure
 from weclone.data import chat_csv
 from weclone.data.agent import profile_pipeline as pipeline
 from weclone.server import chat_upload, profile_build
@@ -18,13 +17,11 @@ CSV = "id,MsgSvrID,type_name,is_sender,talker,msg,src,CreateTime\n1,1,文本,0,a
 
 
 @pytest.fixture
-def web(tmp_path, monkeypatch):
+def web(tmp_path, monkeypatch, storage, owner_password):
     monkeypatch.setattr(chat_upload, "STAGING_DIR", tmp_path / "uploads")
 
     def start(mode="plaintext", platform="chat"):
-        configure(
-            tmp_path,
-            monkeypatch,
+        storage(
             mode,
             {
                 "agent_distill_args": {"llm_provider": "api"},
@@ -34,9 +31,9 @@ def web(tmp_path, monkeypatch):
         client = TestClient(create_app(static_dir=tmp_path / "no-static"))
         client.headers["X-WeClone-Request"] = "1"
         if not secure_storage.is_initialized():
-            assert client.post("/api/auth/setup", json=PASSWORD).status_code == 200
+            assert client.post("/api/auth/setup", json=owner_password).status_code == 200
         else:
-            assert client.post("/api/auth/login", json={"password": PASSWORD["password"]}).status_code == 200
+            assert client.post("/api/auth/login", json={"password": owner_password["password"]}).status_code == 200
         return client
 
     return start
@@ -122,7 +119,7 @@ def test_chunks_outside_a_chat_folder_are_not_a_chat(web):
     assert client.post(f"/api/data/uploads/{upload_id}/done").json()["code"] == "upload_duplicate_chat"
 
 
-def test_an_encrypted_upload_stores_ciphertext_the_build_reads(web, tmp_path):
+def test_an_encrypted_upload_stores_ciphertext_the_build_reads(web, tmp_path, owner_password):
     client = web("encrypted")
     upload_id, _ = upload(
         client, {"alice/alice_0_1.csv": CSV.encode(), "qq.zip": zipped({"qq/qq_0_1.csv": CSV.encode()})}
@@ -131,7 +128,7 @@ def test_an_encrypted_upload_stores_ciphertext_the_build_reads(web, tmp_path):
     stored = tmp_path / "uploaded" / "qq" / "qq_0_1.csv.enc"
     assert stored.read_bytes().startswith(secure_storage.MAGIC)
     assert not (tmp_path / "uploaded" / "alice" / "alice_0_1.csv").exists()
-    with secure_storage.use_key(secure_storage.unlock_key(PASSWORD["password"])):
+    with secure_storage.use_key(secure_storage.unlock_key(owner_password["password"])):
         files = chat_csv.list_csv_files(tmp_path / "uploaded")
         assert len(files) == 2 and chat_csv.read_csv(files[0])["msg"].tolist() == ["你好"]
 
@@ -166,10 +163,10 @@ def test_a_build_reads_the_uploaded_chats_unless_asked_for_the_configured_ones(w
 
 
 @pytest.mark.parametrize("size", [0, secure_storage.CHUNK_SIZE, 2 * secure_storage.CHUNK_SIZE + 7])
-def test_a_file_written_in_pieces_reads_back_whole(web, tmp_path, size):
+def test_a_file_written_in_pieces_reads_back_whole(web, tmp_path, owner_password, size):
     web("encrypted")
     data = bytes(range(256)) * (size // 256) + b"x" * (size % 256)
-    with secure_storage.use_key(secure_storage.unlock_key(PASSWORD["password"])):
+    with secure_storage.use_key(secure_storage.unlock_key(owner_password["password"])):
         with secure_storage.open_write(tmp_path / "piece.bin") as output:
             for start in range(0, size, 300_001):
                 output.write(data[start : start + 300_001])

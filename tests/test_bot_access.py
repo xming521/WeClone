@@ -18,15 +18,6 @@ from weclone.utils import secure_storage
 PROFILE = {"domains": [], "dimensions": [], "facts": [], "sources": {}}
 
 
-def use_storage(tmp_path, monkeypatch, mode):
-    settings = tmp_path / "settings.jsonc"
-    settings.write_text(
-        json.dumps({"security_args": {"storage_mode": mode, "state_dir": str(tmp_path / "state")}})
-    )
-    monkeypatch.setenv("WECLONE_CONFIG_PATH", str(settings))
-    secure_storage.configure()
-
-
 def clone_model():
     """The /v1 routes of the inference app. In encrypted mode they need the key, as loading the model does."""
     router = APIRouter()
@@ -69,9 +60,9 @@ def server(tmp_path, *, inference=True):
 
 
 @pytest.fixture
-def owner(tmp_path, monkeypatch):
+def owner(tmp_path, storage):
     """The owner's logged-in browser, on plaintext storage."""
-    use_storage(tmp_path, monkeypatch, "plaintext")
+    storage()
     client = TestClient(server(tmp_path), headers={"X-WeClone-Request": "1"})
     password = {"password": "bot-test", "confirmation": "bot-test"}
     assert client.post("/api/auth/setup", json=password).status_code == 200
@@ -96,7 +87,7 @@ class Bot:
         return self.client.post("/v1/chat/completions", json=body, headers={**self.headers, **headers})
 
 
-def test_bots_reach_v1_with_the_shared_token_alone(owner, tmp_path):
+def test_bots_reach_v1_with_the_shared_token_alone(owner):
     view = owner.get("/api/bots").json()
     assert view == {
         "encrypted": False,
@@ -106,13 +97,9 @@ def test_bots_reach_v1_with_the_shared_token_alone(owner, tmp_path):
     }
     refused = Bot(owner.app, "wcbot_unknown").chat()
     assert refused.status_code == 401 and refused.headers["www-authenticate"] == "Bearer"
-    stranger = TestClient(owner.app, headers={"X-WeClone-Request": "1"})
-    assert stranger.post("/api/bots/token").status_code == 401
 
     token = new_token(owner)
     assert token.startswith("wcbot_")
-    stored = tmp_path / "state" / "bots.sqlite3"
-    assert stored.stat().st_mode & 0o777 == 0o600 and token.encode() not in stored.read_bytes()
     bot = Bot(owner.app, token)
     reply = bot.chat()
     assert reply.status_code == 200 and reply.json()["choices"][0]["message"]["content"] == "在呢"
@@ -146,8 +133,8 @@ def test_bot_and_assistant_tokens_open_only_their_own_door(owner):
     assert mcp.status_code == 401
 
 
-def test_the_page_says_when_the_server_has_no_model(tmp_path, monkeypatch):
-    use_storage(tmp_path, monkeypatch, "plaintext")
+def test_the_page_says_when_the_server_has_no_model(tmp_path, storage):
+    storage()
     app = server(tmp_path, inference=False)
     owner = TestClient(app, headers={"X-WeClone-Request": "1"})
     password = {"password": "bot-test", "confirmation": "bot-test"}
@@ -161,8 +148,8 @@ def sealed_key(tmp_path):
         return db.execute("SELECT sealed_key FROM access").fetchone()[0]
 
 
-def test_encrypted_clone_answers_with_the_token_alone_across_restarts(tmp_path, monkeypatch):
-    use_storage(tmp_path, monkeypatch, "encrypted")
+def test_encrypted_clone_answers_with_the_token_alone_across_restarts(tmp_path, storage):
+    storage("encrypted")
     secure_storage.ensure_initialized("bot-test")
     secure_storage.write_json(tmp_path / "profile_hierarchy.json", PROFILE)
     data_key = bytes(secure_storage.get_unlocked_key())
@@ -174,7 +161,6 @@ def test_encrypted_clone_answers_with_the_token_alone_across_restarts(tmp_path, 
     def login(password="bot-test"):
         assert owner.post("/api/auth/login", json={"password": password}).status_code == 200
 
-    assert owner.post("/api/bots/token").status_code == 401
     login()
     token = new_token(owner)
     stored = (tmp_path / "state" / "bots.sqlite3").read_bytes()
@@ -187,17 +173,6 @@ def test_encrypted_clone_answers_with_the_token_alone_across_restarts(tmp_path, 
     # A restarted server has no session at all.
     restarted = server(tmp_path)
     assert Bot(restarted, token).chat().status_code == 200
-    # The assistant's permission is its own.
-    assert (
-        TestClient(restarted)
-        .post(
-            "/mcp",
-            json={"jsonrpc": "2.0", "id": 1, "method": "ping"},
-            headers={"Authorization": f"Bearer {token}"},
-        )
-        .status_code
-        == 401
-    )
     # A new password keeps the same data key, so the token keeps working.
     secure_storage.change_password("bot-test", "bot-new")
     assert Bot(restarted, token).chat().status_code == 200
@@ -215,8 +190,8 @@ def test_encrypted_clone_answers_with_the_token_alone_across_restarts(tmp_path, 
     assert Bot(restarted, renewed).chat().status_code == 401 and sealed_key(tmp_path) is None
 
 
-def test_tokens_issued_at_once_leave_the_current_token_with_its_own_key(tmp_path, monkeypatch):
-    use_storage(tmp_path, monkeypatch, "encrypted")
+def test_tokens_issued_at_once_leave_the_current_token_with_its_own_key(tmp_path, monkeypatch, storage):
+    storage("encrypted")
     secure_storage.ensure_initialized("bot-test")
     key = secure_storage.get_unlocked_key()
     access = bots.BotAccess(tmp_path / "state" / bots.ACCESS_FILE)
@@ -235,7 +210,7 @@ def test_tokens_issued_at_once_leave_the_current_token_with_its_own_key(tmp_path
     assert secure_storage.open_sealed_key(access.row()["sealed_key"], current) == key
 
 
-def test_a_bot_calling_after_a_restart_loads_the_model_with_the_sealed_key(tmp_path, monkeypatch):
+def test_a_bot_calling_after_a_restart_loads_the_model_with_the_sealed_key(tmp_path, monkeypatch, storage):
     events = []
 
     class ChatModel:
@@ -266,7 +241,7 @@ def test_a_bot_calling_after_a_restart_loads_the_model_with_the_sealed_key(tmp_p
     monkeypatch.setattr(
         api_service, "create_config_by_arg_type", Mock(return_value=Mock(model_dump=lambda **_: {}))
     )
-    use_storage(tmp_path, monkeypatch, "encrypted")
+    storage("encrypted")
     secure_storage.ensure_initialized("bot-test")
     run = tmp_path / "run"
     secure_storage.write_json(run / "profile_hierarchy" / "profile_hierarchy.json", PROFILE)

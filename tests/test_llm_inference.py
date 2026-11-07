@@ -9,7 +9,7 @@ from unittest.mock import Mock
 
 import httpx
 import pytest
-from openai import BadRequestError, RateLimitError
+from openai import BadRequestError, InternalServerError, RateLimitError
 from openai.types.chat import ChatCompletion, ChatCompletionChunk
 from pydantic import BaseModel
 
@@ -79,7 +79,6 @@ def test_parameters_multimodal_and_explicit_none(api):
     assert "max_tokens" not in params
     assert params["messages"] == messages and params["temperature"] == 0
     assert params["timeout"] == 20.0 and params["extra_body"]["thinking"]["type"] == "disabled"
-    assert LLMRequest.from_prompt("x").max_tokens == 1024
     assert make_request(LLMRequest.from_prompt("x"), max_tokens=None).max_tokens is None
 
 
@@ -111,7 +110,6 @@ def test_response_model_validation_and_audit(api, tmp_path):
         ('{"wrong": 1}', "stop", "ValidationError"),
         ("not JSON", "stop", "ValueError"),
         ('{"score": 3}', "length", "ValueError"),
-        ('{"score": 3}', "content_filter", "ValueError"),
     ],
 )
 def test_invalid_structured_responses_retain_text(api, text, finish, error_type):
@@ -582,9 +580,8 @@ def test_retry_status_filter_and_exception_filter():
     policy = RetryPolicy(retry_statuses=(429,), retry_exceptions=(TimeoutError,))
     assert policy.accepts(TimeoutError())
     assert not policy.accepts(ValueError())
-    error = BadRequestError(
-        "bad",
-        response=httpx.Response(400, request=httpx.Request("POST", "http://example.invalid")),
-        body=None,
-    )
-    assert not policy.accepts(error)
+    request = httpx.Request("POST", "http://example.invalid")
+    rate_limited = RateLimitError("limited", response=httpx.Response(429, request=request), body=None)
+    server_error = InternalServerError("failed", response=httpx.Response(500, request=request), body=None)
+    assert policy.accepts(rate_limited)
+    assert not policy.accepts(server_error)

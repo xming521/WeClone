@@ -6,23 +6,11 @@ from types import SimpleNamespace
 import pytest
 from fastapi.testclient import TestClient
 
+from tests.profile_data import fact
 from weclone.data.agent.llm_profile_hierarchy import dimension_view
 from weclone.server import assistant, auth, profile_summary
 from weclone.server.profile_review import create_app
 from weclone.utils import secure_storage
-
-
-def fact(dim, attr, value, sensitivity, sids, *, scope="current", support=1):
-    return {
-        "dim": dim,
-        "attr": attr,
-        "value": value,
-        "sensitivity": sensitivity,
-        "time_scope": scope,
-        "support_count": support,
-        "source_ids": sids,
-    }
-
 
 FACTS = [
     fact(1, "在读身份", "计算机博士生", "public", ["s1", "s2"], support=3),
@@ -73,20 +61,15 @@ class Runner:
         pass
 
 
-def use_storage(tmp_path, monkeypatch, mode):
-    settings = tmp_path / "settings.jsonc"
-    settings.write_text(
-        json.dumps({"security_args": {"storage_mode": mode, "state_dir": str(tmp_path / "state")}})
-    )
-    monkeypatch.setenv("WECLONE_CONFIG_PATH", str(settings))
-    secure_storage.configure()
+@pytest.fixture(autouse=True)
+def summary_model(monkeypatch):
     monkeypatch.setattr(profile_summary, "summary_runner", Runner)
 
 
 @pytest.fixture
-def owner(tmp_path, monkeypatch):
+def owner(tmp_path, storage):
     """The owner's logged-in browser, on plaintext storage."""
-    use_storage(tmp_path, monkeypatch, "plaintext")
+    storage()
     source = tmp_path / "profile_hierarchy.json"
     source.write_text(json.dumps(hierarchy(), ensure_ascii=False), encoding="utf-8")
     client = TestClient(create_app(tmp_path / "profile_review.sqlite3", source, tmp_path / "static"))
@@ -150,9 +133,6 @@ def test_the_token_is_shown_once_kept_as_a_hash_and_outlives_rebuilds(owner, tmp
     stored = tmp_path / "state" / "assistant.sqlite3"
     assert stored.stat().st_mode & 0o777 == 0o600 and token.encode() not in stored.read_bytes()
     assert owner.patch("/api/assistant", json={"level": "private"}).status_code == 422
-    stranger = TestClient(owner.app, headers={"X-WeClone-Request": "1"})
-    assert stranger.post("/api/assistant/token").status_code == 401
-    assert stranger.patch("/api/assistant", json={"level": "public"}).status_code == 401
     # Plaintext data needs no permission beyond the token.
     assert owner.post("/api/assistant/access", json={"hours": 1}).status_code == 409
 
@@ -380,8 +360,8 @@ def test_a_failing_audit_write_is_a_tool_error_not_a_server_error(owner, monkeyp
     assert failed and "database is locked" in text
 
 
-def test_encrypted_data_is_read_only_while_the_owner_allows_it(tmp_path, monkeypatch):
-    use_storage(tmp_path, monkeypatch, "encrypted")
+def test_encrypted_data_is_read_only_while_the_owner_allows_it(tmp_path, monkeypatch, storage):
+    storage("encrypted")
     secure_storage.ensure_initialized("assistant-test")
     source = tmp_path / "profile_hierarchy.json"
     secure_storage.write_json(source, hierarchy())

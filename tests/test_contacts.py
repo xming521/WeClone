@@ -23,12 +23,8 @@ def test_registry_keeps_ids_and_only_grows(tmp_path):
         assign_contact_ids(["a"], path)
 
 
-def test_a_password_reset_sets_the_unreadable_registry_aside(tmp_path, monkeypatch):
-    settings = tmp_path / "settings.jsonc"
-    settings.write_text(
-        json.dumps({"security_args": {"storage_mode": "encrypted", "state_dir": str(tmp_path / "state")}})
-    )
-    monkeypatch.setenv("WECLONE_CONFIG_PATH", str(settings))
+def test_a_password_reset_sets_the_unreadable_registry_aside(tmp_path, storage):
+    storage("encrypted")
     secure_storage.ensure_initialized("contacts-test")
     try:
         path = tmp_path / "contacts.json"

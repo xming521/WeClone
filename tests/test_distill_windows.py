@@ -258,8 +258,7 @@ def test_failed_samples_stop_the_run_and_a_rerun_asks_only_them(tmp_path, monkey
     assert asked[3:] == [["1"]]
 
 
-@pytest.mark.parametrize("max_tokens", [None, 4096])
-def test_window_config_preserves_model_concurrency_and_optional_token_limit(tmp_path, max_tokens):
+def test_window_config_preserves_model_concurrency_and_optional_token_limit(tmp_path):
     config = {
         "codex_exec_args": {
             "model": "configured-model",
@@ -268,7 +267,7 @@ def test_window_config_preserves_model_concurrency_and_optional_token_limit(tmp_
             "sandbox": "read-only",
             "batch_size": 30,
             "timeout": 120,
-            "max_tokens": max_tokens,
+            "max_tokens": 4096,
         },
         "agent_distill_args": {"llm_provider": "codex_exec"},
     }
@@ -278,7 +277,7 @@ def test_window_config_preserves_model_concurrency_and_optional_token_limit(tmp_
     args.config_path = path
     distill_profile.resolve_llm_args(args)
     assert (args.max_samples_per_window, args.max_content_chars) == (8, 400)
-    assert (args.model, args.batch_size, args.max_tokens) == ("configured-model", 30, max_tokens)
+    assert (args.model, args.batch_size, args.max_tokens) == ("configured-model", 30, 4096)
 
 
 @pytest.mark.parametrize("module", [distill_profile, distill_event])

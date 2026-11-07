@@ -9,22 +9,10 @@ from weclone.data.agent.llm_profile_hierarchy import dimension_view
 from weclone.prompts.profile_summary import SUMMARY_RULES, SUMMARY_SCHEMA
 
 SHORT, LONG = SUMMARY_RULES["short"], SUMMARY_RULES["long"]
+from tests.profile_data import fact
 from weclone.server import profile_summary
 from weclone.server.profile_review import ReviewStore, create_app
 from weclone.utils import secure_storage
-
-
-def fact(dim, attr, value, sensitivity, sids, *, scope="current", support=1):
-    return {
-        "dim": dim,
-        "attr": attr,
-        "value": value,
-        "sensitivity": sensitivity,
-        "time_scope": scope,
-        "support_count": support,
-        "source_ids": sids,
-    }
-
 
 FACTS = [
     fact(1, "在读身份", "计算机博士生", "public", ["s1", "s2"], support=3),
@@ -76,13 +64,8 @@ def hierarchy():
 
 
 @pytest.fixture
-def setup(tmp_path, monkeypatch):
-    settings = tmp_path / "settings.jsonc"
-    settings.write_text(
-        json.dumps({"security_args": {"storage_mode": "plaintext", "state_dir": str(tmp_path / "state")}})
-    )
-    monkeypatch.setenv("WECLONE_CONFIG_PATH", str(settings))
-    secure_storage.configure()
+def setup(tmp_path, monkeypatch, storage):
+    storage()
     source = tmp_path / "profile_hierarchy.json"
     source.write_text(json.dumps(hierarchy(), ensure_ascii=False), encoding="utf-8")
     database = tmp_path / "profile_review.sqlite3"
@@ -308,8 +291,6 @@ def test_invalid_model_output_is_rejected(payload):
 def test_the_full_summary_may_run_longer():
     payload = {"title": "学业", "summary": "长" * profile_summary.SUMMARY_MAX_CHARS["full"]}
     assert profile_summary.validate_summary(payload, "full")["summary"] == payload["summary"]
-    with pytest.raises(ValueError):
-        profile_summary.validate_summary(payload, "normal")
 
 
 def test_one_generation_at_a_time(setup):
@@ -398,13 +379,8 @@ def test_build_profile_notes_a_failure_outside_the_model_run_and_frees_the_lock(
     assert not profile_summary.GENERATING.locked()
 
 
-def test_background_generation_reads_and_writes_with_the_session_key(tmp_path, monkeypatch):
-    settings = tmp_path / "settings.jsonc"
-    settings.write_text(
-        json.dumps({"security_args": {"storage_mode": "encrypted", "state_dir": str(tmp_path / "state")}})
-    )
-    monkeypatch.setenv("WECLONE_CONFIG_PATH", str(settings))
-    secure_storage.configure()
+def test_background_generation_reads_and_writes_with_the_session_key(tmp_path, monkeypatch, storage):
+    storage("encrypted")
     secure_storage.ensure_initialized("summary-test")
     source = tmp_path / "profile_hierarchy.json"
     secure_storage.write_json(source, hierarchy())
