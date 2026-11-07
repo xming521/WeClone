@@ -7,6 +7,7 @@
   --sunken: #ebebe6; /* 分段控件的轨道、标签底、禁用按钮底。 */
   --well: #f6f6f2; /* 卡片里的评分条、引用块等“嵌在纸里”的小区域。 */
   --veil: rgba(244,243,239,0.86); /* 浮在图谱上的顶栏与工具条底色，配合 backdrop-filter: blur(12px)。 */
+  --scrim: rgba(33,39,49,0.2); /* 对话框下面盖住页面的一层，只压暗、不模糊：页面还看得见，对话框是浮在这一页上的。 */
   --line-1: #e5e4e0; /* 分隔线、卡片描边、面板边。纯装饰，不承担识别控件的作用。 */
   --line-2: #d2d2cc; /* 次按钮、输入框、筛选片的描边（低于 3:1，靠文字和图标识别控件）。 */
   --line-3: #878c94; /* 必须靠描边识别的控件：圆形复选框、单选框、未选中的开关。paper 3.05 · card 3.38 / 深色 card 3.1。 */
@@ -33,8 +34,10 @@
   --adopt-tint: #e3f2ec; /* 已采纳的浅底。 */
   --on-adopt: #ffffff; /* adopt / adopt-hi 填充上的文字与图标。 */
   --danger: #a23e35; /* 停用、删除、清空等不可逆操作的文字与图标。card 6.4 · danger-tint 5.5；深色 card 4.8。 */
-  --danger-strong: #8e332b; /* 危险按钮悬停加深。 */
-  --danger-tint: #fceae8; /* 危险按钮的底。 */
+  --danger-hi: #ac473d; /* 危险按钮渐变的上端（釉面），只和 danger 成对使用；其上文字 on-danger 5.6 / 深色 8.3。 */
+  --danger-strong: #8e332b; /* 危险按钮的描边、按下态。 */
+  --danger-tint: #fceae8; /* 出错提示和危险图标按钮悬停的浅底。 */
+  --on-danger: #ffffff; /* danger / danger-hi 填充上的文字与图标。深色主题里危险按钮是亮红，所以字是深色。 */
   --amber: #b98b49; /* 重要度评分格的填充（伴随数字，paper 2.8）。 */
   --amber-tint: #eee6d9; /* 重要度评分格还没灌满的部分（在 well 上看得出空格）。 */
   --privacy-public: #2d644e; /* 隐私度「公开」的文字与水位圈。在自己的 tint 上 6.0:1。 */
@@ -84,6 +87,7 @@
   --glaze: inset 0 1px 0 rgba(255,255,255,0.26), inset 0 -1px 0 rgba(0,0,0,0.10); /* 釉面：主按钮、采纳按钮、选中的维度圆片。上沿一道高光、下沿一道暗线，呼应 Logo 的高光。 */
   --lift-you: 0 1px 2px rgba(8,91,151,0.28), 0 6px 14px -6px rgba(13,109,178,0.55); /* 主按钮下方带色的影子。 */
   --lift-adopt: 0 1px 2px rgba(28,101,79,0.28), 0 6px 14px -6px rgba(38,121,95,0.55); /* 采纳按钮下方带色的影子。 */
+  --lift-danger: 0 1px 2px rgba(142,51,43,0.28), 0 6px 14px -6px rgba(162,62,53,0.55); /* 危险按钮下方带色的影子。 */
   --inset-track: inset 0 1px 2px rgba(33,39,49,0.07); /* 分段轨道、复选框未选中时的凹陷。 */
   --focus-ring: 0 0 0 2px #ffffff, 0 0 0 4px #0d6db2; /* 键盘焦点：2px 底色间隙 + 2px 实心 you（深色用 you-ink）。在所有底色上 ≥4.5:1。 */
 }
@@ -94,6 +98,7 @@
   --sunken: #252627;
   --well: #333335;
   --veil: rgba(43,44,45,0.82);
+  --scrim: rgba(0,0,0,0.4);
   --line-1: #424345;
   --line-2: #525355;
   --line-3: #848587;
@@ -120,8 +125,10 @@
   --adopt-tint: #2b4236;
   --on-adopt: #062018;
   --danger: #f08b80;
-  --danger-strong: #f4a197;
+  --danger-hi: #ff9d91;
+  --danger-strong: #e07d73;
   --danger-tint: #4f2f2a;
+  --on-danger: #3a100c;
   --amber: #d7a051;
   --amber-tint: #60533d;
   --privacy-public: #a1d1bb;
@@ -160,6 +167,7 @@
   --glaze: inset 0 1px 0 rgba(255,255,255,0.34), inset 0 -1px 0 rgba(0,0,0,0.14);
   --lift-you: 0 1px 2px rgba(0,0,0,0.40), 0 6px 16px -6px rgba(71,163,236,0.45);
   --lift-adopt: 0 1px 2px rgba(0,0,0,0.40), 0 6px 16px -6px rgba(66,165,133,0.45);
+  --lift-danger: 0 1px 2px rgba(0,0,0,0.40), 0 6px 16px -6px rgba(240,139,128,0.45);
   --inset-track: inset 0 1px 2px rgba(0,0,0,0.35);
   --focus-ring: 0 0 0 2px #2b2c2d, 0 0 0 4px #7dc0f5;
 }

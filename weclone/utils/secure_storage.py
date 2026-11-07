@@ -528,22 +528,43 @@ def _file_cipher(salt: bytes, generation: bytes) -> AESGCM:
     )
 
 
+class _Encryptor:
+    """Writes plaintext given in pieces of any size as frames of CHUNK_SIZE. `close` writes the final frame."""
+
+    def __init__(self, output: BinaryIO):
+        generation, salt = bytes.fromhex(get_generation()), secrets.token_bytes(16)
+        self.header = MAGIC + generation + salt
+        self.cipher = _file_cipher(salt, generation)
+        self.output = output
+        self.pending = bytearray()
+        self.index = 0
+        output.write(self.header)
+
+    def _frame(self, chunk: bytes, kind: bytes) -> None:
+        counter = struct.pack(">Q", self.index)
+        ciphertext = self.cipher.encrypt(b"\0" * 4 + counter, chunk, self.header + counter + kind)
+        self.output.write(struct.pack(">I", len(ciphertext)))
+        self.output.write(ciphertext)
+        self.index += 1
+
+    def write(self, data: bytes) -> None:
+        self.pending += data
+        while len(self.pending) >= CHUNK_SIZE:
+            self._frame(bytes(self.pending[:CHUNK_SIZE]), b"D")
+            del self.pending[:CHUNK_SIZE]
+
+    def close(self) -> None:
+        # An empty data frame would read as the final one.
+        if self.pending:
+            self._frame(bytes(self.pending), b"D")
+        self._frame(b"", b"F")
+
+
 def _encrypt_stream(source: BinaryIO, output: BinaryIO) -> None:
-    generation, salt = bytes.fromhex(get_generation()), secrets.token_bytes(16)
-    header = MAGIC + generation + salt
-    cipher = _file_cipher(salt, generation)
-    output.write(header)
-    index = 0
+    encryptor = _Encryptor(output)
     while chunk := source.read(CHUNK_SIZE):
-        counter = struct.pack(">Q", index)
-        ciphertext = cipher.encrypt(b"\0" * 4 + counter, chunk, header + counter + b"D")
-        output.write(struct.pack(">I", len(ciphertext)))
-        output.write(ciphertext)
-        index += 1
-    counter = struct.pack(">Q", index)
-    ciphertext = cipher.encrypt(b"\0" * 4 + counter, b"", header + counter + b"F")
-    output.write(struct.pack(">I", len(ciphertext)))
-    output.write(ciphertext)
+        encryptor.write(chunk)
+    encryptor.close()
 
 
 def _decrypt_stream(source: BinaryIO, output: BinaryIO) -> None:
@@ -641,6 +662,24 @@ def write_bytes(path: str | Path, data: bytes) -> Path:
         else:
             output.write(data)
     return path
+
+
+@contextlib.contextmanager
+def open_write(path: str | Path) -> Iterator[Any]:
+    """A file written in pieces through `.write(bytes)`, encrypted in encrypted mode. It replaces `path` when the
+    block ends and is dropped if the block raises."""
+    path = Path(path)
+    encrypted = is_encrypted_mode()
+    if encrypted:
+        ensure_unlocked()
+    _check_output_mode(path, encrypted)
+    with _atomic_writer(encrypted_path(path) if encrypted else path, guarded=encrypted) as output:
+        if not encrypted:
+            yield output
+            return
+        encryptor = _Encryptor(output)
+        yield encryptor
+        encryptor.close()
 
 
 def write_text(path: str | Path, text: str, *, encoding: str = "utf-8") -> Path:
@@ -974,9 +1013,19 @@ def sensitive_runtime(
 
 
 def run_python(script_path: str | Path, args: list[str], **kwargs: Any) -> subprocess.CompletedProcess:
+    return _python(subprocess.run, script_path, args, **kwargs)
+
+
+def popen_python(script_path: str | Path, args: list[str], **kwargs: Any) -> subprocess.Popen:
+    """Starts the script like run_python does and returns without waiting. The child holds the data key until it
+    exits."""
+    return _python(subprocess.Popen, script_path, args, **kwargs)
+
+
+def _python(runner: Any, script_path: str | Path, args: list[str], **kwargs: Any) -> Any:
     script_path = str(Path(script_path).resolve())
     if not is_encrypted_mode():
-        return subprocess.run([sys.executable, script_path, *args], **kwargs)
+        return runner([sys.executable, script_path, *args], **kwargs)
     ensure_unlocked()
     read_fd, write_fd = os.pipe()
     payload = json.dumps(
@@ -1011,7 +1060,7 @@ def run_python(script_path: str | Path, args: list[str], **kwargs: Any) -> subpr
                 for item in inherited:
                     os.set_handle_inheritable(item, True)
                 kwargs["close_fds"] = True
-                return subprocess.run(
+                return runner(
                     [sys.executable, "-c", bootstrap, str(handle), script_path, *args],
                     startupinfo=startup,
                     **kwargs,
@@ -1019,7 +1068,7 @@ def run_python(script_path: str | Path, args: list[str], **kwargs: Any) -> subpr
             finally:
                 for item, previous in inherited.items():
                     os.set_handle_inheritable(item, previous)
-        return subprocess.run(
+        return runner(
             [sys.executable, "-c", bootstrap, str(read_fd), script_path, *args],
             pass_fds=(*extra_fds, read_fd),
             **kwargs,

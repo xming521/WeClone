@@ -94,3 +94,20 @@
     bottom: var(--space-4);
   }
 }
+
+/* The question before an action (ConfirmDialog.tsx), on the editor's dialog sheet (review.css) as wide as the export
+   question: the question as the title, what follows from it under it in ink-2, then the two buttons. */
+.confirm-sheet {
+  width: min(440px, 100%);
+}
+
+.confirm-sheet h2 {
+  margin: 0;
+}
+
+.confirm-sheet > p {
+  margin: var(--space-2) 0 0;
+  color: var(--ink-2);
+  font: var(--text-body);
+  overflow-wrap: anywhere;
+}

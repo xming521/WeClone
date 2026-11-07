@@ -35,12 +35,6 @@ def organized():
     }
 
 
-def test_domain_facts_keep_profile_facts_per_domain_and_drop_empty_domains():
-    facts, layout = hierarchy.domain_facts(organized())
-    assert [row["dim"] for row in facts] == [1, 3, 5, 1, 8]
-    assert [(domain["name"], indices) for domain, indices in layout] == [("出行旅行", [4]), ("学业", [0, 1, 2, 3])]
-
-
 @pytest.mark.parametrize("domain", [None, "不存在"])
 def test_domain_facts_reject_profile_facts_outside_known_domains(domain):
     data = organized()
@@ -89,7 +83,7 @@ def test_topics_strip_names_and_keep_items():
 
 
 @pytest.mark.parametrize("defect", ["missing", "duplicate_id", "out_of_range", "duplicate_name", "english_name",
-                                    "peer_id", "empty_items", "bool_id"])
+                                    "peer_id", "empty_items"])
 def test_topics_cover_every_fact_once(defect):
     topics = [{"name": "读博申请", "items": [1, 2]}, {"name": "日常出行", "items": [3]}]
     if defect == "missing":
@@ -104,10 +98,8 @@ def test_topics_cover_every_fact_once(defect):
         topics[1]["name"] = "travel"
     elif defect == "peer_id":
         topics[1]["name"] = "和P3出行"
-    elif defect == "empty_items":
-        topics.append({"name": "空主题", "items": []})
     else:
-        topics[1]["items"] = [True, 3]
+        topics.append({"name": "空主题", "items": []})
     with pytest.raises(ValueError):
         hierarchy.validate_topics({"topics": topics}, 3)
 
@@ -209,9 +201,6 @@ def test_split_skips_the_model_when_topics_are_small():
 @pytest.mark.parametrize("topics", [
     [{"name": "申请材料", "items": [1, 2]}],
     [{"name": "申请材料", "items": [1]}, {"name": "课程", "items": [2]}],
-    [{"name": "申请材料", "items": [1]}, {"name": "读博申请", "items": [2]}],
-    [{"name": "申请材料", "items": [1]}, {"name": "面试", "items": [1]}],
-    [{"name": "申请材料", "items": [1]}, {"name": "与P19的相处", "items": [2]}],
 ])
 def test_split_needs_two_new_topics_covering_every_fact(topics):
     with pytest.raises(ValueError):

@@ -1,7 +1,7 @@
 """Event memories from chat samples, extracted and cached the same way as profile memories (see distill_profile)."""
 
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from weclone.data.agent.distill_profile import FileStats, process_task_file, run_task
 
@@ -19,6 +19,7 @@ def main(
     config_path: Path | None = None,
     confirmed: bool = False,
     dry_run: bool = False,
+    on_file: Callable[[int, int], None] | None = None,
 ) -> FileStats:
     return run_task(
         TASK,
@@ -27,4 +28,5 @@ def main(
         config_path=config_path,
         confirmed=confirmed,
         dry_run=dry_run,
+        on_file=on_file,
     )

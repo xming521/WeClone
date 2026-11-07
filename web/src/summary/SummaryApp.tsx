@@ -5,9 +5,11 @@ import { api } from '../api';
 import { LevelSwitch } from '../assistant/accessParts';
 import { LogoutButton } from '../Auth';
 import { AppBrand, BrandMark } from '../BrandMark';
+import { BuildIndicator } from '../build/BuildIndicator';
 import { LanguageSwitch } from '../LanguageSwitch';
 import { SettingsLink } from '../settings/SettingsLink';
 import { ModeSwitch } from '../ModeSwitch';
+import { confirm } from '../feedback/confirm';
 import { SUMMARY_LEVELS, stateCounts, summaryState } from './summaryState';
 import type {
   DomainSummary,
@@ -255,7 +257,15 @@ export function SummaryApp() {
 
   async function copy() {
     if (!view?.text) return;
-    if (level === 'full' && !window.confirm(t(($) => $.summary.export.confirmFull))) return;
+    if (
+      level === 'full' &&
+      !(await confirm({
+        title: t(($) => $.summary.export.confirmFullTitle),
+        body: t(($) => $.summary.export.confirmFull),
+        action: t(($) => $.common.copy),
+      }))
+    )
+      return;
     try {
       await navigator.clipboard.writeText(view.text);
     } catch {
@@ -306,6 +316,7 @@ export function SummaryApp() {
           </div>
         </div>
         <div className="topbar-actions">
+          <BuildIndicator />
           <LanguageSwitch />
           <SettingsLink />
           <LogoutButton />

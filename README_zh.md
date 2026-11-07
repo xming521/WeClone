@@ -99,11 +99,10 @@ cp settings.template.jsonc settings.jsonc
 ### 3. 绘制人生画像，接入 AI 助理
 
 ```bash
-weclone-cli build-profile --purpose assistant
 weclone-cli server
 ```
 
-打开 http://127.0.0.1:5175 逐条审核画像，在「板块总结」页确认总结，再到「助手接入」页生成令牌，按页面上的命令配置 Claude Code 或 Codex。详见[人生画像与助手接入](docs/zh/profile.md)。
+打开 http://127.0.0.1:5175 ，设置密码后在「构建画像」页构建画像，页面会先检查配置并显示进度。完成后逐条审核画像，在「板块总结」页确认总结，再到「助手接入」页生成令牌，按页面上的命令配置 Claude Code 或 Codex。详见[人生画像与助手接入](docs/zh/profile.md)。
 
 ### 4. 微调数字分身
 

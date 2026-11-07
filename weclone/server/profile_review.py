@@ -2,7 +2,9 @@
 
 import hashlib
 import json
+import shutil
 import sqlite3
+import threading
 import tomllib
 from contextlib import contextmanager
 from datetime import datetime, timezone
@@ -16,13 +18,17 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from weclone.data.agent import profile_pipeline
 from weclone.server import style_view
 from weclone.server.assistant import install_assistant
-from weclone.server.auth import install_auth
+from weclone.server.auth import AuthStore, install_auth
 from weclone.server.bots import install_bots
+from weclone.server.chat_upload import install_upload
 from weclone.server.errors import ApiError, error_response, install_errors, security_response
+from weclone.server.profile_build import install_build, reviewed_at, run_complete, same
 from weclone.server.profile_intro import profile_intro
 from weclone.server.profile_summary import (
+    GENERATING,
     Level,
     SummaryEdit,
     SummaryGenerate,
@@ -35,22 +41,18 @@ from weclone.utils import secure_storage as secure
 Status = Literal["pending", "approved", "rejected"]
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_STATIC_DIR = Path(__file__).resolve().parents[1] / "web" / "dist"
+AUTH_FILE = "web.sqlite3"
+
+
+def newest_run() -> Path | None:
+    runs = profile_pipeline.RUNS_DIR
+    return next((run for run in sorted(runs.glob("*/"), reverse=True) if run_complete(run)), None)
 
 
 def review_paths(database: Path | None = None, source: Path | None = None) -> tuple[Path, Path]:
     if source is None:
-        runs = ROOT / "dataset/res_csv/agent/profile_runs"
-        # The newest build-profile run, including one whose source was removed but whose snapshot is kept.
-        selected = next(
-            (
-                run
-                for run in sorted(runs.glob("*/profile_hierarchy"), reverse=True)
-                if secure.file_exists(run / "profile_hierarchy.json")
-                or secure.file_exists(run / "profile_review.sqlite3")
-            ),
-            runs,
-        )
-        source = selected / "profile_hierarchy.json"
+        run = newest_run()
+        source = (run / "profile_hierarchy" if run else profile_pipeline.RUNS_DIR) / "profile_hierarchy.json"
     return database or source.parent / "profile_review.sqlite3", source
 
 
@@ -427,6 +429,77 @@ class ReviewStore:
             return result
 
 
+class Runs:
+    """The build-profile run the server shows. Switching replaces its review and summary stores as a pair, and a
+    request takes the pair once, so one that is running during a switch finishes on the run it started with."""
+
+    def __init__(self, settings: AuthStore, database: Path | None = None, source: Path | None = None):
+        self.settings = settings
+        self.lock = threading.Lock()
+        self.pairs: dict[Path, tuple[ReviewStore, SummaryStore]] = {}
+        self.pair: tuple[ReviewStore, SummaryStore] | None = None
+        # Whether the server was started on this run, as by `server --run`.
+        self.chosen = source is not None
+        if source is None:
+            saved = settings.setting("current_run")
+            run = Path(saved) if saved and run_complete(Path(saved)) else newest_run()
+            if run is not None:
+                database, source = review_paths(None, run / "profile_hierarchy" / "profile_hierarchy.json")
+        if source is not None:
+            self.pair = self.stores(database or source.parent / "profile_review.sqlite3", source)
+
+    def stores(self, database: Path, source: Path) -> tuple[ReviewStore, SummaryStore]:
+        if source not in self.pairs:
+            store = ReviewStore(database, source)
+            self.pairs[source] = (store, SummaryStore(store))
+        return self.pairs[source]
+
+    def current(self) -> tuple[ReviewStore, SummaryStore]:
+        pair = self.pair
+        if pair is None:
+            raise FileNotFoundError(profile_pipeline.RUNS_DIR)
+        return pair
+
+    def store(self) -> ReviewStore:
+        return self.current()[0]
+
+    def summaries(self) -> SummaryStore:
+        return self.current()[1]
+
+    def run_dir(self) -> Path | None:
+        pair = self.pair
+        return pair[0].source.parent.parent if pair else None
+
+    def reviewed(self) -> bool:
+        pair = self.pair
+        return pair is not None and reviewed_at(pair[0].database) is not None
+
+    def switch(self, run: Path):
+        if not run_complete(run):
+            raise ApiError(409, "run_incomplete", "这个版本没有生成完整的画像")
+        with self.lock:
+            self.pair = self.stores(*review_paths(None, run / "profile_hierarchy" / "profile_hierarchy.json"))
+            self.settings.save_setting("current_run", str(run.resolve()))
+
+    def remove(self, run: Path):
+        """Removes a run's folder, or only the link when it is linked from elsewhere, with the stores opened on it.
+        Not the run shown, nor one that may be writing its summaries."""
+        with self.lock:
+            if same(self.run_dir(), run):
+                raise ApiError(409, "run_current", "正在显示的版本不能删除")
+            opened = [
+                source for source, (store, _) in self.pairs.items() if same(store.source.parent.parent, run)
+            ]
+            if opened and GENERATING.locked():
+                raise ApiError(409, "summary_generating", "正在生成板块总结，请稍候")
+            for source in opened:
+                del self.pairs[source]
+            if run.is_symlink():
+                run.unlink()
+            else:
+                shutil.rmtree(run)
+
+
 def create_app(
     database: Path | None = None,
     source: Path | None = None,
@@ -434,12 +507,19 @@ def create_app(
     *,
     inference_router: APIRouter | None = None,
     demo_password: str | None = None,
+    build_script: Path | None = None,
 ):
-    store = ReviewStore(*review_paths(database, source))
+    """Serves the run of `source`, or else the run last opened on the web, or else the newest one.
+    `build_script` replaces weclone/cli.py as the program a web build runs, for tests."""
     app = FastAPI(title="WeClone")
     install_errors(app)
-    install_auth(app, store.database, demo_password)
+    # Sessions and settings outlive the run being shown.
+    auth = AuthStore(secure.configure()["state_dir"] / AUTH_FILE)
+    install_auth(app, auth, demo_password)
     install_bots(app, inference=inference_router is not None)
+    runs = Runs(auth, database, source)
+    builds = install_build(app, runs, demo=demo_password is not None, script=build_script)
+    install_upload(app, builds, demo=demo_password is not None)
 
     @app.exception_handler(secure.SecurityError)
     async def security_error(request, exc):
@@ -454,12 +534,17 @@ def create_app(
 
     @app.get("/api/profile")
     def profile():
-        return store.profile()
+        builds.settle()
+        return runs.store().profile()
 
     @app.get("/api/run")
     def run_info():
+        builds.settle()
         demo = demo_password is not None
-        info = store.run_info()
+        try:
+            info = runs.store().run_info()
+        except FileNotFoundError:
+            info = {"name": None, "path": None, "generated_at": None, "reviewed_at": None, "style": False}
         # The demo is open to anyone with its published password: the server's directories stay out of it.
         if demo:
             info["path"] = None
@@ -467,63 +552,59 @@ def create_app(
 
     @app.get("/api/profile/intro")
     def intro():
-        return store.intro()
+        return runs.store().intro()
 
     @app.get("/api/avatar-profile")
     def avatar(download: bool = False):
         headers = {"Content-Disposition": 'attachment; filename="avatar_profile.json"'} if download else {}
-        return JSONResponse(store.profile(approved_only=True), headers=headers)
+        return JSONResponse(runs.store().profile(approved_only=True), headers=headers)
 
     @app.get("/api/facts/{fact_id}/history")
     def history(fact_id: str):
-        return store.history(fact_id)
+        return runs.store().history(fact_id)
 
     @app.get("/api/sources/{source_id}/chat")
     def chat(source_id: str):
-        return store.chat(source_id)
+        return runs.store().chat(source_id)
 
     @app.post("/api/facts", status_code=201)
     def create(request: FactWrite):
-        return store.create(request)
+        return runs.store().create(request)
 
     @app.patch("/api/facts/{fact_id}")
     def edit(fact_id: str, request: FactEdit):
-        return store.edit(fact_id, request)
+        return runs.store().edit(fact_id, request)
 
     @app.post("/api/reviews/batch")
     def review(request: ReviewBatch):
-        return store.review(request)
-
-    summaries = SummaryStore(store)
+        return runs.store().review(request)
 
     @app.get("/api/summaries")
     def summary_view(level: Level = "full"):
-        return summaries.view(level)
+        return runs.summaries().view(level)
 
     @app.post("/api/summaries/generate")
     def summary_generate(request: SummaryGenerate):
-        return summaries.generate(request.level)
+        return runs.summaries().generate(request.level)
 
     @app.patch("/api/summaries")
     def summary_edit(request: SummaryEdit):
-        return summaries.edit(request)
+        return runs.summaries().edit(request)
 
     @app.post("/api/summaries/review")
     def summary_review(request: SummaryReview):
-        return summaries.review(request)
+        return runs.summaries().review(request)
 
-    install_assistant(app, store, summaries)
+    install_assistant(app, runs)
 
     @app.get("/api/style")
     def style():
         # The style of the run the profile comes from. Read per request: the files are read with the session key,
         # and a style stage that finishes after the server started shows up without a restart.
-        run = store.source.parent.parent / "style"
+        run = runs.store().source.parent.parent / "style"
         if not style_view.complete(run):
             raise ApiError(
-                404,
-                "style_missing",
-                "这次运行没有抽取语言风格，做分身请运行 weclone-cli build-profile --purpose clone",
+                404, "style_missing", "这个版本没有抽取语言风格，要用 AI 分身，请在构建画像时选择 AI 分身"
             )
         return style_view.build_view(run)
 

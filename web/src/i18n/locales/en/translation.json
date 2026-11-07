@@ -6,6 +6,7 @@
     "listSeparator": ", ",
     "sentenceSeparator": " ",
     "cancel": "Cancel",
+    "delete": "Delete",
     "save": "Save",
     "dismiss": "Dismiss",
     "copy": "Copy",
@@ -30,7 +31,7 @@
     "login_required": "Enter your password first",
     "unlock_required": "Enter your password again to unlock",
     "storage_locked": "Your data is locked. Enter your password again",
-    "profile_missing": "No portrait yet. Run extraction and organization first",
+    "profile_missing": "No portrait yet. Build one on the Build portrait page first",
     "fact_not_found": "Entry not found",
     "location_invalid": "Choose an existing dimension or topic",
     "fact_changed": "This entry was changed elsewhere. Refresh, check it and try again",
@@ -39,7 +40,7 @@
     "source_not_found": "Source not found",
     "chat_unavailable": "This source has no saved chat location, so its original chat can't be shown",
     "chat_missing": "The original chat file is missing or doesn't match the source. Check the source files of this extraction",
-    "style_missing": "This run didn't extract a speaking style. To build a clone, run weclone-cli build-profile --purpose clone",
+    "style_missing": "This portrait version has no speaking style. For a clone, build again on the Build portrait page with Clone chosen",
     "summary_generating": "Summaries are being generated. Please wait",
     "summary_not_found": "Summary not found",
     "summary_changed": "This summary was changed elsewhere. Refresh, check it and try again",
@@ -50,7 +51,25 @@
     "assistant_plaintext": "Your data is stored unencrypted, so assistants can read it whenever the token is valid. There is nothing to open",
     "api_not_found": "No such API endpoint",
     "demo_password_fixed": "The demo password is fixed and can't be changed",
-    "demo_settings_fixed": "This setting can't be changed in the demo"
+    "demo_settings_fixed": "This setting can't be changed in the demo",
+    "consent_required": "Agree to send your chats to the model service first",
+    "build_check_failed": "The checks before the build failed. Fix what they list and try again",
+    "build_running": "A build is already running",
+    "build_not_running": "No build is running",
+    "build_cancel_unsupported": "Builds can't be cancelled from the web on Windows yet",
+    "demo_build_disabled": "The demo can't build portraits",
+    "demo_runs_fixed": "The demo has only one portrait",
+    "run_not_found": "No such portrait version",
+    "run_incomplete": "This version didn't finish building and can't be opened",
+    "run_current": "The version shown can't be deleted. Switch to another one first",
+    "run_building": "This version is still building and can't be deleted",
+    "upload_path_invalid": "File paths must be relative",
+    "upload_zip_invalid": "This zip can't be opened. It may be damaged or password-protected",
+    "upload_too_large": "The unpacked files would not fit in the free disk space",
+    "upload_no_chats": "No chats found. Each chat is a folder of CSV files, named after the person you chatted with",
+    "upload_duplicate_chat": "Two of the uploaded chat folders have the same name",
+    "upload_not_found": "This upload has ended. Choose the files again",
+    "demo_data_fixed": "The demo can't take uploaded chats"
   },
   "app": {
     "title": "My portrait · WeClone",
@@ -62,7 +81,12 @@
     "emptyView": "No entries in this view",
     "canvasHelp": "Hover to light up a path · Click to expand and focus, click again to collapse · Drag a node to pull the graph",
     "loadFailed": "Your portrait can't be opened right now",
-    "loading": "Reading your portrait"
+    "loading": "Reading your portrait",
+    "empty": {
+      "title": "No portrait yet",
+      "hint": "Build one from your chats and your life portrait shows here.",
+      "build": "Build portrait"
+    }
   },
   "modes": {
     "label": "Pages",
@@ -196,10 +220,14 @@
     "list": {
       "count_one": "{{count}} entry",
       "count_other": "{{count}} entries",
-      "confirmApprove_one": "Adopt the selected entry? It isn't shown in the list yet.",
-      "confirmApprove_other": "Adopt the {{count}} selected entries? {{hidden}} of them aren't shown in the list yet.",
-      "confirmReject_one": "Reject the selected entry? It isn't shown in the list yet.",
-      "confirmReject_other": "Reject the {{count}} selected entries? {{hidden}} of them aren't shown in the list yet.",
+      "confirmApproveTitle_one": "Adopt the selected entry?",
+      "confirmApproveTitle_other": "Adopt the {{count}} selected entries?",
+      "confirmApprove_one": "It isn't shown in the list yet.",
+      "confirmApprove_other": "{{hidden}} of them aren't shown in the list yet.",
+      "confirmRejectTitle_one": "Reject the selected entry?",
+      "confirmRejectTitle_other": "Reject the {{count}} selected entries?",
+      "confirmReject_one": "It isn't shown in the list yet.",
+      "confirmReject_other": "{{hidden}} of them aren't shown in the list yet.",
       "selectAll_one": "Select {{count}}",
       "selectAll_other": "Select all {{count}}",
       "selected_one": "{{count}} selected",
@@ -321,6 +349,8 @@
   },
   "editor": {
     "discard": "Discard your unsaved changes?",
+    "discardSubmit": "Discard changes",
+    "keepEditing": "Keep editing",
     "editTitle": "Edit entry",
     "addTitle": "Add entry",
     "attr": "Attribute",
@@ -328,7 +358,8 @@
     "value": "Content",
     "original": "Show the original content",
     "hint": "Saved edits go back to pending review and stay out of the clone until adopted. “Save and adopt” adds them to <clone>the clone's portrait</clone>.",
-    "reloadConfirm": "Reloading from the server discards the changes in this form. Continue?",
+    "reloadConfirmTitle": "Reload this entry?",
+    "reloadConfirm": "The unsaved changes in this form will be discarded.",
     "reload": "Reload entry",
     "saveApprove": "Save and adopt"
   },
@@ -607,7 +638,8 @@
       "title": "Export text",
       "chars_one": "{{count}} character",
       "chars_other": "{{count}} characters",
-      "confirmFull": "This text has private and sensitive content, and once pasted it can't be taken back. Copy it anyway?",
+      "confirmFullTitle": "Copy this text?",
+      "confirmFull": "This text has private and sensitive content, and once pasted it can't be taken back.",
       "fullWarning": "This level has private and sensitive content, and once pasted it can't be taken back. To give your assistant less, switch to Normal or Public and generate another set.",
       "hint": "Paste it into your assistant's “About me”, custom instructions or USER.md. What you paste can't be taken back, so read it over before copying.",
       "empty": "Approve at least one domain summary, and the text to paste into your personal assistant shows up here."
@@ -627,8 +659,10 @@
     }
   },
   "assistant": {
-    "confirmReissue": "The old token stops working right away, and every assistant you set up has to be configured again with the new command. Continue?",
-    "confirmWithdraw": "Once it's revoked, no assistant can read WeClone. You can create a new token later. Continue?",
+    "confirmReissueTitle": "Regenerate the token?",
+    "confirmReissue": "The old token stops working right away, and every assistant you set up has to be configured again with the new command.",
+    "confirmWithdrawTitle": "Revoke the token?",
+    "confirmWithdraw": "Once it's revoked, no assistant can read WeClone. You can create a new token later.",
     "loadFailed": "The assistants page can't be opened right now",
     "loading": "Reading the assistant settings",
     "connected": "Connected · {{level}}",
@@ -662,9 +696,9 @@
     "domainFacts_other": "{{count}} entries",
     "domainFactsSummary_one": "{{count}} entry · summarized",
     "domainFactsSummary_other": "{{count}} entries · summarized",
-    "noDomains": "No portrait yet. Run build-profile and its domains are listed here.",
-    "domainsNote_one": "Unchecked domains share neither their summary nor their entries. Assistants can read {{count}} domain summary right now: one at this level, in a checked domain and approved on the <link>summaries page</link>. Changes apply from the assistant's next call, with no need to set it up again.",
-    "domainsNote_other": "Unchecked domains share neither their summary nor their entries. Assistants can read {{count}} domain summaries right now: those at this level, in the checked domains and approved on the <link>summaries page</link>. Changes apply from the assistant's next call, with no need to set it up again.",
+    "noDomains": "No portrait yet. <a>Build one</a> and its domains are listed here.",
+    "domainsNote_one": "Unchecked domains share neither their summary nor their entries. Assistants can read {{count}} domain summary right now: one at this level, in a checked domain and approved on the <a>summaries page</a>. Changes apply from the assistant's next call, with no need to set it up again.",
+    "domainsNote_other": "Unchecked domains share neither their summary nor their entries. Assistants can read {{count}} domain summaries right now: those at this level, in the checked domains and approved on the <a>summaries page</a>. Changes apply from the assistant's next call, with no need to set it up again.",
     "access": {
       "title": "Allow assistants to read",
       "until": "Closes on its own at {{time}}",
@@ -689,8 +723,10 @@
     }
   },
   "bots": {
-    "confirmReissue": "The old token stops working right away, and every bot needs the new one. Continue?",
-    "confirmWithdraw": "Once it's revoked, no bot can call the clone. You can create a new token later. Continue?",
+    "confirmReissueTitle": "Regenerate the token?",
+    "confirmReissue": "The old token stops working right away, and every bot needs the new one.",
+    "confirmWithdrawTitle": "Revoke the token?",
+    "confirmWithdraw": "Once it's revoked, no bot can call the clone. You can create a new token later.",
     "loadFailed": "The bots page can't be opened right now",
     "loading": "Reading the bot settings",
     "connected": "Connected",
@@ -775,19 +811,28 @@
       "done": "Password changed. Other devices were signed out"
     },
     "run": {
-      "title": "Data source",
-      "name": "Run",
-      "path": "Folder",
-      "generated": "Portrait built",
-      "reviewed": "Last reviewed",
+      "title": "Portrait versions",
       "notReviewed": "Not reviewed yet",
-      "style": "Speaking style",
-      "styleYes": "Extracted",
-      "styleNo": "Not extracted in this run",
       "demo": "Demo data (synthetic, deleted on exit)",
       "none": "Unknown",
-      "update": "To update your portrait from new chats, run weclone-cli build-profile for a new run, then open it with weclone-cli server. It opens the newest run by default; pick another folder with --run.",
-      "footnote": "Built {{date}}"
+      "footnote": "Built {{date}}",
+      "empty": "No portrait yet.",
+      "build": "Build a new portrait",
+      "current": "Shown",
+      "switch": "Switch",
+      "switched": "Switched to the portrait built {{time}}",
+      "reviewedAt": "Last reviewed {{time}}",
+      "withStyle": "With speaking style",
+      "separator": " · ",
+      "progress": "See progress",
+      "delete": "Delete this version",
+      "confirmDeleteTitle": "Delete this portrait version?",
+      "confirmDelete": "The portrait built {{time}}, with its reviews and summaries, will be removed from this computer. This can't be undone.",
+      "deleted": "Deleted the portrait built {{time}}",
+      "deleteBuild": "Delete this build",
+      "confirmDeleteBuildTitle": "Delete this build?",
+      "confirmDeleteBuild": "The build started {{time}} made no portrait. The chat snapshot and partial results it left will be removed from this computer. This can't be undone.",
+      "deletedBuild": "Deleted the build started {{time}}"
     }
   },
   "about": {
@@ -807,5 +852,170 @@
     "faq": "FAQ",
     "credits": "License and thanks",
     "licenseLine": "WeClone is open source under <license>AGPL-3.0</license> and builds on these projects: "
+  },
+  "build": {
+    "title": "Build portrait",
+    "intro": "Turn your chats into a portrait of you. The build runs in the background, and you open it when it's done.",
+    "loading": "Reading the build status",
+    "indicator": {
+      "running": "Building {{step}}/{{steps}}",
+      "done": "New portrait ready",
+      "open": "Open the build page"
+    },
+    "stages": {
+      "snapshot": "Prepare chats",
+      "distill_profile": "Extract profile memories",
+      "distill_event": "Extract event memories",
+      "organize": "Sort memories into domains",
+      "hierarchy": "Build the portrait hierarchy",
+      "summaries": "Write domain summaries",
+      "style": "Extract speaking style"
+    },
+    "stageStates": {
+      "pending": "waiting",
+      "running": "running",
+      "succeeded": "done",
+      "failed": "failed",
+      "cancelled": "cancelled"
+    },
+    "states": {
+      "running": "Building",
+      "succeeded": "Done",
+      "failed": "Failed",
+      "cancelled": "Cancelled",
+      "interrupted": "Interrupted"
+    },
+    "files": "{{done}}/{{total}} chats",
+    "purposes": {
+      "assistant": {
+        "label": "Personal assistant",
+        "hint": "Builds your life portrait and recent events. Assistants like Claude Code and Codex read it and answer with you in mind."
+      },
+      "clone": {
+        "label": "AI clone",
+        "hint": "Everything the assistant gets, plus your speaking style, so the clone learns to talk the way you do."
+      }
+    },
+    "prepare": {
+      "last": "The last build finished {{time}} and is open.",
+      "purpose": "Choose a purpose",
+      "purposeHint": "You can build the other one any time later",
+      "backend": "Model backend",
+      "backendHint": "Set in agent_distill_args of settings.jsonc",
+      "limit_one": "Input limit {{count}} token",
+      "limit_other": "Input limit {{count}} tokens",
+      "checking": "Checking",
+      "tokens": "Model input token limit",
+      "tokensHint": "The model's context length. It decides how much goes into each request",
+      "chats": "Chats",
+      "chatsHint": "Set in make_dataset_args of settings.jsonc",
+      "chatsUploadHint": "Each chat is a folder of CSV files, named after the person you chatted with. An upload replaces the chats uploaded before",
+      "sources": {
+        "upload": "Uploaded chats",
+        "config": "Chats in settings.jsonc"
+      },
+      "chatCount_one": "{{count}} chat",
+      "chatCount_other": "{{count}} chats",
+      "problems": "Fix these first",
+      "recheck": "Check again",
+      "confirm": "Confirm and start",
+      "notice": "Chats may contain identities, contact details and private conversations, and the model service may log or keep them. Chats extracted before are read from the cache and not sent again.",
+      "consent": "I confirm I may process these chats and agree to send them to {{backend}}.",
+      "start": "Start building"
+    },
+    "upload": {
+      "drop": "Drop chat folders or zips here",
+      "folder": "Choose folder",
+      "zip": "Choose zip",
+      "nothing": "No CSV chats or zips found",
+      "sending": "Uploading {{sent}} of {{total}}",
+      "done_one": "Uploaded 1 chat",
+      "done_other": "Uploaded {{count}} chats"
+    },
+    "running": {
+      "state": "Building",
+      "step": "Step {{step}} of {{steps}}",
+      "elapsed": "{{time}} elapsed",
+      "leave": "Closing this page doesn't stop the build. Log: {{log}}",
+      "cancel": "Cancel build",
+      "confirmCancelTitle": "Cancel this build?",
+      "confirmCancel": "Model results it already received stay in the cache.",
+      "keep": "Keep building"
+    },
+    "quips": {
+      "any": [
+        "WeClone is getting to know you",
+        "Understanding you, one chat at a time",
+        "Getting to know someone takes a while"
+      ],
+      "snapshot": ["Opening your chat history", "Meeting the people you talk to most", "Sorting the chats by person"],
+      "distill_profile": [
+        "Reading what you've said",
+        "Noting the little things you mention",
+        "Oh, you like that? Noted.",
+        "Getting to know you through small talk"
+      ],
+      "distill_event": [
+        "Looking back on what you've been through",
+        "Noting the big moments and the small ones",
+        "Putting dates on your stories"
+      ],
+      "organize": [
+        "Sorting memories into place",
+        "Work over here, life over there",
+        "Said it three times? That's one entry."
+      ],
+      "hierarchy": ["Your portrait is taking shape", "Grouping facts into topics", "Sketching who you are"],
+      "summaries": [
+        "Writing a summary for each domain",
+        "Almost there, writing the last few lines",
+        "You'll meet your portrait in a moment"
+      ],
+      "style": ["Learning how you talk", "Picking up your catchphrases", "Your clone is practising typing like you"]
+    },
+    "finished": {
+      "succeeded": {
+        "title": "Congratulations, your portrait is ready!",
+        "read_one": "Read {{count}} chat",
+        "read_other": "Read {{count}} chats",
+        "took": "Took {{time}}",
+        "hint": "Once open, every page shows it. Older versions stay under Portrait versions in settings, where you can switch back.",
+        "opened": "The new portrait is open. Older versions stay under Portrait versions in settings, where you can switch back.",
+        "view": "See my portrait",
+        "details": "Build details",
+        "replay": "Celebrate again"
+      },
+      "failed": {
+        "title": "Build failed",
+        "hint": "Building again starts in a new folder. Model results already received come from the cache, with no new requests."
+      },
+      "cancelled": {
+        "title": "Build cancelled",
+        "hint": "Building again starts in a new folder. Model results already received come from the cache, with no new requests."
+      },
+      "interrupted": {
+        "title": "Build interrupted",
+        "hint": "The build process didn't end normally, as when the machine restarts or the process is killed. Building again reads model results already received from the cache."
+      },
+      "stoppedAt": "Stopped at “{{stage}}”",
+      "stoppedBefore": "Stopped before the first stage",
+      "reviewsStay": "Your reviews stay with the portrait shown now. After opening the new one, you can switch back under Portrait versions in settings.",
+      "log": "Log: {{log}}",
+      "another": "Build another",
+      "open": "Open the new portrait",
+      "again": "Build again"
+    },
+    "problems": {
+      "config_invalid": "settings.jsonc can't be read: {{detail}}",
+      "telegram_id_missing": "settings.jsonc lacks make_dataset_args.telegram_args.my_id",
+      "chats_missing": "No chats in {{folder}}. Export your chats first, as the docs describe",
+      "api_config_missing": "make_dataset_args in settings.jsonc lacks {{keys}}",
+      "max_context_required": "An API backend needs the model's input token limit",
+      "codex_missing": "Codex CLI not found: {{command}}",
+      "codex_logged_out": "Codex CLI isn't signed in. Run {{command}} login first",
+      "context_unknown": "Can't read the Codex model's context length. Enter the input token limit",
+      "style_deps_missing": "A clone needs your speaking style. Run uv pip install --group style --torch-backend cpu -e . first, and put the LTP model in {{model_dir}}",
+      "build_running": "A build is already running"
+    }
   }
 }

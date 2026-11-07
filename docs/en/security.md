@@ -21,7 +21,7 @@ Set this in `settings.jsonc`:
 - `encrypted`: the template default. Chat data and everything derived from it (the chat snapshot, portrait, training data and fine-tuned model) are stored encrypted, in files ending in `.enc`. Encrypted mode does not support distributed training yet.
 - `plaintext`: stored as plain files. Older configurations without `security_args` use plaintext.
 
-The storage mode is fixed at first initialization. To switch modes, regenerate all data from the original chats in a new output directory. Original chats and any plaintext exports you make are not managed by WeClone, so protect them yourself.
+The storage mode is fixed at first initialization. To switch modes, regenerate all data from the original chats in a new output directory. Original chats and any plaintext exports you make are not managed by WeClone, so protect them yourself. Chats uploaded on the web are stored in the current mode.
 
 ## Password
 
@@ -37,10 +37,11 @@ Encrypted data cannot be recovered without the password. After a reset, regenera
 
 ## Keys and tokens
 
-The `.weclone/` directory holds the data key encrypted with your password (`manifest.json`) and the assistant and bot token records (`assistant.sqlite3`, `bots.sqlite3`). Encrypted data cannot be read without it, so keep it and back it up.
+The `.weclone/` directory holds the data key encrypted with your password (`manifest.json`), the assistant and bot token records (`assistant.sqlite3`, `bots.sqlite3`), and the web UI's sign-in sessions and settings (`web.sqlite3`). Encrypted data cannot be read without it, so keep it and back it up.
 
 - Both tokens are stored only as hashes and shown once when generated. If you lose one, generate a new one.
 - The bot token together with `bots.sqlite3` decrypts all data, so keep it as safe as the password. It survives a password change. After a password reset, generate it again.
+- In encrypted mode, a portrait build started on the web gets the data key of your sign-in and holds it until the build ends or is cancelled, even after you sign out. The password can't be reset while a build runs.
 
 ## Request logs
 

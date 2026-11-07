@@ -4,9 +4,11 @@ import { Trans, useTranslation } from 'react-i18next';
 import { api } from '../api';
 import { LogoutButton } from '../Auth';
 import { AppBrand, BrandMark } from '../BrandMark';
+import { BuildIndicator } from '../build/BuildIndicator';
 import { LanguageSwitch } from '../LanguageSwitch';
 import { SettingsLink } from '../settings/SettingsLink';
 import { ModeSwitch } from '../ModeSwitch';
+import { confirm } from '../feedback/confirm';
 import '../summary/summary.css';
 import { CopyField, LevelSwitch, TokenCard, moment, type TokenState } from './accessParts';
 import './assistant.css';
@@ -115,13 +117,28 @@ export function AssistantApp() {
     share(names);
   }
 
-  function issue() {
-    if (view?.token && !window.confirm(t(($) => $.assistant.confirmReissue))) return;
+  async function issue() {
+    if (
+      view?.token &&
+      !(await confirm({
+        title: t(($) => $.assistant.confirmReissueTitle),
+        body: t(($) => $.assistant.confirmReissue),
+        action: t(($) => $.access.token.reissue),
+        tone: 'danger',
+      }))
+    )
+      return;
     void run(async () => setCreated((await api.post<{ token: string }>('assistant/token')).token));
   }
 
-  function withdraw() {
-    if (!window.confirm(t(($) => $.assistant.confirmWithdraw))) return;
+  async function withdraw() {
+    const ok = await confirm({
+      title: t(($) => $.assistant.confirmWithdrawTitle),
+      body: t(($) => $.assistant.confirmWithdraw),
+      action: t(($) => $.access.token.withdraw),
+      tone: 'danger',
+    });
+    if (!ok) return;
     void run(async () => {
       await api.delete('assistant/token');
       setCreated('');
@@ -166,6 +183,7 @@ export function AssistantApp() {
           </div>
         </div>
         <div className="topbar-actions">
+          <BuildIndicator />
           <LanguageSwitch />
           <SettingsLink />
           <LogoutButton />
@@ -238,13 +256,18 @@ export function AssistantApp() {
               ))}
             </ul>
           ) : (
-            <p className="summary-placeholder">{t(($) => $.assistant.noDomains)}</p>
+            <p className="summary-placeholder">
+              <Trans
+                i18nKey={($) => $.assistant.noDomains}
+                components={{ a: <a className="wc-link" href="#/build" /> }}
+              />
+            </p>
           )}
           <p className="summary-hint">
             <Trans
               i18nKey={($) => $.assistant.domainsNote}
               count={view.summaries}
-              components={{ link: <a className="wc-link" href="#/summary" /> }}
+              components={{ a: <a className="wc-link" href="#/summary" /> }}
             />
           </p>
         </section>

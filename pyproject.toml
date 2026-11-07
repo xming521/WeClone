@@ -1,6 +1,6 @@
 [project]
 name = "WeClone"
-version = "1.0.1"
+version = "1.0.2"
 description = "Build a portrait of your life. Assistants that know you. Clones that talk like you."
 authors = [{ name = "xming521" }]
 readme = "README.md"

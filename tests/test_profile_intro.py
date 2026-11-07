@@ -8,11 +8,9 @@ from weclone.server.profile_review import create_app
 
 
 @pytest.fixture
-def client_for(tmp_path, monkeypatch):
+def client_for(tmp_path, storage):
     # Plaintext storage with its own password state, so the test never touches the real one.
-    settings = tmp_path / "settings.jsonc"
-    settings.write_text(json.dumps({"security_args": {"storage_mode": "plaintext", "state_dir": str(tmp_path / "state")}}))
-    monkeypatch.setenv("WECLONE_CONFIG_PATH", str(settings))
+    storage()
 
     def create(data):
         source = tmp_path / "source.json"

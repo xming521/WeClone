@@ -166,7 +166,7 @@ export function LeftPanel({
           <span>{t(($) => $.review.list.count, { count: fullModel.facts.length })}</span>
           {/* When the data was made, and from the settings which run it is. */}
           {built && (
-            <a href="#/settings" title={run?.demo ? undefined : run?.name}>
+            <a href="#/settings" title={run?.demo ? undefined : (run?.name ?? undefined)}>
               {t(($) => $.settings.run.footnote, { date: built })}
             </a>
           )}

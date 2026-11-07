@@ -162,8 +162,8 @@ def build_window_extract_prompt(task: str, *, include_current_state: bool = True
             "locations": ["相关地点"],
             "people": ["相关人物"],
             "tags": ["检索标签"],
-            "importance": 0,
-            "confidence": 0,
+            "importance": 1,
+            "confidence": 2,
         }
         example = {"sample_id": "输入样本ID", "event_memories": {"surface_events": [surface]}}
         field_rules = "每个结果对象包含 sample_id、event_memories 两个字段。event_memories 是该样本的事件对象，无事件时为 {}。surface_event 为事件内容；people、locations 是相关人物、地点数组，有值才输出。其他字段按上述定义。"
