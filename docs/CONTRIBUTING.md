@@ -45,6 +45,8 @@ weclone-cli dev   # 前端 http://127.0.0.1:5174，后端 http://127.0.0.1:5175
 weclone-cli dev --demo   # 后端改用合成测试画像，登录密码 demo
 ```
 
+改了前端源码，页面会自动更新；改了 `weclone/` 里的 Python 代码，后端会自动重启。重启后加密模式和演示模式要重新登录。
+
 仓库中包含构建好的页面 `weclone/web/dist`，随 Python 包一起发布。修改前端源码后运行 `pnpm --dir web build` 更新。
 
 ## English
@@ -89,5 +91,7 @@ pnpm --dir web install
 weclone-cli dev   # frontend http://127.0.0.1:5174, backend http://127.0.0.1:5175
 weclone-cli dev --demo   # backend serves the synthetic test profile, password: demo
 ```
+
+The page updates when you change the frontend source, and the backend restarts when you change Python code in `weclone/`. After a restart, sign in again in encrypted mode and in the demo.
 
 The built pages in `weclone/web/dist` are committed and shipped with the Python package. Run `pnpm --dir web build` after changing the frontend source to update them.

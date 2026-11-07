@@ -5,10 +5,12 @@ the samples that have no answer yet: those that failed, and those whose text is 
 """
 
 import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta, timezone
+from functools import partial
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any, Iterable, NamedTuple
+from typing import Any, Callable, Iterable, NamedTuple
 
 import click
 import pyjson5
@@ -404,7 +406,9 @@ def run_task(
     config_path: Path | None = None,
     confirmed: bool = False,
     dry_run: bool = False,
+    on_file: Callable[[int, int], None] | None = None,
 ) -> FileStats:
+    """on_file is told how many of the chat files are done, and of how many, before the first and after each."""
     args = default_args()
     args.input_dir, args.output_dir = input_dir, output_dir
     if config_path is not None:
@@ -451,31 +455,46 @@ def run_task(
         )
 
     stats = []
+    if on_file is not None:
+        on_file(0, len(source_files))
+    # Chat files run side by side and share the client's batch_size workers, so a file waiting on its slowest
+    # window no longer holds back the next. A dry run makes no calls and prints its prompts in file order.
+    files = ThreadPoolExecutor(max_workers=1 if args.dry_run else args.batch_size)
     try:
-        for source_path in source_files:
-            stats.append(
-                process_task_file(
-                    source_path,
-                    task=task,
-                    output_dir=args.output_dir,
-                    target_role=args.target_role,
-                    provider=args.llm_provider,
-                    model=request_model,
-                    effort=request_effort,
-                    client=client,
-                    cache=cache,
-                    max_tokens=args.max_tokens,
-                    batch_size=args.batch_size,
-                    max_samples_per_window=args.max_samples_per_window,
-                    max_content_chars=args.max_content_chars,
-                    limit_records=args.limit_records,
-                    dry_run=args.dry_run,
-                    indent=args.indent,
-                )
+        futures = [
+            files.submit(
+                process_task_file,
+                source_path,
+                task=task,
+                output_dir=args.output_dir,
+                target_role=args.target_role,
+                provider=args.llm_provider,
+                model=request_model,
+                effort=request_effort,
+                client=client,
+                cache=cache,
+                max_tokens=args.max_tokens,
+                batch_size=args.batch_size,
+                max_samples_per_window=args.max_samples_per_window,
+                max_content_chars=args.max_content_chars,
+                limit_records=args.limit_records,
+                dry_run=args.dry_run,
+                indent=args.indent,
+                # Bars of files running at once would overwrite each other; each file logs a line when it ends.
+                progress_factory=partial(tqdm, disable=True),
             )
+            for source_path in source_files
+        ]
+        for future in as_completed(futures):
+            stats.append(future.result())
+            if on_file is not None:
+                on_file(len(stats), len(source_files))
     finally:
+        files.shutdown(wait=False, cancel_futures=True)
         if client is not None:
             client.close()
+        # Files still running end at their next call once the client is closed, and none outlives run_task.
+        files.shutdown(wait=True)
 
     total = FileStats(*(sum(values) for values in zip(*stats))) if stats else FileStats()
     log(
@@ -496,6 +515,7 @@ def main(
     config_path: Path | None = None,
     confirmed: bool = False,
     dry_run: bool = False,
+    on_file: Callable[[int, int], None] | None = None,
 ) -> FileStats:
     return run_task(
         TASK,
@@ -504,4 +524,5 @@ def main(
         config_path=config_path,
         confirmed=confirmed,
         dry_run=dry_run,
+        on_file=on_file,
     )

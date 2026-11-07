@@ -10,6 +10,7 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
+from weclone.data.agent import profile_pipeline
 from weclone.server import profile_review as review
 from weclone.utils import secure_storage as secure
 
@@ -28,6 +29,7 @@ class ProfilePathChecks(unittest.TestCase):
             with (
                 patch.dict(os.environ, {"WECLONE_CONFIG_PATH": str(config)}),
                 patch.object(review, "ROOT", root),
+                patch.object(profile_pipeline, "RUNS_DIR", root / "dataset/res_csv/agent/profile_runs"),
             ):
                 secure.configure()
                 secure.ensure_initialized(PASSWORD)

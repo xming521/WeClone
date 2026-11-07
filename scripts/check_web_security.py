@@ -127,7 +127,7 @@ class WebSecurityChecks(unittest.TestCase):
             ciphertext = secure.encrypted_path(self.database).read_bytes()
             self.assertTrue(ciphertext.startswith(secure.MAGIC))
             self.assertNotIn(b"synthetic-private", ciphertext)
-            self.assertNotIn(b"synthetic-private", self.database.with_suffix(".auth.sqlite3").read_bytes())
+            self.assertNotIn(b"synthetic-private", (self.root / "state" / "web.sqlite3").read_bytes())
             # The client's own Cookies class: Starlette 1.x test clients use httpx2, older ones httpx.
             cookies = type(client.cookies)(client.cookies)
             self.assertEqual(client.post("/api/auth/logout", json={}).status_code, 200)

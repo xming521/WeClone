@@ -4,6 +4,7 @@ import { Trans, useTranslation } from 'react-i18next';
 import { isDimensionId } from '../data';
 import { useProfileStore } from '../store';
 import type { EditTarget, FactDraft } from '../store';
+import { confirm } from '../feedback/confirm';
 
 function draftOf(target: EditTarget): FactDraft {
   return {
@@ -43,16 +44,24 @@ function FactEditorDialog({ editing }: { editing: EditTarget }) {
     window.addEventListener('beforeunload', warn);
     return () => window.removeEventListener('beforeunload', warn);
   }, []);
-  function close() {
+  async function close() {
     if (busy) return;
     const dirty =
       draft.value !== (editing.fact?.value ?? '') ||
       draft.attr !== (editing.fact?.attr ?? '') ||
       (!!editing.fact && draft.group_id !== editing.fact.group_id);
-    if (!dirty || window.confirm(t(($) => $.editor.discard))) {
-      closeEditor();
-      setError('');
-    }
+    if (
+      dirty &&
+      !(await confirm({
+        title: t(($) => $.editor.discard),
+        action: t(($) => $.editor.discardSubmit),
+        dismiss: t(($) => $.editor.keepEditing),
+        tone: 'danger',
+      }))
+    )
+      return;
+    closeEditor();
+    setError('');
   }
   function locationName(id: string): string {
     const location = input.locations.find((item) => item.id === id);
@@ -70,7 +79,7 @@ function FactEditorDialog({ editing }: { editing: EditTarget }) {
       aria-labelledby={titleId}
       onCancel={(event) => {
         event.preventDefault();
-        close();
+        void close();
       }}
     >
       <form
@@ -142,7 +151,13 @@ function FactEditorDialog({ editing }: { editing: EditTarget }) {
               className="wc-btn wc-btn--sm"
               disabled={busy}
               onClick={async () => {
-                if (!window.confirm(t(($) => $.editor.reloadConfirm))) return;
+                const ok = await confirm({
+                  title: t(($) => $.editor.reloadConfirmTitle),
+                  body: t(($) => $.editor.reloadConfirm),
+                  action: t(($) => $.editor.reload),
+                  tone: 'danger',
+                });
+                if (!ok) return;
                 try {
                   const next = await refresh();
                   const latest = next.facts.find((fact) => fact.id === editing.fact?.id);
@@ -161,7 +176,7 @@ function FactEditorDialog({ editing }: { editing: EditTarget }) {
           </div>
         )}
         <div className="editor-actions">
-          <button type="button" className="wc-btn" disabled={busy} onClick={close}>
+          <button type="button" className="wc-btn" disabled={busy} onClick={() => void close()}>
             {t(($) => $.common.cancel)}
           </button>
           <button className="wc-btn" disabled={busy}>

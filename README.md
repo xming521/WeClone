@@ -102,11 +102,10 @@ Telegram chats are supported today. Export them as JSON with Telegram Desktop, p
 ### 3. Build your portrait and connect assistants
 
 ```bash
-weclone-cli build-profile --purpose assistant
 weclone-cli server
 ```
 
-Open http://127.0.0.1:5175 to review your portrait fact by fact, approve the summaries on the Summaries page, then generate a token on the Assistants page and run the commands it shows for Claude Code or Codex. See [Life portrait and assistants](docs/en/profile.md).
+Open http://127.0.0.1:5175, set a password, and build your portrait on the Build portrait page, which checks the setup and shows the progress. Then review your portrait fact by fact, approve the summaries on the Summaries page, then generate a token on the Assistants page and run the commands it shows for Claude Code or Codex. See [Life portrait and assistants](docs/en/profile.md).
 
 ### 4. Fine-tune a clone
 

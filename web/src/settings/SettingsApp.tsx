@@ -1,8 +1,10 @@
-import { useEffect, useId, useState, type FormEvent, type ReactNode } from 'react';
-import { ChevronRight, Info, Monitor, Moon, Sun } from 'lucide-react';
+import { useCallback, useEffect, useId, useState, type FormEvent, type ReactNode } from 'react';
+import { ChevronRight, Info, Monitor, Moon, Sun, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../api';
+import type { RunVersion } from '../build/progress';
 import { PRIVACY_LEVELS } from '../data';
+import { confirm } from '../feedback/confirm';
 import { toast } from '../feedback/toast';
 import { LanguageSwitch } from '../LanguageSwitch';
 import { saveDefaultPrivacy, useProfileStore } from '../store';
@@ -24,8 +26,8 @@ interface AuthStatus {
 
 // Shape of GET /api/run, served by weclone/server/profile_review.py.
 export interface RunInfo {
-  name: string;
-  path: string;
+  /** Null when no run is open, as before the first build. */
+  name: string | null;
   generated_at: string | null;
   reviewed_at: string | null;
   style: boolean;
@@ -37,11 +39,14 @@ export interface RunInfo {
 const SESSION_CHOICES = [30 * 60, 2 * 3600, 8 * 3600, 24 * 3600, 7 * 24 * 3600];
 const THEME_ICONS = { system: Monitor, light: Sun, dark: Moon };
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
+function Section({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
   const id = useId();
   return (
     <section className="assistant-card settings-section" aria-labelledby={id}>
-      <h2 id={id}>{title}</h2>
+      <div className="settings-section__head">
+        <h2 id={id}>{title}</h2>
+        {action}
+      </div>
       {children}
     </section>
   );
@@ -63,15 +68,58 @@ export function SettingsApp() {
   const { t } = useTranslation();
   const [status, setStatus] = useState<AuthStatus | null>(null);
   const [run, setRun] = useState<RunInfo | null>(null);
+  const [versions, setVersions] = useState<RunVersion[]>([]);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const theme = useTheme((state) => state.choice);
   const chooseTheme = useTheme((state) => state.choose);
   const privacy = useProfileStore((state) => state.privacy);
 
+  const loadRuns = useCallback(() => {
+    api.get<RunInfo>('run').then(setRun, (reason: Error) => setError(reason.message));
+    api.get<RunVersion[]>('runs').then(setVersions, (reason: Error) => setError(reason.message));
+  }, []);
+
   useEffect(() => {
     api.get<AuthStatus>('auth/status').then(setStatus, (reason: Error) => setError(reason.message));
-    api.get<RunInfo>('run').then(setRun, (reason: Error) => setError(reason.message));
-  }, []);
+    loadRuns();
+  }, [loadRuns]);
+
+  async function switchTo(version: RunVersion) {
+    setBusy(true);
+    try {
+      await api.put('run', { name: version.name });
+      // The map, the review queue and their selection belonged to the run shown before.
+      useProfileStore.getState().resetSession();
+      toast(t(($) => $.settings.run.switched, { time: formatTime(version.generated_at) ?? version.name }));
+    } catch (reason) {
+      setError((reason as Error).message);
+    } finally {
+      setBusy(false);
+      loadRuns();
+    }
+  }
+
+  async function remove(version: RunVersion) {
+    const time = formatTime(version.generated_at ?? version.started_at) ?? version.name;
+    const ok = await confirm({
+      title: t(($) => $.settings.run.confirmDeleteTitle),
+      body: t(($) => $.settings.run.confirmDelete, { time }),
+      action: t(($) => $.common.delete),
+      tone: 'danger',
+    });
+    if (!ok) return;
+    setBusy(true);
+    try {
+      await api.delete(`runs/${encodeURIComponent(version.name)}`);
+      toast(t(($) => $.settings.run.deleted, { time }));
+    } catch (reason) {
+      setError((reason as Error).message);
+    } finally {
+      setBusy(false);
+      loadRuns();
+    }
+  }
 
   async function setSession(seconds: number) {
     try {
@@ -102,6 +150,29 @@ export function SettingsApp() {
             </div>
           )}
         </section>
+
+        {/* First: which portrait every other page shows. */}
+        <Section
+          title={t(($) => $.settings.run.title)}
+          action={
+            run &&
+            !run.demo && (
+              <a className="wc-btn wc-btn--sm" href="#/build">
+                {t(($) => $.settings.run.build)}
+              </a>
+            )
+          }
+        >
+          {run?.demo && <p className="summary-placeholder">{t(($) => $.settings.run.demo)}</p>}
+          {run && !run.demo && (
+            <VersionList
+              versions={versions}
+              busy={busy}
+              onSwitch={(version) => void switchTo(version)}
+              onDelete={(version) => void remove(version)}
+            />
+          )}
+        </Section>
 
         <Section title={t(($) => $.settings.appearance.title)}>
           <Row label={t(($) => $.settings.appearance.theme)} hint={t(($) => $.settings.appearance.themeHint)}>
@@ -191,8 +262,6 @@ export function SettingsApp() {
           )}
         </Section>
 
-        <Section title={t(($) => $.settings.run.title)}>{run && <RunDetails run={run} />}</Section>
-
         <a className="assistant-card settings-about-link" href="#/about">
           <Info size={18} strokeWidth={1.8} aria-hidden="true" />
           <span>
@@ -206,39 +275,75 @@ export function SettingsApp() {
   );
 }
 
-export function RunDetails({ run }: { run: RunInfo }) {
+/** The runs that have a portrait, or will have once their build ends, newest first: the one shown marked, the
+ * others a click away or deleted. Failed and cancelled builds are left out, the build page shows the last one. */
+function VersionList({
+  versions,
+  busy,
+  onSwitch,
+  onDelete,
+}: {
+  versions: RunVersion[];
+  busy: boolean;
+  onSwitch: (version: RunVersion) => void;
+  onDelete: (version: RunVersion) => void;
+}) {
   const { t } = useTranslation();
-  const none = t(($) => $.settings.run.none);
+  const shown = versions.filter((version) => version.complete || version.state === 'running');
+  if (!shown.length) return <p className="summary-placeholder">{t(($) => $.settings.run.empty)}</p>;
   return (
-    <>
-      <dl className="settings-facts">
-        <div>
-          <dt>{t(($) => $.settings.run.name)}</dt>
-          <dd>{run.demo ? t(($) => $.settings.run.demo) : <code>{run.name}</code>}</dd>
-        </div>
-        {!run.demo && (
-          <div>
-            <dt>{t(($) => $.settings.run.path)}</dt>
-            <dd>
-              <code>{run.path}</code>
-            </dd>
+    <ul className="settings-versions">
+      {shown.map((version) => (
+        <li key={version.name} aria-current={version.current || undefined}>
+          <div className="settings-row__text">
+            {/* The run's folder name, for the command line. */}
+            <span className="settings-versions__name" title={version.name}>
+              {formatTime(version.generated_at ?? version.started_at) ?? <code>{version.name}</code>}
+              {version.current && <span className="assistant-state on">{t(($) => $.settings.run.current)}</span>}
+              {version.state !== 'succeeded' && (
+                <span className="assistant-state">{t(($) => $.build.states[version.state])}</span>
+              )}
+            </span>
+            <span className="settings-row__hint">
+              {[
+                version.purpose && t(($) => $.build.purposes[version.purpose!].label),
+                version.complete &&
+                  (version.reviewed_at
+                    ? t(($) => $.settings.run.reviewedAt, { time: formatTime(version.reviewed_at) ?? '' })
+                    : t(($) => $.settings.run.notReviewed)),
+                version.style && t(($) => $.settings.run.withStyle),
+              ]
+                .filter(Boolean)
+                .join(t(($) => $.settings.run.separator))}
+            </span>
           </div>
-        )}
-        <div>
-          <dt>{t(($) => $.settings.run.generated)}</dt>
-          <dd>{formatTime(run.generated_at) ?? none}</dd>
-        </div>
-        <div>
-          <dt>{t(($) => $.settings.run.reviewed)}</dt>
-          <dd>{formatTime(run.reviewed_at) ?? t(($) => $.settings.run.notReviewed)}</dd>
-        </div>
-        <div>
-          <dt>{t(($) => $.settings.run.style)}</dt>
-          <dd>{run.style ? t(($) => $.settings.run.styleYes) : t(($) => $.settings.run.styleNo)}</dd>
-        </div>
-      </dl>
-      <p className="summary-hint">{t(($) => $.settings.run.update)}</p>
-    </>
+          {version.state === 'running' ? (
+            <a className="wc-btn wc-btn--sm" href="#/build">
+              {t(($) => $.settings.run.progress)}
+            </a>
+          ) : (
+            version.complete &&
+            !version.current && (
+              <div className="settings-versions__actions">
+                <button className="wc-btn wc-btn--sm" type="button" disabled={busy} onClick={() => onSwitch(version)}>
+                  {t(($) => $.settings.run.switch)}
+                </button>
+                <button
+                  className="wc-iconbtn wc-iconbtn--sm settings-versions__delete"
+                  type="button"
+                  disabled={busy}
+                  aria-label={t(($) => $.settings.run.delete)}
+                  title={t(($) => $.settings.run.delete)}
+                  onClick={() => onDelete(version)}
+                >
+                  <Trash2 size={15} strokeWidth={1.8} aria-hidden="true" />
+                </button>
+              </div>
+            )
+          )}
+        </li>
+      ))}
+    </ul>
   );
 }
 

@@ -73,16 +73,17 @@
 .wc-btn:focus-visible{outline:none;box-shadow:var(--focus-ring)}
 .wc-btn--primary{border-color:var(--you-strong);background:linear-gradient(180deg,var(--you-hi),var(--you));color:var(--on-you);box-shadow:var(--glaze),var(--lift-you)}
 .wc-btn--adopt{border-color:var(--adopt-strong);background:linear-gradient(180deg,var(--adopt-hi),var(--adopt));color:var(--on-adopt);box-shadow:var(--glaze),var(--lift-adopt)}
-.wc-btn--primary:hover,.wc-btn--adopt:hover{filter:brightness(1.05) saturate(1.05)}
+.wc-btn--danger{border-color:var(--danger-strong);background:linear-gradient(180deg,var(--danger-hi),var(--danger));color:var(--on-danger);box-shadow:var(--glaze),var(--lift-danger)}
+.wc-btn--primary:hover,.wc-btn--adopt:hover,.wc-btn--danger:hover{filter:brightness(1.05) saturate(1.05)}
 .wc-btn--primary:hover{background:linear-gradient(180deg,var(--you-hi),var(--you))}
 .wc-btn--adopt:hover{background:linear-gradient(180deg,var(--adopt-hi),var(--adopt))}
+.wc-btn--danger:hover{background:linear-gradient(180deg,var(--danger-hi),var(--danger))}
 .wc-btn--primary:active{background:var(--you-strong);box-shadow:inset 0 1px 2px rgba(0,0,0,.2)}
 .wc-btn--adopt:active{background:var(--adopt-strong);box-shadow:inset 0 1px 2px rgba(0,0,0,.2)}
-.wc-btn--primary:focus-visible,.wc-btn--adopt:focus-visible{box-shadow:var(--glaze),var(--focus-ring)}
+.wc-btn--danger:active{background:var(--danger-strong);box-shadow:inset 0 1px 2px rgba(0,0,0,.2)}
+.wc-btn--primary:focus-visible,.wc-btn--adopt:focus-visible,.wc-btn--danger:focus-visible{box-shadow:var(--glaze),var(--focus-ring)}
 .wc-btn--ghost{border-color:transparent;background:transparent;color:var(--ink-2);box-shadow:none}
 .wc-btn--ghost:hover{background:var(--sunken);color:var(--ink-1)}
-.wc-btn--danger{border-color:transparent;background:var(--danger-tint);color:var(--danger);box-shadow:none}
-.wc-btn--danger:hover{border-color:var(--danger);background:var(--danger-tint);color:var(--danger-strong)}
 .wc-btn:disabled,.wc-btn[aria-disabled="true"]{border-color:transparent;background:var(--sunken);color:var(--ink-4);box-shadow:none;filter:none;transform:none;cursor:not-allowed}
 .wc-btn--sm{--h:var(--control-sm);gap:5px;padding:0 10px;border-radius:var(--radius-inner);font-size:12px}
 .wc-btn--sm .wc-i{width:13px;height:13px}

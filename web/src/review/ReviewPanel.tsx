@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { collectFacts, filterPrivacy, sortFacts } from '../data';
 import type { ProfileFact, ReviewStatus } from '../data';
+import { confirm } from '../feedback/confirm';
 import { isTyping } from '../feedback/keys';
 import { useProfileStore } from '../store';
 import { FactCard } from './FactCard';
@@ -129,11 +130,21 @@ function ReviewList({ facts }: { facts: ProfileFact[] }) {
   async function batch(status: ReviewStatus) {
     if (!selected.length) return;
     const hidden = selected.length - page.filter((fact) => checked.has(fact.id)).length;
+    const counts = { count: selected.length, hidden };
     const question =
       status === 'approved'
-        ? t(($) => $.review.list.confirmApprove, { count: selected.length, hidden })
-        : t(($) => $.review.list.confirmReject, { count: selected.length, hidden });
-    if (hidden && !window.confirm(question)) return;
+        ? {
+            title: t(($) => $.review.list.confirmApproveTitle, counts),
+            body: t(($) => $.review.list.confirmApprove, counts),
+            action: t(($) => $.review.approve),
+            tone: 'adopt' as const,
+          }
+        : {
+            title: t(($) => $.review.list.confirmRejectTitle, counts),
+            body: t(($) => $.review.list.confirmReject, counts),
+            action: t(($) => $.review.reject),
+          };
+    if (hidden && !(await confirm(question))) return;
     void review(selected, status);
     setChecked(new Set());
   }

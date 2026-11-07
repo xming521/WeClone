@@ -11,8 +11,12 @@ async function request<T>(
       ? {}
       : {
           method,
-          headers: { 'Content-Type': 'application/json', 'X-WeClone-Request': '1' },
-          body: JSON.stringify(body),
+          // A file goes as it is, anything else as JSON.
+          headers:
+            body instanceof Blob
+              ? { 'X-WeClone-Request': '1' }
+              : { 'Content-Type': 'application/json', 'X-WeClone-Request': '1' },
+          body: body instanceof Blob ? body : JSON.stringify(body),
         }),
   });
   if (!response.ok) {
@@ -20,9 +24,25 @@ async function request<T>(
     // A wrong password on sign-in or password change is no expired session.
     if (response.status === 401 && data?.code !== 'password_wrong')
       window.dispatchEvent(new Event('weclone-unauthorized'));
-    throw new Error(errorMessage(data, response.status));
+    throw new ApiError(errorMessage(data, response.status), data);
   }
   return response.json() as Promise<T>;
+}
+
+/** A failed request, with the server's code and any fields it sent beside it. */
+export class ApiError extends Error {
+  code?: string;
+  data: Record<string, unknown>;
+
+  constructor(message: string, data: Record<string, unknown> | null) {
+    super(message);
+    this.data = data ?? {};
+    this.code = typeof data?.code === 'string' ? data.code : undefined;
+  }
+}
+
+export function errorCode(reason: unknown): string | undefined {
+  return reason instanceof ApiError ? reason.code : undefined;
 }
 
 /** The server's error in the page's language: known errors by `code`, others by the server's own `detail`. */

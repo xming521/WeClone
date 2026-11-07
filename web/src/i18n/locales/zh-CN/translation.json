@@ -6,6 +6,7 @@
     "listSeparator": "、",
     "sentenceSeparator": "",
     "cancel": "取消",
+    "delete": "删除",
     "save": "保存",
     "dismiss": "知道了",
     "copy": "复制",
@@ -27,7 +28,7 @@
     "login_required": "请先输入访问密码",
     "unlock_required": "请重新输入密码解锁",
     "storage_locked": "数据尚未解锁，请重新输入密码",
-    "profile_missing": "画像数据尚未生成，请先完成抽取和整理",
+    "profile_missing": "还没有画像，请先在「构建画像」页生成",
     "fact_not_found": "画像记录不存在",
     "location_invalid": "请选择已有维度或主题",
     "fact_changed": "记录已被修改，请刷新数据后核对并重试",
@@ -36,7 +37,7 @@
     "source_not_found": "来源记录不存在",
     "chat_unavailable": "该来源未保存聊天定位信息，无法查看原文",
     "chat_missing": "原始聊天文件不存在或与来源记录不一致，请检查本次抽取的来源文件",
-    "style_missing": "这次运行没有抽取语言风格，做分身请运行 weclone-cli build-profile --purpose clone",
+    "style_missing": "这个画像版本没有抽取语言风格，要用 AI 分身，请在「构建画像」页选「AI 分身」重新构建",
     "summary_generating": "正在生成板块总结，请稍候",
     "summary_not_found": "板块总结不存在",
     "summary_changed": "总结已被修改，请刷新后核对并重试",
@@ -47,7 +48,25 @@
     "assistant_plaintext": "数据是明文存储的，令牌有效时助手就能读取，不需要打开",
     "api_not_found": "接口不存在",
     "demo_password_fixed": "演示模式的密码固定，不能修改",
-    "demo_settings_fixed": "演示模式不能修改这项设置"
+    "demo_settings_fixed": "演示模式不能修改这项设置",
+    "consent_required": "请先勾选同意把聊天内容发送给模型服务",
+    "build_check_failed": "运行前检查没有通过，请按提示修改后重试",
+    "build_running": "已经有一次构建在运行",
+    "build_not_running": "没有正在运行的构建",
+    "build_cancel_unsupported": "Windows 上暂时不能从网页取消构建",
+    "demo_build_disabled": "演示模式不能构建画像",
+    "demo_runs_fixed": "演示模式只有一份画像",
+    "run_not_found": "没有这个画像版本",
+    "run_incomplete": "这个版本没有构建完成，不能打开",
+    "run_current": "正在显示的版本不能删除，请先切换到别的版本",
+    "run_building": "这个版本还在构建，不能删除",
+    "upload_path_invalid": "文件路径必须是相对路径",
+    "upload_zip_invalid": "这个 zip 打不开，可能已损坏或设了密码",
+    "upload_too_large": "解压后的文件超过了磁盘剩余空间",
+    "upload_no_chats": "没有找到聊天：每个聊天要是一个放着 CSV 的文件夹，以聊天对象命名",
+    "upload_duplicate_chat": "上传的文件里有两个同名的聊天文件夹",
+    "upload_not_found": "这次上传已经结束，请重新选择文件",
+    "demo_data_fixed": "演示模式不能上传聊天记录"
   },
   "app": {
     "title": "我的画像 · WeClone",
@@ -57,7 +76,12 @@
     "emptyView": "当前视图没有画像记录",
     "canvasHelp": "悬停点亮归属路径 · 点击展开并聚焦，再点一次收起 · 拖动节点牵动图谱",
     "loadFailed": "画像暂时无法打开",
-    "loading": "正在读取画像"
+    "loading": "正在读取画像",
+    "empty": {
+      "title": "还没有画像",
+      "hint": "从聊天记录构建画像后，这里会显示你的人生画像。",
+      "build": "构建画像"
+    }
   },
   "modes": {
     "label": "页面",
@@ -181,8 +205,10 @@
     "reject": "不采纳",
     "list": {
       "count_other": "{{count}} 条画像",
-      "confirmApprove_other": "采纳选中的 {{count}} 条画像？其中 {{hidden}} 条还没有显示在列表里。",
-      "confirmReject_other": "不采纳选中的 {{count}} 条画像？其中 {{hidden}} 条还没有显示在列表里。",
+      "confirmApproveTitle_other": "采纳选中的 {{count}} 条画像？",
+      "confirmApprove_other": "其中 {{hidden}} 条还没有显示在列表里。",
+      "confirmRejectTitle_other": "不采纳选中的 {{count}} 条画像？",
+      "confirmReject_other": "其中 {{hidden}} 条还没有显示在列表里。",
       "selectAll_other": "全选 {{count}} 条",
       "selected_other": "已选 {{count}} 条",
       "empty": "当前视图没有画像记录。",
@@ -294,6 +320,8 @@
   },
   "editor": {
     "discard": "放弃未保存的修改？",
+    "discardSubmit": "放弃修改",
+    "keepEditing": "继续编辑",
     "editTitle": "编辑画像",
     "addTitle": "新增画像",
     "attr": "属性名称",
@@ -301,7 +329,8 @@
     "value": "画像内容",
     "original": "查看原始内容",
     "hint": "保存修改后移回待审核，暂不用于分身；“保存并采纳”后纳入<clone>分身画像</clone>。",
-    "reloadConfirm": "重新载入服务器数据会放弃当前表单中的修改，继续？",
+    "reloadConfirmTitle": "重新载入这条记录？",
+    "reloadConfirm": "表单里还没保存的修改会被放弃。",
     "reload": "重新载入记录",
     "saveApprove": "保存并采纳"
   },
@@ -564,7 +593,8 @@
     "export": {
       "title": "导出文本",
       "chars_other": "{{count}} 字",
-      "confirmFull": "这份文本含私密和敏感的内容，贴出去就收不回来。确定复制吗？",
+      "confirmFullTitle": "复制这份文本？",
+      "confirmFull": "这份文本含私密和敏感的内容，贴出去就收不回来。",
       "fullWarning": "这一级含私密和敏感的内容，贴出去就收不回来。只想给助理少一些，可以切到普通或公开再生成一份。",
       "hint": "可以粘贴到个人助理的“关于我”、自定义指令或 USER.md。贴出去的内容收不回来，复制前请再看一遍。",
       "empty": "确认至少一个板块的总结后，这里会出现可以粘贴给个人助理的文本。"
@@ -584,8 +614,10 @@
     }
   },
   "assistant": {
-    "confirmReissue": "重新生成后旧令牌立即失效，已经配置好的助手都要用新的命令再配置一次。继续吗？",
-    "confirmWithdraw": "停用后所有助手都读不到 WeClone，之后可以重新生成令牌。继续吗？",
+    "confirmReissueTitle": "重新生成令牌？",
+    "confirmReissue": "旧令牌会立即失效，已经配置好的助手都要用新的命令再配置一次。",
+    "confirmWithdrawTitle": "停用令牌？",
+    "confirmWithdraw": "停用后所有助手都读不到 WeClone，之后可以重新生成令牌。",
     "loadFailed": "助手接入页暂时无法打开",
     "loading": "正在读取助手接入设置",
     "connected": "已接入 · {{level}}",
@@ -617,8 +649,8 @@
     "sharedDomains": "提供的板块",
     "domainFacts_other": "{{count}} 条",
     "domainFactsSummary_other": "{{count}} 条 · 有总结",
-    "noDomains": "还没有画像，运行 build-profile 之后这里会列出各个板块。",
-    "domainsNote_other": "勾掉的板块，总结和条目都不给助手。助手现在能读到 {{count}} 段板块总结：这个级别、勾选的板块里、在<link>板块总结页</link>确认过的。改了从助手的下一次调用起生效，不用重新配置。",
+    "noDomains": "还没有画像，<a>构建画像</a>之后这里会列出各个板块。",
+    "domainsNote_other": "勾掉的板块，总结和条目都不给助手。助手现在能读到 {{count}} 段板块总结：这个级别、勾选的板块里、在<a>板块总结页</a>确认过的。改了从助手的下一次调用起生效，不用重新配置。",
     "access": {
       "title": "允许助手读取",
       "until": "到 {{time}} 自动关闭",
@@ -641,8 +673,10 @@
     }
   },
   "bots": {
-    "confirmReissue": "重新生成后旧令牌立即失效，所有机器人都要换成新令牌。继续吗？",
-    "confirmWithdraw": "停用后所有机器人都调用不了分身，之后可以重新生成令牌。继续吗？",
+    "confirmReissueTitle": "重新生成令牌？",
+    "confirmReissue": "旧令牌会立即失效，所有机器人都要换成新令牌。",
+    "confirmWithdrawTitle": "停用令牌？",
+    "confirmWithdraw": "停用后所有机器人都调用不了分身，之后可以重新生成令牌。",
     "loadFailed": "机器人接入页暂时无法打开",
     "loading": "正在读取机器人接入设置",
     "connected": "已接入",
@@ -724,19 +758,24 @@
       "done": "密码已修改，其他设备上的登录已退出"
     },
     "run": {
-      "title": "数据来源",
-      "name": "运行",
-      "path": "目录",
-      "generated": "画像生成于",
-      "reviewed": "最近审核",
+      "title": "画像版本",
       "notReviewed": "还没有审核",
-      "style": "语言风格",
-      "styleYes": "已抽取",
-      "styleNo": "这次运行没有抽取",
       "demo": "演示数据（合成，退出后删除）",
       "none": "未知",
-      "update": "用新的聊天记录更新画像：运行 weclone-cli build-profile 生成新的一次运行，再用 weclone-cli server 打开，默认打开最新的一次，用 --run 指定其他目录。",
-      "footnote": "生成于 {{date}}"
+      "footnote": "生成于 {{date}}",
+      "empty": "还没有画像。",
+      "build": "构建新画像",
+      "current": "当前",
+      "switch": "切换",
+      "switched": "已切换到 {{time}} 生成的画像",
+      "reviewedAt": "最近审核 {{time}}",
+      "withStyle": "含语言风格",
+      "separator": " · ",
+      "progress": "查看进度",
+      "delete": "删除这个版本",
+      "confirmDeleteTitle": "删除这个画像版本？",
+      "confirmDelete": "{{time}} 生成的画像、审核记录和总结都会从这台电脑上删除，不能恢复。",
+      "deleted": "已删除 {{time}} 生成的画像版本"
     }
   },
   "about": {
@@ -756,5 +795,145 @@
     "faq": "常见问题",
     "credits": "许可与致谢",
     "licenseLine": "WeClone 以 <license>AGPL-3.0</license> 许可开源，并受益于这些开源项目："
+  },
+  "build": {
+    "title": "构建画像",
+    "intro": "从聊天记录里整理出一份关于你的画像。构建在后台进行，完成后直接打开。",
+    "loading": "正在读取构建状态",
+    "indicator": {
+      "running": "正在构建 {{step}}/{{steps}}",
+      "done": "新画像已生成",
+      "open": "查看构建"
+    },
+    "stages": {
+      "snapshot": "准备聊天数据",
+      "distill_profile": "抽取画像记忆",
+      "distill_event": "抽取事件记忆",
+      "organize": "划分板块、分类和汇总记忆",
+      "hierarchy": "生成画像层级",
+      "summaries": "生成板块总结",
+      "style": "抽取语言风格"
+    },
+    "stageStates": {
+      "pending": "等待",
+      "running": "进行中",
+      "succeeded": "完成",
+      "failed": "失败",
+      "cancelled": "已取消"
+    },
+    "states": {
+      "running": "构建中",
+      "succeeded": "已完成",
+      "failed": "失败",
+      "cancelled": "已取消",
+      "interrupted": "中断"
+    },
+    "files": "{{done}}/{{total}} 个聊天",
+    "purposes": {
+      "assistant": {
+        "label": "个人助理",
+        "hint": "整理出你的人生画像和近况。Claude Code、Codex 等助手接入后，回答时会参考你的情况。"
+      },
+      "clone": {
+        "label": "AI 分身",
+        "hint": "在个人助理的基础上，再抽取你的语言风格，让分身学会你的说话方式。"
+      }
+    },
+    "prepare": {
+      "last": "上次构建完成于 {{time}}，已经打开。",
+      "purpose": "选择用途",
+      "purposeHint": "以后可以随时再构建另一种",
+      "backend": "模型后端",
+      "backendHint": "在 settings.jsonc 的 agent_distill_args 里设置",
+      "limit_other": "输入上限 {{count}} Token",
+      "checking": "正在检查",
+      "tokens": "模型的输入 Token 上限",
+      "tokensHint": "按模型的上下文长度填写，决定每次请求放多少内容",
+      "chats": "聊天记录",
+      "chatsHint": "在 settings.jsonc 的 make_dataset_args 里设置",
+      "chatsUploadHint": "每个聊天是一个放着 CSV 的文件夹，以聊天对象命名。上传会替换之前上传的聊天",
+      "sources": {
+        "upload": "上传的聊天",
+        "config": "settings.jsonc 里的聊天"
+      },
+      "chatCount_other": "{{count}} 个聊天",
+      "problems": "开始前需要处理",
+      "recheck": "重新检查",
+      "confirm": "确认并开始",
+      "notice": "聊天内容可能包含身份、联系方式和私密对话，模型服务可能记录或留存这些内容。已经抽取过的聊天读取缓存，不会再次发送。",
+      "consent": "我确认有权处理这些聊天记录，并同意把聊天内容发送给 {{backend}}。",
+      "start": "开始构建"
+    },
+    "upload": {
+      "drop": "把聊天文件夹或 zip 拖到这里",
+      "folder": "选文件夹",
+      "zip": "选 zip",
+      "nothing": "没有找到 CSV 聊天记录或 zip",
+      "sending": "正在上传 {{sent}} / {{total}}",
+      "done_other": "上传了 {{count}} 个聊天"
+    },
+    "running": {
+      "state": "构建中",
+      "step": "第 {{step}} 步，共 {{steps}} 步",
+      "elapsed": "已用 {{time}}",
+      "leave": "关闭网页不会停止构建。日志：{{log}}",
+      "cancel": "取消构建",
+      "confirmCancelTitle": "取消这次构建？",
+      "confirmCancel": "已经拿到的模型结果会留在缓存里。",
+      "keep": "继续构建"
+    },
+    "quips": {
+      "any": ["WeClone 正在了解你", "正在理解你", "了解一个人，总要多花点时间"],
+      "snapshot": ["正在翻开你的聊天记录", "先认识一下常和你聊天的人", "正在把聊天按人理好"],
+      "distill_profile": ["正在读你说过的话", "正在记下你提过的小事", "原来你喜欢这个，记下了", "正在从闲聊里认识你"],
+      "distill_event": ["正在回顾你经历过的事", "那些大事小事，一件件记下", "正在给你的经历标上时间"],
+      "organize": ["正在把记忆分门别类", "工作归工作，生活归生活", "说过好几遍的事，合成一条"],
+      "hierarchy": ["你的画像渐渐有了轮廓", "正在把事实归到主题下", "正在画出你的样子"],
+      "summaries": ["正在给每个板块写总结", "快好了，正在写最后几段", "马上就能见到画像里的你"],
+      "style": ["正在学你说话的语气", "你的口头禅，学到了", "分身正在练习用你的方式打字"]
+    },
+    "finished": {
+      "succeeded": {
+        "title": "恭喜，画像构建完成！",
+        "read_other": "读了 {{count}} 个聊天",
+        "took": "用时 {{time}}",
+        "hint": "打开后各个页面显示新画像。旧版本留在设置页的「画像版本」里，可以切回。",
+        "opened": "新画像已经打开。旧版本留在设置页的「画像版本」里，可以切回。",
+        "view": "去看看我的画像",
+        "details": "构建详情",
+        "replay": "再庆祝一次"
+      },
+      "failed": {
+        "title": "构建失败",
+        "hint": "重新构建会用新的目录重跑，已经拿到的模型结果读缓存，不再请求。"
+      },
+      "cancelled": {
+        "title": "构建已取消",
+        "hint": "重新构建会用新的目录重跑，已经拿到的模型结果读缓存，不再请求。"
+      },
+      "interrupted": {
+        "title": "构建中断",
+        "hint": "构建进程没有正常结束，可能是机器重启或进程被结束。重新构建时，已经拿到的模型结果读缓存。"
+      },
+      "stoppedAt": "停在「{{stage}}」",
+      "stoppedBefore": "在第一个阶段开始前停止",
+      "reviewsStay": "当前画像的审核记录留在旧版本里，打开新画像后，可以在设置页的「画像版本」切回。",
+      "log": "日志：{{log}}",
+      "another": "构建新画像",
+      "open": "打开新画像",
+      "again": "重新构建"
+    },
+    "problems": {
+      "config_invalid": "settings.jsonc 读取失败：{{detail}}",
+      "telegram_id_missing": "settings.jsonc 里没有填 make_dataset_args.telegram_args.my_id",
+      "chats_missing": "{{folder}} 里没有聊天记录，请先按文档导出聊天记录",
+      "api_config_missing": "settings.jsonc 的 make_dataset_args 里没有填 {{keys}}",
+      "max_context_required": "API 后端要填写模型的输入 Token 上限",
+      "codex_missing": "找不到 Codex CLI：{{command}}",
+      "codex_logged_out": "Codex CLI 没有登录，请先运行 {{command}} login",
+      "context_unknown": "读不到 Codex 模型的上下文长度，请填写输入 Token 上限",
+      "style_deps_missing": "AI 分身要抽取语言风格，请先运行 uv pip install --group style --torch-backend cpu -e .，并把 LTP 模型放在 {{model_dir}}",
+      "build_running": "已经有一次构建在运行"
+    }
   }
 }

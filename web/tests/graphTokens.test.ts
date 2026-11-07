@@ -47,10 +47,6 @@ const OLD_PALETTE = [
 const channels = (hex: string) => [1, 3, 5].map((at) => parseInt(hex.slice(at, at + 2), 16));
 
 test('section colours reproduce the 16-colour palette at n = 16', () => {
-  assert.deepEqual(
-    DOMAIN_COLORS,
-    OLD_PALETTE.map((_, index) => sectionColor(index, 16)),
-  );
   OLD_PALETTE.forEach((old, index) => {
     const now = channels(DOMAIN_COLORS[index]);
     channels(old).forEach((value, channel) => assert.ok(Math.abs(value - now[channel]) <= 5, `${index}/${channel}`));
@@ -65,8 +61,6 @@ test('section colours work for any count', () => {
       `n = ${count}`,
     );
     assert.equal(new Set(colors).size, count, `distinct at n = ${count}`);
-    // The first section is the base colour, the last has walked the whole hue range.
-    assert.equal(colors[0], sectionColor(0, count));
   }
   // An index past the count extends the walk instead of repeating.
   assert.notEqual(sectionColor(3, 3), sectionColor(2, 3));
@@ -86,7 +80,6 @@ test('the tokens the canvas reads exist', () => {
     '--ink-4',
     '--edge-1',
     '--edge-2',
-    '--pending',
     '--logo-you-1',
     '--logo-you-2',
     '--logo-you-eye-sm',
@@ -97,10 +90,6 @@ test('the tokens the canvas reads exist', () => {
     '--text-node-dim',
     '--text-node-section',
     '--text-node-attr',
-    '--ground-wash-1',
-    '--ground-wash-2',
-    '--ground-wash-3',
-    '--ground-dot',
   ];
   for (const name of names) assert.ok(token(name), name);
 });

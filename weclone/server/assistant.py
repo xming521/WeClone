@@ -344,10 +344,10 @@ class AccessGrant(BaseModel):
         return value
 
 
-def install_assistant(app: FastAPI, store, summaries):
-    """The owner's routes under /api/assistant, and the MCP endpoint at /mcp."""
+def install_assistant(app: FastAPI, runs):
+    """The owner's routes under /api/assistant, and the MCP endpoint at /mcp. Each call reads the run the server
+    shows at that moment."""
     access = AccessStore(secure.configure()["state_dir"] / ACCESS_FILE)
-    tools = AssistantTools(store, summaries)
     auth = app.state.auth_store
     server = {"name": "weclone", "version": server_version()}
 
@@ -360,6 +360,7 @@ def install_assistant(app: FastAPI, store, summaries):
                     return LOCKED.format(url=unlock), True
                 key = allowed[1]
             with secure.storage_context(key):
+                tools = AssistantTools(*runs.current())
                 text, returned = tools.run(*choices, tool, arguments)
                 tools.log(client, tool, arguments, returned)
         except ToolInputError as exc:
@@ -380,7 +381,7 @@ def install_assistant(app: FastAPI, store, summaries):
         allowed = auth.assistant_access()
         state = access.state()
         try:
-            catalog, served = tools.catalog(state["level"], state["domains"])
+            catalog, served = AssistantTools(*runs.current()).catalog(state["level"], state["domains"])
         except FileNotFoundError:
             catalog, served = [], 0
         return {

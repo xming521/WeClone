@@ -4,18 +4,18 @@
 
 ## Build your life portrait
 
-Put your chats in place as described in [Preparing data](data.md), choose a [model backend](installation.md#model-backend), then run from the project root:
+Put your chats in place as described in [Preparing data](data.md), choose a [model backend](installation.md#model-backend), then start the web UI from the project root:
 
 ```bash
-weclone-cli build-profile
+weclone-cli server
 ```
 
-It asks what the portrait is for. You can also pass the choice directly:
+Open http://127.0.0.1:5175, set a password and go to the Build portrait page. The home page leads there while you have no portrait, and later you reach it from Settings → Portrait versions. First choose what the portrait is for:
 
-- `--purpose assistant`: for personal assistants. Extracts the portrait and events.
-- `--purpose clone`: for a clone. Also extracts your speaking style, which needs the [speaking style dependencies](installation.md#speaking-style-dependencies).
+- Personal assistant: extracts the portrait and events.
+- Clone: also extracts your speaking style, which needs the [speaking style dependencies](installation.md#speaking-style-dependencies).
 
-Before it starts, it shows the model backend and asks you to confirm, because your chat content is sent to that model service. It then runs these stages:
+The page checks your setup and lists any missing settings with how to fix them. Chats in the generic CSV format can be uploaded on this page, see [Preparing Data](data.md#generic-csv-format). An API backend also needs the model's input token limit. Agree to send your chats to the model service and start the build. It runs in a background process, so closing the page doesn't stop it. The page shows the progress of each stage, and the top bar of other pages shows "Building n/N". The stages are:
 
 1. Prepare the chat data: group text messages by contact and split them into sessions
 2. Extract profile memories and event memories
@@ -28,14 +28,26 @@ Before it starts, it shows the model backend and asks you to confirm, because yo
 |---|---|
 | `--output-dir <dir>` | Result directory, which must be new. Defaults to a timestamped directory under `dataset/res_csv/agent/profile_runs/` |
 | `--max-context-tokens <limit>` | Input token limit for memory organization and the hierarchy. The Codex backend reads the model's context length by default. The API backend requires it |
+| `--csv-folder <dir>` | Read the chats in this folder as generic CSV, one folder per chat, instead of `platform` and `csv_folder` in the config |
+| `--yes` | Skip the confirmation to send, for scripts |
 
-Model answers are cached by input content in `dataset/res_csv/agent/llm_cache.sqlite`. If a run fails partway, rerun it into a new result directory and only the missing parts are requested. Delete the file to request everything again.
+When the build finishes and the portrait shown has no reviews yet, the web UI switches to the new one. If you have reviewed it, your reviews stay with that version and you switch with **Open the new portrait**. Every version is listed under Settings → Portrait versions, where you can switch back at any time or delete the ones you no longer need, except the one shown. Only one build runs at a time.
+
+Model answers are cached by input content in `dataset/res_csv/agent/llm_cache.sqlite`. After a failed or cancelled build, **Build again** reruns it in a new result directory and only the missing parts are requested. Delete the file to request everything again.
+
+### Build from the command line
+
+```bash
+weclone-cli build-profile
+```
+
+It asks what the portrait is for, or pass `--purpose assistant` or `--purpose clone`. It runs the same checks as the web page first and lists every problem before it exits. Then it shows the model backend and asks you to confirm. The result also shows up under Portrait versions in the web UI.
 
 ## Review in the web UI
 
 ```bash
-weclone-cli server                    # serve the newest run
-weclone-cli server --run <result-dir> # serve a specific run
+weclone-cli server                    # serve the version picked on the web, else the newest run
+weclone-cli server --run <result-dir> # serve a specific run for this start
 weclone-cli server --demo en          # serve the bundled synthetic portrait in English
 ```
 
@@ -50,6 +62,7 @@ Open http://127.0.0.1:5175 and sign in with the shared password (see [Security](
 | Summaries (`#/summary`) | Generate and approve a summary per domain and privacy level, and copy them for a personal assistant |
 | Assistants (`#/assistant`) | Choose the level and domains assistants can read, and generate their token |
 | Bots (`#/bots`) | Generate the token chat bots call the clone with. See [Chat bots](chatbot.md) |
+| Build portrait (`#/build`) | Check the setup, build a new portrait from your chats and follow its progress. Switch versions under Settings → Portrait versions |
 
 Your review is saved in the run's `profile_hierarchy/` directory and belongs to that run only.
 

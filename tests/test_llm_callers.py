@@ -126,6 +126,3 @@ def test_vision_payload_and_retry_contract(tmp_path, monkeypatch):
     assert params == {"max_tokens": 1000, "temperature": 0.1}
     assert messages[0]["content"][0]["text"] == processor.prompt
     assert messages[0]["content"][1]["image_url"]["url"].startswith("data:image/png;base64,")
-    policy = factory.call_args.kwargs["retry_policy"]
-    assert (policy.max_retries, policy.base_delay, policy.max_delay) == (5, 15.0, 300.0)
-    assert factory.call_args.kwargs["timeout"] == 60

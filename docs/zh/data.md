@@ -25,4 +25,4 @@
 
 ## 通用 CSV 格式
 
-其他平台的聊天记录可以转换成 WeClone 的通用 CSV 格式，放进 `dataset/csv/`，并保持 `platform` 为 `chat`。CSV 的列和目录结构见文档站的[准备数据](https://docs.weclone.love/zh/docs/deploy/export-chat-history#%E9%80%9A%E7%94%A8-csv-%E6%A0%BC%E5%BC%8F)。
+其他平台的聊天记录可以转换成 WeClone 的通用 CSV 格式，放进 `dataset/csv/`，并保持 `platform` 为 `chat`。也可以在网页的「构建画像」页上传：选择或拖入聊天文件夹或 zip，每个聊天是一个放着 CSV 的文件夹，以聊天对象命名。上传的聊天单独保存在 `dataset/uploaded/`，不看 `platform` 设置，每次上传整份替换之前上传的聊天，加密模式下加密保存。构建时默认读上传的聊天，两边都有聊天时可以在页面上切换。CSV 的列和目录结构见文档站的[准备数据](https://docs.weclone.love/zh/docs/deploy/export-chat-history#%E9%80%9A%E7%94%A8-csv-%E6%A0%BC%E5%BC%8F)。

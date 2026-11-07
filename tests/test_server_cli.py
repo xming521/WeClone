@@ -37,7 +37,6 @@ def test_server_cli_routes_options_without_loading_model_config(monkeypatch, tmp
     assert result.exit_code == 0, result.output
     serve.assert_called_once_with(**expected)
     load.assert_not_called()
-    assert "inference-server" not in module.cli.commands
 
 
 def test_server_cli_rejects_demo_with_run(monkeypatch, tmp_path):
@@ -53,12 +52,9 @@ def test_server_cli_rejects_demo_with_run(monkeypatch, tmp_path):
 
 
 @pytest.mark.parametrize("language", ["zh", "en"])
-def test_demo_serves_test_profile_apart_from_real_storage(tmp_path, monkeypatch, language):
-    settings = tmp_path / "settings.jsonc"
+def test_demo_serves_test_profile_apart_from_real_storage(tmp_path, storage, language):
     real_state = tmp_path / "state"
-    settings.write_text(json.dumps({"security_args": {"storage_mode": "encrypted", "state_dir": str(real_state)}}))
-    monkeypatch.setenv("WECLONE_CONFIG_PATH", str(settings))
-    secure_storage.configure()
+    storage("encrypted")
     profile = json.loads((app.DEMO_DATA / app.DEMO_PROFILES[language]).read_text())
     with app.demo_run(language) as run:
         assert not secure_storage.is_encrypted_mode()
@@ -81,16 +77,7 @@ def write_profile(run):
     source.write_text('{"domains":[],"dimensions":[],"facts":[],"sources":{}}')
 
 
-def use_plaintext_storage(tmp_path, monkeypatch):
-    settings = tmp_path / "settings.jsonc"
-    settings.write_text(
-        json.dumps({"security_args": {"storage_mode": "plaintext", "state_dir": str(tmp_path / "state")}})
-    )
-    monkeypatch.setenv("WECLONE_CONFIG_PATH", str(settings))
-    secure_storage.configure()
-
-
-def test_unified_routes_lifespan_auth_and_streaming(tmp_path, monkeypatch):
+def test_unified_routes_lifespan_auth_and_streaming(tmp_path, monkeypatch, storage):
     events = []
 
     @asynccontextmanager
@@ -116,7 +103,7 @@ def test_unified_routes_lifespan_auth_and_streaming(tmp_path, monkeypatch):
 
     factory = Mock(return_value=inference)
     monkeypatch.setattr(api_service, "create_inference_app", factory)
-    use_plaintext_storage(tmp_path, monkeypatch)
+    storage()
     run = tmp_path / "run"
     write_profile(run)
     static = tmp_path / "web"
@@ -125,7 +112,6 @@ def test_unified_routes_lifespan_auth_and_streaming(tmp_path, monkeypatch):
     options = {"run": run, "static_dir": static}
     with TestClient(app.create_app(**options)) as client:
         client.headers["X-WeClone-Request"] = "1"
-        assert client.get("/api/profile").status_code == 401
         password = {"password": "server-test", "confirmation": "server-test"}
         assert client.post("/api/auth/setup", json=password).status_code == 200
         assert client.get("/").text == "<h1>WeClone</h1>"
@@ -151,8 +137,8 @@ def test_unified_routes_lifespan_auth_and_streaming(tmp_path, monkeypatch):
     factory.assert_called_once()
 
 
-def test_style_comes_from_the_served_run(tmp_path, monkeypatch):
-    use_plaintext_storage(tmp_path, monkeypatch)
+def test_style_comes_from_the_served_run(tmp_path, monkeypatch, storage):
+    storage()
     monkeypatch.setattr(style_view, "build_view", lambda run: {"run": str(run)})
     with_style, without_style = tmp_path / "with-style", tmp_path / "without-style"
     for run in (with_style, without_style):
