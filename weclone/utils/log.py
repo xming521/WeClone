@@ -36,9 +36,28 @@ def _persistent_log_format(record) -> str:
 REDACT_ENV = "WECLONE_LOG_REDACT"
 
 
+def _keep_terminal_off_disk():
+    """In encrypted mode, a process whose terminal is kept on disk writes there only the log lines and the class of an
+    uncaught exception. Printed lines, bridged logging records, progress bars and tracebacks can carry chat text, so the
+    terminal descriptors, which child processes inherit too, go to the null device. Returns the kept file as a stream,
+    None for a terminal that is not kept."""
+    if os.getenv(REDACT_ENV) != "1" or not _encrypted_logging():
+        return None
+    kept = os.fdopen(os.dup(2), "w", buffering=1, encoding="utf-8")
+    null = os.open(os.devnull, os.O_WRONLY)
+    for descriptor in (1, 2):
+        os.dup2(null, descriptor)
+    os.close(null)
+    sys.excepthook = lambda kind, value, traceback: kept.write(f"uncaught error_type={kind.__name__}\n")
+    return kept
+
+
+_kept_terminal = _keep_terminal_off_disk()
+
+
 def _add_stderr_sink(level: str) -> None:
     if os.getenv(REDACT_ENV) == "1":
-        logger.add(sys.stderr, format=_persistent_log_format, colorize=False, level=level)
+        logger.add(_kept_terminal or sys.stderr, format=_persistent_log_format, colorize=False, level=level)
         return
     logger.add(
         sys.stderr,

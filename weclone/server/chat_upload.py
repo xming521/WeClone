@@ -27,12 +27,8 @@ def upload_parts(path: str) -> tuple[str, ...] | None:
     system or an archiver, or not read from a chat folder."""
     path = path.replace("\\", "/")
     parts = tuple(part for part in path.split("/") if part)
-    if (
-        not parts
-        or path.startswith("/")
-        or ":" in parts[0]
-        or any(p in (".", "..") or "\0" in p for p in parts)
-    ):
+    # A colon in any segment: on Windows a drive there starts the path again from that drive.
+    if not parts or path.startswith("/") or any(p in (".", "..") or "\0" in p or ":" in p for p in parts):
         raise ApiError(422, "upload_path_invalid", "文件路径必须是相对路径")
     if any(part.startswith(".") or part == "__MACOSX" for part in parts):
         return None

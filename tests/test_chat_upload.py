@@ -109,6 +109,11 @@ def test_a_zip_names_loose_chunks_after_itself_and_rejects_paths_out(web, tmp_pa
     response = client.put(f"/api/data/uploads/{upload_id}/files", params={"path": "../x.csv"}, content=b"")
     assert response.json()["code"] == "upload_path_invalid"
     assert not (tmp_path / "escape").exists()
+    # On Windows a drive anywhere in the path starts it again from that drive.
+    response = client.put(
+        f"/api/data/uploads/{upload_id}/files", params={"path": "chats/C:/escape/x.csv"}, content=b""
+    )
+    assert response.json()["code"] == "upload_path_invalid"
 
 
 def test_chunks_outside_a_chat_folder_are_not_a_chat(web):

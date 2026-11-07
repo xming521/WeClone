@@ -18,13 +18,18 @@ from weclone.server.profile_review import ReviewStore
 from weclone.server.profile_summary import clean, domain_members
 
 OUTPUT_NAME = "deep_insights.json"
+# The group of facts in no domain, as the owner can add them straight to a dimension.
+UNPLACED = "不属于任何板块"
 
 
 def profile_input(profile: dict) -> tuple[list[tuple[str, list[str]]], list[dict]]:
-    """Each domain's fact lines for the prompt, leaving out rejected facts, and the facts in the order the lines
-    number them."""
+    """Each domain's fact lines for the prompt, then those of the facts in no domain, leaving out rejected facts, and
+    the facts in the order the lines number them."""
+    members = domain_members(profile)
+    placed = {index for indices in members.values() for index in indices}
+    unplaced = [index for index in range(len(profile["facts"])) if index not in placed]
     groups, numbered = [], []
-    for domain, indices in domain_members(profile).items():
+    for domain, indices in [*members.items(), (UNPLACED, unplaced)]:
         lines = []
         for index in indices:
             fact = profile["facts"][index]

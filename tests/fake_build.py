@@ -8,7 +8,7 @@ import time
 from pathlib import Path
 
 from weclone.data.agent import profile_pipeline as pipeline
-from weclone.utils import secure_storage
+from weclone.utils import log, secure_storage  # noqa: F401  # log sets up the terminal, as for weclone/cli.py
 
 args = sys.argv[1:]
 output = Path(args[args.index("--output-dir") + 1])
@@ -25,6 +25,7 @@ try:
         with build.stage("distill_profile"):
             build.progress(0, 2)
             if os.environ["FAKE_BUILD"] == "fail":
+                print("printed private text", flush=True)
                 raise RuntimeError("fake failure with private text")
             while os.environ["FAKE_BUILD"] == "wait":
                 time.sleep(0.05)

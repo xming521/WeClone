@@ -438,6 +438,8 @@ class Runs:
         self.lock = threading.Lock()
         self.pairs: dict[Path, tuple[ReviewStore, SummaryStore]] = {}
         self.pair: tuple[ReviewStore, SummaryStore] | None = None
+        # Whether the server was started on this run, as by `server --run`.
+        self.chosen = source is not None
         if source is None:
             saved = settings.setting("current_run")
             run = Path(saved) if saved and run_complete(Path(saved)) else newest_run()

@@ -3,6 +3,7 @@ import json
 import pytest
 
 from weclone.data.agent import llm_cache, profile_pipeline
+from weclone.server import chat_upload
 from weclone.utils import secure_storage
 
 
@@ -14,11 +15,12 @@ def isolated_llm_cache(tmp_path_factory, monkeypatch):
 
 @pytest.fixture(autouse=True)
 def isolated_runs(tmp_path_factory, monkeypatch):
-    """Every test gets empty runs and uploaded chats folders of its own, so a server it starts doesn't open the
-    project's latest build."""
+    """Every test gets empty runs, uploaded chats and upload staging folders of its own, so a server it starts neither
+    opens the project's latest build nor clears an upload under way there."""
     root = tmp_path_factory.mktemp("dataset")
     monkeypatch.setattr(profile_pipeline, "RUNS_DIR", root / "runs")
     monkeypatch.setattr(profile_pipeline, "UPLOAD_DIR", root / "uploaded")
+    monkeypatch.setattr(chat_upload, "STAGING_DIR", root / "uploads")
 
 
 @pytest.fixture(autouse=True)

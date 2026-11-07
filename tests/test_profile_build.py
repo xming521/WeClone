@@ -190,7 +190,7 @@ def test_one_build_at_a_time_and_cancel(web, monkeypatch):
     assert client.delete("/api/build").json()["code"] == "build_not_running"
 
 
-def test_a_build_that_died_without_saying_shows_as_interrupted(web):
+def test_a_build_that_died_without_saying_shows_as_interrupted(web, monkeypatch):
     client = web()
     run = pipeline.RUNS_DIR / "20260101_000000_000000"
     run.mkdir(parents=True)
@@ -198,6 +198,24 @@ def test_a_build_that_died_without_saying_shows_as_interrupted(web):
     pipeline.record_build(run)
     status = client.get("/api/build").json()
     assert status["state"] == "interrupted" and status["stages"][-1]["key"] == "style"
+    # It stays so while a later build runs.
+    monkeypatch.setenv("FAKE_BUILD", "wait")
+    started = build(client)
+    wait(client, "running")
+    states = {item["name"]: item["state"] for item in client.get("/api/runs").json()}
+    assert states == {started["run"]: "running", run.name: "interrupted"}
+    assert client.delete("/api/build").json() == {"ok": True}
+    wait(client, "cancelled")
+
+
+def test_a_server_started_on_a_run_keeps_it_over_a_build_that_ended_before(web):
+    older, newer = pipeline.RUNS_DIR / "20260101_000000_000000", pipeline.RUNS_DIR / "20260102_000000_000000"
+    write_profile(older, "旧画像")
+    write_profile(newer, "新画像")
+    pipeline.write_status(newer, {**pipeline.new_status("assistant"), "state": "succeeded"})
+    pipeline.record_build(newer)
+    client = web(source=older / "profile_hierarchy" / "profile_hierarchy.json")
+    assert values(client) == ["旧画像"]
 
 
 def test_a_build_needs_consent_and_a_passing_check(web, monkeypatch):
@@ -224,8 +242,11 @@ def test_an_encrypted_build_writes_with_the_session_key(web, monkeypatch, storag
     assert values(client) == ["新画像"]
     monkeypatch.setenv("FAKE_BUILD", "fail")
     build(client)
-    # Encrypted mode keeps only the exception class, as persistent logs do.
-    assert wait(client, "failed")["error"]["message"] == ""
+    # Encrypted mode keeps only the exception class, as persistent logs do, in the status and in the log.
+    failed = wait(client, "failed")
+    assert failed["error"]["message"] == ""
+    log = (pipeline.RUNS_DIR / failed["run"] / pipeline.LOG_FILE).read_text(encoding="utf-8")
+    assert "private" not in log and "uncaught error_type=RuntimeError" in log
 
 
 def test_the_demo_cannot_build_or_switch(tmp_path, storage):

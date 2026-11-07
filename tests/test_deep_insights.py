@@ -71,6 +71,24 @@ def test_prompt_numbers_the_facts_left_by_domain_and_ends_with_the_cap(run):
     )
 
 
+def test_facts_in_no_domain_come_last(run):
+    directory, asked, answers = run
+    path = directory / "profile_hierarchy.json"
+    profile = json.loads(path.read_text(encoding="utf-8"))
+    profile["facts"].append({"dim": 8, "attr": "运动", "value": "爱打球", "sensitivity": "normal", "source_ids": []})
+    # An attribute straight on its dimension, as one the owner adds there.
+    next(item for item in profile["dimensions"] if item["dim"] == 8)["groups"].append(
+        {"attr": "运动", "fact_indices": [4]}
+    )
+    path.write_text(json.dumps(profile, ensure_ascii=False), encoding="utf-8")
+    answers.append({"implicit_facts": [], "insights": []})
+    deep_insights.build_insights(directory)
+    assert asked[0]["prompt"].endswith(
+        "\n\n## 饮食\n3｜口味 偏好：爱吃 辣（stable）\n\n## 不属于任何板块\n4｜运动：爱打球\n\n深度洞察最多写 1 条，"
+        "优先写能解释最多事实的。"
+    )
+
+
 def test_conclusions_keep_their_facts_and_the_strictest_sensitivity(run):
     directory, _, answers = run
     answers.append(

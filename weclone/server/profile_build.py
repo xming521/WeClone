@@ -91,6 +91,12 @@ class Builds:
         self.process: subprocess.Popen | None = None
         self.cancelled: Path | None = None
         self.lock = threading.Lock()
+        # A server started on a run keeps showing it over a build that ended before it started.
+        if runs.chosen and not demo:
+            run = pipeline.last_build()
+            status = pipeline.read_status(run) if run is not None else None
+            if status is not None and status["state"] != "running":
+                runs.settings.save_setting("settled_build", str(run))
 
     def started_here(self) -> bool:
         return self.process is not None and self.process.poll() is None
@@ -99,7 +105,8 @@ class Builds:
         return self.started_here() or pipeline.build_running()
 
     def state(self, run: Path, status: dict) -> str:
-        if status["state"] != "running" or self.running():
+        # The build running now, if any, is the latest one.
+        if status["state"] != "running" or (self.running() and same(run, pipeline.last_build())):
             return status["state"]
         # The process ended without recording how, as when it was killed before its SIGTERM handler was in place.
         return "cancelled" if same(run, self.cancelled) else "interrupted"
