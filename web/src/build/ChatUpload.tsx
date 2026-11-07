@@ -36,8 +36,17 @@ type Upload =
   | { state: 'done'; result: UploadResult }
   | { state: 'failed'; message: string };
 
-/** Chat folders and zips picked or dropped here go into csv_folder. `onUploaded` runs the check again. */
-export function ChatUpload({ disabled, onUploaded }: { disabled: boolean; onUploaded: () => void }) {
+/** Chat folders and zips picked or dropped here replace the chats uploaded before. With no chats
+ * yet (`empty`) it is the step's one task and stands larger. */
+export function ChatUpload({
+  disabled,
+  empty,
+  onUploaded,
+}: {
+  disabled: boolean;
+  empty: boolean;
+  onUploaded: () => void;
+}) {
   const { t } = useTranslation();
   const [upload, setUpload] = useState<Upload>({ state: 'idle' });
   const [over, setOver] = useState(false);
@@ -73,6 +82,7 @@ export function ChatUpload({ disabled, onUploaded }: { disabled: boolean; onUplo
     <div
       className="build-upload"
       data-over={over || undefined}
+      data-empty={empty || undefined}
       onDragOver={(event) => {
         event.preventDefault();
         if (!off) setOver(true);
@@ -80,8 +90,13 @@ export function ChatUpload({ disabled, onUploaded }: { disabled: boolean; onUplo
       onDragLeave={() => setOver(false)}
       onDrop={drop}
     >
-      <FolderUp className="build-upload__icon" size={18} strokeWidth={1.8} aria-hidden="true" />
-      <span className="build-upload__text">{t(($) => $.build.upload.drop)}</span>
+      <span className="build-upload__icon" aria-hidden="true">
+        <FolderUp size={20} strokeWidth={1.8} />
+      </span>
+      <span className="build-upload__text">
+        <strong>{t(($) => $.build.upload.drop)}</strong>
+        <span>{t(($) => $.build.prepare.chatsUploadHint)}</span>
+      </span>
       <span className="build-upload__actions">
         <label className="wc-btn wc-btn--sm" aria-disabled={off || undefined}>
           {t(($) => $.build.upload.folder)}
@@ -125,13 +140,7 @@ export function ChatUpload({ disabled, onUploaded }: { disabled: boolean; onUplo
               {t(($) => $.build.upload.sending, { sent: size(upload.sent), total: size(upload.total) })}
             </>
           )}
-          {upload.state === 'done' &&
-            (upload.result.replaced
-              ? t(($) => $.build.upload.doneReplaced, {
-                  count: upload.result.chats,
-                  replaced: upload.result.replaced,
-                })
-              : t(($) => $.build.upload.done, { count: upload.result.chats }))}
+          {upload.state === 'done' && t(($) => $.build.upload.done, { count: upload.result.chats })}
           {upload.state === 'failed' && upload.message}
         </p>
       )}

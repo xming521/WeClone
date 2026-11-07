@@ -8,6 +8,7 @@ import { BuildIndicator } from '../build/BuildIndicator';
 import { LanguageSwitch } from '../LanguageSwitch';
 import { SettingsLink } from '../settings/SettingsLink';
 import { ModeSwitch } from '../ModeSwitch';
+import { confirm } from '../feedback/confirm';
 import '../summary/summary.css';
 import { CopyField, LevelSwitch, TokenCard, moment, type TokenState } from './accessParts';
 import './assistant.css';
@@ -116,13 +117,28 @@ export function AssistantApp() {
     share(names);
   }
 
-  function issue() {
-    if (view?.token && !window.confirm(t(($) => $.assistant.confirmReissue))) return;
+  async function issue() {
+    if (
+      view?.token &&
+      !(await confirm({
+        title: t(($) => $.assistant.confirmReissueTitle),
+        body: t(($) => $.assistant.confirmReissue),
+        action: t(($) => $.access.token.reissue),
+        tone: 'danger',
+      }))
+    )
+      return;
     void run(async () => setCreated((await api.post<{ token: string }>('assistant/token')).token));
   }
 
-  function withdraw() {
-    if (!window.confirm(t(($) => $.assistant.confirmWithdraw))) return;
+  async function withdraw() {
+    const ok = await confirm({
+      title: t(($) => $.assistant.confirmWithdrawTitle),
+      body: t(($) => $.assistant.confirmWithdraw),
+      action: t(($) => $.access.token.withdraw),
+      tone: 'danger',
+    });
+    if (!ok) return;
     void run(async () => {
       await api.delete('assistant/token');
       setCreated('');

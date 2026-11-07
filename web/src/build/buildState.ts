@@ -5,10 +5,22 @@ import { useProfileStore } from '../store';
 import type { BuildStatus } from './progress';
 
 const POLL_MS = 3000;
+// The run of the last succeeded build the owner moved on from. Until then the build page celebrates it.
+const SEEN_KEY = 'weclone.build.seen';
+
+function savedSeen(): string | null {
+  try {
+    return window.localStorage.getItem(SEEN_KEY);
+  } catch {
+    return null;
+  }
+}
 
 interface BuildStore {
   /** The latest build, null when there was none, undefined until the server answers. */
   status: BuildStatus | null | undefined;
+  seen: string | null;
+  see: (run: string) => void;
   refresh: () => Promise<void>;
 }
 
@@ -24,6 +36,15 @@ function schedule() {
 
 export const useBuildStore = create<BuildStore>((set, get) => ({
   status: undefined,
+  seen: savedSeen(),
+  see: (run) => {
+    try {
+      window.localStorage.setItem(SEEN_KEY, run);
+    } catch {
+      // Without storage the celebration ends for this visit only.
+    }
+    set({ seen: run });
+  },
   refresh: async () => {
     const before = get().status;
     try {

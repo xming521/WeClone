@@ -1,7 +1,16 @@
 /* Settings and about pages: the summary page's shell and the assistant page's cards, with rows of a label and its
    control, and link cards. */
-.settings-section h2 {
+.settings-section__head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
   margin: 0 0 var(--space-2);
+}
+
+.settings-section h2 {
+  margin: 0;
   color: var(--ink-1);
   font: var(--text-subtitle);
 }
@@ -17,7 +26,7 @@
   border-top: 1px solid var(--line-1);
 }
 
-.settings-section h2 + .settings-row {
+.settings-section__head + .settings-row {
   border-top: 0;
 }
 
@@ -68,31 +77,6 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-3);
   width: 100%;
-}
-
-.settings-facts {
-  display: grid;
-  gap: var(--space-2);
-  margin: 0;
-}
-
-.settings-facts > div {
-  display: grid;
-  grid-template-columns: 9em minmax(0, 1fr);
-  gap: var(--space-3);
-}
-
-.settings-facts dt {
-  color: var(--ink-3);
-  font: var(--text-caption);
-  line-height: 22px;
-}
-
-.settings-facts dd {
-  margin: 0;
-  color: var(--ink-1);
-  font: var(--text-label);
-  overflow-wrap: anywhere;
 }
 
 /* Link cards: the about link on the settings page and the project and community links on the about page. */
@@ -211,11 +195,6 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .settings-facts > div {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 0;
-  }
-
   .about-hero {
     align-items: flex-start;
     flex-direction: column;
@@ -225,22 +204,9 @@
 
 /* The runs of the profile-version section: the one shown marked, the others with a switch. */
 .settings-versions {
-  margin-top: var(--space-3);
-  padding-top: var(--space-3);
-  border-top: 1px solid var(--line-1);
-}
-
-.settings-versions__head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-.settings-versions ul {
   display: grid;
   gap: var(--space-1);
-  margin: var(--space-2) 0 0;
+  margin: 0;
   padding: 0;
   list-style: none;
 }
@@ -259,6 +225,19 @@
   background: var(--well);
 }
 
+.settings-versions__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.settings-versions__delete:hover:not(:disabled) {
+  background: var(--danger-tint);
+  color: var(--danger);
+}
+.settings-versions__delete:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
 .settings-versions__name {
   display: inline-flex;
   flex-wrap: wrap;

@@ -8,6 +8,7 @@ import { LanguageSwitch } from '../LanguageSwitch';
 import { SettingsLink } from '../settings/SettingsLink';
 import { ModeSwitch } from '../ModeSwitch';
 import { CopyField, TokenCard, type TokenState } from '../assistant/accessParts';
+import { confirm } from '../feedback/confirm';
 import { ClonePlayground } from './ClonePlayground';
 import '../assistant/assistant.css';
 import './bots.css';
@@ -55,13 +56,28 @@ export function BotsApp() {
     }
   }
 
-  function issue() {
-    if (view?.token && !window.confirm(t(($) => $.bots.confirmReissue))) return;
+  async function issue() {
+    if (
+      view?.token &&
+      !(await confirm({
+        title: t(($) => $.bots.confirmReissueTitle),
+        body: t(($) => $.bots.confirmReissue),
+        action: t(($) => $.access.token.reissue),
+        tone: 'danger',
+      }))
+    )
+      return;
     void run(async () => setCreated((await api.post<{ token: string }>('bots/token')).token));
   }
 
-  function withdraw() {
-    if (!window.confirm(t(($) => $.bots.confirmWithdraw))) return;
+  async function withdraw() {
+    const ok = await confirm({
+      title: t(($) => $.bots.confirmWithdrawTitle),
+      body: t(($) => $.bots.confirmWithdraw),
+      action: t(($) => $.access.token.withdraw),
+      tone: 'danger',
+    });
+    if (!ok) return;
     void run(async () => {
       await api.delete('bots/token');
       setCreated('');

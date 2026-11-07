@@ -297,13 +297,17 @@
   margin: 0;
   padding: var(--space-5);
   border: 0;
-  background: color-mix(in srgb, var(--ink-1) 32%, transparent);
-  backdrop-filter: blur(5px);
+  background: var(--scrim);
   color: inherit;
 }
 
 .editor-backdrop:not([open]) {
   display: none;
+}
+
+/* The dialog element is the scrim itself; the browser's own backdrop under it would dim twice. */
+.editor-backdrop::backdrop {
+  background: transparent;
 }
 
 .fact-editor {

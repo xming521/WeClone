@@ -26,6 +26,7 @@ import { BuildApp } from './build/BuildApp';
 import { BuildIndicator } from './build/BuildIndicator';
 import { SettingsApp } from './settings/SettingsApp';
 import { SettingsLink } from './settings/SettingsLink';
+import { ConfirmDialog } from './feedback/ConfirmDialog';
 import { Toaster } from './feedback/Toaster';
 
 function Atlas() {
@@ -185,6 +186,7 @@ export default function App() {
     <AuthGate>
       <Page />
       <Toaster />
+      <ConfirmDialog />
     </AuthGate>
   );
 }

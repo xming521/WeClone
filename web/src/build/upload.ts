@@ -1,4 +1,4 @@
-// The files sent to weclone/server/chat_upload.py, which places the chats they hold into csv_folder.
+// The files sent to weclone/server/chat_upload.py, whose chats replace the ones uploaded before.
 
 export interface Picked {
   /** Relative to what was picked or dropped, the picked folder's own name first. */
@@ -8,7 +8,6 @@ export interface Picked {
 
 export interface UploadResult {
   chats: number;
-  replaced: number;
 }
 
 function hidden(name: string): boolean {

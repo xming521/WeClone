@@ -1,13 +1,15 @@
 import { LoaderCircle, Sparkles } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { useBuildStatus } from './buildState';
+import { useBuildStatus, useBuildStore } from './buildState';
 import { buildStep } from './progress';
 import './build.css';
 
-/** In the topbar of every page: a build that runs, or a finished one the server does not show yet. */
+/** In the topbar of every page: a build that runs, or a finished one the server does not show yet or the owner has
+ * not looked at. */
 export function BuildIndicator() {
   const { t } = useTranslation();
   const status = useBuildStatus();
+  const seen = useBuildStore((state) => state.seen);
   if (status?.state === 'running') {
     const { step, steps } = buildStep(status);
     return (
@@ -17,7 +19,7 @@ export function BuildIndicator() {
       </a>
     );
   }
-  if (status?.state === 'succeeded' && !status.current)
+  if (status?.state === 'succeeded' && (!status.current || status.run !== seen))
     return (
       <a className="build-pill build-pill--done" href="#/build" title={t(($) => $.build.indicator.open)}>
         <Sparkles size={14} strokeWidth={2} aria-hidden="true" />

@@ -60,8 +60,10 @@ export default interface Resources {
       "address": "MCP 地址 <code>{{url}}</code>",
       "addressPlaintext": "MCP 地址 <code>{{url}}</code>。数据是明文存储的，令牌有效时助手随时可以读取",
       "allDomains": "全部提供，以后新出现的板块也提供",
-      "confirmReissue": "重新生成后旧令牌立即失效，已经配置好的助手都要用新的命令再配置一次。继续吗？",
-      "confirmWithdraw": "停用后所有助手都读不到 WeClone，之后可以重新生成令牌。继续吗？",
+      "confirmReissue": "旧令牌会立即失效，已经配置好的助手都要用新的命令再配置一次。",
+      "confirmReissueTitle": "重新生成令牌？",
+      "confirmWithdraw": "停用后所有助手都读不到 WeClone，之后可以重新生成令牌。",
+      "confirmWithdrawTitle": "停用令牌？",
       "connected": "已接入 · {{level}}",
       "days": "{{count}} 天",
       "domainFacts": "{{count}} 条",
@@ -188,8 +190,10 @@ export default interface Resources {
     },
     "bots": {
       "address": "接口地址 <code>{{url}}</code>",
-      "confirmReissue": "重新生成后旧令牌立即失效，所有机器人都要换成新令牌。继续吗？",
-      "confirmWithdraw": "停用后所有机器人都调用不了分身，之后可以重新生成令牌。继续吗？",
+      "confirmReissue": "旧令牌会立即失效，所有机器人都要换成新令牌。",
+      "confirmReissueTitle": "重新生成令牌？",
+      "confirmWithdraw": "停用后所有机器人都调用不了分身，之后可以重新生成令牌。",
+      "confirmWithdrawTitle": "停用令牌？",
       "connected": "已接入",
       "encrypted": "数据是加密的：生成令牌时，数据密钥用令牌加密后存进本机的 bots.sqlite3，机器人调用时凭令牌解开，不需要你登录。令牌和这个文件同时泄露就能解密全部数据，请像密码一样保管令牌。改密码不影响令牌，怀疑泄露时请重新生成。",
       "intro": "AstrBot、LangBot 等机器人平台通过 OpenAI 兼容接口调用微调后的分身模型。所有机器人共用一个令牌，填在平台的 API Key 里。",
@@ -240,8 +244,14 @@ export default interface Resources {
         "stoppedAt": "停在「{{stage}}」",
         "stoppedBefore": "在第一个阶段开始前停止",
         "succeeded": {
+          "details": "构建详情",
           "hint": "打开后各个页面显示新画像。旧版本留在设置页的「画像版本」里，可以切回。",
-          "title": "新画像已生成"
+          "opened": "新画像已经打开。旧版本留在设置页的「画像版本」里，可以切回。",
+          "read": "读了 {{count}} 个聊天",
+          "replay": "再庆祝一次",
+          "title": "恭喜，画像构建完成！",
+          "took": "用时 {{time}}",
+          "view": "去看看我的画像"
         }
       },
       "indicator": {
@@ -249,7 +259,7 @@ export default interface Resources {
         "open": "查看构建",
         "running": "正在构建 {{step}}/{{steps}}"
       },
-      "intro": "从聊天记录抽取画像：检查配置、确认发送，然后在这里看进度。构建在后台进行，完成后直接打开，不用重启服务。",
+      "intro": "从聊天记录里整理出一份关于你的画像。构建在后台进行，完成后直接打开。",
       "loading": "正在读取构建状态",
       "prepare": {
         "backend": "模型后端",
@@ -257,14 +267,21 @@ export default interface Resources {
         "chatCount": "{{count}} 个聊天",
         "chats": "聊天记录",
         "chatsHint": "在 settings.jsonc 的 make_dataset_args 里设置",
-        "chatsUploadHint": "每个聊天是一个放着 CSV 的文件夹，以聊天对象命名",
+        "chatsUploadHint": "每个聊天是一个放着 CSV 的文件夹，以聊天对象命名。上传会替换之前上传的聊天",
         "checking": "正在检查",
-        "consent": "聊天内容可能包含身份、联系方式和私密对话，模型服务可能记录或留存这些内容。已经抽取过的聊天读取缓存，不会再次发送。我确认有权处理这些聊天记录，并同意把聊天内容发送给 {{backend}}。",
+        "confirm": "确认并开始",
+        "consent": "我确认有权处理这些聊天记录，并同意把聊天内容发送给 {{backend}}。",
         "last": "上次构建完成于 {{time}}，已经打开。",
         "limit": "输入上限 {{count}} Token",
+        "notice": "聊天内容可能包含身份、联系方式和私密对话，模型服务可能记录或留存这些内容。已经抽取过的聊天读取缓存，不会再次发送。",
         "problems": "开始前需要处理",
-        "purpose": "用途",
+        "purpose": "选择用途",
+        "purposeHint": "以后可以随时再构建另一种",
         "recheck": "重新检查",
+        "sources": {
+          "config": "settings.jsonc 里的聊天",
+          "upload": "上传的聊天"
+        },
         "start": "开始构建",
         "tokens": "模型的输入 Token 上限",
         "tokensHint": "按模型的上下文长度填写，决定每次请求放多少内容"
@@ -278,24 +295,38 @@ export default interface Resources {
         "config_invalid": "settings.jsonc 读取失败：{{detail}}",
         "context_unknown": "读不到 Codex 模型的上下文长度，请填写输入 Token 上限",
         "max_context_required": "API 后端要填写模型的输入 Token 上限",
-        "style_deps_missing": "做分身要抽取语言风格，请先运行 uv pip install --group style --torch-backend cpu -e .，并把 LTP 模型放在 {{model_dir}}",
+        "style_deps_missing": "AI 分身要抽取语言风格，请先运行 uv pip install --group style --torch-backend cpu -e .，并把 LTP 模型放在 {{model_dir}}",
         "telegram_id_missing": "settings.jsonc 里没有填 make_dataset_args.telegram_args.my_id"
       },
       "purposes": {
         "assistant": {
-          "hint": "抽取画像和事件，供个人助理和板块总结使用",
+          "hint": "整理出你的人生画像和近况。Claude Code、Codex 等助手接入后，回答时会参考你的情况。",
           "label": "个人助理"
         },
         "clone": {
-          "hint": "另外抽取语言风格，供分身模仿你的说话方式",
-          "label": "做分身"
+          "hint": "在个人助理的基础上，再抽取你的语言风格，让分身学会你的说话方式。",
+          "label": "AI 分身"
         }
+      },
+      "quips": {
+        "any": ["WeClone 正在了解你", "正在理解你", "了解一个人，总要多花点时间"],
+        "distill_event": ["正在回顾你经历过的事", "那些大事小事，一件件记下", "正在给你的经历标上时间"],
+        "distill_profile": ["正在读你说过的话", "正在记下你提过的小事", "原来你喜欢这个，记下了", "正在从闲聊里认识你"],
+        "hierarchy": ["你的画像渐渐有了轮廓", "正在把事实归到主题下", "正在画出你的样子"],
+        "organize": ["正在把记忆分门别类", "工作归工作，生活归生活", "说过好几遍的事，合成一条"],
+        "snapshot": ["正在翻开你的聊天记录", "先认识一下常和你聊天的人", "正在把聊天按人理好"],
+        "style": ["正在学你说话的语气", "你的口头禅，学到了", "分身正在练习用你的方式打字"],
+        "summaries": ["正在给每个板块写总结", "快好了，正在写最后几段", "马上就能见到画像里的你"]
       },
       "running": {
         "cancel": "取消构建",
-        "confirmCancel": "确定取消这次构建？已经拿到的模型结果会留在缓存里。",
+        "confirmCancel": "已经拿到的模型结果会留在缓存里。",
+        "confirmCancelTitle": "取消这次构建？",
+        "elapsed": "已用 {{time}}",
+        "keep": "继续构建",
         "leave": "关闭网页不会停止构建。日志：{{log}}",
-        "state": "构建中"
+        "state": "构建中",
+        "step": "第 {{step}} 步，共 {{steps}} 步"
       },
       "stageStates": {
         "cancelled": "已取消",
@@ -322,8 +353,7 @@ export default interface Resources {
       },
       "title": "构建画像",
       "upload": {
-        "done": "放进了 {{count}} 个聊天",
-        "doneReplaced": "放进了 {{count}} 个聊天，其中 {{replaced}} 个替换了同名的旧聊天",
+        "done": "上传了 {{count}} 个聊天",
         "drop": "把聊天文件夹或 zip 拖到这里",
         "folder": "选文件夹",
         "nothing": "没有找到 CSV 聊天记录或 zip",
@@ -347,6 +377,7 @@ export default interface Resources {
       "copied": "已复制",
       "copy": "复制",
       "copyBlocked": "浏览器不允许直接复制，请在文本框里全选后手动复制",
+      "delete": "删除",
       "dismiss": "知道了",
       "duration": {
         "days": "{{count}} 天",
@@ -364,12 +395,15 @@ export default interface Resources {
       "addTitle": "新增画像",
       "attr": "属性名称",
       "discard": "放弃未保存的修改？",
+      "discardSubmit": "放弃修改",
       "editTitle": "编辑画像",
       "hint": "保存修改后移回待审核，暂不用于分身；“保存并采纳”后纳入<clone>分身画像</clone>。",
+      "keepEditing": "继续编辑",
       "location": "归属位置",
       "original": "查看原始内容",
       "reload": "重新载入记录",
-      "reloadConfirm": "重新载入服务器数据会放弃当前表单中的修改，继续？",
+      "reloadConfirm": "表单里还没保存的修改会被放弃。",
+      "reloadConfirmTitle": "重新载入这条记录？",
       "saveApprove": "保存并采纳",
       "value": "画像内容"
     },
@@ -401,11 +435,13 @@ export default interface Resources {
       "password_wrong": "密码错误",
       "profile_missing": "还没有画像，请先在「构建画像」页生成",
       "request_rejected": "请求验证失败",
+      "run_building": "这个版本还在构建，不能删除",
+      "run_current": "正在显示的版本不能删除，请先切换到别的版本",
       "run_incomplete": "这个版本没有构建完成，不能打开",
       "run_not_found": "没有这个画像版本",
       "source_not_found": "来源记录不存在",
       "storage_locked": "数据尚未解锁，请重新输入密码",
-      "style_missing": "这个画像版本没有抽取语言风格，做分身请在「构建画像」页选「做分身」重新构建",
+      "style_missing": "这个画像版本没有抽取语言风格，要用 AI 分身，请在「构建画像」页选「AI 分身」重新构建",
       "summary_batch_changed": "总结已被修改，整批操作未保存，请刷新后重试",
       "summary_batch_stale": "有板块的画像或总结规则已变动，请先重新生成总结再确认",
       "summary_changed": "总结已被修改，请刷新后核对并重试",
@@ -419,7 +455,6 @@ export default interface Resources {
       "upload_not_found": "这次上传已经结束，请重新选择文件",
       "upload_path_invalid": "文件路径必须是相对路径",
       "upload_too_large": "解压后的文件超过了磁盘剩余空间",
-      "upload_unsupported": "现在只能上传通用 CSV 格式的聊天记录",
       "upload_zip_invalid": "这个 zip 打不开，可能已损坏或设了密码"
     },
     "export": {
@@ -534,8 +569,10 @@ export default interface Resources {
         "undo": "撤销"
       },
       "list": {
-        "confirmApprove": "采纳选中的 {{count}} 条画像？其中 {{hidden}} 条还没有显示在列表里。",
-        "confirmReject": "不采纳选中的 {{count}} 条画像？其中 {{hidden}} 条还没有显示在列表里。",
+        "confirmApprove": "其中 {{hidden}} 条还没有显示在列表里。",
+        "confirmApproveTitle": "采纳选中的 {{count}} 条画像？",
+        "confirmReject": "其中 {{hidden}} 条还没有显示在列表里。",
+        "confirmRejectTitle": "不采纳选中的 {{count}} 条画像？",
         "count": "{{count}} 条画像",
         "empty": "当前视图没有画像记录。",
         "more": "继续显示（剩余 {{count}} 条）",
@@ -610,26 +647,22 @@ export default interface Resources {
       },
       "run": {
         "build": "构建新画像",
+        "confirmDelete": "{{time}} 生成的画像、审核记录和总结都会从这台电脑上删除，不能恢复。",
+        "confirmDeleteTitle": "删除这个画像版本？",
         "current": "当前",
+        "delete": "删除这个版本",
+        "deleted": "已删除 {{time}} 生成的画像版本",
         "demo": "演示数据（合成，退出后删除）",
         "empty": "还没有画像。",
         "footnote": "生成于 {{date}}",
-        "generated": "画像生成于",
-        "name": "运行",
         "none": "未知",
         "notReviewed": "还没有审核",
-        "path": "目录",
         "progress": "查看进度",
-        "reviewed": "最近审核",
         "reviewedAt": "最近审核 {{time}}",
         "separator": " · ",
-        "style": "语言风格",
-        "styleNo": "这次运行没有抽取",
-        "styleYes": "已抽取",
-        "switch": "切换到这个版本",
+        "switch": "切换",
         "switched": "已切换到 {{time}} 生成的画像",
         "title": "画像版本",
-        "versions": "全部版本",
         "withStyle": "含语言风格"
       },
       "security": {
@@ -860,7 +893,8 @@ export default interface Resources {
       },
       "export": {
         "chars": "{{count}} 字",
-        "confirmFull": "这份文本含私密和敏感的内容，贴出去就收不回来。确定复制吗？",
+        "confirmFull": "这份文本含私密和敏感的内容，贴出去就收不回来。",
+        "confirmFullTitle": "复制这份文本？",
         "empty": "确认至少一个板块的总结后，这里会出现可以粘贴给个人助理的文本。",
         "fullWarning": "这一级含私密和敏感的内容，贴出去就收不回来。只想给助理少一些，可以切到普通或公开再生成一份。",
         "hint": "可以粘贴到个人助理的“关于我”、自定义指令或 USER.md。贴出去的内容收不回来，复制前请再看一遍。",
