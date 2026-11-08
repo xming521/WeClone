@@ -189,7 +189,7 @@ def build_profile(
     from weclone.data.agent.profile_pipeline import run
 
     if purpose is None:
-        click.echo("1. 给个人助理用：抽取画像和事件\n2. AI 分身：另外抽取语言风格，需要 ltp 包和 LTP 模型")
+        click.echo("1. 给个人助手用：抽取画像和事件\n2. AI 分身：另外抽取语言风格，需要 ltp 包和 LTP 模型")
         choice = click.prompt("请选择用途", type=click.Choice(["1", "2"]), default="1")
         purpose = "clone" if choice == "2" else "assistant"
     config_path = Path(os.environ.get("WECLONE_CONFIG_PATH", "settings.jsonc"))

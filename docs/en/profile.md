@@ -66,9 +66,11 @@ Open http://127.0.0.1:5175 and sign in with the shared password (see [Security](
 
 Your review is saved in the run's `profile_hierarchy/` directory and belongs to that run only.
 
-## Connect AI assistants
+## Connect personal assistants
 
-Claude Code, Codex and other MCP clients can read your life portrait:
+Claude Code, Codex, dots, Muse, Grok Bot and other personal assistants can use your life portrait through MCP or their memory.
+
+### Read over MCP
 
 1. Approve the summaries you want to share on the Portrait summary page. Assistants only get approved summaries.
 2. On the Assistants page, choose the privacy level and the domains to share, then generate a token.
@@ -81,7 +83,9 @@ Assistants connect over MCP to `http://127.0.0.1:5175/mcp` and get two read-only
 
 Keep `weclone-cli server` running while assistants use it. In encrypted mode, also turn on **Allow assistants to read** on the Assistants page for a chosen time. Turn it on again when the time is up or after the server restarts. Every call is recorded in the review database.
 
-For assistants without MCP, choose a privacy level on the Portrait summary page, copy the export text in one click and paste it into the assistant's "About me", custom instructions or USER.md. The text holds approved summaries only. What you paste can't be taken back, so read it over before copying.
+### Copy the portrait summary
+
+Cloud assistants such as dots, Muse and Grok Bot can't reach MCP on your computer, so keep the portrait summary in their memory. Choose a privacy level on the Portrait summary page, copy the export text in one click and paste it into the assistant's memory import or custom instructions, or send it to the assistant and ask it to remember. The text holds approved summaries only. What you paste can't be taken back, so read it over before copying.
 
 > [!WARNING]
 > At the **All** level, private and sensitive entries also go to the cloud model behind the assistant.

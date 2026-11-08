@@ -647,7 +647,7 @@
       "confirmFullTitle": "Copy this text?",
       "confirmFull": "This text has private and sensitive content, and once pasted it can't be taken back.",
       "fullWarning": "This level has private and sensitive content, and once pasted it can't be taken back. To give your assistant less, switch to Normal or Public and generate another set.",
-      "hint": "Paste it into your assistant's “About me”, custom instructions or USER.md. What you paste can't be taken back, so read it over before copying.",
+      "hint": "Paste it into your assistant's memory import or custom instructions, or send it to your assistant and ask it to remember. What you paste can't be taken back, so read it over before copying.",
       "empty": "Approve at least one domain summary, and the text to paste into your personal assistant shows up here."
     }
   },
@@ -677,7 +677,7 @@
     "intro": "Claude Code, Codex and other assistants with MCP support can connect to this WeClone to read the approved parts of your portrait summary and look up entries by keyword or domain. All assistants share one token. The level and domains chosen below decide what they can read, and every call is logged with what it returned.",
     "address": "MCP address <code>{{url}}</code>",
     "addressPlaintext": "MCP address <code>{{url}}</code>. Your data is stored unencrypted, so assistants can read it whenever the token is valid",
-    "summaryNote": "Assistants without MCP can use the portrait summary too: copy the export text on the <a>Portrait summary</a> page and paste it into the assistant's “About me”, custom instructions or USER.md.",
+    "summaryNote": "Cloud assistants such as dots, Muse and Grok Bot can't reach this address, but they can use the portrait summary: copy the export text on the <a>Portrait summary</a> page and paste it into the assistant's memory import or custom instructions, or send it and ask the assistant to remember it.",
     "scope": "What to share",
     "level": "Privacy level",
     "levels": {
@@ -964,7 +964,7 @@
     "purposes": {
       "assistant": {
         "label": "Personal assistant",
-        "hint": "Builds your life portrait and recent events. Assistants like Claude Code and Codex read it and answer with you in mind."
+        "hint": "Builds your life portrait and recent events. Personal assistants such as Claude Code, Codex and dots read it and work with you in mind."
       },
       "clone": {
         "label": "AI clone",
