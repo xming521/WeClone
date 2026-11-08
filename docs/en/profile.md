@@ -15,19 +15,19 @@ Open http://127.0.0.1:5175, set a password and go to the Build portrait page. Th
 - Personal assistant: extracts the portrait and events.
 - Clone: also extracts your speaking style, which needs the [speaking style dependencies](installation.md#speaking-style-dependencies).
 
-The page checks your setup and lists any missing settings with how to fix them. Chats in the generic CSV format can be uploaded on this page, see [Preparing Data](data.md#generic-csv-format). An API backend also needs the model's input token limit. Agree to send your chats to the model service and start the build. It runs in a background process, so closing the page doesn't stop it. The page shows the progress of each stage, and the top bar of other pages shows "Building n/N". The stages are:
+The page checks your setup and lists any missing settings with how to fix them. Chats in the generic CSV format can be uploaded on this page, see [Preparing Data](data.md#generic-csv-format). The model backend is chosen on this page too, the API by default when the Codex CLI isn't installed. For the Codex CLI, set the model and reasoning effort. For an API, choose the provider, paste the key, test the connection and pick one of the models the endpoint lists; for a service not in the list, choose "Another OpenAI-compatible service" and enter its base URL. Saved choices also show under Model service on the Settings page and apply to later builds. Agree to send your chats to the model service and start the build. It runs in a background process, so closing the page doesn't stop it. The page shows the progress of each stage, and the top bar of other pages shows "Building n/N". The stages are:
 
 1. Prepare the chat data: group text messages by contact and split them into sessions
 2. Extract profile memories and event memories
 3. Induce domains, then classify and summarize the memories, giving every fact a privacy level and a time scope
 4. Group each domain's facts into topics and build the portrait hierarchy
-5. Write domain summaries
+5. Write the portrait summary
 6. Extract speaking style (`--purpose clone` only)
 
 | Option | Description |
 |---|---|
 | `--output-dir <dir>` | Result directory, which must be new. Defaults to a timestamped directory under `dataset/res_csv/agent/profile_runs/` |
-| `--max-context-tokens <limit>` | Input token limit for memory organization and the hierarchy. The Codex backend reads the model's context length by default. The API backend requires it |
+| `--max-context-tokens <limit>` | Input token limit for memory organization and the hierarchy. Defaults to 95% of the model's context window, read from the model catalog for Codex and from `agent_distill_args.context_window` for the API, or 128000 when neither tells |
 | `--csv-folder <dir>` | Read the chats in this folder as generic CSV, one folder per chat, instead of `platform` and `csv_folder` in the config |
 | `--yes` | Skip the confirmation to send, for scripts |
 
@@ -59,7 +59,7 @@ Open http://127.0.0.1:5175 and sign in with the shared password (see [Security](
 |---|---|
 | Portrait (`#/`) | Browse the portrait by domain and topic, adopt, edit or reject each fact, and see the chat each fact came from |
 | Style (`#/style`) | View the speaking style extracted with `--purpose clone` |
-| Summaries (`#/summary`) | Generate and approve a summary per domain and privacy level, and copy them for a personal assistant |
+| Portrait summary (`#/summary`) | Generate and approve a summary per domain and privacy level, and copy them for a personal assistant |
 | Assistants (`#/assistant`) | Choose the level and domains assistants can read, and generate their token |
 | Bots (`#/bots`) | Generate the token chat bots call the clone with. See [Chat bots](chatbot.md) |
 | Build portrait (`#/build`) | Check the setup, build a new portrait from your chats and follow its progress. Switch versions under Settings → Portrait versions |
@@ -70,7 +70,7 @@ Your review is saved in the run's `profile_hierarchy/` directory and belongs to 
 
 Claude Code, Codex and other MCP clients can read your life portrait:
 
-1. Approve the summaries you want to share on the Summaries page. Assistants only get approved summaries.
+1. Approve the summaries you want to share on the Portrait summary page. Assistants only get approved summaries.
 2. On the Assistants page, choose the privacy level and the domains to share, then generate a token.
 3. Run the commands shown on the page for Claude Code or Codex. All assistants share this one token. Changes to the level and domains apply from their next call.
 
@@ -81,7 +81,7 @@ Assistants connect over MCP to `http://127.0.0.1:5175/mcp` and get two read-only
 
 Keep `weclone-cli server` running while assistants use it. In encrypted mode, also turn on **Allow assistants to read** on the Assistants page for a chosen time. Turn it on again when the time is up or after the server restarts. Every call is recorded in the review database.
 
-For assistants without MCP, choose a privacy level on the Summaries page, copy the export text in one click and paste it into the assistant's "About me", custom instructions or USER.md. The text holds approved summaries only. What you paste can't be taken back, so read it over before copying.
+For assistants without MCP, choose a privacy level on the Portrait summary page, copy the export text in one click and paste it into the assistant's "About me", custom instructions or USER.md. The text holds approved summaries only. What you paste can't be taken back, so read it over before copying.
 
 > [!WARNING]
 > At the **All** level, private and sensitive entries also go to the cloud model behind the assistant.

@@ -26,10 +26,17 @@ All settings live in `settings.jsonc`. Windows has not been tested thoroughly, s
 
 ## Model backend
 
-Portrait extraction, memory organization and domain summaries all call API models. `agent_distill_args.llm_provider` picks the backend:
+Portrait extraction, memory organization and the portrait summary all call API models. `agent_distill_args.llm_provider` picks the backend. The settings below can also be filled in and tested under Model service on the web Settings page, which changes only these entries and keeps the comments and other settings of `settings.jsonc` as they are:
 
 - `codex_exec` (default): calls models through the local [Codex CLI](https://github.com/openai/codex), which must be installed and signed in. The model and reasoning effort are set in `codex_exec_args`.
-- `api`: any OpenAI-compatible endpoint. Put the address, key and model name in `base_url`, `llm_api_key` and `model_name` under `make_dataset_args`, and set concurrency, timeout and the output limit with `batch_size`, `timeout` and `max_tokens` under `agent_distill_args`. `build-profile` then needs `--max-context-tokens` to know the model's input limit.
+- `api`: any endpoint compatible with OpenAI Chat Completions. Put the address, key and model name in `base_url`, `llm_api_key` and `model_name` under `make_dataset_args`, and the rest under `agent_distill_args`:
+  - `context_window`: the model's context window, 128000 when unset. A request uses at most 95% of it. The connection test on the Settings page fills it in when the endpoint lists it.
+  - `reasoning_effort`: sent as `reasoning_effort` as it is. The provider's docs list the values it takes; leave it out for the provider's default.
+  - `extra_body`: a JSON object merged into every request body, for a provider's own parameters such as a thinking switch.
+  - `structured_output`: the format the model is asked to answer in, `json_schema` or `json_object`. Left out, it is `json_schema`. Set `json_object` for a service that does not take `json_schema`, such as DeepSeek. Test connection on the Settings page picks the one the service takes, and choosing DeepSeek as the provider fills it in.
+  - `batch_size`, `timeout`, `max_tokens`: concurrency, timeout and output limit.
+
+  These are sent as they are, and a request the provider refuses fails with its error. Test connection on the Settings page sends the same request a build does, so it can check them first.
 
 ## Speaking style dependencies
 

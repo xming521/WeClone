@@ -26,10 +26,17 @@ cp settings.template.jsonc settings.jsonc
 
 ## 配置模型后端
 
-抽取画像、整理记忆和生成板块总结都调用 API 模型，由 `agent_distill_args.llm_provider` 选择后端：
+抽取画像、整理记忆和生成画像总结都调用 API 模型，由 `agent_distill_args.llm_provider` 选择后端。下面这些项也可以在网页设置页的「模型服务」里填写和测试连接，保存时只改这几项，`settings.jsonc` 的注释和其他设置保持原样：
 
 - `codex_exec`（默认）：通过本机的 [Codex CLI](https://github.com/openai/codex) 调用模型，需要先安装并登录。模型和推理强度在 `codex_exec_args` 中设置。
-- `api`：任意 OpenAI 兼容接口。地址、密钥和模型名填在 `make_dataset_args` 的 `base_url`、`llm_api_key`、`model_name`，并发数、超时和输出上限在 `agent_distill_args` 的 `batch_size`、`timeout`、`max_tokens` 中设置。运行 `build-profile` 时必须用 `--max-context-tokens` 指定模型的输入上限。
+- `api`：任意兼容 OpenAI Chat Completions 的接口。地址、密钥和模型名填在 `make_dataset_args` 的 `base_url`、`llm_api_key`、`model_name`，其余在 `agent_distill_args` 中设置：
+  - `context_window`：模型的上下文长度，不填按 128000 算。每次请求最多用到其中的 95%。设置页的测试连接会在接口列出时自动填上。
+  - `reasoning_effort`：原样作为 `reasoning_effort` 发送，可选值以服务商文档为准，不填用服务默认。
+  - `extra_body`：合并进每次请求体的 JSON 对象，用来传服务商自己的参数，比如思考开关。
+  - `structured_output`：要求模型按什么格式回答，`json_schema` 或 `json_object`。不填按 `json_schema`，服务不支持 `json_schema` 时填 `json_object`，比如 DeepSeek。设置页的测试连接会选上服务支持的那种，服务商选 DeepSeek 时直接填好。
+  - `batch_size`、`timeout`、`max_tokens`：并发数、超时和输出上限。
+
+  这些参数原样发送，服务商不接受时请求直接报错。设置页的测试连接发出的请求和构建时一样，可以先用它检查。
 
 ## 语言风格依赖
 
