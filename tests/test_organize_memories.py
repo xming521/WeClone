@@ -184,6 +184,8 @@ def test_an_unknown_window_uses_the_default(tmp_path, monkeypatch):
     assert organize.resolve_context_window(args) == 121600
     config.write_text(json.dumps({"agent_distill_args": {"llm_provider": "api", "context_window": 64000}}))
     assert organize.resolve_context_window(args) == 60800
+    config.write_text(json.dumps({"agent_distill_args": {"llm_provider": "api", "context_window": None}}))
+    assert organize.resolve_context_window(args) == 121600
 
 
 @pytest.mark.parametrize("reduced", [False, True])

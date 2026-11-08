@@ -7,6 +7,8 @@ from fastapi.testclient import TestClient
 import weclone.core.inference as inference
 from weclone.core.inference import LLMResponse
 from weclone.data.agent import profile_pipeline
+from weclone.server import model_settings
+from weclone.server.errors import ApiError
 from weclone.server.profile_review import create_app
 
 HEADERS = {"X-WeClone-Request": "1"}
@@ -108,6 +110,28 @@ def test_saving_changes_only_what_changed(web):
         and "extra_body" not in data["agent_distill_args"]
     )
     assert data["make_dataset_args"]["llm_api_key"] == "sk-new"
+
+
+def test_fields_left_out_read_as_empty(web):
+    web.settings.write_text(
+        web.settings.read_text().replace(
+            '"codex_exec_args": {"model": "gpt", "effort": "medium", "batch_size": 30, "timeout": 300},\n', ""
+        )
+    )
+    saved = web.get("/api/settings/model").json()
+    assert saved["codex"] == {"model": "", "effort": "", "batch_size": 10, "timeout": 120}
+
+
+def test_an_unreadable_file_is_named(web):
+    text = web.settings.read_text()
+    web.settings.write_text(text.replace('"codex_exec", //', '"other", //'))
+    response = web.get("/api/settings/model")
+    assert response.status_code == 422 and response.json()["code"] == "settings_unreadable"
+    # Read directly: over HTTP the sign-in check reads the broken file first.
+    web.settings.write_text(text + "}")
+    with pytest.raises(ApiError) as caught:
+        model_settings.read_settings()
+    assert caught.value.status_code == 422 and caught.value.code == "settings_unreadable"
 
 
 def test_a_file_changed_elsewhere_is_not_overwritten(web):

@@ -262,11 +262,11 @@ def resolve_context_window(args: argparse.Namespace) -> int:
         window = distill_profile.optional_positive_config_int(
             distill_config,
             "context_window",
-            DEFAULT_CONTEXT_WINDOW,
+            None,
             section="agent_distill_args",
             config_path=args.config_path,
         )
-        return window * INPUT_PERCENT // 100
+        return (window or DEFAULT_CONTEXT_WINDOW) * INPUT_PERCENT // 100
     config = distill_profile.load_codex_exec_config(args.config_path)
     command = config.get("command", "codex")
     try:

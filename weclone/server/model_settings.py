@@ -40,8 +40,16 @@ API_FIELDS = {
     "timeout": ("agent_distill_args", "timeout"),
 }
 PROVIDER = ("agent_distill_args", "llm_provider")
-# What the backend uses for a field the file leaves out; such a field is not written while it keeps that value.
-DEFAULTS = {"batch_size": distill_profile.DEFAULT_BATCH_SIZE, "timeout": distill_profile.DEFAULT_TIMEOUT}
+# What the backend uses for a field the file leaves out; such a field is not written while it keeps that value. A
+# text field left out reads as empty, as the form shows it.
+DEFAULTS = {
+    "batch_size": distill_profile.DEFAULT_BATCH_SIZE,
+    "timeout": distill_profile.DEFAULT_TIMEOUT,
+    "model": "",
+    "effort": "",
+    "base_url": "",
+    "key": "",
+}
 # The fields each request is built from; extra_body may add to a request but not change what it asks.
 RESERVED_BODY = {"model", "messages", "stream"}
 # The test asks for JSON the way profile building does, so it finds the response format the endpoint takes.
@@ -126,7 +134,7 @@ def _read_text() -> tuple[Path, str, dict]:
     try:
         data = pyjson5.loads(text)
     except Exception as exc:
-        raise ApiError(422, "settings_unreadable", f"{path} 读取失败：{exc}", detail=str(exc))
+        raise ApiError(422, "settings_unreadable", f"{path} 读取失败：{exc}")
     return path, text, data
 
 
@@ -140,7 +148,7 @@ def read_settings() -> dict:
     try:
         provider = distill_profile.normalize_llm_provider(_get(data, PROVIDER))
     except ValueError as exc:
-        raise ApiError(422, "settings_unreadable", str(exc), detail=str(exc))
+        raise ApiError(422, "settings_unreadable", str(exc))
     return {
         "version": _digest(text),
         "provider": provider,
