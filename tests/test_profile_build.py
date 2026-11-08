@@ -34,7 +34,9 @@ def write_profile(run, value):
 @pytest.fixture
 def web(tmp_path, monkeypatch, storage, owner_password):
     storage()
-    monkeypatch.setattr(pipeline, "check", lambda *args: {"backend": {}, "chats": {}, "problems": []})
+    monkeypatch.setattr(
+        pipeline, "check", lambda *args, **kwargs: {"backend": {}, "chats": {}, "problems": []}
+    )
     monkeypatch.setenv("FAKE_BUILD", "succeed")
 
     def start(**options):
@@ -223,7 +225,9 @@ def test_a_build_needs_consent_and_a_passing_check(web, monkeypatch):
     response = client.post("/api/build", json={"purpose": "assistant", "consent": False})
     assert response.json()["code"] == "consent_required"
     problem = {"code": "chats_missing", "params": {}, "message": "没有聊天记录"}
-    monkeypatch.setattr(pipeline, "check", lambda *args: {"backend": {}, "chats": {}, "problems": [problem]})
+    monkeypatch.setattr(
+        pipeline, "check", lambda *args, **kwargs: {"backend": {}, "chats": {}, "problems": [problem]}
+    )
     response = client.post("/api/build", json={"purpose": "assistant", "consent": True})
     assert response.status_code == 422
     assert response.json()["code"] == "build_check_failed" and response.json()["problems"] == [problem]
@@ -304,8 +308,9 @@ def test_check_finds_missing_chats_and_api_settings(tmp_path, storage):
         },
     )
     found = pipeline.check(settings, "assistant")
-    assert codes(found) == ["chats_missing", "api_config_missing", "max_context_required"]
+    assert codes(found) == ["chats_missing", "api_config_missing"]
     assert found["problems"][1]["params"] == {"keys": ["llm_api_key", "model_name"]}
+    assert [problem.get("backend") for problem in found["problems"]] == [None, True]
     assert found["chats"] == {"platform": "chat", "folder": str(tmp_path / "none"), "count": 0}
 
 
@@ -333,6 +338,14 @@ def test_check_counts_chats_and_passes_a_complete_api_setup(storage, chats):
     lock = pipeline.build_lock()
     with lock:
         assert codes(pipeline.check(settings, "assistant", 64000)) == ["build_running"]
+    # Without one given, a share of the model's window in the settings, or of the default.
+    assert pipeline.check(settings, "assistant")["backend"]["max_context_tokens"] == 121600
+    settings.write_text(
+        settings.read_text().replace(
+            '"llm_provider": "api"', '"llm_provider": "api", "context_window": 32000'
+        )
+    )
+    assert pipeline.check(settings, "assistant")["backend"]["max_context_tokens"] == 30400
 
 
 def test_check_finds_telegram_without_my_id(tmp_path, monkeypatch, storage, chats):
@@ -363,7 +376,7 @@ def test_check_finds_telegram_without_my_id(tmp_path, monkeypatch, storage, chat
     [
         (None, None, ["codex_missing"]),
         (1, None, ["codex_logged_out"]),
-        (0, {"models": []}, ["context_unknown"]),
+        (0, {"models": []}, []),
         (0, {"models": [{"slug": "m", "context_window": 1000, "effective_context_window_percent": 90}]}, []),
     ],
 )
@@ -384,7 +397,9 @@ def test_check_finds_what_codex_lacks(tmp_path, monkeypatch, storage, chats, log
     found = pipeline.check(settings, "assistant")
     assert codes(found) == expected
     if not expected:
-        assert found["backend"] == {"provider": "codex_exec", "model": "m", "max_context_tokens": 900}
+        # A model the catalog does not list gets the default window.
+        window = 900 if models["models"] else 121600
+        assert found["backend"] == {"provider": "codex_exec", "model": "m", "max_context_tokens": window}
 
 
 def test_check_wants_the_style_parser_for_a_clone(monkeypatch, storage, chats):
@@ -406,7 +421,9 @@ def test_the_command_line_lists_every_problem_before_asking(monkeypatch, storage
         {"code": "chats_missing", "params": {}, "message": "dataset/csv 里没有聊天记录"},
         {"code": "codex_logged_out", "params": {}, "message": "Codex CLI 没有登录"},
     ]
-    monkeypatch.setattr(pipeline, "check", lambda *args: {"backend": {}, "chats": {}, "problems": problems})
+    monkeypatch.setattr(
+        pipeline, "check", lambda *args, **kwargs: {"backend": {}, "chats": {}, "problems": problems}
+    )
     with pytest.raises(ValueError) as error:
         pipeline.run(with_style=False, output_dir=None, config_path=Path("settings.jsonc"))
     assert str(error.value) == "运行前检查没有通过：\n- dataset/csv 里没有聊天记录\n- Codex CLI 没有登录"

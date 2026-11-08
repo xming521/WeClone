@@ -148,20 +148,12 @@ def test_provider_error_and_retry_override(api):
     assert result.metadata == {"error_type": "RateLimitError", "http_status": 429}
 
 
-def test_schema_fallback_and_last_attempt_empty(api, tmp_path):
+def test_last_attempt_empty(api, tmp_path):
     client, create = api
-    error = BadRequestError(
-        "response_format type is unavailable",
-        response=httpx.Response(400, request=httpx.Request("POST", "http://example.invalid")),
-        body=None,
-    )
-    create.side_effect = [error, completion("")]
-    result = client.chat(
-        "score", json_schema=Score.model_json_schema(), retry_policy=RetryPolicy(max_retries=1, base_delay=0)
-    )
+    create.return_value = completion("")
+    result = client.chat("score", json_schema=Score.model_json_schema())
     assert not result.ok and result.error == "empty response"
-    assert create.call_count == 2
-    assert create.call_args_list[1].kwargs["response_format"] == {"type": "json_object"}
+    assert create.call_count == 1
     events = [
         json.loads(line)
         for path in (tmp_path / "audit").glob("*.jsonl")
@@ -169,6 +161,60 @@ def test_schema_fallback_and_last_attempt_empty(api, tmp_path):
     ]
     assert events[-1]["event"] == "call.finished"
     assert events[-2]["will_retry"] is False
+
+
+def bad_request(message):
+    return BadRequestError(
+        message,
+        response=httpx.Response(400, request=httpx.Request("POST", "http://example.invalid")),
+        body=None,
+    )
+
+
+def test_format_is_sent_as_set(api):
+    client, create = api
+    # Unset asks for json_schema, and a refusal is reported rather than answered with another format.
+    create.side_effect = bad_request("This response_format type is unavailable now")
+    assert not client.chat("score", json_schema=Score.model_json_schema()).ok
+    assert create.call_count == 1 and client.structured_output is None
+    assert create.call_args.kwargs["response_format"]["type"] == "json_schema"
+    client.structured_output = "json_object"
+    create.side_effect = None
+    create.return_value = completion()
+    assert client.chat("score", json_schema=Score.model_json_schema()).ok
+    assert create.call_args.kwargs["response_format"] == {"type": "json_object"}
+
+
+def test_quoted_integers_follow_the_schema(api):
+    client, create = api
+    client.structured_output = "json_object"
+    create.return_value = completion('{"name": "7", "items": ["1", 2, "x"]}')
+    schema = {
+        "type": "object",
+        "properties": {"name": {"type": "string"}, "items": {"type": "array", "items": {"type": "integer"}}},
+    }
+    assert client.chat("topics", json_schema=schema).parsed_json == {"name": "7", "items": [1, 2, "x"]}
+
+
+def test_effort_and_extra_body_go_with_every_request(tmp_path, monkeypatch):
+    client = OpenAICompatibleClient(
+        api_key="fixture-key",
+        base_url="https://api.deepseek.com",
+        model="fixture-model",
+        reasoning_effort="high",
+        extra_body={"thinking": {"type": "enabled"}, "service_tier": "flex"},
+        audit_logger=LLMAuditLogger(tmp_path / "audit", strict=True),
+    )
+    create = Mock(return_value=completion())
+    monkeypatch.setattr(client.client.chat.completions, "create", create)
+    client.chat("score", json_schema=Score.model_json_schema(), extra_body={"thinking": {"type": "disabled"}})
+    sent = create.call_args.kwargs
+    assert sent["reasoning_effort"] == "high"
+    assert sent["extra_body"] == {"thinking": {"type": "disabled"}, "service_tier": "flex"}
+    assert sent["response_format"]["type"] == "json_schema"
+    client.chat("score", effort="low")
+    assert create.call_args.kwargs["reasoning_effort"] == "low"
+    client.close()
 
 
 def test_empty_json_retry(api):

@@ -20,6 +20,9 @@ dependencies = [
   "loguru>=0.7.3",
   "langchain",
   "openai==1.87.0",
+  # httpx reads proxies from the environment, and ALL_PROXY often names a SOCKS one: the socks extra handles it, and
+  # 0.28 is the first httpx to take socks5h://.
+  "httpx[socks]>=0.28",
   "fastapi",
   "uvicorn",
   "tiktoken",

@@ -51,6 +51,9 @@ def default_args() -> SimpleNamespace:
         llm_provider=None,
         model=None,
         effort=None,
+        reasoning_effort=None,
+        extra_body=None,
+        structured_output=None,
         batch_size=None,
         max_samples_per_window=8,
         max_content_chars=400,
@@ -157,6 +160,26 @@ def optional_positive_config_int(
     return value
 
 
+def optional_config_str(config: dict[str, Any], key: str, *, section: str, config_path: Path) -> str | None:
+    value = config.get(key)
+    if value is None or value == "":
+        return None
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"{section}.{key} must be a string or null in {config_path}")
+    return value.strip()
+
+
+def optional_config_object(
+    config: dict[str, Any], key: str, *, section: str, config_path: Path
+) -> dict[str, Any] | None:
+    value = config.get(key)
+    if value is None:
+        return None
+    if not isinstance(value, dict):
+        raise ValueError(f"{section}.{key} must be an object or null in {config_path}")
+    return value
+
+
 def resolve_llm_args(args: SimpleNamespace) -> SimpleNamespace:
     distill_config = load_agent_distill_config(args.config_path)
     args.llm_provider = normalize_llm_provider(args.llm_provider or distill_config.get("llm_provider"))
@@ -166,8 +189,8 @@ def resolve_llm_args(args: SimpleNamespace) -> SimpleNamespace:
             raise ValueError(f"agent_distill_args.{name} must be a positive integer")
         setattr(args, name, value)
 
-    # codex exec takes every request setting from codex_exec_args. The API backend reads its endpoint
-    # from make_dataset_args and its concurrency, timeout and token limit from agent_distill_args.
+    # codex exec takes every request setting from codex_exec_args. The API backend reads its endpoint from
+    # make_dataset_args and its concurrency, timeout, token limit and request extras from agent_distill_args.
     codex = args.llm_provider == "codex_exec"
     section = "codex_exec_args" if codex else "agent_distill_args"
     config = load_codex_exec_config(args.config_path) if codex else distill_config
@@ -182,8 +205,23 @@ def resolve_llm_args(args: SimpleNamespace) -> SimpleNamespace:
     )
 
     if not codex:
+        from weclone.core.inference.llm_client import STRUCTURED_OUTPUTS
+
         args.model = None
         args.effort = None
+        args.reasoning_effort = optional_config_str(
+            config, "reasoning_effort", section=section, config_path=args.config_path
+        )
+        args.extra_body = optional_config_object(
+            config, "extra_body", section=section, config_path=args.config_path
+        )
+        args.structured_output = optional_config_str(
+            config, "structured_output", section=section, config_path=args.config_path
+        )
+        if args.structured_output not in (None, *STRUCTURED_OUTPUTS):
+            raise ValueError(
+                f"{section}.structured_output must be one of {', '.join(STRUCTURED_OUTPUTS)} in {args.config_path}"
+            )
         args.codex_command = None
         args.codex_sandbox = None
         return args
@@ -435,7 +473,7 @@ def run_task(
     log(f"写回字段: {TASK_OUTPUTS[task][1]}")
     log(
         f"provider={args.llm_provider} model={request_model} "
-        f"effort={request_effort} batch_size={args.batch_size} dry_run={args.dry_run}"
+        f"effort={request_effort or args.reasoning_effort} batch_size={args.batch_size} dry_run={args.dry_run}"
     )
 
     client = None
@@ -450,6 +488,9 @@ def run_task(
             max_workers=args.batch_size,
             timeout=args.timeout,
             effort=args.effort,
+            reasoning_effort=args.reasoning_effort,
+            extra_body=args.extra_body,
+            structured_output=args.structured_output,
             command=args.codex_command,
             sandbox=args.codex_sandbox,
         )

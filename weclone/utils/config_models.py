@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import TYPE_CHECKING, List, Literal, Optional
+from typing import TYPE_CHECKING, Any, List, Literal, Optional
 
 from loguru import logger
 from pydantic import BaseModel, Field, model_validator
@@ -116,6 +116,14 @@ class AgentDistillArgs(BaseConfigModel):
         None, ge=1, description="Maximum output tokens per distillation request"
     )
     timeout: int = Field(120, ge=1, description="Timeout in seconds for distillation requests")
+    context_window: Optional[int] = Field(None, ge=1, description="Context window of the API model")
+    reasoning_effort: Optional[str] = Field(
+        None, description="Sent as reasoning_effort; values depend on the provider"
+    )
+    extra_body: Optional[dict[str, Any]] = Field(None, description="Merged into every API request body")
+    structured_output: Optional[Literal["json_schema", "json_object"]] = Field(
+        None, description="Response format for requests with a schema; unset tries json_schema first"
+    )
 
 
 class LLMCleanConfig(BaseConfigModel):

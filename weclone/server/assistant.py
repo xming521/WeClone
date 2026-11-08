@@ -95,7 +95,9 @@ PROFILE_FOOTER = (
     '方括号里是板块编号。查一个板块的具体条目：weclone_search(domain="d1")。'
     '按关键词查：weclone_search(keywords=["词", "同义词"])。'
 )
-NO_SUMMARIES = "用户还没有确认可以给助手看的板块总结。可以直接用 weclone_search 按关键词查具体条目。"
+NO_SUMMARIES = (
+    "用户还没有在 WeClone 的画像总结页确认可以给助手看的总结。可以直接用 weclone_search 按关键词查具体条目。"
+)
 NOT_FOUND = "没有找到匹配的条目。可以换同义词、拆成更短的关键词，或者先调用 weclone_profile 看看有哪些板块。"
 LOCKED = "WeClone 的数据是加密的，现在没有允许助手读取。请告诉用户：在 WeClone 网页 {url} 登录，打开“允许助手读取”后再试。"
 NO_PROFILE = "WeClone 还没有画像数据，用户需要先运行 weclone-cli build-profile。"

@@ -39,7 +39,7 @@ STAGES = [
     (3, "distill_event", "抽取事件记忆"),
     (4, "organize", "划分板块、分类和汇总记忆"),
     (5, "hierarchy", "把事实分成主题，生成画像层级"),
-    (6, "summaries", "生成板块总结"),
+    (6, "summaries", "生成画像总结"),
     (7, "style", "抽取语言风格"),
 ]
 PROGRESS_SECONDS = 1.0
@@ -287,6 +287,26 @@ def chat_problems(config_path: Path, chats_folder: Path | None = None) -> tuple[
     return {"platform": platform, "folder": folder, "count": count}, problems
 
 
+def codex_problems(command: str) -> list[dict]:
+    """Whether the Codex CLI is there and signed in."""
+    if shutil.which(command) is None:
+        return [_problem("codex_missing", f"找不到 Codex CLI：{command}", command=command)]
+    try:
+        logged_in = (
+            subprocess.run(
+                [command, "login", "status"], capture_output=True, timeout=30, check=False
+            ).returncode
+            == 0
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        logged_in = False
+    if not logged_in:
+        return [
+            _problem("codex_logged_out", f"Codex CLI 没有登录，请先执行 {command} login", command=command)
+        ]
+    return []
+
+
 def _backend_problems(config_path: Path, max_context_tokens: int | None) -> tuple[dict, list[dict]]:
     from weclone.data.agent import distill_profile, organize_memories
 
@@ -316,33 +336,19 @@ def _backend_problems(config_path: Path, max_context_tokens: int | None) -> tupl
                 )
             )
         if max_context_tokens is None:
-            problems.append(_problem("max_context_required", "API 后端要指定模型的输入 Token 上限"))
+            args.max_context_tokens = None
+            try:
+                backend["max_context_tokens"] = organize_memories.resolve_context_window(args)
+            except ValueError as exc:
+                problems.append(_problem("config_invalid", f"配置文件有误：{exc}", detail=str(exc)))
         return backend, problems
 
-    command = args.codex_command
-    if shutil.which(command) is None:
-        return backend, [_problem("codex_missing", f"找不到 Codex CLI：{command}", command=command)]
-    try:
-        logged_in = (
-            subprocess.run(
-                [command, "login", "status"], capture_output=True, timeout=30, check=False
-            ).returncode
-            == 0
-        )
-    except (OSError, subprocess.TimeoutExpired):
-        logged_in = False
-    if not logged_in:
-        return backend, [
-            _problem("codex_logged_out", f"Codex CLI 没有登录，请先执行 {command} login", command=command)
-        ]
+    problems = codex_problems(args.codex_command)
+    if problems:
+        return backend, problems
     if max_context_tokens is None:
         args.max_context_tokens = None
-        try:
-            backend["max_context_tokens"] = organize_memories.resolve_context_window(args)
-        except (OSError, ValueError, subprocess.SubprocessError):
-            return backend, [
-                _problem("context_unknown", "读不到 Codex 模型的上下文长度，请指定输入 Token 上限")
-            ]
+        backend["max_context_tokens"] = organize_memories.resolve_context_window(args)
     return backend, []
 
 
@@ -371,7 +377,8 @@ def check(
     secure_storage.configure(config_path)
     chats, problems = chat_problems(config_path, chats_folder)
     backend, backend_problems = _backend_problems(config_path, max_context_tokens)
-    problems += backend_problems
+    # Marked for the web page, where unsaved changes to the model service make them out of date.
+    problems += [{**problem, "backend": True} for problem in backend_problems]
     if purpose == "clone":
         problems += _style_problems(config_path)
     if build_running():
@@ -506,7 +513,7 @@ def run(
 
                 missing = build_summaries(hierarchy_dir)
             if missing:
-                click.echo(f"板块总结：{missing}")
+                click.echo(f"画像总结：{missing}")
 
             if with_style:
                 with build.stage("style"):

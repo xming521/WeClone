@@ -12,7 +12,6 @@ from pathlib import Path
 from queue import Queue
 from threading import Condition, Event, Lock, Thread
 from typing import Any, Callable, Iterable, Literal, Protocol
-from urllib.parse import urlparse
 
 import httpx
 import pyjson5
@@ -242,9 +241,24 @@ def parse_json_from_text(text: str | None) -> ParsedJson:
     raise ValueError("unbalanced JSON in response")
 
 
+def _schema_integers(value: Any, schema: dict[str, Any]) -> Any:
+    """`value` with the integer strings turned into integers where `schema` asks for an integer. An endpoint that only
+    guarantees valid JSON (json_object) does not hold the model to the schema's types, and models quote ids."""
+    kind = schema.get("type")
+    if kind == "object" and isinstance(value, dict):
+        properties = schema.get("properties", {})
+        return {k: _schema_integers(v, properties[k]) if k in properties else v for k, v in value.items()}
+    if kind == "array" and isinstance(value, list) and "items" in schema:
+        return [_schema_integers(v, schema["items"]) for v in value]
+    if kind == "integer" and isinstance(value, str) and re.fullmatch(r"-?\d+", value.strip()):
+        return int(value)
+    return value
+
+
 def _maybe_parse_response_json(request: LLMRequest, text: str | None) -> ParsedJson | None:
     if request.json_mode or request.json_schema or request.response_model:
-        return parse_json_from_text(text)
+        parsed = parse_json_from_text(text)
+        return _schema_integers(parsed, request.json_schema) if request.json_schema else parsed
     return None
 
 
@@ -290,12 +304,8 @@ def _codex_error_text(stdout: str, stderr: str) -> str:
     return "\n".join(errors)
 
 
-def _response_format_type_unavailable(exc: BadRequestError) -> bool:
-    return "response_format type is unavailable" in str(exc).lower()
-
-
-def _is_deepseek_api(base_url: str | None) -> bool:
-    return (urlparse(base_url or "").hostname or "").lower() == "api.deepseek.com"
+# The response formats a request with a schema can ask for: the schema itself, or only valid JSON.
+STRUCTURED_OUTPUTS = ("json_schema", "json_object")
 
 
 class BaseBatchMixin:
@@ -484,13 +494,22 @@ class OpenAICompatibleClient(BaseBatchMixin):
         timeout: float = API_TIMEOUT_SECONDS,
         audit_logger: LLMAuditLogger | None = None,
         retry_policy: RetryPolicy | None = None,
+        reasoning_effort: str | None = None,
+        extra_body: dict[str, Any] | None = None,
+        structured_output: str | None = None,
     ):
+        """`reasoning_effort` and `extra_body` go with every request; a request's own values take precedence.
+        `structured_output` is the response format a request with a schema asks for, json_schema when unset."""
+        if structured_output not in (None, *STRUCTURED_OUTPUTS):
+            raise ValueError(f"structured_output must be one of {', '.join(STRUCTURED_OUTPUTS)}")
         self.api_key = api_key
         self.base_url = base_url
         self.model = model
         self.timeout = timeout
         self.retry_policy = retry_policy or RetryPolicy()
-        self.is_deepseek_api = _is_deepseek_api(base_url)
+        self.reasoning_effort = reasoning_effort
+        self.extra_body = dict(extra_body or {})
+        self.structured_output = structured_output
         proxy_url = openrouter_proxy_url(base_url or "")
         self.http_client = httpx.Client(proxy=proxy_url, timeout=timeout) if proxy_url else None
         self.client = OpenAI(
@@ -564,11 +583,15 @@ class OpenAICompatibleClient(BaseBatchMixin):
             value = getattr(request, key)
             if value is not None:
                 params[key] = value
-        if request.extra_body:
-            params["extra_body"] = dict(request.extra_body)
+        effort = request.effort or self.reasoning_effort
+        if effort:
+            params["reasoning_effort"] = effort
+        extra_body = {**self.extra_body, **(request.extra_body or {})}
+        if extra_body:
+            params["extra_body"] = extra_body
         if request.stream:
             params["stream_options"] = {"include_usage": True}
-        if request.json_schema and not self.is_deepseek_api:
+        if request.json_schema and self.structured_output != "json_object":
             params["response_format"] = {
                 "type": "json_schema",
                 "json_schema": {"name": "llm_response", "schema": request.json_schema, "strict": True},
@@ -587,36 +610,28 @@ class OpenAICompatibleClient(BaseBatchMixin):
                 raw = self.client.chat.completions.create(**params)
                 result = self._read_response(raw, request, model)
             except Exception as exc:
-                fallback = (
-                    isinstance(exc, BadRequestError)
-                    and request.json_schema is not None
-                    and params.get("response_format", {}).get("type") == "json_schema"
-                    and _response_format_type_unavailable(exc)
-                )
-                retry = (
-                    index < policy.max_retries
-                    and (fallback or policy.accepts(exc))
-                    and not self._stop_event.is_set()
-                )
-                delay = 0.0 if fallback else policy.delay(index) if retry else None
+                retry = index < policy.max_retries and policy.accepts(exc) and not self._stop_event.is_set()
+                delay = policy.delay(index) if retry else None
                 call.finish_attempt(
                     attempt,
                     status="failed",
                     error=exc,
                     provider_request_id=getattr(exc, "request_id", None),
                     will_retry=retry,
-                    retry_reason=("json_schema_unsupported" if fallback else "provider_error")
-                    if retry
-                    else None,
+                    retry_reason="provider_error" if retry else None,
                     retry_delay_s=delay,
                 )
                 if not retry:
+                    if isinstance(exc, BadRequestError):
+                        logger.warning(
+                            "{} refused the request; testing the connection under Settings > Model service sends "
+                            "the same parameters",
+                            self.base_url,
+                        )
                     raise
                 logger.warning(
                     "LLM attempt {} failed: {}; retrying in {}s", attempt, type(exc).__name__, delay
                 )
-                if fallback:
-                    params["response_format"] = {"type": "json_object"}
                 if self._stop_event.wait(delay or 0):
                     raise CancelledError("retry interrupted")
                 continue
@@ -1052,6 +1067,9 @@ def build_llm_client(
     max_workers: int = 10,
     timeout: float | None = None,
     effort: str = "low",
+    reasoning_effort: str | None = None,
+    extra_body: dict[str, Any] | None = None,
+    structured_output: str | None = None,
     command: str = "codex",
     sandbox: str = "read-only",
     audit_logger: LLMAuditLogger | None = None,
@@ -1063,6 +1081,8 @@ def build_llm_client(
     request_interval_seconds: float | None = None,
     capacity_cooldown_seconds: float | None = None,
 ) -> LLMClient:
+    """`effort` is codex exec's; the API backend takes `reasoning_effort`, `extra_body` and `structured_output`
+    instead."""
     normalized_provider = normalize_provider(provider)
     resolved_model = model or model_name
 
@@ -1110,6 +1130,9 @@ def build_llm_client(
         timeout=timeout or API_TIMEOUT_SECONDS,
         audit_logger=audit_logger,
         retry_policy=retry_policy,
+        reasoning_effort=reasoning_effort,
+        extra_body=extra_body,
+        structured_output=structured_output,
     )
 
 

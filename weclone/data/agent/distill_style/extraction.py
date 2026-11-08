@@ -119,12 +119,18 @@ class Judge:
             self.key = options["llm_api_key"]
             from weclone.core.inference import OpenAICompatibleClient, RetryPolicy
 
+            # The request extras profile building sends, from agent_distill_args.
+            distill = config.get("agent_distill_args") or {}
+            self.backend_options = {
+                key: distill[key] for key in ("reasoning_effort", "extra_body") if distill.get(key)
+            }
             self.client = OpenAICompatibleClient(
                 api_key=self.key,
                 base_url=self.url,
                 model=self.model,
                 timeout=DEFAULT_TIMEOUT,
                 retry_policy=RetryPolicy(max_retries=0),
+                **self.backend_options,
             )
         self.cache = Path(cache_dir)
         self.cache.mkdir(parents=True, exist_ok=True)
@@ -163,6 +169,7 @@ class Judge:
             "url": self.url,
             "prompt": prompt,
             "payload": payload,
+            # No request sets a temperature any more; the entry stays so earlier answers are still found.
             "temperature": 0,
             "transport": BATCH_PROTOCOL,
         }
@@ -170,6 +177,8 @@ class Judge:
             identity["wire_protocol"] = WIRE_VERSION
         if self.provider == "codex_exec":
             identity.update(provider=self.provider, backend_options=self.backend_options)
+        elif self.backend_options:
+            identity["backend_options"] = self.backend_options
         if self.batcher is not None:
             identity["batch_protocol"] = BATCH_PROTOCOL
         if attempt:
@@ -310,7 +319,6 @@ class Judge:
                 {"role": "system", "content": prompt},
                 {"role": "user", "content": payload if isinstance(payload, str) else compact(payload)},
             ],
-            temperature=0,
             json_mode=True,
             max_tokens=None,
         )
