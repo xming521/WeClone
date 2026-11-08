@@ -1,0 +1,93 @@
+/* The field dropdowns of Dropdown.tsx: the closed control is a text field's box, the open list the design
+   system's menu, the same width as the box. */
+.dropdown-select {
+  width: 100%;
+  margin: 0;
+  color: var(--ink-1);
+  font: 400 14px/1 var(--font-sans);
+  letter-spacing: 0.02em;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dropdown-select > span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dropdown-select[data-placeholder] {
+  color: var(--ink-3);
+  letter-spacing: 0;
+}
+
+/* The list takes the focus; the box keeps the focused look meanwhile, as the review filter does. */
+.dropdown-select[data-state='open'] {
+  border-color: var(--you);
+  box-shadow: 0 0 0 3px var(--you-tint);
+}
+
+.wc-input.dropdown-select:disabled {
+  background: var(--sunken);
+  cursor: default;
+  opacity: 1;
+}
+
+.dropdown-chevron {
+  flex: none;
+  color: var(--ink-3);
+  transition: transform var(--wc-t2) var(--wc-ease);
+}
+
+.dropdown-select > .dropdown-chevron {
+  margin-right: var(--space-2);
+}
+
+[data-state='open'] > .dropdown-chevron,
+[data-state='open'] > .dropdown-toggle > .dropdown-chevron {
+  transform: rotate(180deg);
+}
+
+/* Sized so its chevron sits where a select's does. */
+.dropdown-toggle {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  margin-right: 1px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+}
+
+.dropdown-toggle:hover .dropdown-chevron {
+  color: var(--ink-1);
+}
+
+.dropdown-menu {
+  z-index: 50;
+  width: var(--radix-select-trigger-width, var(--radix-popover-trigger-width));
+  max-height: min(320px, var(--radix-select-content-available-height, var(--radix-popover-content-available-height)));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-2) transparent;
+}
+
+/* Radix hides the select's scrollbar; a long list shows it, as the typed field's list does. */
+.dropdown-menu [data-radix-select-viewport] {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-2) transparent;
+}
+
+.dropdown-menu .wc-menu__item > span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

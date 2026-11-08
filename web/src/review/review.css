@@ -30,9 +30,11 @@
   z-index: 12;
 }
 
+/* The highlight is the focus mark of a list: the focus ring would stack on it. */
 .wc-menu__item[data-highlighted] {
   background: var(--sunken);
   outline: none;
+  box-shadow: none;
 }
 
 .privacy-filter {
@@ -331,8 +333,7 @@
   margin: var(--space-4) 0;
 }
 
-/* Select and textarea join the text field: the same line-3 box, only the inner control differs. */
-.fact-editor .wc-input select,
+/* The textarea joins the text field: the same line-3 box, only the inner control differs. */
 .fact-editor .wc-input textarea {
   flex: 1;
   min-width: 0;
@@ -343,20 +344,6 @@
   color: var(--ink-1);
   font: 400 14px/1 var(--font-sans);
   letter-spacing: 0.02em;
-}
-
-.fact-editor .wc-input select {
-  height: 100%;
-  appearance: none;
-  cursor: pointer;
-  text-overflow: ellipsis;
-}
-
-.fact-editor .wc-input > svg {
-  flex: none;
-  margin-right: var(--space-2);
-  color: var(--ink-3);
-  pointer-events: none;
 }
 
 .fact-editor .wc-input--area {

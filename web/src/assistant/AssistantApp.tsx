@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Lock, LockOpen } from 'lucide-react';
+import { LayoutList, Lock, LockOpen } from 'lucide-react';
 import { Trans, useTranslation } from 'react-i18next';
 import { api } from '../api';
 import { LogoutButton } from '../Auth';
@@ -199,6 +199,15 @@ export function AssistantApp() {
               values={{ url: view.mcp_url }}
               components={{ code: <code /> }}
             />
+          </p>
+          <p className="assistant-note">
+            <LayoutList size={14} strokeWidth={1.8} aria-hidden="true" />
+            <span>
+              <Trans
+                i18nKey={($) => $.assistant.summaryNote}
+                components={{ a: <a className="wc-link" href="#/summary" /> }}
+              />
+            </span>
           </p>
           {error && (
             <div className="summary-error" role="alert">

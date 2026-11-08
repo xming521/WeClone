@@ -30,6 +30,12 @@
   border-top: 0;
 }
 
+.settings-section__hint {
+  margin: 0 0 var(--space-1);
+  color: var(--ink-3);
+  font: var(--text-caption);
+}
+
 .settings-row__text {
   display: grid;
   gap: 2px;
@@ -245,4 +251,89 @@
   gap: var(--space-2);
   color: var(--ink-1);
   font: var(--text-label);
+}
+
+/* The model service form: fields two to a row, the long ones across, then save and test with the test's outcome. */
+.settings-model__fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3) var(--space-4);
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--line-1);
+}
+
+.settings-model__wide {
+  grid-column: 1 / -1;
+}
+
+/* A field beside a taller one keeps its input under its label. */
+.settings-model__fields .wc-field {
+  align-content: start;
+}
+
+.settings-model__fields .wc-seg {
+  justify-self: start;
+}
+
+.settings-model input[data-masked] {
+  -webkit-text-security: disc;
+}
+
+.settings-model .wc-field__hint {
+  overflow-wrap: anywhere;
+}
+
+.settings-model .wc-input--area {
+  height: auto;
+  padding: 10px var(--space-3);
+}
+
+.settings-model .wc-input textarea {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ink-1);
+  font: 400 13px/20px var(--font-mono);
+  resize: vertical;
+}
+
+.settings-model__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--line-1);
+}
+
+.settings-model__result {
+  display: flex;
+  flex: 1 1 240px;
+  align-items: flex-start;
+  gap: var(--space-1);
+  min-width: 0;
+  margin: 0;
+  color: var(--ink-2);
+  font: var(--text-caption);
+  overflow-wrap: anywhere;
+}
+
+.settings-model__result svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--you-ink);
+}
+
+.settings-model__result[data-tone='danger'],
+.settings-model__result[data-tone='danger'] svg {
+  color: var(--danger);
+}
+
+@media (max-width: 650px) {
+  .settings-model__fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

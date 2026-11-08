@@ -136,7 +136,12 @@ export function BotsApp() {
             <p className="assistant-strip clone" role="status">
               <span className="wc-clone" aria-hidden="true" />
               <span>
-                <Trans i18nKey={($) => $.bots.noInference} components={{ code: <code /> }} />
+                <Trans
+                  i18nKey={($) => $.bots.noInference}
+                  components={{
+                    a: <a className="wc-link" href={t(($) => $.docs.botServer)} target="_blank" rel="noreferrer" />,
+                  }}
+                />
               </span>
             </p>
           )}
@@ -166,7 +171,14 @@ export function BotsApp() {
               <CopyField label="API Base URL" text={view.api_url} />
               <p className="summary-hint">{t(($) => $.bots.setup.key)}</p>
               <CopyField label="API Key" text={created} />
-              <p className="summary-hint">{t(($) => $.bots.setup.model)}</p>
+              <p className="summary-hint">
+                <Trans
+                  i18nKey={($) => $.bots.setup.model}
+                  components={{
+                    a: <a className="wc-link" href={t(($) => $.docs.botServer)} target="_blank" rel="noreferrer" />,
+                  }}
+                />
+              </p>
               <button className="wc-btn assistant-done" type="button" onClick={() => setCreated('')}>
                 {t(($) => $.assistant.setup.done)}
               </button>

@@ -10,6 +10,7 @@ import { LanguageSwitch } from '../LanguageSwitch';
 import { saveDefaultPrivacy, useProfileStore } from '../store';
 import { THEME_CHOICES, useTheme } from '../theme';
 import { formatDuration, formatTime } from './duration';
+import { ModelSettings } from './ModelSettings';
 import { PageTopbar } from './PageTopbar';
 import '../summary/summary.css';
 import '../assistant/assistant.css';
@@ -91,7 +92,9 @@ export function SettingsApp() {
       await api.put('run', { name: version.name });
       // The map, the review queue and their selection belonged to the run shown before.
       useProfileStore.getState().resetSession();
-      toast(t(($) => $.settings.run.switched, { time: formatTime(version.generated_at) ?? version.name }));
+      toast(
+        t(($) => $.settings.run.switched, { time: formatTime(version.generated_at) ?? t(($) => $.settings.run.none) }),
+      );
     } catch (reason) {
       setError((reason as Error).message);
     } finally {
@@ -101,7 +104,7 @@ export function SettingsApp() {
   }
 
   async function remove(version: RunVersion) {
-    const time = formatTime(version.generated_at ?? version.started_at) ?? version.name;
+    const time = formatTime(version.generated_at ?? version.started_at) ?? t(($) => $.settings.run.none);
     const ok = await confirm(
       version.complete
         ? {
@@ -184,6 +187,9 @@ export function SettingsApp() {
             />
           )}
         </Section>
+
+        {/* Second: what builds the next one. */}
+        <Section title={t(($) => $.settings.model.title)}>{run && <ModelSettings demo={run.demo} />}</Section>
 
         <Section title={t(($) => $.settings.appearance.title)}>
           <Row label={t(($) => $.settings.appearance.theme)} hint={t(($) => $.settings.appearance.themeHint)}>
@@ -308,9 +314,8 @@ function VersionList({
       {versions.map((version) => (
         <li key={version.name} aria-current={version.current || undefined}>
           <div className="settings-row__text">
-            {/* The run's folder name, for the command line. */}
-            <span className="settings-versions__name" title={version.name}>
-              {formatTime(version.generated_at ?? version.started_at) ?? <code>{version.name}</code>}
+            <span className="settings-versions__name">
+              {formatTime(version.generated_at ?? version.started_at) ?? t(($) => $.settings.run.none)}
               {version.current && <span className="assistant-state on">{t(($) => $.settings.run.current)}</span>}
               {version.state !== 'succeeded' && (
                 <span className="assistant-state">{t(($) => $.build.states[version.state])}</span>

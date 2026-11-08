@@ -1,6 +1,6 @@
 import { useEffect, useId, useState, type ReactNode } from 'react';
 import { FACES } from './Mark';
-import { Quips } from './Quips';
+import { Quips, type QuipKind } from './Quips';
 import type { StageKey } from './progress';
 
 // The two faces of the mark taking turns at work while a build runs, one thing after another. Each face is a layer of
@@ -20,6 +20,7 @@ const SHADES = {
   peach: ['#fec8a0', '#fd9a70'],
   mint: ['#a4f0d6', '#36c193'],
   glass: ['#f2fbff', '#c4e8ff'],
+  rim: ['#d6f1ff', '#93d0f7'],
   phone: ['#d3d9e2', '#909bac'],
   silver: ['#f4f7fb', '#c7d1de'],
   deck: ['#e6ecf3', '#b3bfcd'],
@@ -31,9 +32,16 @@ const SHADES = {
 const INK = { blue: '#5bbcf8', peach: '#fda27a', mint: '#4fcfa6', yellow: '#ffcf5c', grey: '#dccfb8' };
 
 type Who = 'you' | 'clone';
-type Paint = (name: keyof typeof SHADES | Who | 'screen') => string;
-/** One thing done by one face: the prop, round 0 0 at the middle of its foot, and anything held in the hand. */
-type Act = { key: string; who: Who; prop: (paint: Paint) => ReactNode; held?: ReactNode };
+type Paint = (name: keyof typeof SHADES | Who | 'screen' | 'cup') => string;
+/** One thing done by one face: the prop, round 0 0 at the middle of its foot, anything held in the hand, round 0 0 at
+ * the hand, and the kinds of line that go with it (Quips.tsx). */
+type Act = {
+  key: string;
+  who: Who;
+  quips: QuipKind[];
+  prop?: (paint: Paint) => ReactNode;
+  held?: (paint: Paint) => ReactNode;
+};
 
 /** A line of writing; `drawn` names the animation that writes it out. */
 function Ink({ d, ink, bold = false, drawn }: { d: string; ink: keyof typeof INK; bold?: boolean; drawn?: string }) {
@@ -70,11 +78,16 @@ const CHAT = Array.from({ length: 11 }, (_, index) => {
   return { ink, width, x: ink === 'peach' ? -3 : 3 - width, y: -10.9 + index * 2.4 };
 });
 
-// In turn: getting out the chats, scrolling them, looking through them, reading, typing, taking notes.
+// The glass of water, standing on the hand.
+const GLASS = 'M-3.2 -10H3.2L2.55 -2.7Q2.46 -1.7 1.5 -1.7H-1.5Q-2.46 -1.7 -2.55 -2.7Z';
+
+// In turn: getting out the chats, scrolling them, looking through them, reading, typing, a drink of water after it,
+// taking notes.
 const ACTS: Act[] = [
   {
     key: 'folder',
     who: 'clone',
+    quips: ['look', 'sort', 'any'],
     prop: (paint) => (
       <>
         <path
@@ -98,6 +111,7 @@ const ACTS: Act[] = [
   {
     key: 'phone',
     who: 'you',
+    quips: ['look', 'any'],
     prop: (paint) => (
       <>
         <rect fill={paint('phone')} x="-4.6" y="-13" width="9.2" height="13.4" rx="2.2" />
@@ -117,6 +131,7 @@ const ACTS: Act[] = [
   {
     key: 'lens',
     who: 'clone',
+    quips: ['look', 'any'],
     prop: (paint) => (
       <g className="build-prop__sweep">
         <path className="build-prop__handle" stroke="#97a2b2" d="M0.1 -0.4L1 -3.6" />
@@ -135,6 +150,7 @@ const ACTS: Act[] = [
   {
     key: 'book',
     who: 'you',
+    quips: ['look', 'any'],
     prop: (paint) => (
       <>
         <path
@@ -154,6 +170,7 @@ const ACTS: Act[] = [
   {
     key: 'laptop',
     who: 'clone',
+    quips: ['write', 'type', 'sort', 'any'],
     prop: (paint) => (
       <>
         <rect fill={paint('silver')} x="-6.8" y="-12.6" width="13.6" height="9.4" rx="1.6" />
@@ -171,8 +188,27 @@ const ACTS: Act[] = [
     ),
   },
   {
+    key: 'drink',
+    who: 'clone',
+    quips: ['rest'],
+    // The glass tips round the hand and the water inside turns back the other way, so that it lies level.
+    held: (paint) => (
+      <g className="build-prop__sip">
+        <path fill={paint('glass')} fillOpacity="0.9" d={GLASS} />
+        <g clipPath={paint('cup')}>
+          <g className="build-prop__water">
+            <rect fill={paint('blue')} x="-14" y="-7.2" width="22" height="13" />
+          </g>
+        </g>
+        <path className="build-prop__rim" stroke={paint('rim')} d={GLASS} />
+        <path className="build-prop__shine" d="M-1.95 -8.5L-1.6 -3.6" />
+      </g>
+    ),
+  },
+  {
     key: 'notes',
     who: 'you',
+    quips: ['write', 'sort', 'any'],
     // A pad lying flat, a little out to your left, and a pencil held round the middle with its point down.
     prop: (paint) => (
       <g transform="translate(-2.5 0)">
@@ -191,7 +227,7 @@ const ACTS: Act[] = [
         <Ink ink="peach" drawn="build-prop__write--3" d="M-3.6 -0.7H0.6" />
       </g>
     ),
-    held: (
+    held: () => (
       <>
         <path className="build-prop__pencil" stroke="#ffc947" strokeLinecap="butt" d="M-1.49 3.62L1.6 -3.89" />
         <polygon fill="#fbe0b0" points="-2.1,5.1 -2.55,3.18 -0.43,4.06" />
@@ -232,10 +268,18 @@ function Layer({ who, act, paint, children }: { who: Who; act?: Act; paint: Pain
                     <path fill="#fff" d={face.glints} />
                   </g>
                 </g>
+                <path
+                  className="build-workers__shut"
+                  d={face.smile.eyes}
+                  fill="none"
+                  stroke={face.ink}
+                  strokeWidth={face.smile.width}
+                  strokeLinecap="round"
+                />
               </g>
             </g>
             <g transform={grip}>
-              {act && (
+              {act?.prop && (
                 <g transform="scale(1.15)">
                   <g key={act.key} className="build-prop">
                     {act.prop(paint)}
@@ -247,7 +291,7 @@ function Layer({ who, act, paint, children }: { who: Who; act?: Act; paint: Pain
                   <g transform={`translate(${rest} 0)`}>
                     {act?.held && (
                       <g key={act.key} className="build-prop">
-                        {act.held}
+                        {act.held(paint)}
                       </g>
                     )}
                     <circle r={hand} fill={paint(`${who}Hand`)} />
@@ -262,8 +306,8 @@ function Layer({ who, act, paint, children }: { who: Who; act?: Act; paint: Pain
   );
 }
 
-/** The faces at work, saying a line about the stage the build is on: a few seconds at each thing, then the other face
- * takes over with the next. */
+/** The faces at work, saying a line about the stage the build is on that goes with what they do: a few seconds at
+ * each thing, then the other face takes over with the next. */
 export function Workers({ stage }: { stage: StageKey }) {
   const id = `workers${useId().replace(/[^\w-]/g, '')}`;
   const paint: Paint = (name) => `url(#${id}-${name})`;
@@ -282,7 +326,7 @@ export function Workers({ stage }: { stage: StageKey }) {
   const act = ACTS[step % ACTS.length];
   return (
     <div className="build-workers" data-front={act.who} data-leaving={leaving || undefined}>
-      <Quips key={stage} stage={stage} className="build-workers__say" />
+      <Quips key={stage} stage={stage} kinds={act.quips} step={step} className="build-workers__say" />
       <div className="build-workers__duo">
         <Layer who="you" act={act.who === 'you' ? act : undefined} paint={paint}>
           {/* The paints for both layers. */}
@@ -301,6 +345,9 @@ export function Workers({ stage }: { stage: StageKey }) {
             ))}
             <clipPath id={`${id}-screen`}>
               <rect x="-3.5" y="-11.7" width="7" height="10.2" rx="1.2" />
+            </clipPath>
+            <clipPath id={`${id}-cup`}>
+              <path d={GLASS} />
             </clipPath>
           </defs>
         </Layer>

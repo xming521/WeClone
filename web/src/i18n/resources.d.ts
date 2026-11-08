@@ -33,7 +33,7 @@ export default interface Resources {
       }
     },
     "app": {
-      "canvasHelp": "悬停点亮归属路径 · 点击展开并聚焦，再点一次收起 · 拖动节点牵动图谱",
+      "canvasHelp": "悬停点亮归属路径 · 点击展开并聚焦，再点一次收起 · 拖动圆点牵动图谱",
       "dimensionOverview": "{{count, zhNumeral}}维总览",
       "domainOverview": "{{count, zhNumeral}}个板块总览",
       "empty": {
@@ -53,7 +53,7 @@ export default interface Resources {
         "change": "改为 {{duration}}",
         "close": "立即关闭",
         "closed": "已关闭",
-        "hint": "数据是加密的，助手只能在你允许的时间里读取。允许期间服务在内存里保留一份密钥，到时间或服务重启就清除。",
+        "hint": "数据是加密的，助手只能在你允许的时间里读取。到时间或 WeClone 重启后自动关闭。",
         "title": "允许助手读取",
         "until": "到 {{time}} 自动关闭"
       },
@@ -69,9 +69,9 @@ export default interface Resources {
       "domainFacts": "{{count}} 条",
       "domainFactsSummary": "{{count}} 条 · 有总结",
       "domains": "板块",
-      "domainsNote": "勾掉的板块，总结和条目都不给助手。助手现在能读到 {{count}} 段板块总结：这个级别、勾选的板块里、在<a>板块总结页</a>确认过的。改了从助手的下一次调用起生效，不用重新配置。",
+      "domainsNote": "勾掉的板块，总结和条目都不给助手。助手现在能读到 {{count}} 段总结：这个级别、勾选的板块里、在<a>画像总结</a>页确认过的。改了从助手的下一次调用起生效，不用重新配置。",
       "hours": "{{count}} 小时",
-      "intro": "Claude Code、Codex 等支持 MCP 的助手可以连接这里的 WeClone：weclone_profile 返回你确认过的板块总结，weclone_search 按关键词或板块查画像条目。所有助手共用一个令牌，读到哪些内容由下面选的级别和板块决定，每次调用都会记下返回了什么。",
+      "intro": "Claude Code、Codex 等支持 MCP 的助手可以连接这里的 WeClone，读取你确认过的画像总结，也能按关键词或板块查画像条目。所有助手共用一个令牌，读到哪些内容由下面选的级别和板块决定，每次调用都会记下返回了什么。",
       "level": "隐私级别",
       "levels": {
         "full": {
@@ -103,6 +103,7 @@ export default interface Resources {
       },
       "sharedDomains": "提供的板块",
       "someDomains": "提供 {{shared}}/{{total}} 个，以后新出现或改名的板块不提供",
+      "summaryNote": "不支持 MCP 的助手也能用画像总结：在<a>画像总结</a>页复制导出文本，贴到它的“关于我”、自定义指令或 USER.md。",
       "title": "让个人助手读取画像",
       "unused": "还没有助手用过"
     },
@@ -153,10 +154,10 @@ export default interface Resources {
         "placeholder": "搜索主题、属性或内容"
       },
       "toolbar": {
-        "collapseDimension": "收起当前维度的{{level}}级节点",
-        "collapseDomain": "收起当前板块的{{level}}级节点",
-        "expandDimension": "展开当前维度的{{level}}级节点",
-        "expandDomain": "展开当前板块的{{level}}级节点",
+        "collapseDimension": "收起当前维度的第 {{level}} 层",
+        "collapseDomain": "收起当前板块的第 {{level}} 层",
+        "expandDimension": "展开当前维度的第 {{level}} 层",
+        "expandDomain": "展开当前板块的第 {{level}} 层",
         "fit": "适应画布",
         "level": "{{level}}级",
         "pickDimension": "先点击一个维度",
@@ -181,7 +182,7 @@ export default interface Resources {
       "newPassword": "设置密码",
       "password": "访问密码",
       "sessionNote": "登录有效期为 {{duration}}，到期后需重新输入密码。请在自己的设备上使用。",
-      "setupEncrypted": "同一个密码用于网页访问和数据加密。忘记密码后需要重新抽取全部数据。",
+      "setupEncrypted": "同一个密码用于网页访问和数据加密。忘记密码后已有数据都无法解开，只能从头重新构建。",
       "setupPlaintext": "设置用于网页访问的密码。当前数据采用明文存储。",
       "setupSubmit": "设置并解锁",
       "setupTitle": "设置个人密码",
@@ -195,11 +196,11 @@ export default interface Resources {
       "confirmWithdraw": "停用后所有机器人都调用不了分身，之后可以重新生成令牌。",
       "confirmWithdrawTitle": "停用令牌？",
       "connected": "已接入",
-      "encrypted": "数据是加密的：生成令牌时，数据密钥用令牌加密后存进本机的 bots.sqlite3，机器人调用时凭令牌解开，不需要你登录。令牌和这个文件同时泄露就能解密全部数据，请像密码一样保管令牌。改密码不影响令牌，怀疑泄露时请重新生成。",
+      "encrypted": "数据是加密的，机器人凭令牌就能读取，不需要你登录。令牌和这台电脑上的数据一起泄露时，数据就能被解开，请像密码一样保管令牌。改密码不影响令牌，怀疑泄露时请重新生成。",
       "intro": "AstrBot、LangBot 等机器人平台通过 OpenAI 兼容接口调用微调后的分身模型。所有机器人共用一个令牌，填在平台的 API Key 里。",
       "loadFailed": "机器人接入页暂时无法打开",
       "loading": "正在读取机器人接入设置",
-      "noInference": "服务现在没有加载分身模型，用 <code>weclone-cli server --inference</code> 启动后机器人才能调用。",
+      "noInference": "服务现在没有加载分身模型，按<a>文档</a>启动后机器人才能调用。",
       "noTokenHint": "生成令牌后，把它填到机器人平台的 API Key 里。",
       "playground": {
         "empty": "发一句话开始对话",
@@ -210,11 +211,11 @@ export default interface Resources {
         "stop": "停止",
         "title": "试用分身",
         "typing": "正在输入…",
-        "unavailable": "服务没有加载分身模型，用 weclone-cli server --inference 启动后才能试用。"
+        "unavailable": "服务没有加载分身模型，暂时不能试用。"
       },
       "setup": {
         "key": "API Key 填：",
-        "model": "模型名称随意填写，例如 gpt-3.5-turbo。微调后的模型不会调用工具，请在平台上关掉工具和插件。机器人平台跑在 Docker 里时，地址里的 127.0.0.1 要换成宿主机在 Docker 网络里的地址（例如 172.17.0.1），并在启动服务时用 --host 指定这个地址。",
+        "model": "模型名称随意填写，例如 gpt-3.5-turbo。微调后的模型不会调用工具，请在平台上关掉工具和插件。机器人平台跑在 Docker 里时，地址要换一个，见<a>文档</a>。",
         "once": "令牌只显示这一次。在机器人平台新增一个 OpenAI 类型的模型服务，API Base URL 填："
       },
       "title": "让聊天机器人调用分身",
@@ -227,18 +228,18 @@ export default interface Resources {
         "again": "重新构建",
         "another": "构建新画像",
         "cancelled": {
-          "hint": "重新构建会用新的目录重跑，已经拿到的模型结果读缓存，不再请求。",
+          "hint": "重新构建时，已经处理过的部分直接沿用，不用重新处理。",
           "title": "构建已取消"
         },
         "failed": {
-          "hint": "重新构建会用新的目录重跑，已经拿到的模型结果读缓存，不再请求。",
+          "hint": "重新构建时，已经处理过的部分直接沿用，不用重新处理。",
           "title": "构建失败"
         },
         "interrupted": {
-          "hint": "构建进程没有正常结束，可能是机器重启或进程被结束。重新构建时，已经拿到的模型结果读缓存。",
+          "hint": "构建没有正常结束，可能是电脑重启或 WeClone 被关闭。重新构建时，已经处理过的部分直接沿用。",
           "title": "构建中断"
         },
-        "log": "日志：{{log}}",
+        "log": "日志文件：\n{{log}}",
         "open": "打开新画像",
         "reviewsStay": "当前画像的审核记录留在旧版本里，打开新画像后，可以在设置页的「画像版本」切回。",
         "stoppedAt": "停在「{{stage}}」",
@@ -263,40 +264,33 @@ export default interface Resources {
       "loading": "正在读取构建状态",
       "prepare": {
         "backend": "模型后端",
-        "backendHint": "在 settings.jsonc 的 agent_distill_args 里设置",
+        "backendChoiceHint": "保存后以后的构建也用。并发、超时等其余选项在<a>设置</a>页的模型服务里",
+        "backendHint": "在<a>设置</a>页的模型服务里更改",
         "chatCount": "{{count}} 个聊天",
         "chats": "聊天记录",
-        "chatsHint": "在 settings.jsonc 的 make_dataset_args 里设置",
+        "chatsHint": "现在读的是安装时配置的聊天记录，上传后改读上传的聊天",
         "chatsUploadHint": "每个聊天是一个放着 CSV 的文件夹，以聊天对象命名。上传会替换之前上传的聊天",
         "checking": "正在检查",
         "confirm": "确认并开始",
         "consent": "我确认有权处理这些聊天记录，并同意把聊天内容发送给 {{backend}}。",
         "last": "上次构建完成于 {{time}}，已经打开。",
-        "limit": "输入上限 {{count}} Token",
-        "notice": "聊天内容可能包含身份、联系方式和私密对话，模型服务可能记录或留存这些内容。已经抽取过的聊天读取缓存，不会再次发送。",
+        "notice": "聊天内容可能包含身份、联系方式和私密对话，模型服务可能记录或留存这些内容。已经处理过的聊天不会再次发送。",
         "problems": "开始前需要处理",
         "purpose": "选择用途",
         "purposeHint": "以后可以随时再构建另一种",
         "recheck": "重新检查",
-        "sources": {
-          "config": "settings.jsonc 里的聊天",
-          "upload": "上传的聊天"
-        },
         "start": "开始构建",
-        "tokens": "模型的输入 Token 上限",
-        "tokensHint": "按模型的上下文长度填写，决定每次请求放多少内容"
+        "tuningInvalid": "并发、超时等其余选项有填得不对的，请到<a>设置</a>页的模型服务里改好"
       },
       "problems": {
-        "api_config_missing": "settings.jsonc 的 make_dataset_args 里没有填 {{keys}}",
+        "api_config_missing": "API 的接口地址、Key 或模型还没填，在上面填好后保存",
         "build_running": "已经有一次构建在运行",
-        "chats_missing": "{{folder}} 里没有聊天记录，请先按文档导出聊天记录",
-        "codex_logged_out": "Codex CLI 没有登录，请先运行 {{command}} login",
-        "codex_missing": "找不到 Codex CLI：{{command}}",
-        "config_invalid": "settings.jsonc 读取失败：{{detail}}",
-        "context_unknown": "读不到 Codex 模型的上下文长度，请填写输入 Token 上限",
-        "max_context_required": "API 后端要填写模型的输入 Token 上限",
-        "style_deps_missing": "AI 分身要抽取语言风格，请先运行 uv pip install --group style --torch-backend cpu -e .，并把 LTP 模型放在 {{model_dir}}",
-        "telegram_id_missing": "settings.jsonc 里没有填 make_dataset_args.telegram_args.my_id"
+        "chats_missing": "还没有聊天记录，请先在上面上传",
+        "codex_logged_out": "Codex CLI 还没有登录，请在终端里登录后重新检查",
+        "codex_missing": "这台电脑上找不到 Codex CLI，请先安装，或改用 API",
+        "config_invalid": "设置文件有误，请按错误详情修改后重新检查",
+        "style_deps_missing": "AI 分身要先安装语言风格组件，安装方法见<a>文档</a>",
+        "telegram_id_missing": "读取 Telegram 聊天记录还需要你自己的 Telegram 用户 ID，填法见<a>文档</a>"
       },
       "purposes": {
         "assistant": {
@@ -309,22 +303,49 @@ export default interface Resources {
         }
       },
       "quips": {
-        "any": ["WeClone 正在了解你", "正在理解你", "了解一个人，总要多花点时间"],
-        "distill_event": ["正在回顾你经历过的事", "那些大事小事，一件件记下", "正在给你的经历标上时间"],
-        "distill_profile": ["正在读你说过的话", "正在记下你提过的小事", "原来你喜欢这个，记下了", "正在从闲聊里认识你"],
-        "hierarchy": ["你的画像渐渐有了轮廓", "正在把事实归到主题下", "正在画出你的样子"],
-        "organize": ["正在把记忆分门别类", "工作归工作，生活归生活", "说过好几遍的事，合成一条"],
-        "snapshot": ["正在翻开你的聊天记录", "先认识一下常和你聊天的人", "正在把聊天按人理好"],
-        "style": ["正在学你说话的语气", "你的口头禅，学到了", "分身正在练习用你的方式打字"],
-        "summaries": ["正在给每个板块写总结", "快好了，正在写最后几段", "马上就能见到画像里的你"]
+        "common": {
+          "any": ["WeClone 正在了解你", "正在理解你", "了解一个人，总要多花点时间"],
+          "look": ["我看到了些许开心", "我看到了些许难过", "我看到了些许遗憾", "我看到了些许感动"],
+          "rest": ["喝口水再继续工作"]
+        },
+        "distill_event": {
+          "look": ["正在回顾你经历过的事"],
+          "write": ["那些大事小事，一件件记下", "正在给你的经历标上时间"]
+        },
+        "distill_profile": {
+          "any": ["原来你喜欢这个，记下了"],
+          "look": ["正在读你说过的话", "正在从闲聊里认识你"],
+          "write": ["正在记下你提过的小事"]
+        },
+        "hierarchy": {
+          "any": ["你的画像渐渐有了轮廓"],
+          "sort": ["正在把事实归到主题下"],
+          "write": ["正在画出你的样子"]
+        },
+        "organize": {
+          "sort": ["正在把记忆分门别类", "工作归工作，生活归生活", "说过好几遍的事，合成一条"]
+        },
+        "snapshot": {
+          "look": ["正在翻开你的聊天记录", "先认识一下常和你聊天的人"],
+          "sort": ["正在把聊天按人理好"]
+        },
+        "style": {
+          "any": ["你的口头禅，学到了"],
+          "look": ["正在学你说话的语气"],
+          "type": ["分身正在练习用你的方式打字"]
+        },
+        "summaries": {
+          "any": ["马上就能见到画像里的你"],
+          "write": ["正在给每个板块写总结", "快好了，正在写最后几段"]
+        }
       },
       "running": {
         "cancel": "取消构建",
-        "confirmCancel": "已经拿到的模型结果会留在缓存里。",
+        "confirmCancel": "已经处理过的部分会保留，下次构建不用重新处理。",
         "confirmCancelTitle": "取消这次构建？",
         "elapsed": "已用 {{time}}",
         "keep": "继续构建",
-        "leave": "关闭网页不会停止构建。日志：{{log}}",
+        "leave": "关闭网页不会停止构建。",
         "state": "构建中",
         "step": "第 {{step}} 步，共 {{steps}} 步"
       },
@@ -342,7 +363,7 @@ export default interface Resources {
         "organize": "划分板块、分类和汇总记忆",
         "snapshot": "准备聊天数据",
         "style": "抽取语言风格",
-        "summaries": "生成板块总结"
+        "summaries": "生成画像总结"
       },
       "states": {
         "cancelled": "已取消",
@@ -366,7 +387,7 @@ export default interface Resources {
       "footer": "聊天记录",
       "loading": "正在加载聊天记录…",
       "me": "我",
-      "messages": "{{count}} 条消息 · 抽取时的聊天片段",
+      "messages": "{{count}} 条消息 · 构建画像时读到的片段",
       "peer": "对方",
       "readOnly": "只读",
       "self": "本人",
@@ -384,12 +405,19 @@ export default interface Resources {
         "hours": "{{count}} 小时",
         "minutes": "{{count}} 分钟"
       },
-      "httpError": "请求失败：HTTP {{status}}",
+      "errorDetails": "错误详情",
+      "httpError": "出错了，请稍后重试（{{status}}）",
       "language": "界面语言",
       "listSeparator": "、",
       "retry": "重试",
       "save": "保存",
-      "sentenceSeparator": ""
+      "sentenceSeparator": "",
+      "showOptions": "显示选项"
+    },
+    "docs": {
+      "botServer": "https://docs.weclone.love/zh/docs/chatbot/bot-token#启动服务",
+      "styleDeps": "https://docs.weclone.love/zh/docs/deploy/environment#语言风格依赖",
+      "telegram": "https://docs.weclone.love/zh/docs/deploy/export-chat-history#telegram"
     },
     "editor": {
       "addTitle": "新增画像",
@@ -409,15 +437,15 @@ export default interface Resources {
     },
     "errors": {
       "already_set_up": "已设置密码，请使用现有密码登录",
-      "api_not_found": "接口不存在",
+      "api_not_found": "这个功能暂时用不了，可能是 WeClone 更新后还没重启，请重启后刷新页面",
       "assistant_plaintext": "数据是明文存储的，令牌有效时助手就能读取，不需要打开",
       "batch_changed": "记录已被修改，整批操作未保存，请刷新后重试",
       "build_cancel_unsupported": "Windows 上暂时不能从网页取消构建",
       "build_check_failed": "运行前检查没有通过，请按提示修改后重试",
       "build_not_running": "没有正在运行的构建",
       "build_running": "已经有一次构建在运行",
-      "chat_missing": "原始聊天文件不存在或与来源记录不一致，请检查本次抽取的来源文件",
-      "chat_unavailable": "该来源未保存聊天定位信息，无法查看原文",
+      "chat_missing": "找不到这段原始聊天，聊天记录可能被移走、删除或改过",
+      "chat_unavailable": "这条来源没有记下在聊天里的位置，无法查看原文",
       "consent_required": "请先勾选同意把聊天内容发送给模型服务",
       "demo_build_disabled": "演示模式不能构建画像",
       "demo_data_fixed": "演示模式不能上传聊天记录",
@@ -430,6 +458,7 @@ export default interface Resources {
       "fact_not_found": "画像记录不存在",
       "location_invalid": "请选择已有维度或主题",
       "login_required": "请先输入访问密码",
+      "model_settings_required": "还有必填项没有填",
       "not_set_up": "请先设置密码",
       "password_mismatch": "两次输入的密码不一致",
       "password_wrong": "密码错误",
@@ -439,21 +468,24 @@ export default interface Resources {
       "run_current": "正在显示的版本不能删除，请先切换到别的版本",
       "run_incomplete": "这个版本没有构建完成，不能打开",
       "run_not_found": "没有这个画像版本",
+      "settings_changed": "设置在别处被改过，已重新读取，请再改一次",
+      "settings_missing": "找不到设置文件，请按安装文档重新配置",
+      "settings_unreadable": "设置文件格式有误，请检查后重试",
       "source_not_found": "来源记录不存在",
       "storage_locked": "数据尚未解锁，请重新输入密码",
       "style_missing": "这个画像版本没有抽取语言风格，要用 AI 分身，请在「构建画像」页选「AI 分身」重新构建",
       "summary_batch_changed": "总结已被修改，整批操作未保存，请刷新后重试",
-      "summary_batch_stale": "有板块的画像或总结规则已变动，请先重新生成总结再确认",
+      "summary_batch_stale": "有板块的画像有改动，或 WeClone 更新了总结的写法，请先重新生成总结再确认",
       "summary_changed": "总结已被修改，请刷新后核对并重试",
-      "summary_generating": "正在生成板块总结，请稍候",
+      "summary_generating": "正在生成画像总结，请稍候",
       "summary_not_found": "板块总结不存在",
-      "summary_stale": "这个板块的画像或总结规则有变动，请先重新生成总结",
+      "summary_stale": "这个板块的画像有改动，或 WeClone 更新了总结的写法，请先重新生成总结",
       "too_many_attempts": "尝试次数过多，请一分钟后再试",
       "unlock_required": "请重新输入密码解锁",
       "upload_duplicate_chat": "上传的文件里有两个同名的聊天文件夹",
       "upload_no_chats": "没有找到聊天：每个聊天要是一个放着 CSV 的文件夹，以聊天对象命名",
       "upload_not_found": "这次上传已经结束，请重新选择文件",
-      "upload_path_invalid": "文件路径必须是相对路径",
+      "upload_path_invalid": "上传的文件名有问题，请重新选择文件夹或 zip",
       "upload_too_large": "解压后的文件超过了磁盘剩余空间",
       "upload_zip_invalid": "这个 zip 打不开，可能已损坏或设了密码"
     },
@@ -495,7 +527,7 @@ export default interface Resources {
         "5": "重要计划与承诺",
         "8": "兴趣与偏好"
       },
-      "directTopic": "直属属性",
+      "directTopic": "未归入主题",
       "root": "我的画像",
       "unassignedDomain": "未归入板块"
     },
@@ -505,7 +537,7 @@ export default interface Resources {
       "label": "页面",
       "profile": "人生画像",
       "style": "语言风格",
-      "summary": "板块总结"
+      "summary": "画像总结"
     },
     "privacy": {
       "badgeLabel": "隐私度：{{label}}，{{hint}}",
@@ -535,7 +567,7 @@ export default interface Resources {
       },
       "overview": "隐私度分布",
       "privateCount": "私密及敏感 {{n}}",
-      "tags": "检索标签",
+      "tags": "标签",
       "title": "隐私度"
     },
     "review": {
@@ -545,7 +577,7 @@ export default interface Resources {
       "bookmarkTip": "{{label}} · {{count}} 条画像",
       "fact": {
         "edit": "编辑",
-        "evidence": "原始抽取与 {{count}} 条证据",
+        "evidence": "初始内容与 {{count}} 条来源",
         "initial": "初始内容",
         "latest": "最近 {{date}}",
         "manual": "手动添加",
@@ -630,12 +662,78 @@ export default interface Resources {
         },
         "title": "外观"
       },
-      "intro": "外观和审核偏好保存在这个浏览器里，安全设置保存在本机的服务里。",
+      "intro": "外观和审核偏好只保存在这个浏览器里，其他设置保存在运行 WeClone 的这台电脑上。",
+      "model": {
+        "backend": "后端",
+        "backendHints": {
+          "api": "兼容 OpenAI Chat Completions 接口的模型服务",
+          "codex_exec": "用这台电脑上已登录的 Codex CLI"
+        },
+        "backends": {
+          "api": "API",
+          "codex_exec": "Codex CLI"
+        },
+        "baseUrl": "接口地址",
+        "baseUrlEmpty": "通常以 /v1 结尾",
+        "baseUrlHint": "请求发往 {{url}}",
+        "batchSize": "并发请求数",
+        "codexEffortHint": "越高想得越久，回复也越慢",
+        "context": "上下文长度",
+        "contextHint": "模型一次能读的 Token 数，不填按 128000 算。测试连接时，接口列出了就自动填上",
+        "demo": "演示模式不读取这台电脑的模型服务设置。",
+        "effort": "思考强度",
+        "effortHint": "可选值以服务商文档为准，不填就用服务的默认值",
+        "extraBody": "额外请求参数",
+        "extraBodyHint": "JSON 对象，合并进每次请求，比如服务商自己的思考开关",
+        "hideKey": "隐藏 Key",
+        "hint": "构建画像时，聊天记录交给这里设置的模型处理。",
+        "invalid": {
+          "json": "要写成一个 JSON 对象",
+          "number": "填正整数",
+          "required": "必填",
+          "reserved": "不能设 model、messages、stream",
+          "url": "以 http:// 或 https:// 开头"
+        },
+        "key": "API Key",
+        "model": "模型",
+        "models": "接口列出了 {{count}} 个模型，输入时可以选",
+        "output": "结构化输出",
+        "outputHint": "测试连接会选上这个服务支持的格式",
+        "outputs": {
+          "auto": "默认（JSON Schema）",
+          "json_object": "JSON 模式",
+          "json_schema": "JSON Schema"
+        },
+        "save": "保存",
+        "saved": "模型服务已保存",
+        "showKey": "显示 Key",
+        "test": "测试连接",
+        "testCodex": "Codex CLI 已登录",
+        "testFailed": "请求失败：{{error}}",
+        "testListed": "连接正常，从接口列出的 {{count}} 个模型里选一个",
+        "testOk": "连接正常，结构化输出用 {{output}}，这次请求用了 {{seconds}} 秒",
+        "testUnlisted": "连接正常，接口没有列出模型，请直接填写模型名",
+        "testing": "正在测试",
+        "timeout": "单次请求超时（秒）",
+        "title": "模型服务",
+        "vendor": "服务商",
+        "vendorPick": "选择服务商",
+        "vendors": {
+          "custom": "其他兼容 OpenAI 的服务",
+          "deepseek": "DeepSeek",
+          "glm": "智谱 GLM",
+          "kimi": "Kimi（月之暗面）",
+          "openai": "OpenAI",
+          "openrouter": "OpenRouter",
+          "qwen": "通义千问（阿里云百炼）",
+          "siliconflow": "硅基流动"
+        }
+      },
       "password": {
         "current": "当前密码",
         "demo": "演示模式的密码固定为 demo，不能修改。",
         "done": "密码已修改，其他设备上的登录已退出",
-        "hint": "已有数据和机器人令牌都保留，其他设备上的登录会退出。忘记密码只能重新抽取全部数据。",
+        "hint": "已有数据和机器人令牌都保留，其他设备上的登录会退出。忘记密码后只能从头重新构建。",
         "next": "新密码",
         "submit": "修改密码",
         "title": "修改密码"
@@ -648,7 +746,7 @@ export default interface Resources {
       "run": {
         "build": "构建新画像",
         "confirmDelete": "{{time}} 生成的画像、审核记录和总结都会从这台电脑上删除，不能恢复。",
-        "confirmDeleteBuild": "{{time}} 开始的这次构建没有生成画像，留下的聊天快照和中间结果都会从这台电脑上删除，不能恢复。",
+        "confirmDeleteBuild": "{{time}} 开始的这次构建没有生成画像，它留下的聊天副本和做到一半的结果都会从这台电脑上删除，不能恢复。",
         "confirmDeleteBuildTitle": "删除这次构建？",
         "confirmDeleteTitle": "删除这个画像版本？",
         "current": "当前",
@@ -678,7 +776,7 @@ export default interface Resources {
         "title": "安全"
       },
       "session": {
-        "hint": "对之后的登录生效。加密模式下，登录期间服务在内存里保留数据密钥，时间越长风险越大。",
+        "hint": "对之后的登录生效。加密模式下，登录期间数据保持解锁，时间越长风险越大。",
         "saved": "登录有效期改为 {{duration}}，下次登录生效",
         "title": "登录有效期"
       },
@@ -885,7 +983,7 @@ export default interface Resources {
         "missing": "还没有生成总结。",
         "reject": "不导出",
         "restore": "恢复",
-        "stale": "画像或总结规则有变动，这段已不再导出，重新生成后再确认。",
+        "stale": "画像有改动，或 WeClone 更新了总结的写法，这段已不再导出，重新生成后再确认。",
         "unapprove": "撤回确认"
       },
       "counts": "已确认 {{approved}} · 待确认 {{pending}} · 需生成 {{due}} · 不导出 {{rejected}}",
@@ -899,13 +997,12 @@ export default interface Resources {
         "chars": "{{count}} 字",
         "confirmFull": "这份文本含私密和敏感的内容，贴出去就收不回来。",
         "confirmFullTitle": "复制这份文本？",
-        "empty": "确认至少一个板块的总结后，这里会出现可以粘贴给个人助理的文本。",
-        "fullWarning": "这一级含私密和敏感的内容，贴出去就收不回来。只想给助理少一些，可以切到普通或公开再生成一份。",
-        "hint": "可以粘贴到个人助理的“关于我”、自定义指令或 USER.md。贴出去的内容收不回来，复制前请再看一遍。",
+        "empty": "确认至少一个板块的总结后，这里会出现可以粘贴给个人助手的文本。",
+        "fullWarning": "这一级含私密和敏感的内容，贴出去就收不回来。只想给助手少一些，可以切到普通或公开再生成一份。",
+        "hint": "可以粘贴到个人助手的“关于我”、自定义指令或 USER.md。贴出去的内容收不回来，复制前请再看一遍。",
         "title": "导出文本"
       },
       "failed": "{{count}} 个板块没有生成成功，下次生成只补这些板块。",
-      "failedReason": "原因：{{reason}}",
       "full": {
         "hint": "所有还成立的条目，包括私密和敏感的",
         "label": "全部"
@@ -915,13 +1012,14 @@ export default interface Resources {
       "generating": "正在生成…",
       "generatingHint": "每个板块调用一次模型，通常一两分钟，模型繁忙时会更久。生成在后台进行，可以先离开这个页面。",
       "intro": {
-        "full": "每个板块写一段总结，用这个板块所有还成立的条目，包括私密和敏感的。build-profile 最后一步会生成这一级。",
-        "review": "确认过的总结才会进入导出文本和助手接入，所依据的画像或总结规则一改动就停止导出，等重新生成并确认。",
-        "short": "每个板块写一段较短的总结，只用隐私度不高于所选级别的身份、技能、目标、条件和偏好，不用计划承诺和已过时的信息。"
+        "full": "这一级用每个板块所有还成立的条目来写，包括私密和敏感的。构建画像的最后一步会生成这一级。",
+        "review": "画像有改动或 WeClone 更新了总结的写法后，之前写的总结就停止导出，等重新生成并确认。",
+        "short": "这一级写得更短，只用隐私度不高于所选级别的身份、技能、目标、条件和偏好，不用计划承诺和已过时的信息。",
+        "use": "把画像按板块总结成几段话，确认过的才交给个人助手：在<a>助手接入</a>页接入的助手会自己读取，没接入的可以把导出文本复制给它。"
       },
       "level": "隐私度上限",
-      "loadFailed": "板块总结暂时无法打开",
-      "loading": "正在读取板块总结",
+      "loadFailed": "画像总结暂时无法打开",
+      "loading": "正在读取画像总结",
       "states": {
         "approved": "已确认",
         "empty": "没有可用条目",
@@ -930,7 +1028,7 @@ export default interface Resources {
         "rejected": "不导出",
         "stale": "需重新生成"
       },
-      "title": "给个人助理的背景资料"
+      "title": "给个人助手的画像总结"
     },
     "toast": {
       "added": "已添加",
