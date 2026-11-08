@@ -111,3 +111,19 @@
   font: var(--text-body);
   overflow-wrap: anywhere;
 }
+
+/* The program's own words about a failure (ErrorDetails.tsx), folded under a quiet summary below the plain message. */
+.error-details {
+  margin-top: var(--space-2);
+}
+
+.error-details > summary {
+  width: fit-content;
+  color: var(--ink-3);
+  font: var(--text-label);
+  cursor: pointer;
+}
+
+.error-details .assistant-copy {
+  margin-top: var(--space-2);
+}

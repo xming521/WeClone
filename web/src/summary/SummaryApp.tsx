@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Check, ClipboardCopy, EyeOff, PencilLine, Sparkles, Undo2 } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import { api } from '../api';
 import { LevelSwitch } from '../assistant/accessParts';
 import { LogoutButton } from '../Auth';
@@ -10,6 +10,7 @@ import { LanguageSwitch } from '../LanguageSwitch';
 import { SettingsLink } from '../settings/SettingsLink';
 import { ModeSwitch } from '../ModeSwitch';
 import { confirm } from '../feedback/confirm';
+import { ErrorDetails } from '../feedback/ErrorDetails';
 import { SUMMARY_LEVELS, stateCounts, summaryState } from './summaryState';
 import type {
   DomainSummary,
@@ -326,6 +327,12 @@ export function SummaryApp() {
         <section className="summary-intro">
           <h1>{t(($) => $.summary.title)}</h1>
           <p>
+            <Trans
+              i18nKey={($) => $.summary.intro.use}
+              components={{ a: <a className="wc-link" href="#/assistant" /> }}
+            />
+          </p>
+          <p>
             {level === 'full' ? t(($) => $.summary.intro.full) : t(($) => $.summary.intro.short)}
             {t(($) => $.common.sentenceSeparator)}
             {t(($) => $.summary.intro.review)}
@@ -382,14 +389,12 @@ export function SummaryApp() {
             <p className="summary-hint">{t(($) => $.summary.generatingHint)}</p>
           ) : (
             view.failure && (
-              <div className="summary-error" role="status">
-                <span>
-                  {t(($) => $.summary.failed, { count: view.failure.failed })}
-                  {view.failure.reason &&
-                    t(($) => $.common.sentenceSeparator) +
-                      t(($) => $.summary.failedReason, { reason: view.failure.reason })}
-                </span>
-              </div>
+              <>
+                <div className="summary-error" role="status">
+                  <span>{t(($) => $.summary.failed, { count: view.failure.failed })}</span>
+                </div>
+                {view.failure.reason && <ErrorDetails text={view.failure.reason} />}
+              </>
             )
           )}
           {error && (

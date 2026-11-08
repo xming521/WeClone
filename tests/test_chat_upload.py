@@ -138,22 +138,21 @@ def test_an_encrypted_upload_stores_ciphertext_the_build_reads(web, tmp_path, ow
         assert len(files) == 2 and chat_csv.read_csv(files[0])["msg"].tolist() == ["你好"]
 
 
-def test_a_build_reads_the_uploaded_chats_unless_asked_for_the_configured_ones(web, tmp_path, monkeypatch):
+def test_a_build_reads_the_uploaded_chats_when_there_are_any(web, tmp_path, monkeypatch):
     client = web(platform="telegram")
-    query = {"max_context_tokens": 64000}
-    assert client.get("/api/build/check", params=query).json()["chats"]["source"] == "config"
+    found = client.get("/api/build/check").json()
+    assert found["chats"]["source"] == "config" and "telegram_id_missing" in [p["code"] for p in found["problems"]]
     upload_id, _ = upload(client, {"alice/alice_0_1.csv": CSV.encode()})
     client.post(f"/api/data/uploads/{upload_id}/done")
 
-    found = client.get("/api/build/check", params=query).json()
+    found = client.get("/api/build/check").json()
     assert found["problems"] == []
     assert found["chats"] == {
         "source": "upload",
-        "upload": {"count": 1},
-        "config": {"platform": "telegram", "folder": "dataset/telegram", "count": 0},
+        "platform": "chat",
+        "folder": str(pipeline.UPLOAD_DIR),
+        "count": 1,
     }
-    found = client.get("/api/build/check", params={**query, "chats": "config"}).json()
-    assert found["chats"]["source"] == "config" and "telegram_id_missing" in [p["code"] for p in found["problems"]]
 
     spawned = []
 
@@ -162,7 +161,7 @@ def test_a_build_reads_the_uploaded_chats_unless_asked_for_the_configured_ones(w
         return subprocess.Popen([sys.executable, "-c", ""])
 
     monkeypatch.setattr(profile_build.Builds, "spawn", spawn)
-    body = {"purpose": "assistant", "consent": True, **query}
+    body = {"purpose": "assistant", "consent": True}
     assert client.post("/api/build", json=body).status_code == 202
     assert spawned[0][-2:] == ["--csv-folder", str(pipeline.UPLOAD_DIR)]
 

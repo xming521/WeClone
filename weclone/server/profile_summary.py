@@ -301,7 +301,7 @@ class SummaryStore:
         """Generate the domains that are due. The server runs the model calls in a background thread and the view
         shows when they end. build-profile waits for them."""
         if not GENERATING.acquire(blocking=False):
-            raise ApiError(409, "summary_generating", "正在生成板块总结，请稍候")
+            raise ApiError(409, "summary_generating", "正在生成画像总结，请稍候")
         started = False
         try:
             inputs, rows = self.state(level)

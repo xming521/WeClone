@@ -40,7 +40,7 @@ WeClone 从你的数字生活中提炼身份、目标、偏好、近况，按工
 
 - 🗺️ **交互式人生画像**：画像按板块与主题逐层组织，每条事实均可追溯原文，支持逐条审核与修改。可通过 Codex 或任意 OpenAI 兼容 API 抽取画像。
 - 🎭 **专属数字分身**：基于聊天记录微调开源模型，并通过 AstrBot、LangBot 部署至 Telegram、Discord、Slack、飞书等平台。训练数据经过隐私信息过滤。
-- 🧠 **接入 AI 助理**：Claude Code、Codex 等助手可通过 MCP 读取你的画像与板块总结，能读哪些板块、读到哪个隐私级别由你设定。
+- 🧠 **接入 AI 助理**：Claude Code、Codex 等助手可通过 MCP 读取你的画像总结与画像条目，能读哪些板块、读到哪个隐私级别由你设定。
 - 🗣️ **语言风格分析**：覆盖词汇、句式、语气、情绪、修辞、互动节奏等十大类、179 项风格特征。
 - 🤖 **Agent 分身**（开发中）：无需训练，由大模型结合画像、记忆与语言风格实时驱动。
 - 🔒 **隐私优先**：默认本地加密存储，每条事实标注隐私级别，导出与授权范围由你决定。
@@ -102,7 +102,7 @@ cp settings.template.jsonc settings.jsonc
 weclone-cli server
 ```
 
-打开 http://127.0.0.1:5175 ，设置密码后在「构建画像」页构建画像，页面会先检查配置并显示进度。完成后逐条审核画像，在「板块总结」页确认总结，再到「助手接入」页生成令牌，按页面上的命令配置 Claude Code 或 Codex。详见[人生画像与助手接入](docs/zh/profile.md)。
+打开 http://127.0.0.1:5175 ，设置密码后在「构建画像」页构建画像，页面会先检查配置并显示进度。完成后逐条审核画像，在「画像总结」页确认总结，再到「助手接入」页生成令牌，按页面上的命令配置 Claude Code 或 Codex。详见[人生画像与助手接入](docs/zh/profile.md)。
 
 ### 4. 微调数字分身
 
@@ -148,7 +148,7 @@ weclone-cli server --inference --port 8005   # 启动 OpenAI 兼容接口
 |---|---|
 | [安装与配置](docs/zh/installation.md) | 按用途安装、模型后端、语言风格与微调依赖 |
 | [准备数据](docs/zh/data.md) | 支持的数据源、Telegram 导出、通用 CSV 格式 |
-| [人生画像与助手接入](docs/zh/profile.md) | build-profile、网页审核、板块总结、MCP |
+| [人生画像与助手接入](docs/zh/profile.md) | build-profile、网页审核、画像总结、MCP |
 | [微调分身](docs/zh/finetune.md) | 硬件、模型下载、训练数据、训练与推理 |
 | [接入聊天机器人](docs/zh/chatbot.md) | 机器人令牌、AstrBot、LangBot |
 | [数据安全](docs/zh/security.md) | 存储模式、密码、密钥与令牌、请求日志 |
@@ -157,7 +157,7 @@ weclone-cli server --inference --port 8005   # 启动 OpenAI 兼容接口
 
 ## 📌 路线图
 
-- [x] 人生画像：画像抽取、审核与板块总结
+- [x] 人生画像：画像抽取、审核与画像总结
 - [x] 通过 MCP 为 AI 助理提供长期记忆
 - [ ] Agent 分身：结合画像、记忆与语言风格驱动分身
 - [ ] 支持更多数据源

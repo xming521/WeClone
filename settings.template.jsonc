@@ -33,7 +33,10 @@
         // 抽取和整理的模型结果按输入内容缓存在 dataset/res_csv/agent/llm_cache.sqlite，重跑只请求缺少的；删掉该文件即全部重新请求
         // state/event distill 使用的 LLM 后端：codex_exec 或 api
         "llm_provider": "codex_exec",
-        // api 后端可在此设置 batch_size、timeout、max_tokens，codex_exec 读取 codex_exec_args
+        // api 后端可在此设置 batch_size、timeout、max_tokens、context_window（模型的上下文长度，不填按 128000）、
+        // reasoning_effort（原样作为 reasoning_effort 发送，可选值见服务商文档）、extra_body（合并进每次请求体的 JSON 对象，如思考开关）
+        // 和 structured_output（json_schema 或 json_object，不填按 json_schema；服务不支持 json_schema 时填 json_object，如 DeepSeek）；
+        // codex_exec 读取 codex_exec_args。网页设置页的「模型服务」改的就是这几处
         // 每窗同时满足条数和正文字符上限；正文不计 ID、时间、角色标签
         "max_samples_per_window": 8,
         "max_content_chars": 400
@@ -70,9 +73,9 @@
             }
         },
         "online_llm_clear": false,
-        "base_url": "https://xxx/v1",
-        "llm_api_key": "xxxxx",
-        "model_name": "xxx", //建议使用参数较大的模型，例如DeepSeek-V3
+        "base_url": "", //兼容OpenAI的API地址，通常以 /v1 结尾；也可以在网页的构建页或设置页填写
+        "llm_api_key": "",
+        "model_name": "", //建议使用参数较大的模型，例如DeepSeek-V3
         "clean_batch_size": 50,
         "vision_api": {
             "enable": false, // 设置为 true 来开启此功能

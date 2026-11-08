@@ -55,24 +55,16 @@ def config_path() -> Path:
     return Path(os.environ.get("WECLONE_CONFIG_PATH", secure.ROOT / "settings.jsonc"))
 
 
-# upload: the chats uploaded from the web. config: the platform and csv_folder of the config.
-ChatSource = Literal["upload", "config"]
-
-
-def chats_folder(source: ChatSource | None) -> Path | None:
-    """The folder a build reads for this source, None for the config's chats. Without a source, the uploaded chats
-    if there are any."""
-    if source is None:
-        source = "upload" if pipeline.count_csv_chats(pipeline.UPLOAD_DIR) else "config"
-    return pipeline.UPLOAD_DIR if source == "upload" else None
+def chats_folder() -> Path | None:
+    """The folder a build reads: the chats uploaded from the web when there are any, else None for the platform and
+    csv_folder of the config."""
+    return pipeline.UPLOAD_DIR if pipeline.count_csv_chats(pipeline.UPLOAD_DIR) else None
 
 
 class BuildStart(BaseModel):
     model_config = ConfigDict(extra="forbid")
     purpose: Literal["assistant", "clone"]
     consent: bool
-    max_context_tokens: int | None = Field(default=None, ge=1)
-    chats: ChatSource | None = None
 
 
 class RunChoice(BaseModel):
@@ -138,17 +130,12 @@ class Builds:
         if run_complete(run) and not self.runs.reviewed():
             self.runs.switch(run)
 
-    def check(self, purpose: str, max_context_tokens: int | None, source: ChatSource | None) -> dict:
+    def check(self, purpose: str) -> dict:
         if self.demo:
             raise ApiError(409, "demo_build_disabled", "演示模式不能构建画像")
-        folder = chats_folder(source)
-        found = pipeline.check(config_path(), purpose, max_context_tokens, folder)
-        config = pipeline.chat_problems(config_path())[0] if folder else found["chats"]
-        found["chats"] = {
-            "source": "upload" if folder else "config",
-            "upload": {"count": pipeline.count_csv_chats(pipeline.UPLOAD_DIR)},
-            "config": config,
-        }
+        folder = chats_folder()
+        found = pipeline.check(config_path(), purpose, chats_folder=folder)
+        found["chats"] = {"source": "upload" if folder else "config", **found["chats"]}
         return found
 
     def start(self, request: BuildStart) -> dict | None:
@@ -159,8 +146,8 @@ class Builds:
         with self.lock:
             if self.running():
                 raise ApiError(409, "build_running", "已经有一次构建在运行")
-            folder = chats_folder(request.chats)
-            found = pipeline.check(config_path(), request.purpose, request.max_context_tokens, folder)
+            folder = chats_folder()
+            found = pipeline.check(config_path(), request.purpose, chats_folder=folder)
             if found["problems"]:
                 raise ApiError(422, "build_check_failed", "运行前检查没有通过", problems=found["problems"])
             run = pipeline.new_run_dir()
@@ -169,8 +156,6 @@ class Builds:
             pipeline.write_status(run, pipeline.new_status(request.purpose))
             pipeline.record_build(run)
             args = ["build-profile", "--purpose", request.purpose, "--output-dir", str(run), "--yes"]
-            if request.max_context_tokens is not None:
-                args += ["--max-context-tokens", str(request.max_context_tokens)]
             if folder is not None:
                 args += ["--csv-folder", str(folder)]
             self.process = self.spawn(run, args)
@@ -293,12 +278,8 @@ def install_build(app: FastAPI, runs, *, demo: bool, script: Path | None = None)
     builds = Builds(runs, demo=demo, script=script)
 
     @app.get("/api/build/check")
-    def build_check(
-        purpose: Literal["assistant", "clone"] = "assistant",
-        max_context_tokens: int | None = None,
-        chats: ChatSource | None = None,
-    ):
-        return builds.check(purpose, max_context_tokens, chats)
+    def build_check(purpose: Literal["assistant", "clone"] = "assistant"):
+        return builds.check(purpose)
 
     @app.get("/api/build")
     def build_status():

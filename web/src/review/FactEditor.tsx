@@ -1,10 +1,10 @@
-import { ChevronDown } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { isDimensionId } from '../data';
 import { useProfileStore } from '../store';
 import type { EditTarget, FactDraft } from '../store';
 import { confirm } from '../feedback/confirm';
+import { SelectInput } from '../Dropdown';
 
 function draftOf(target: EditTarget): FactDraft {
   return {
@@ -104,21 +104,13 @@ function FactEditorDialog({ editing }: { editing: EditTarget }) {
         </label>
         <label className="wc-field">
           <span className="wc-field__label">{t(($) => $.editor.location)}</span>
-          <span className="wc-input">
-            <select
-              disabled={busy}
-              required
-              value={draft.group_id}
-              onChange={(event) => setDraft({ ...draft, group_id: event.target.value })}
-            >
-              {input.locations.map((item) => (
-                <option value={item.id} key={item.id}>
-                  {locationName(item.id)}
-                </option>
-              ))}
-            </select>
-            <ChevronDown size={14} strokeWidth={1.8} aria-hidden="true" />
-          </span>
+          <SelectInput
+            disabled={busy}
+            required
+            value={draft.group_id}
+            onChange={(group_id) => setDraft({ ...draft, group_id })}
+            options={input.locations.map((item) => ({ value: item.id, label: locationName(item.id) }))}
+          />
         </label>
         <label className="wc-field">
           <span className="wc-field__label">{t(($) => $.editor.value)}</span>

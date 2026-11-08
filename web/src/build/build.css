@@ -670,9 +670,14 @@
   font: var(--text-label);
 }
 
-.build-tokens {
+/* The model service form in the confirm step, across the card, its first row without the rule above it. */
+.build-backend > .settings-model {
   flex: 1 0 100%;
-  margin: 0;
+}
+
+.settings-model--build > .settings-row:first-child {
+  padding-top: 0;
+  border-top: 0;
 }
 
 /* Picked files go up from here; dropped ones anywhere on it. With no chats yet it is the step's one task. */
@@ -760,10 +765,6 @@
 .build-upload__state {
   flex: 1 0 100%;
   margin: 0;
-}
-
-.build-tokens .wc-input {
-  max-width: 320px;
 }
 
 .build-problems {
@@ -1123,11 +1124,17 @@
   transform: translate(-11.23px, -10.99px);
 }
 
+/* Drinking the clone shuts its eyes, drawn shut as the mark's smile has them (Mark.tsx). */
+.build-workers__shut {
+  opacity: 0;
+}
+
 /* The props are drawn like the faces, in soft gradients with a white shine (Workers.tsx); these are their lines. */
 .build-prop__ink,
 .build-prop__shine,
 .build-prop__handle,
-.build-prop__pencil {
+.build-prop__pencil,
+.build-prop__rim {
   fill: none;
   stroke-linecap: round;
 }
@@ -1161,6 +1168,11 @@
 
 .build-prop__pencil {
   stroke-width: 2.3;
+}
+
+.build-prop__rim {
+  stroke-width: 0.8;
+  stroke-linejoin: round;
 }
 
 /* The map's dimension colours in hue order, the colours your portrait is drawn in, a little brighter: the
@@ -1332,6 +1344,32 @@
 
   .build-workers:not([data-leaving]) [data-act='notes'] .build-workers__scan {
     animation: build-workers-scan-write 4.6s 1s linear both;
+  }
+
+  /* Having a drink: the glass comes up to the mouth and tips, the eyes shut and the head goes back a little, two gulps
+     take the water down as the glass tips further, then it goes back down. */
+  .build-workers:not([data-leaving]) [data-act='drink'] .build-workers__hand > g {
+    animation: build-workers-lift 4.6s 1s ease-in-out both;
+  }
+
+  .build-prop__sip {
+    animation: build-prop-sip 4.6s 1s ease-in-out both;
+  }
+
+  .build-prop__water {
+    animation: build-prop-water 4.6s 1s ease-in-out both;
+  }
+
+  .build-workers:not([data-leaving]) [data-act='drink'] .build-workers__feat {
+    animation: build-workers-sip 4.6s 1s ease-in-out both;
+  }
+
+  .build-workers:not([data-leaving]) [data-act='drink'] .build-workers__scan {
+    animation: build-workers-open 4.6s 1s both;
+  }
+
+  .build-workers:not([data-leaving]) [data-act='drink'] .build-workers__shut {
+    animation: build-workers-shut 4.6s 1s both;
   }
 }
 
@@ -1793,6 +1831,127 @@
   92%,
   100% {
     transform: none;
+  }
+}
+
+/* The hand under the glass, which tips 24° on the way up and has its lip on the mouth at 35°, at 42° after the first
+   gulp and at 48° after the second. */
+@keyframes build-workers-lift {
+  0%,
+  80%,
+  100% {
+    transform: none;
+  }
+  20% {
+    transform: translate(-3.6px, -2.6px);
+  }
+  28%,
+  38% {
+    transform: translate(-3.62px, -4.71px);
+  }
+  44%,
+  53% {
+    transform: translate(-2.91px, -5.77px);
+  }
+  59%,
+  64% {
+    transform: translate(-2.41px, -6.75px);
+  }
+}
+
+@keyframes build-prop-sip {
+  0%,
+  80%,
+  100% {
+    transform: none;
+  }
+  20% {
+    transform: rotate(-24deg);
+  }
+  28%,
+  38% {
+    transform: rotate(-35deg);
+  }
+  44%,
+  53% {
+    transform: rotate(-42deg);
+  }
+  59%,
+  64% {
+    transform: rotate(-48deg);
+  }
+}
+
+/* Turned back as far as the glass tips, so that it stays level, the water goes down a gulp at a time. */
+@keyframes build-prop-water {
+  0% {
+    transform: rotate(0deg) translateY(0);
+  }
+  20% {
+    transform: rotate(24deg) translateY(0);
+  }
+  28%,
+  38% {
+    transform: rotate(35deg) translateY(0);
+  }
+  44%,
+  53% {
+    transform: rotate(42deg) translateY(1.2px);
+  }
+  59%,
+  64% {
+    transform: rotate(48deg) translateY(2.4px);
+  }
+  80%,
+  100% {
+    transform: rotate(0deg) translateY(2.4px);
+  }
+}
+
+@keyframes build-workers-sip {
+  0%,
+  22%,
+  76%,
+  100% {
+    transform: none;
+  }
+  28%,
+  38%,
+  44%,
+  53%,
+  59%,
+  64% {
+    transform: translateY(-0.5px);
+  }
+  41%,
+  56% {
+    transform: translateY(-0.2px);
+  }
+}
+
+@keyframes build-workers-open {
+  0%,
+  24%,
+  68%,
+  100% {
+    opacity: 1;
+  }
+  28%,
+  64% {
+    opacity: 0;
+  }
+}
+
+@keyframes build-workers-shut {
+  0%,
+  24%,
+  68%,
+  100% {
+    opacity: 0;
+  }
+  28%,
+  64% {
+    opacity: 1;
   }
 }
 

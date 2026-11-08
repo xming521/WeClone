@@ -54,6 +54,11 @@ from weclone.utils import secure_storage
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 STAGES = ("prepare", "domains", "peers", "classify", "summarize")
+# The context window assumed when neither the settings nor the model catalog give one: what mainstream API models took
+# at least as of 2026-11. Prompts rarely come near it (other caps bound each batch), so it is a safety margin.
+DEFAULT_CONTEXT_WINDOW = 128_000
+# The share of the window a prompt may fill, the rest left for the answer; Codex's catalog uses the same by default.
+INPUT_PERCENT = 95
 # Domain induction and tag mapping read the tags used at least DOMAIN_TAG_MIN_COUNT times, keeping at least
 # DOMAIN_TAG_FLOOR and at most DOMAIN_TAG_LIMIT of the most used tags.
 DOMAIN_TAG_MIN_COUNT = 3
@@ -247,14 +252,24 @@ async def codex_config(command: str) -> dict:
 
 
 def resolve_context_window(args: argparse.Namespace) -> int:
+    """The input token budget: --max-context-tokens as given, else a share of the model's context window, taken from
+    the settings for the API and from Codex's model catalog, or DEFAULT_CONTEXT_WINDOW when neither tells."""
     if args.max_context_tokens is not None:
         return args.max_context_tokens
-    provider = args.llm_provider or distill_profile.load_agent_distill_config(args.config_path).get(
-        "llm_provider"
-    )
-    if distill_profile.normalize_llm_provider(provider) == "codex_exec":
-        config = distill_profile.load_codex_exec_config(args.config_path)
-        command = config.get("command", "codex")
+    distill_config = distill_profile.load_agent_distill_config(args.config_path)
+    provider = args.llm_provider or distill_config.get("llm_provider")
+    if distill_profile.normalize_llm_provider(provider) == "api":
+        window = distill_profile.optional_positive_config_int(
+            distill_config,
+            "context_window",
+            None,
+            section="agent_distill_args",
+            config_path=args.config_path,
+        )
+        return (window or DEFAULT_CONTEXT_WINDOW) * INPUT_PERCENT // 100
+    config = distill_profile.load_codex_exec_config(args.config_path)
+    command = config.get("command", "codex")
+    try:
         effective_config = asyncio.run(codex_config(command))
         catalog = json.loads(
             subprocess.run(
@@ -265,13 +280,15 @@ def resolve_context_window(args: argparse.Namespace) -> int:
                 timeout=30,
             ).stdout
         )
-        for model in catalog.get("models", []):
-            if model.get("slug") == config.get("model"):
-                window = effective_config.get("model_context_window") or model.get("context_window")
-                percent = model.get("effective_context_window_percent", 95)
-                if type(window) is int and window > 0:
-                    return window * percent // 100
-    raise ValueError("Codex context window is unknown; specify --max-context-tokens explicitly")
+    except (OSError, ValueError, TimeoutError, subprocess.SubprocessError):
+        catalog, effective_config = {}, {}
+    for model in catalog.get("models", []):
+        if model.get("slug") == config.get("model"):
+            window = effective_config.get("model_context_window") or model.get("context_window")
+            percent = model.get("effective_context_window_percent", INPUT_PERCENT)
+            if type(window) is int and window > 0:
+                return window * percent // 100
+    return DEFAULT_CONTEXT_WINDOW * INPUT_PERCENT // 100
 
 
 def input_budget(args: argparse.Namespace) -> InputBudget:
@@ -568,6 +585,9 @@ class LLMTasks:
             max_workers=options.batch_size,
             timeout=options.timeout,
             effort=options.effort,
+            reasoning_effort=options.reasoning_effort,
+            extra_body=options.extra_body,
+            structured_output=options.structured_output,
             command=options.codex_command,
             sandbox=options.codex_sandbox,
         )
@@ -1050,7 +1070,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument(
         "--max-context-tokens",
         type=int,
-        help="Local token limit; defaults to Codex's effective context window",
+        help="Input token budget; defaults to a share of the model's context window",
     )
     parser.add_argument("--token-encoding", default="o200k_base", help="tiktoken encoding used for budgeting")
     parser.add_argument("--tokenizer-file", type=Path, help="Use a local tokenizer.json instead of tiktoken")

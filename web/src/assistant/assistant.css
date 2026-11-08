@@ -5,6 +5,23 @@
 .summary-intro > p.assistant-address {
   margin-top: var(--space-3);
 }
+/* The other way to hand assistants the portrait summary: a quiet note led by that page's icon in the page switch. */
+.summary-intro > p.assistant-note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  max-width: none;
+  margin-top: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-control);
+  background: var(--well);
+  font: var(--text-caption);
+}
+.assistant-note svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--ink-3);
+}
 /* Addresses, commands and tokens are archive-like facts: mono meta type, and one click selects the whole value. */
 .assistant-main code {
   padding: 1px 6px;

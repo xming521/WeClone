@@ -25,6 +25,7 @@ from weclone.server.auth import AuthStore, install_auth
 from weclone.server.bots import install_bots
 from weclone.server.chat_upload import install_upload
 from weclone.server.errors import ApiError, error_response, install_errors, security_response
+from weclone.server.model_settings import install_model_settings
 from weclone.server.profile_build import install_build, reviewed_at, run_complete, same
 from weclone.server.profile_intro import profile_intro
 from weclone.server.profile_summary import (
@@ -491,7 +492,7 @@ class Runs:
                 source for source, (store, _) in self.pairs.items() if same(store.source.parent.parent, run)
             ]
             if opened and GENERATING.locked():
-                raise ApiError(409, "summary_generating", "正在生成板块总结，请稍候")
+                raise ApiError(409, "summary_generating", "正在生成画像总结，请稍候")
             for source in opened:
                 del self.pairs[source]
             if run.is_symlink():
@@ -520,6 +521,7 @@ def create_app(
     runs = Runs(auth, database, source)
     builds = install_build(app, runs, demo=demo_password is not None, script=build_script)
     install_upload(app, builds, demo=demo_password is not None)
+    install_model_settings(app, demo=demo_password is not None)
 
     @app.exception_handler(secure.SecurityError)
     async def security_error(request, exc):

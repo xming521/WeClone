@@ -41,7 +41,7 @@ WeClone distills your identity, goals, preferences and current situation from yo
 
 - 🗺️ **Interactive life portrait**: your portrait is organized by domain and topic. Every fact traces back to its source and can be reviewed and edited. Extraction runs through Codex or any OpenAI-compatible API.
 - 🎭 **Your own AI clone**: fine-tune an open model on your chat history and deploy it to Telegram, Discord, Slack, Feishu and more through AstrBot or LangBot. Training data is filtered for personal information.
-- 🧠 **Connect AI assistants**: Claude Code, Codex and other assistants read your portrait and domain summaries over MCP. You choose which domains and privacy levels they can read.
+- 🧠 **Connect AI assistants**: Claude Code, Codex and other assistants read your portrait summary and entries over MCP. You choose which domains and privacy levels they can read.
 - 🗣️ **Speaking style analysis**: 179 style features in ten categories, covering vocabulary, syntax, tone, emotion, rhetoric and conversational rhythm.
 - 🤖 **Agent clone** (in development): no training required. A large model drives the clone in real time from your portrait, memories and speaking style.
 - 🔒 **Privacy first**: encrypted local storage by default, a privacy level on every fact, and full control over what is exported and shared.
@@ -105,7 +105,7 @@ Telegram chats are supported today. Export them as JSON with Telegram Desktop, p
 weclone-cli server
 ```
 
-Open http://127.0.0.1:5175, set a password, and build your portrait on the Build portrait page, which checks the setup and shows the progress. Then review your portrait fact by fact, approve the summaries on the Summaries page, then generate a token on the Assistants page and run the commands it shows for Claude Code or Codex. See [Life portrait and assistants](docs/en/profile.md).
+Open http://127.0.0.1:5175, set a password, and build your portrait on the Build portrait page, which checks the setup and shows the progress. Then review your portrait fact by fact, approve the summaries on the Portrait summary page, then generate a token on the Assistants page and run the commands it shows for Claude Code or Codex. See [Life portrait and assistants](docs/en/profile.md).
 
 ### 4. Fine-tune a clone
 
@@ -148,7 +148,7 @@ See [Security](docs/en/security.md).
 |---|---|
 | [Installation and configuration](docs/en/installation.md) | What to install, model backend, speaking style and fine-tuning dependencies |
 | [Preparing data](docs/en/data.md) | Supported sources, Telegram export, generic CSV format |
-| [Life portrait and assistants](docs/en/profile.md) | build-profile, web review, domain summaries, MCP |
+| [Life portrait and assistants](docs/en/profile.md) | build-profile, web review, portrait summary, MCP |
 | [Fine-tuned clone](docs/en/finetune.md) | Hardware, model download, training data, training and inference |
 | [Chat bots](docs/en/chatbot.md) | Bot token, AstrBot, LangBot |
 | [Security](docs/en/security.md) | Storage modes, password, keys and tokens, request logs |
@@ -157,7 +157,7 @@ Full tutorials, configuration reference and FAQ are on the [documentation site](
 
 ## 📌 Roadmap
 
-- [x] Life portrait: extraction, review and domain summaries
+- [x] Life portrait: extraction, review and portrait summary
 - [x] Long-term memory for AI assistants over MCP
 - [ ] Agent clone driven by your portrait, memories and speaking style
 - [ ] Support more data sources

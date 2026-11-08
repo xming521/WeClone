@@ -41,16 +41,14 @@ export interface Problem {
   params: Record<string, unknown>;
   /** The server's Chinese text, for codes the page has no words for. */
   message: string;
+  /** About the saved model service. */
+  backend?: true;
 }
 
 export interface BuildCheck {
   backend: { provider: 'codex_exec' | 'api' | null; model: string | null; max_context_tokens: number | null };
-  chats: {
-    /** The chats the build would read. */
-    source: ChatSource;
-    upload: { count: number };
-    config: { platform: string | null; folder: string | null; count: number };
-  };
+  /** The chats the build would read: the uploaded ones when there are any. */
+  chats: { source: ChatSource; platform: 'chat' | 'telegram' | null; folder: string | null; count: number };
   problems: Problem[];
 }
 

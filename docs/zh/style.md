@@ -67,7 +67,7 @@ python weclone/data/agent/distill_style/run.py --input-dir "$IN" \
 
 改代码后运行 `pytest tests/test_distill_style.py`。它用合成聊天和一个总是失败的假 judge 跑完抽样、本地统计、QA、discover、`--frozen` 和批量请求，再与 `tests/tests_data/distill_style_snapshot.json` 比对每个输出文件和全部 LLM 请求。需要本地 `models/LTPbase`。有意改变输出或提示词时，用 `UPDATE_STYLE_SNAPSHOT=1` 重新生成快照，并检查报出的变化文件是否都在预期之内。假 judge 不返回有效标注，所以语义汇总只走到失败分支。
 
-默认输出到 `dataset/res_csv/agent/distill/style/<时间>_<类别>`，所有运行新建目录，缓存单独放在 `dataset/res_csv/agent/distill/style_cache`。LLM 后端跟随 `settings.jsonc` 的 `agent_distill_args.llm_provider`，未配置时使用 `codex_exec`；模型、推理强度、超时和命令等读取 `codex_exec_args`，调用项目已有的 Codex CLI 客户端，失败不会转用 API。`--judge-model` 可覆盖模型；显式指定 `--llm-provider api` 时读取 `make_dataset_args`，此时才支持 `--base-url`，API key 不写入产物。运行不会安装包。`discover` 默认读取 `--input-dir` 的同一批聊天，也可用 `--training` 另给一份语料（SFT 消息格式或下文的规范格式）。未提供 `--frozen` 时 004,006 显式记为 `not_run`；`--no-llm` 下语义项同样记为 `not_run`。
+默认输出到 `dataset/res_csv/agent/distill/style/<时间>_<类别>`，所有运行新建目录，缓存单独放在 `dataset/res_csv/agent/distill/style_cache`。LLM 后端跟随 `settings.jsonc` 的 `agent_distill_args.llm_provider`，未配置时使用 `codex_exec`；模型、推理强度、超时和命令等读取 `codex_exec_args`，调用项目已有的 Codex CLI 客户端，失败不会转用 API。`--judge-model` 可覆盖模型；显式指定 `--llm-provider api` 时读取 `make_dataset_args`，并带上 `agent_distill_args` 的 `reasoning_effort` 和 `extra_body`，此时才支持 `--base-url`，API key 不写入产物。运行不会安装包。`discover` 默认读取 `--input-dir` 的同一批聊天，也可用 `--training` 另给一份语料（SFT 消息格式或下文的规范格式）。未提供 `--frozen` 时 004,006 显式记为 `not_run`；`--no-llm` 下语义项同样记为 `not_run`。
 
 默认 `--llm-samples 2000 --sample-seed 42`：按“联系人×月份”比例分配名额、按样本 ID 的固定哈希抽样，再给每个联系人组补足下限；没有时间或联系人的记录单独成层。`sampling.json` 保存选中 ID、各层与各组的人数和入选概率。语义统计是描述性样本统计，不将未抽中的记录记为 absent。`--llm-samples 0` 使用全量语义标注。
 

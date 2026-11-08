@@ -166,7 +166,7 @@ def test_context_window_uses_codex_effective_window_not_model_maximum(tmp_path, 
     assert organize.input_budget(args).max_tokens == 10000
 
 
-def test_unknown_model_requires_explicit_context_window(tmp_path, monkeypatch):
+def test_an_unknown_window_uses_the_default(tmp_path, monkeypatch):
     config = tmp_path / "settings.jsonc"
     config.write_text(json.dumps({
         "codex_exec_args": {"model": "unknown-model", "command": "codex"},
@@ -178,8 +178,14 @@ def test_unknown_model_requires_explicit_context_window(tmp_path, monkeypatch):
     monkeypatch.setattr(organize, "codex_config", effective_config)
     monkeypatch.setattr(organize.subprocess, "run", lambda *a, **kw: SimpleNamespace(stdout='{"models":[]}'))
     args = SimpleNamespace(max_context_tokens=None, llm_provider=None, config_path=config)
-    with pytest.raises(ValueError, match="--max-context-tokens"):
-        organize.resolve_context_window(args)
+    assert organize.resolve_context_window(args) == 121600
+    # The API's window comes from the settings when given.
+    args.llm_provider = "api"
+    assert organize.resolve_context_window(args) == 121600
+    config.write_text(json.dumps({"agent_distill_args": {"llm_provider": "api", "context_window": 64000}}))
+    assert organize.resolve_context_window(args) == 60800
+    config.write_text(json.dumps({"agent_distill_args": {"llm_provider": "api", "context_window": None}}))
+    assert organize.resolve_context_window(args) == 121600
 
 
 @pytest.mark.parametrize("reduced", [False, True])

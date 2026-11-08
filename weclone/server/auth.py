@@ -10,7 +10,7 @@ import time
 from contextlib import asynccontextmanager, contextmanager
 from pathlib import Path
 
-from fastapi import HTTPException, Request
+from fastapi import Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
@@ -78,8 +78,11 @@ class AuthStore:
                 raise ApiError(409, "already_set_up", "已设置密码，请使用现有密码登录")
             try:
                 secure.ensure_initialized(password)
-            except secure.SecurityError as exc:
-                raise HTTPException(422, str(exc)) from None
+            except secure.SecurityError:
+                # Another request set the password first. Other faults go to the app's own handler.
+                if secure.is_initialized():
+                    raise ApiError(409, "already_set_up", "已设置密码，请使用现有密码登录") from None
+                raise
             finally:
                 secure.lock()
             self._sync_generation(db)

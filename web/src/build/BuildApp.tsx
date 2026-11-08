@@ -1,16 +1,20 @@
-import { useCallback, useEffect, useId, useState, type FormEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { ArrowRight, CircleAlert, CircleCheck, CircleDashed, CircleMinus, LoaderCircle } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import { api, ApiError } from '../api';
 import { replayNightIntro } from '../atlas/nightIntro';
 import i18n from '../i18n';
 import { BrandMark } from '../BrandMark';
 import { confirm } from '../feedback/confirm';
+import { ErrorDetails } from '../feedback/ErrorDetails';
+import { ModelSettings } from '../settings/ModelSettings';
+import type { Provider } from '../settings/modelSettings';
 import { PageTopbar } from '../settings/PageTopbar';
 import { useRun } from '../settings/useRun';
 import { useProfileStore } from '../store';
 import { useBuildStatus, useBuildStore } from './buildState';
 import { ChatUpload } from './ChatUpload';
+import { ProblemText } from './problems';
 import { Party } from './Party';
 import { PurposeArt } from './PurposeArt';
 import { BuildBar } from './BuildBar';
@@ -20,7 +24,6 @@ import {
   type BuildCheck,
   type BuildStage,
   type BuildStatus,
-  type ChatSource,
   type Problem,
   type Purpose,
   type StageState,
@@ -46,19 +49,6 @@ const STAGE_ICONS = {
   failed: CircleAlert,
   cancelled: CircleMinus,
 } satisfies Record<StageState, unknown>;
-
-/** A check problem in the page's language when it knows the code, else the server's text. */
-function problemText(problem: Problem): string {
-  const key = `build.problems.${problem.code}`;
-  if (!i18n.exists(key)) return problem.message;
-  const params = Object.fromEntries(
-    Object.entries(problem.params).map(([name, value]) => [
-      name,
-      Array.isArray(value) ? value.join(i18n.t(($) => $.common.listSeparator)) : value,
-    ]),
-  );
-  return i18n.t(key, params);
-}
 
 function since(start: string | null, end: string | null, now: number): string | null {
   if (!start) return null;
@@ -103,21 +93,6 @@ function StageList({ status }: { status: BuildStatus }) {
       })}
     </ol>
   );
-}
-
-// The limit typed for the last build started here, offered again for the next one.
-const TOKENS_KEY = 'weclone.build.maxContextTokens';
-
-function savedTokens(): string {
-  try {
-    return window.localStorage.getItem(TOKENS_KEY) ?? '';
-  } catch {
-    return '';
-  }
-}
-
-function tokenLimit(text: string): number | null {
-  return /^\d+$/.test(text) && Number(text) > 0 ? Number(text) : null;
 }
 
 /** A numbered step of the form, its number filled in once the step is done. */
@@ -193,27 +168,22 @@ function Prepare({ last }: { last: BuildStatus | null }) {
   const purposeId = useId();
   const chatsId = useId();
   const confirmId = useId();
-  const tokensId = useId();
   const [purpose, setPurpose] = useState<Purpose>(last?.purpose ?? 'assistant');
-  const [tokens, setTokens] = useState(savedTokens);
-  // The limit the check last ran with, and a counter that runs the check again.
-  const [checked, setChecked] = useState(() => tokenLimit(tokens));
+  // Runs the check again.
   const [round, setRound] = useState(0);
   const [check, setCheck] = useState<BuildCheck | null>(null);
   const [checking, setChecking] = useState(true);
-  // The chats asked for, null for the server's choice: the uploaded ones when there are any.
-  const [source, setSource] = useState<ChatSource | null>(null);
   const [consent, setConsent] = useState(false);
   const [busy, setBusy] = useState(false);
+  // The backend in the model form while it has changes not saved yet, and the form's save.
+  const [pendingBackend, setPendingBackend] = useState<Provider | null>(null);
+  const saveBackend = useRef<() => Promise<boolean>>(null);
   const [error, setError] = useState('');
-  const limit = tokenLimit(tokens);
 
-  const runCheck = useCallback(async (purpose: Purpose, limit: number | null, source: ChatSource | null) => {
+  const runCheck = useCallback(async (purpose: Purpose) => {
     setChecking(true);
     try {
       const query = new URLSearchParams({ purpose });
-      if (limit) query.set('max_context_tokens', String(limit));
-      if (source) query.set('chats', source);
       setCheck(await api.get<BuildCheck>(`build/check?${query}`));
       setError('');
     } catch (reason) {
@@ -224,23 +194,19 @@ function Prepare({ last }: { last: BuildStatus | null }) {
   }, []);
 
   useEffect(() => {
-    void runCheck(purpose, checked, source);
-  }, [purpose, checked, source, round, runCheck]);
-  const recheck = () => (limit === checked ? setRound((value) => value + 1) : setChecked(limit));
+    void runCheck(purpose);
+  }, [purpose, round, runCheck]);
+  const recheck = () => setRound((value) => value + 1);
 
   async function start(event: FormEvent) {
     event.preventDefault();
     setBusy(true);
     setError('');
     try {
-      // The chats the check showed.
-      const body = { purpose, consent, max_context_tokens: limit, chats: check?.chats.source };
+      // A build reads the saved settings, so changes still in the form are saved first.
+      if (pendingBackend && !(await saveBackend.current?.())) return;
+      const body = { purpose, consent };
       useBuildStore.setState({ status: await api.post<BuildStatus>('build', body) });
-      try {
-        if (limit) window.localStorage.setItem(TOKENS_KEY, String(limit));
-      } catch {
-        // Without storage the limit is typed again next time.
-      }
       void useBuildStore.getState().refresh();
     } catch (reason) {
       setError((reason as Error).message);
@@ -252,14 +218,14 @@ function Prepare({ last }: { last: BuildStatus | null }) {
     }
   }
 
-  const problems = check?.problems ?? [];
+  // What the check found about the saved model service is out of date while the form has changes, which starting
+  // saves and checks again.
+  const problems = (check?.problems ?? []).filter((problem) => !(pendingBackend && problem.backend));
   const listed = problems.filter((problem) => problem.code !== STYLE_PROBLEM);
   const styleProblems = problems.filter((problem) => problem.code === STYLE_PROBLEM);
   const backend = check?.backend;
+  const provider = pendingBackend ?? backend?.provider;
   const chats = check?.chats;
-  const chosen = chats?.[chats.source];
-  const askTokens =
-    backend?.provider === 'api' || problems.some((problem) => problem.code === 'context_unknown') || tokens !== '';
   const ready = Boolean(check) && !problems.length && !checking;
 
   return (
@@ -294,7 +260,7 @@ function Prepare({ last }: { last: BuildStatus | null }) {
               {item === purpose &&
                 styleProblems.map((problem) => (
                   <span key={problem.code} className="build-purpose__problem" role="alert">
-                    {problemText(problem)}
+                    <ProblemText problem={problem} />
                   </span>
                 ))}
             </PurposeCard>
@@ -306,16 +272,14 @@ function Prepare({ last }: { last: BuildStatus | null }) {
         n={2}
         id={chatsId}
         title={t(($) => $.build.prepare.chats)}
-        done={Boolean(chosen?.count)}
+        done={Boolean(chats?.count)}
         aside={
-          <span className="build-step__aside build-count" data-ok={Boolean(chosen?.count) || undefined}>
-            {chats && chosen ? (
+          <span className="build-step__aside build-count" data-ok={Boolean(chats?.count) || undefined}>
+            {chats ? (
               <>
-                {chosen.count > 0 && <CircleCheck size={15} strokeWidth={2} aria-hidden="true" />}
-                {chats.source === 'config' && chats.config.platform && chats.config.platform !== 'chat' && (
-                  <code>{chats.config.platform}</code>
-                )}
-                {t(($) => $.build.prepare.chatCount, { count: chosen.count })}
+                {chats.count > 0 && <CircleCheck size={15} strokeWidth={2} aria-hidden="true" />}
+                {chats.source === 'config' && chats.platform === 'telegram' && <span>Telegram</span>}
+                {t(($) => $.build.prepare.chatCount, { count: chats.count })}
               </>
             ) : (
               t(($) => $.build.prepare.checking)
@@ -323,78 +287,45 @@ function Prepare({ last }: { last: BuildStatus | null }) {
           </span>
         }
       >
-        {chats && chats.upload.count > 0 && chats.config.count > 0 && (
-          <div className="wc-seg" role="radiogroup" aria-labelledby={chatsId}>
-            {(['upload', 'config'] as const).map((item) => (
-              <button
-                key={item}
-                type="button"
-                role="radio"
-                aria-checked={chats.source === item}
-                disabled={busy}
-                onClick={() => setSource(item)}
-              >
-                {t(($) => $.build.prepare.sources[item])} · {chats[item].count}
-              </button>
-            ))}
-          </div>
-        )}
         {chats?.source === 'config' && <p className="build-step__note">{t(($) => $.build.prepare.chatsHint)}</p>}
-        <ChatUpload
-          disabled={busy}
-          empty={!chats?.upload.count && !chats?.config.count}
-          onUploaded={() => {
-            setSource('upload');
-            setRound((value) => value + 1);
-          }}
-        />
+        <ChatUpload disabled={busy} empty={!chats?.count} onUploaded={() => setRound((value) => value + 1)} />
       </Step>
 
       <Step n={3} id={confirmId} title={t(($) => $.build.prepare.confirm)} done={ready && consent}>
         <div className="assistant-card build-panel">
           <div className="build-backend">
-            <div className="settings-row__text">
-              <span className="settings-row__label">{t(($) => $.build.prepare.backend)}</span>
-              <span className="settings-row__hint">{t(($) => $.build.prepare.backendHint)}</span>
-            </div>
-            <div className="build-facts">
-              {backend?.provider ? (
-                <>
-                  <code>{backend.provider}</code>
-                  {backend.model && <code>{backend.model}</code>}
-                  {backend.max_context_tokens != null && (
-                    <span>{t(($) => $.build.prepare.limit, { count: backend.max_context_tokens })}</span>
-                  )}
-                </>
-              ) : (
-                <span>{checking ? t(($) => $.build.prepare.checking) : t(($) => $.settings.run.none)}</span>
-              )}
-            </div>
-            {askTokens && (
-              <div className="wc-field build-tokens">
-                <label className="wc-field__label" htmlFor={tokensId}>
-                  {t(($) => $.build.prepare.tokens)}
-                </label>
-                <div className="wc-input">
-                  <input
-                    id={tokensId}
-                    inputMode="numeric"
-                    placeholder="128000"
-                    value={tokens}
-                    disabled={busy}
-                    onChange={(event) => setTokens(event.target.value.trim())}
-                    onBlur={() => limit !== checked && setChecked(limit)}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter') {
-                        event.preventDefault();
-                        recheck();
-                      }
-                    }}
-                  />
-                </div>
-                <span className="wc-field__hint">{t(($) => $.build.prepare.tokensHint)}</span>
-              </div>
-            )}
+            <ModelSettings
+              build={{
+                // Codex is not there to use: the form starts on the API.
+                preferApi: Boolean(check?.problems.some((problem) => problem.code === 'codex_missing')),
+                onPending: setPendingBackend,
+                saver: saveBackend,
+                onSaved: () => setRound((value) => value + 1),
+                facts: (
+                  <>
+                    <div className="settings-row__text">
+                      <span className="settings-row__label">{t(($) => $.build.prepare.backend)}</span>
+                      <span className="settings-row__hint">
+                        <Trans
+                          i18nKey={($) => $.build.prepare.backendHint}
+                          components={{ a: <a className="wc-link" href="#/settings" /> }}
+                        />
+                      </span>
+                    </div>
+                    <div className="build-facts">
+                      {backend?.provider ? (
+                        <>
+                          <span>{t(($) => $.settings.model.backends[backend.provider!])}</span>
+                          {backend.model && <code>{backend.model}</code>}
+                        </>
+                      ) : (
+                        <span>{checking ? t(($) => $.build.prepare.checking) : t(($) => $.settings.run.none)}</span>
+                      )}
+                    </div>
+                  </>
+                ),
+              }}
+            />
           </div>
 
           {listed.length > 0 && (
@@ -402,7 +333,10 @@ function Prepare({ last }: { last: BuildStatus | null }) {
               <strong>{t(($) => $.build.prepare.problems)}</strong>
               <ul>
                 {listed.map((problem, index) => (
-                  <li key={`${problem.code}-${index}`}>{problemText(problem)}</li>
+                  <li key={`${problem.code}-${index}`}>
+                    <ProblemText problem={problem} />
+                    {typeof problem.params.detail === 'string' && <ErrorDetails text={problem.params.detail} />}
+                  </li>
                 ))}
               </ul>
               <button className="wc-btn wc-btn--sm" type="button" disabled={checking} onClick={recheck}>
@@ -426,7 +360,11 @@ function Prepare({ last }: { last: BuildStatus | null }) {
             <label className="wc-check build-consent">
               <input type="checkbox" checked={consent} disabled={busy} onChange={() => setConsent(!consent)} />
               <span className="wc-check__box" aria-hidden="true" />
-              <span>{t(($) => $.build.prepare.consent, { backend: backend?.provider ?? '' })}</span>
+              <span>
+                {t(($) => $.build.prepare.consent, {
+                  backend: provider ? t(($) => $.settings.model.backends[provider]) : '',
+                })}
+              </span>
             </label>
             <button className="wc-btn wc-btn--primary wc-btn--lg" type="submit" disabled={!ready || !consent || busy}>
               {t(($) => $.build.prepare.start)}
@@ -492,7 +430,7 @@ function Running({ status }: { status: BuildStatus }) {
       </div>
       <Now status={status} />
       <StageList status={status} />
-      <p className="summary-hint">{t(($) => $.build.running.leave, { log: status.log })}</p>
+      <p className="summary-hint">{t(($) => $.build.running.leave)}</p>
       {error && (
         <div className="summary-error" role="alert">
           <span>{error}</span>
@@ -592,6 +530,13 @@ function Finished({ status, onAgain }: { status: BuildStatus; onAgain: () => voi
   const { t } = useTranslation();
   const stage = status.stages.find((item) => item.key === status.error?.key);
   const state = status.state as Exclude<BuildStatus['state'], 'running' | 'succeeded'>;
+  // The exception and the log, for a bug report: a cancelled build has nothing to report.
+  const details = [
+    status.error && [status.error.type, status.error.message].filter(Boolean).join(': '),
+    status.log && t(($) => $.build.finished.log, { log: status.log }),
+  ]
+    .filter(Boolean)
+    .join('\n');
 
   return (
     <section className="assistant-card build-card">
@@ -607,14 +552,10 @@ function Finished({ status, onAgain }: { status: BuildStatus; onAgain: () => voi
               ? t(($) => $.build.finished.stoppedAt, { stage: t(($) => $.build.stages[stage.key]) })
               : t(($) => $.build.finished.stoppedBefore)}
           </strong>
-          <p>
-            <code>{status.error.type}</code>
-            {status.error.message ? ` ${status.error.message}` : ''}
-          </p>
         </div>
       )}
+      {state !== 'cancelled' && details && <ErrorDetails text={details} />}
       <StageList status={status} />
-      <p className="summary-hint">{t(($) => $.build.finished.log, { log: status.log })}</p>
       <div className="build-actions">
         <button className="wc-btn wc-btn--primary" type="button" onClick={onAgain}>
           {t(($) => $.build.finished.again)}
