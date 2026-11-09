@@ -82,13 +82,23 @@ def test_window_prompt_fills_placeholders(recent):
     assert ("current_state" in state) == recent
 
 
-@pytest.mark.parametrize("defect", ["duplicate", "missing", "unknown", "tags", "type", "recent", "truncated"])
+@pytest.mark.parametrize("task", ["state", "event"])
+def test_sample_ids_copied_with_their_header_are_accepted(task):
+    samples = [sample(1), sample(2)]
+    assert set(split_window_response(response(["#1", "2"], task), samples, task)) == {"1", "2"}
+
+
+@pytest.mark.parametrize(
+    "defect", ["duplicate", "duplicate header", "missing", "unknown", "tags", "type", "recent", "truncated"]
+)
 def test_invalid_state_windows_are_rejected(defect):
     samples = [sample(1), sample(2)]
     r = response(["1", "2"], "state")
     rows = r.parsed_json["results"]
     if defect == "duplicate":
         rows[1]["sample_id"] = rows[0]["sample_id"]
+    elif defect == "duplicate header":
+        rows[1]["sample_id"] = "#" + rows[0]["sample_id"]
     elif defect == "missing":
         rows.pop()
     elif defect == "unknown":
