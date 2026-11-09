@@ -532,11 +532,14 @@ def main(argv=None):
     inputs = prepare_inputs(args)
     records, grouping = inputs["records"], inputs["grouping"]
     logger.info(
-        "Input: {windows} windows, time window {state}; {corpora} group corpora with >= {min_messages} messages",
-        windows=len(records),
+        "Input: {counts[windows]} windows, time window {state}; {counts[corpora]} group corpora with "
+        ">= {counts[min_messages]} messages",
         state=inputs["window"]["state"],
-        corpora=len(grouping["corpora"]),
-        min_messages=args.min_group_messages,
+        counts={
+            "windows": len(records),
+            "corpora": len(grouping["corpora"]),
+            "min_messages": args.min_group_messages,
+        },
     )
     frozen = secure_storage.read_json(args.frozen) if args.frozen else None
     modules = extractors_for(categories)
@@ -553,12 +556,15 @@ def main(argv=None):
         }
         write_json(output / "sampling.json", sampling)
         logger.info(
-            "Semantic sample: {selected}/{windows} windows ({pooled} person, group floor {floor}); seed={seed}",
-            selected=len(selected),
-            windows=len(records),
-            pooled=sampling["pooled_selected"],
-            floor=sampling["group_floor"],
-            seed=args.sample_seed,
+            "Semantic sample: {counts[selected]}/{counts[windows]} windows ({counts[pooled]} person, group floor "
+            "{counts[floor]}); seed={counts[seed]}",
+            counts={
+                "selected": len(selected),
+                "windows": len(records),
+                "pooled": sampling["pooled_selected"],
+                "floor": sampling["group_floor"],
+                "seed": args.sample_seed,
+            },
         )
     shared_judge = make_judge(args, None) if args.llm and any(m not in LOCAL_ONLY for m in modules) else None
     # Producers are submitted before the groups that wait for them.

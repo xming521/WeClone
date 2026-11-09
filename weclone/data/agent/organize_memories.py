@@ -608,11 +608,13 @@ class LLMTasks:
         pending = list(first.values())
         if tasks:
             logger.info(
-                "{stage}: tasks={tasks} pending={pending} max_input_tokens={max_input_tokens}",
+                "{stage}: tasks={counts[tasks]} pending={counts[pending]} max_input_tokens={counts[max_input_tokens]}",
                 stage=tasks[0]["stage"],
-                tasks=len(tasks),
-                pending=len(pending),
-                max_input_tokens=max(item["tokens"] for item in input_stats),
+                counts={
+                    "tasks": len(tasks),
+                    "pending": len(pending),
+                    "max_input_tokens": max(item["tokens"] for item in input_stats),
+                },
             )
         for batch in distill_profile.batched(pending, self.options.batch_size):
             retry = list(batch)
@@ -653,7 +655,11 @@ class LLMTasks:
                 if not retry:
                     break
             if retry:
-                logger.error("{stage}: {failed} LLM tasks failed", stage=tasks[0]["stage"], failed=len(retry))
+                logger.error(
+                    "{stage}: {counts[failed]} LLM tasks failed",
+                    stage=tasks[0]["stage"],
+                    counts={"failed": len(retry)},
+                )
                 reasons = "; ".join(f"{error} ×{count}" for error, count in errors.most_common(3))
                 raise RuntimeError(
                     f"{len(retry)} LLM tasks failed ({reasons}). Rerun the same command to retry them, "

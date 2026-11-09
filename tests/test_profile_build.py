@@ -246,11 +246,11 @@ def test_an_encrypted_build_writes_with_the_session_key(web, monkeypatch, storag
     assert values(client) == ["新画像"]
     monkeypatch.setenv("FAKE_BUILD", "fail")
     build(client)
-    # Encrypted mode keeps only the exception class and the numbers logs pass as fields, in the status and in the log.
+    # Encrypted mode keeps only the exception class and the counts logs declare, in the status and in the log.
     failed = wait(client, "failed")
     assert failed["error"]["message"] == ""
     log = (pipeline.RUNS_DIR / failed["run"] / pipeline.LOG_FILE).read_text(encoding="utf-8")
-    assert "private" not in log and "uncaught error_type=RuntimeError" in log
+    assert "private" not in log and "987654321" not in log and "uncaught error_type=RuntimeError" in log
     assert "event windows=7 error_type=none" in log and "event step=2 steps=" in log
 
 

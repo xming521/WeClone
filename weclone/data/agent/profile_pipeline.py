@@ -55,27 +55,25 @@ def _now() -> str:
 
 
 @contextmanager
-def _stage(label: str, **numbers):
-    """Logs the start and end of a stage. The numbers, such as its step, stay in an encrypted log too."""
+def _stage(label: str, **counts):
+    """Logs the start and end of a stage. The counts, such as its step, stay in an encrypted log too."""
     started = perf_counter()
-    logger.info("{label}：开始", label=label, **numbers)
+    logger.info("{label}：开始", label=label, counts=counts)
     try:
         yield
     except BaseException as exc:
         logger.error(
-            "{label}：失败（{error}），耗时 {seconds} 秒",
+            "{label}：失败（{error}），耗时 {counts[seconds]} 秒",
             label=label,
             error=type(exc).__name__,
-            seconds=round(perf_counter() - started, 1),
-            **numbers,
+            counts={**counts, "seconds": round(perf_counter() - started, 1)},
         )
         raise
     else:
         logger.info(
-            "{label}：完成，耗时 {seconds} 秒",
+            "{label}：完成，耗时 {counts[seconds]} 秒",
             label=label,
-            seconds=round(perf_counter() - started, 1),
-            **numbers,
+            counts={**counts, "seconds": round(perf_counter() - started, 1)},
         )
 
 
@@ -461,7 +459,7 @@ def run(
             source_files = list(distill_profile.iter_chat_files(people_dir))
             if not source_files:
                 raise FileNotFoundError(f"没有生成聊天样本：{people_dir}")
-            logger.info("聊天样本准备完成：{chats} 个聊天文件。", chats=len(source_files))
+            logger.info("聊天样本准备完成：{counts[chats]} 个聊天文件。", counts={"chats": len(source_files)})
             build.status["chats"] = len(source_files)
 
             with build.stage("distill_profile"):

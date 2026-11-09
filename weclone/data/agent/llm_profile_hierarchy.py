@@ -283,10 +283,12 @@ def main(argv: list[str] | None = None):
     save(args.output_dir / "summary.json", summary)
     print(json.dumps(summary, ensure_ascii=False, indent=2), flush=True)
     logger.info(
-        "Profile hierarchy: {facts} facts, {domains} domains, {topics} topics",
-        facts=len(facts),
-        domains=len(domains),
-        topics=sum(len(domain["topics"]) for domain in domains),
+        "Profile hierarchy: {counts[facts]} facts, {counts[domains]} domains, {counts[topics]} topics",
+        counts={
+            "facts": len(facts),
+            "domains": len(domains),
+            "topics": sum(len(domain["topics"]) for domain in domains),
+        },
     )
 
 
