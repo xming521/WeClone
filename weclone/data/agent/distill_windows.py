@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Any
 
 from weclone.core.inference.llm_client import LLMRequest, LLMResponse
+from weclone.core.inference.usage import UsageLimitReached
 from weclone.data.agent.llm_cache import cache_key
 from weclone.prompts.distill_memory import build_window_extract_prompt
 
@@ -34,9 +35,13 @@ def sample_body(item: dict[str, Any], *, target_role: str) -> str:
     )
 
 
+def sample_header(sample_id: str) -> str:
+    return f"#{sample_id}"
+
+
 def render_sample(item: dict[str, Any], *, sample_id: str, target_role: str) -> str:
     body = sample_body(item, target_role=target_role)
-    return f"#{sample_id}\n{body}" if body else f"#{sample_id}"
+    return f"{sample_header(sample_id)}\n{body}" if body else sample_header(sample_id)
 
 
 def sample_cache_key(sample: ChatSample, *, task: str, target_role: str) -> str:
@@ -76,6 +81,12 @@ def group_samples(
     return groups
 
 
+def window_prompt(samples: list[ChatSample], *, task: str, target_role: str) -> str:
+    prompt = build_window_extract_prompt(task, include_current_state=samples[0].include_current_state)
+    body = "\n\n".join(render_sample(s.item, sample_id=s.sample_id, target_role=target_role) for s in samples)
+    return prompt.replace("{{CHAT_SAMPLES}}", body)
+
+
 def make_window_request(
     samples: list[ChatSample],
     *,
@@ -87,10 +98,8 @@ def make_window_request(
     effort: str | None,
     max_tokens: int | None,
 ) -> LLMRequest:
-    prompt = build_window_extract_prompt(task, include_current_state=samples[0].include_current_state)
-    body = "\n\n".join(render_sample(s.item, sample_id=s.sample_id, target_role=target_role) for s in samples)
     return LLMRequest.from_prompt(
-        prompt.replace("{{CHAT_SAMPLES}}", body),
+        window_prompt(samples, task=task, target_role=target_role),
         provider=provider,
         model=model,
         effort=effort,
@@ -100,6 +109,7 @@ def make_window_request(
             "task": f"{task}_distill",
             "source_file": str(source_path),
             "sample_ids": [s.sample_id for s in samples],
+            "samples": len(samples),
             "include_current_state": samples[0].include_current_state,
             "content_chars": sum(content_chars(s.item) for s in samples),
         },
@@ -134,13 +144,15 @@ def split_window_response(response: LLMResponse, samples: list[ChatSample], task
     ):
         raise ValueError("Expected a results array")
     expected = {s.sample_id: s for s in samples}
+    # An answer names a sample by its ID or, as some models copy it, by its header line.
+    names = {sample_header(sid): sid for sid in expected} | {sid: sid for sid in expected}
     parsed = {}
     field_name = f"{task}_memories"
     for item in payload["results"]:
         if not isinstance(item, dict) or set(item) != {"sample_id", field_name}:
             raise ValueError("Invalid per-sample result fields")
-        sid = item["sample_id"]
-        if not isinstance(sid, str) or sid not in expected or sid in parsed:
+        sid = names.get(item["sample_id"]) if isinstance(item["sample_id"], str) else None
+        if sid is None or sid in parsed:
             raise ValueError("Unknown or duplicate sample_id")
         value = item[field_name]
         if task == "state":
@@ -201,6 +213,7 @@ def generate_window_batch(client: Any, batch: list[tuple[list[ChatSample], LLMRe
                 outcome.attempts[-1] = replace(response, ok=False, error=outcome.error)
                 failed.append(i)
         pending = failed
-        if not pending:
+        # Past the usage limit a retry only raises, which would lose the answers this batch got.
+        if not pending or isinstance(getattr(client, "limit", None), UsageLimitReached):
             break
     return outcomes

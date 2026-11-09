@@ -45,4 +45,6 @@ The `.weclone/` directory holds the data key encrypted with your password (`mani
 
 ## Request logs
 
-Requests WeClone sends to model services are logged in `logs/llm_audit/`. Encrypted mode logs only metadata. Plaintext mode logs full requests and replies.
+Requests WeClone sends to model services are logged in `logs/llm_audit/`. Encrypted mode logs only metadata, such as timing, token usage and the number of samples and characters in each request, never the content of requests or replies. Plaintext mode logs full requests and replies.
+
+In encrypted mode, the run log and the build log also leave out all text. They keep the time, level, code location, error type and counts such as chats, windows, requests and failures, which is enough to look into cost and run time.

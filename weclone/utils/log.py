@@ -23,11 +23,23 @@ def _encrypted_logging() -> bool:
 def _persistent_log_format(record) -> str:
     prefix = "{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | {name}:{function}:{line}"
     if _encrypted_logging():
-        # Arbitrary messages and traceback locals can contain chat text. Retain
-        # only location, severity, timestamp and exception class in disk logs.
+        # Arbitrary messages, keyword fields and traceback locals can contain
+        # chat text or numbers taken from a chat, such as an account. Retain
+        # only location, severity, timestamp, exception class and the numbers a
+        # call declares as counts: logger.info("... {counts[chats]}", counts={"chats": 3}).
         exception = record.get("exception")
         error_type = exception.type.__name__ if exception else "none"
-        return prefix + f" | event error_type={error_type}\n"
+        counts = record["extra"].get("counts")
+        numbers = "".join(
+            f" {key}={value}"
+            for key, value in (counts.items() if isinstance(counts, dict) else ())
+            if isinstance(key, str)
+            and key.isascii()
+            and key.isidentifier()
+            and isinstance(value, (int, float))
+            and not isinstance(value, bool)
+        )
+        return prefix + f" | event{numbers} error_type={error_type}\n"
     return prefix + " - {message}\n{exception}"
 
 

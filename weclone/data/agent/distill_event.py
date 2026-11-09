@@ -19,7 +19,7 @@ def main(
     config_path: Path | None = None,
     confirmed: bool = False,
     dry_run: bool = False,
-    on_file: Callable[[int, int], None] | None = None,
+    on_progress: Callable[[int, int], None] | None = None,
 ) -> FileStats:
     return run_task(
         TASK,
@@ -28,5 +28,5 @@ def main(
         config_path=config_path,
         confirmed=confirmed,
         dry_run=dry_run,
-        on_file=on_file,
+        on_progress=on_progress,
     )

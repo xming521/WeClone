@@ -1,6 +1,6 @@
 [project]
 name = "WeClone"
-version = "1.0.3"
+version = "1.0.4"
 description = "Build a portrait of your life. Assistants that know you. Clones that talk like you."
 authors = [{ name = "xming521" }]
 readme = "README.md"
@@ -108,6 +108,7 @@ exclude = ["*tests*", "*archive*", "weclone-cloud*"]
 
 [tool.setuptools.package-data]
 "weclone.web" = ["dist/*", "dist/assets/*"]
+"weclone.core.inference" = ["model_prices.json"]
 
 [tool.pyright]
 typeCheckingMode = "basic"

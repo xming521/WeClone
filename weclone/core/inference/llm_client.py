@@ -22,6 +22,7 @@ from weclone.utils.secure_storage import is_encrypted_mode, runtime_directory
 
 from ._common import (
     API_TIMEOUT_SECONDS,
+    CODEX_REQUEST_INTERVAL_SECONDS,
     OPENAI_API_BACKOFF_FACTOR,
     OPENAI_API_BASE_DELAY,
     OPENAI_API_JITTER,
@@ -33,6 +34,7 @@ from ._common import (
     project_root,
 )
 from .audit import LLMAuditCall, LLMAuditLogger
+from .usage import METER, UsageLimitReached
 
 ProviderName = Literal["codex_exec", "api"]
 Message = dict[str, Any]
@@ -289,6 +291,24 @@ def _classify_error(text: str) -> str:
     return "other"
 
 
+def _usage_limit(stdout: str, stderr: str) -> str | None:
+    """What Codex said when it refused for the account's usage limit, from its error events or stderr."""
+    messages = stderr.splitlines()
+    for line in stdout.splitlines():
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(event, dict):
+            continue
+        for part in (event, event.get("error"), event.get("item")):
+            if isinstance(part, dict) and isinstance(part.get("message"), str):
+                messages.append(part["message"])
+    return next(
+        (m.strip()[:500] for m in messages if re.search(r"usage[\s_-]*limit", m, re.IGNORECASE)), None
+    )
+
+
 def _codex_error_text(stdout: str, stderr: str) -> str:
     errors = [stderr]
     for line in stdout.splitlines():
@@ -321,6 +341,8 @@ class BaseBatchMixin:
         self._condition = Condition()
         self._active_calls = 0
         self._closed = False
+        # Set when the service refused for the account's usage limit. No request is sent after it, and a batch raises it.
+        self.limit: UsageLimitReached | None = None
 
     def chat(self, prompt: PromptLike, **kwargs: Any) -> LLMResponse:
         return self.generate(make_request(prompt, **kwargs))
@@ -353,6 +375,7 @@ class BaseBatchMixin:
     def generate_batch(
         self, requests: Iterable[LLMRequest], *, callback: Callable[[int, LLMResponse], None] | None = None
     ) -> list[LLMResponse]:
+        self._raise_limit()
         request_list = list(requests)
         results: list[LLMResponse | None] = [None] * len(request_list)
         futures = {self.chat_async(request): i for i, request in enumerate(request_list)}
@@ -375,7 +398,12 @@ class BaseBatchMixin:
         except KeyboardInterrupt:
             self.close(wait=False, cancel_futures=True)
             raise
+        # A batch that met the usage limit returns the answers it got, so they are kept; the next batch raises.
         return [result for result in results if result is not None]
+
+    def _raise_limit(self) -> None:
+        if self.limit is not None:
+            raise UsageLimitReached(str(self.limit))
 
     def _error_response(self, request: LLMRequest, exc: Exception) -> LLMResponse:
         metadata: dict[str, Any] = {**getattr(exc, "partial_metadata", {}), "error_type": type(exc).__name__}
@@ -600,6 +628,8 @@ class OpenAICompatibleClient(BaseBatchMixin):
             params["response_format"] = {"type": "json_object"}
         policy = request.retry_policy or self.retry_policy
         empty_retries = 0
+        # Every attempt is billed, so a request sent more than once carries the usage of each.
+        usages: list[Any] = []
         for index in range(policy.max_retries + 1):
             if self._stop_event.is_set():
                 raise CancelledError("request interrupted")
@@ -610,6 +640,8 @@ class OpenAICompatibleClient(BaseBatchMixin):
                 raw = self.client.chat.completions.create(**params)
                 result = self._read_response(raw, request, model)
             except Exception as exc:
+                usages.append(getattr(exc, "partial_metadata", {}).get("usage"))
+                METER.record(usages[-1])
                 retry = index < policy.max_retries and policy.accepts(exc) and not self._stop_event.is_set()
                 delay = policy.delay(index) if retry else None
                 call.finish_attempt(
@@ -628,6 +660,11 @@ class OpenAICompatibleClient(BaseBatchMixin):
                             "the same parameters",
                             self.base_url,
                         )
+                    if len(usages) > 1:
+                        exc.partial_metadata = {
+                            **getattr(exc, "partial_metadata", {}),
+                            "attempt_usages": usages,
+                        }
                     raise
                 logger.warning(
                     "LLM attempt {} failed: {}; retrying in {}s", attempt, type(exc).__name__, delay
@@ -649,9 +686,13 @@ class OpenAICompatibleClient(BaseBatchMixin):
                 will_retry=retry_empty,
                 retry_reason="empty_json" if retry_empty else None,
             )
+            usages.append(result.metadata.get("usage"))
+            METER.record(usages[-1])
             if retry_empty:
                 empty_retries += 1
                 continue
+            if len(usages) > 1:
+                result.metadata["attempt_usages"] = usages
             return result
         raise ValueError("retry policy max_retries must be nonnegative")
 
@@ -690,7 +731,9 @@ class CodexExecClient(BaseBatchMixin):
             else {}
         )
         if request_interval_seconds is None:
-            request_interval_seconds = float(pacing.get("request_interval_seconds", 1.0))
+            request_interval_seconds = float(
+                pacing.get("request_interval_seconds", CODEX_REQUEST_INTERVAL_SECONDS)
+            )
         if capacity_cooldown_seconds is None:
             capacity_cooldown_seconds = float(pacing.get("capacity_cooldown_seconds", 10.0))
         if request_interval_seconds < 0 or capacity_cooldown_seconds < 0:
@@ -734,6 +777,7 @@ class CodexExecClient(BaseBatchMixin):
     def _wait_for_launch(self) -> None:
         with self._condition:
             while not self._stop_event.is_set():
+                self._raise_limit()
                 remaining = self._next_launch_at - time.monotonic()
                 if remaining <= 0:
                     self._next_launch_at = time.monotonic() + self.request_interval_seconds
@@ -961,6 +1005,8 @@ class CodexExecClient(BaseBatchMixin):
                         and _classify_error(_codex_error_text(stdout, stderr)) == "overload/rate_limit"
                     ):
                         self._cool_down()
+                if proc is not None:
+                    METER.record(None)
                 call.finish_attempt(
                     1, status="timeout" if isinstance(exc, subprocess.TimeoutExpired) else "failed", error=exc
                 )
@@ -994,12 +1040,21 @@ class CodexExecClient(BaseBatchMixin):
                     for k, v in event["usage"].items()
                     if isinstance(v, int) and not isinstance(v, bool)
                 }
+        METER.record(metadata.get("usage"))
         if self.enable_web_search:
             metadata["web_search_calls"] = web_search_calls
         text = output_text or event_text
         error_detail = _codex_error_text(stdout, stderr)
         error_category = _classify_error(error_detail)
-        if error_category == "overload/rate_limit":
+        limit = _usage_limit(stdout, stderr) if proc.returncode != 0 or not text else None
+        if limit is not None:
+            with self._condition:
+                self.limit = UsageLimitReached(limit)
+                self._condition.notify_all()
+            METER.limit = limit
+            logger.warning("Codex usage limit reached: no more requests are sent")
+            metadata["error_category"] = "usage_limit"
+        elif error_category == "overload/rate_limit":
             self._cool_down()
             metadata["error_category"] = error_category
         error = None

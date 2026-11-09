@@ -51,6 +51,7 @@ from weclone.prompts.memory_organization import (
     tag_domain_prompt,
 )
 from weclone.utils import secure_storage
+from weclone.utils.log import logger
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 STAGES = ("prepare", "domains", "peers", "classify", "summarize")
@@ -606,10 +607,14 @@ class LLMTasks:
                 first.setdefault(key, i)
         pending = list(first.values())
         if tasks:
-            print(
-                f"{tasks[0]['stage']}: tasks={len(tasks)} pending={len(pending)} "
-                f"max_input_tokens={max(item['tokens'] for item in input_stats)}",
-                flush=True,
+            logger.info(
+                "{stage}: tasks={counts[tasks]} pending={counts[pending]} max_input_tokens={counts[max_input_tokens]}",
+                stage=tasks[0]["stage"],
+                counts={
+                    "tasks": len(tasks),
+                    "pending": len(pending),
+                    "max_input_tokens": max(item["tokens"] for item in input_stats),
+                },
             )
         for batch in distill_profile.batched(pending, self.options.batch_size):
             retry = list(batch)
@@ -650,6 +655,11 @@ class LLMTasks:
                 if not retry:
                     break
             if retry:
+                logger.error(
+                    "{stage}: {counts[failed]} LLM tasks failed",
+                    stage=tasks[0]["stage"],
+                    counts={"failed": len(retry)},
+                )
                 reasons = "; ".join(f"{error} ×{count}" for error, count in errors.most_common(3))
                 raise RuntimeError(
                     f"{len(retry)} LLM tasks failed ({reasons}). Rerun the same command to retry them, "

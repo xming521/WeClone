@@ -314,6 +314,38 @@ def written_answer(task: str, result: dict[str, Any]) -> Any:
     return {kind: events for kind, events in result.items() if events}
 
 
+class SamplePlan(NamedTuple):
+    samples: list[ChatSample]
+    keys: dict[int, str]  # cache key by source index
+    answers: dict[str, Any]  # cached answers by cache key
+    windows: list[list[ChatSample]]  # the samples without an answer, as they are sent
+
+
+def plan_samples(
+    items: list[dict[str, Any]],
+    current_state_since: datetime | None,
+    *,
+    task: str,
+    target_role: str,
+    cache: LLMCache,
+    max_samples_per_window: int,
+    max_content_chars: int,
+) -> SamplePlan:
+    """The samples of a chat file, the answers the cache has for them, and the requests the rest go out in."""
+    samples = [
+        ChatSample(index, sample_id_for(item, index), item, allow_current_state(item, current_state_since))
+        for index, item in enumerate(items)
+    ]
+    keys = {
+        sample.source_index: sample_cache_key(sample, task=task, target_role=target_role)
+        for sample in samples
+    }
+    answers = cache.get_many(keys.values())
+    pending = [sample for sample in samples if keys[sample.source_index] not in answers]
+    windows = group_samples(pending, max_samples=max_samples_per_window, max_content_chars=max_content_chars)
+    return SamplePlan(samples, keys, answers, windows)
+
+
 class FileStats(NamedTuple):
     cached: int = 0  # samples answered from the cache
     pending: int = 0  # samples sent to the model
@@ -341,7 +373,9 @@ def process_task_file(
     progress_factory: Any = tqdm,
     max_samples_per_window: int = 8,
     max_content_chars: int = 400,
+    on_window: Callable[[int], None] | None = None,
 ) -> FileStats:
+    """on_window is told how many requests were done, after each batch."""
     field = TASK_OUTPUTS[task][1]
     output_path = output_path_for(output_dir, source_path, task)
     source_data = load_json(source_path)
@@ -352,23 +386,20 @@ def process_task_file(
         logger.warning(f"Skip {source_path}: no chat records found")
         return FileStats()
 
-    samples = [
-        ChatSample(index, sample_id_for(item, index), item, allow_current_state(item, current_state_since))
-        for index, item in enumerate(items)
-    ]
-    keys = {
-        sample.source_index: sample_cache_key(sample, task=task, target_role=target_role)
-        for sample in samples
-    }
-    answers = cache.get_many(keys.values())
-    pending = []
+    samples, keys, answers, windows = plan_samples(
+        items,
+        current_state_since,
+        task=task,
+        target_role=target_role,
+        cache=cache,
+        max_samples_per_window=max_samples_per_window,
+        max_content_chars=max_content_chars,
+    )
     for sample in samples:
         if keys[sample.source_index] in answers:
             sample.item[field] = answers[keys[sample.source_index]]
-        else:
-            pending.append(sample)
+    pending = [sample for window in windows for sample in window]
     cached = len(samples) - len(pending)
-    windows = group_samples(pending, max_samples=max_samples_per_window, max_content_chars=max_content_chars)
     request_rows = [
         (
             window,
@@ -410,7 +441,12 @@ def process_task_file(
                 calls += len(outcome.attempts)
                 if outcome.error:
                     failed += len(outcome.samples)
-                    logger.warning(f"LLM window failed for {source_path.name}: {outcome.error}")
+                    logger.warning(
+                        "LLM window failed for {file}: {error}",
+                        file=source_path.name,
+                        error=outcome.error,
+                        counts={"samples": len(outcome.samples), "attempts": len(outcome.attempts)},
+                    )
                 else:
                     for sample in outcome.samples:
                         answer = written_answer(task, outcome.results[sample.sample_id])
@@ -420,6 +456,8 @@ def process_task_file(
                         )
                 progress.update(len(outcome.samples))
             cache.put_many(answered)
+            if on_window is not None:
+                on_window(len(batch))
     finally:
         progress.close()
 
@@ -428,12 +466,44 @@ def process_task_file(
         secure_storage.resolve_path(output_path).unlink(missing_ok=True)
     else:
         atomic_save_any_json(output_path, source_data, indent=indent)
-    log(f"{source_path.name}: extracted={len(pending) - failed} failed={failed} calls={calls}")
+    logger.info(
+        "{file}: extracted={counts[extracted]} failed={counts[failed]} calls={counts[calls]}",
+        file=source_path.name,
+        counts={
+            "total": len(items),
+            "cached": cached,
+            "pending": len(pending),
+            "windows": len(request_rows),
+            "extracted": len(pending) - failed,
+            "failed": failed,
+            "calls": calls,
+        },
+    )
     return FileStats(cached, len(pending), len(request_rows), failed, calls)
 
 
 def process_file(source_path: Path, **options: Any) -> FileStats:
     return process_task_file(source_path, task=TASK, **options)
+
+
+def count_windows(source_files: list[Path], *, task: str, args: SimpleNamespace, cache: LLMCache) -> int:
+    """The requests extraction will send for these chat files, as process_task_file plans them."""
+    total = 0
+    for source_path in source_files:
+        all_items = chat_items(load_json(source_path))
+        _, current_state_since = current_state_time_window(all_items)
+        items = all_items[: args.limit_records] if args.limit_records is not None else all_items
+        plan = plan_samples(
+            items,
+            current_state_since,
+            task=task,
+            target_role=args.target_role,
+            cache=cache,
+            max_samples_per_window=args.max_samples_per_window,
+            max_content_chars=args.max_content_chars,
+        )
+        total += len(plan.windows)
+    return total
 
 
 def run_task(
@@ -444,9 +514,10 @@ def run_task(
     config_path: Path | None = None,
     confirmed: bool = False,
     dry_run: bool = False,
-    on_file: Callable[[int, int], None] | None = None,
+    on_progress: Callable[[int, int], None] | None = None,
 ) -> FileStats:
-    """on_file is told how many of the chat files are done, and of how many, before the first and after each."""
+    """on_progress is told how many of the requests are done, and of how many, before the first and after each
+    batch."""
     args = default_args()
     args.input_dir, args.output_dir = input_dir, output_dir
     if config_path is not None:
@@ -467,13 +538,27 @@ def run_task(
         raise SystemExit("已取消蒸馏；未写入结果或调用模型。")
 
     cache = LLMCache()
-    log(f"输入目录: {args.input_dir}  文件数: {len(source_files)}")
+    logger.info(
+        "输入目录: {input_dir}  文件数: {counts[files]}",
+        input_dir=args.input_dir,
+        counts={"files": len(source_files)},
+    )
     log(f"输出目录: {args.output_dir}")
     log(f"结果缓存: {cache.path}")
     log(f"写回字段: {TASK_OUTPUTS[task][1]}")
-    log(
-        f"provider={args.llm_provider} model={request_model} "
-        f"effort={request_effort or args.reasoning_effort} batch_size={args.batch_size} dry_run={args.dry_run}"
+    logger.info(
+        "provider={provider} model={model} effort={effort} batch_size={counts[batch_size]} "
+        "max_samples_per_window={counts[max_samples_per_window]} max_content_chars={counts[max_content_chars]} "
+        "dry_run={dry_run}",
+        provider=args.llm_provider,
+        model=request_model,
+        effort=request_effort or args.reasoning_effort,
+        dry_run=args.dry_run,
+        counts={
+            "batch_size": args.batch_size,
+            "max_samples_per_window": args.max_samples_per_window,
+            "max_content_chars": args.max_content_chars,
+        },
     )
 
     client = None
@@ -496,8 +581,20 @@ def run_task(
         )
 
     stats = []
-    if on_file is not None:
-        on_file(0, len(source_files))
+    done = 0
+    total = 0
+    progress_lock = threading.Lock()
+
+    def on_window(count: int) -> None:
+        nonlocal done
+        with progress_lock:
+            done += count
+            if on_progress is not None:
+                on_progress(done, total)
+
+    if on_progress is not None:
+        total = count_windows(source_files, task=task, args=args, cache=cache)
+        on_progress(0, total)
     # Chat files run side by side and share the client's batch_size workers, so a file waiting on its slowest
     # window no longer holds back the next. A dry run makes no calls and prints its prompts in file order.
     files = ThreadPoolExecutor(max_workers=1 if args.dry_run else args.batch_size)
@@ -523,13 +620,12 @@ def run_task(
                 indent=args.indent,
                 # Bars of files running at once would overwrite each other; each file logs a line when it ends.
                 progress_factory=partial(tqdm, disable=True),
+                on_window=on_window,
             )
             for source_path in source_files
         ]
         for future in as_completed(futures):
             stats.append(future.result())
-            if on_file is not None:
-                on_file(len(stats), len(source_files))
     finally:
         files.shutdown(wait=False, cancel_futures=True)
         if client is not None:
@@ -538,9 +634,17 @@ def run_task(
         files.shutdown(wait=True)
 
     total = FileStats(*(sum(values) for values in zip(*stats))) if stats else FileStats()
-    log(
-        f"完成: cached={total.cached} pending={total.pending} windows={total.windows} "
-        f"failed={total.failed} llm_calls={total.calls} dry_run={args.dry_run}"
+    logger.info(
+        "完成: cached={counts[cached]} pending={counts[pending]} windows={counts[windows]} failed={counts[failed]} "
+        "llm_calls={counts[llm_calls]} dry_run={dry_run}",
+        dry_run=args.dry_run,
+        counts={
+            "cached": total.cached,
+            "pending": total.pending,
+            "windows": total.windows,
+            "failed": total.failed,
+            "llm_calls": total.calls,
+        },
     )
     if total.failed:
         raise RuntimeError(
@@ -556,7 +660,7 @@ def main(
     config_path: Path | None = None,
     confirmed: bool = False,
     dry_run: bool = False,
-    on_file: Callable[[int, int], None] | None = None,
+    on_progress: Callable[[int, int], None] | None = None,
 ) -> FileStats:
     return run_task(
         TASK,
@@ -565,5 +669,5 @@ def main(
         config_path=config_path,
         confirmed=confirmed,
         dry_run=dry_run,
-        on_file=on_file,
+        on_progress=on_progress,
     )

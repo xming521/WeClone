@@ -1,5 +1,6 @@
 import hashlib
 import json
+import subprocess
 import sys
 import threading
 import time
@@ -19,6 +20,7 @@ from weclone.core.inference import (
     LLMRequest,
     OpenAICompatibleClient,
     RetryPolicy,
+    audit,
 )
 from weclone.core.inference.llm_client import make_request
 
@@ -104,6 +106,23 @@ def test_response_model_validation_and_audit(api, tmp_path):
     assert events[-1]["result"]["parsed_model"] == {"score": 3}
 
 
+def test_encrypted_audit_keeps_counts_and_drops_text(tmp_path, monkeypatch):
+    monkeypatch.setattr(audit, "is_encrypted_mode", lambda: True)
+    metadata = {"task": "state_distill", "samples": 2, "content_chars": 120, "source_file": "private.json"}
+    request = LLMRequest.from_prompt("private chat", metadata=metadata)
+    with LLMAuditLogger(tmp_path, strict=True).start_call(request=request, provider="api", model="m") as call:
+        usage = {"completion_tokens": 50, "completion_tokens_details": {"reasoning_tokens": 40, "x": None}}
+        call.finish({"ok": True, "text": "private", "metadata": {"reasoning": "private", "usage": usage}})
+    text = "".join(path.read_text(encoding="utf-8") for path in tmp_path.glob("*.jsonl"))
+    started, finished = [json.loads(line) for line in text.splitlines()]
+    assert "private" not in text
+    assert started["request"]["metadata"] == {"task": "state_distill", "samples": 2, "content_chars": 120}
+    assert finished["result"]["metadata"]["usage"] == {
+        "completion_tokens": 50,
+        "completion_tokens_details": {"reasoning_tokens": 40},
+    }
+
+
 @pytest.mark.parametrize(
     "text,finish,error_type",
     [
@@ -146,6 +165,25 @@ def test_provider_error_and_retry_override(api):
     result = client.chat("score")
     assert not result.ok and create.call_count == 1
     assert result.metadata == {"error_type": "RateLimitError", "http_status": 429}
+
+
+def test_every_attempt_counts_toward_the_usage_meter(api, monkeypatch):
+    from weclone.core.inference import llm_client, usage
+
+    meter = usage.Meter()
+    monkeypatch.setattr(llm_client, "METER", meter)
+    client, create = api
+    error = RateLimitError(
+        "limited",
+        response=httpx.Response(429, request=httpx.Request("POST", "http://example.invalid")),
+        body=None,
+    )
+    create.side_effect = [error, completion()]
+    result = client.chat("score", retry_policy=RetryPolicy(max_retries=1, base_delay=0))
+    assert result.ok and result.metadata["attempt_usages"][0] is None
+    totals = meter.totals()
+    assert totals["requests"] == 2 and totals["unmetered"] == 1
+    assert (totals["input_tokens"], totals["output_tokens"], totals["cost"]) == (7, 3, None)
 
 
 def test_last_attempt_empty(api, tmp_path):
@@ -223,6 +261,8 @@ def test_empty_json_retry(api):
     result = client.chat("score", json_mode=True, retry_policy=RetryPolicy(max_retries=1))
     assert result.ok and result.parsed_json == {"score": 3}
     assert create.call_count == 2
+    # The empty answer was billed too.
+    assert len(result.metadata["attempt_usages"]) == 2
 
 
 def test_stream_is_merged_and_closed(api):
@@ -378,6 +418,12 @@ if prompt == "capacity": sys.stderr.write("Insufficient model capacity"); sys.ex
 if prompt in {"capacity-event", "capacity-timeout"}:
     print(json.dumps({"type": "turn.failed", "error": {"code": "model_capacity_exceeded"}}), flush=True)
     if prompt == "capacity-timeout": time.sleep(10)
+    sys.exit(1)
+if prompt == "limit":
+    # As Codex reports the plan's quota used up: the HTTP status in stderr, the message in its events.
+    sys.stderr.write("unexpected status 429 Too Many Requests")
+    print(json.dumps({"type": "error", "message": "You've hit your usage limit. Try again at 3:05 PM."}))
+    print(json.dumps({"type": "turn.failed", "error": {"message": "You've hit your usage limit. Try again at 3:05 PM."}}))
     sys.exit(1)
 if prompt == "capacity-text":
     print(json.dumps({"type": "item.completed", "item": {"type": "agent_message", "text": "rate limit 429"}}))
@@ -584,6 +630,36 @@ def test_codex_failure_and_timeout(codex, prompt, timeout, error):
     result = codex.chat(prompt, timeout=timeout)
     assert not result.ok and result.metadata["error_type"] == error
     assert not list(codex.requests_dir.iterdir())
+
+
+def test_codex_sends_nothing_after_the_usage_limit(codex, monkeypatch):
+    from weclone.core.inference import llm_client, usage
+
+    meter = usage.Meter()
+    monkeypatch.setattr(llm_client, "METER", meter)
+    launches = []
+    popen = subprocess.Popen
+    monkeypatch.setattr(llm_client.subprocess, "Popen", lambda *a, **k: launches.append(a) or popen(*a, **k))
+    refused = codex.chat("limit")
+    assert not refused.ok and refused.metadata["error_category"] == "usage_limit"
+    # No pause for capacity, and no further launch: a batch raises the service's words.
+    assert codex._next_launch_at <= time.monotonic()
+    with pytest.raises(usage.UsageLimitReached, match="Try again at 3:05 PM"):
+        codex.chat_batch(["score", "score"])
+    assert not codex.chat("score").ok and len(launches) == 1
+    assert meter.limit == "You've hit your usage limit. Try again at 3:05 PM."
+    assert meter.totals()["requests"] == 1
+
+
+def test_a_codex_batch_that_meets_the_usage_limit_returns_what_it_got(codex):
+    from weclone.core.inference import usage
+
+    # The answers already used quota, so the batch hands them back and only the next one raises.
+    responses = codex.chat_batch(["score", "limit"])
+    assert len(responses) == 2
+    assert any(response.metadata.get("error_category") == "usage_limit" for response in responses)
+    with pytest.raises(usage.UsageLimitReached):
+        codex.chat_batch(["score"])
 
 
 def test_codex_rejects_multimodal_and_stream_before_launch(codex):

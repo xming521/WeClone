@@ -72,7 +72,11 @@
     "settings_missing": "找不到设置文件，请按安装文档重新配置",
     "settings_unreadable": "设置文件格式有误，请检查后重试",
     "settings_changed": "设置在别处被改过，已重新读取，请再改一次",
-    "model_settings_required": "还有必填项没有填"
+    "model_settings_required": "还有必填项没有填",
+    "probe_running": "已经有一次试算在运行",
+    "probe_failed": "试算失败，模型服务返回了错误，请检查模型设置后重试",
+    "estimate_failed": "估算失败，请检查聊天记录和模型设置后重试",
+    "usage_limit": "模型服务的使用额度用完了，等额度恢复后再试"
   },
   "app": {
     "title": "我的画像 · WeClone",
@@ -906,6 +910,43 @@
       "interrupted": "中断"
     },
     "files": "{{done}}/{{total}} 个聊天",
+    "requests_other": "{{count, number}} 次请求",
+    "requestsDone": "{{done, number}} / {{total, number}} 次请求",
+    "cost": {
+      "about": "约 {{amount}}",
+      "tokens": "输入约 {{input}}、输出约 {{output}} token",
+      "minutes": "{{range}} 分钟",
+      "hours": "{{range}} 小时"
+    },
+    "estimate": {
+      "label": "预计",
+      "estimating": "正在估算",
+      "unavailable": "暂时估不出来",
+      "figures": {
+        "cost": "费用",
+        "time": "用时",
+        "requests": "请求次数",
+        "input": "输入 token",
+        "output": "输出 token"
+      },
+      "invite_other": "试算会把 {{count, number}} 段聊天发给模型服务，结果会用在这次构建里。",
+      "inviteCodex_other": "试算会把 {{count, number}} 段聊天发给 Codex，推算这次构建大约用多少 token、多长时间。用的是 Codex 额度，不花钱，结果会用在这次构建里。",
+      "probe": "试算费用",
+      "probeUsage": "试算用量",
+      "unsaved": "模型设置改了还没保存，试算时会先保存。",
+      "processed": "这些聊天之前处理过，这次直接沿用结果，不用试算。",
+      "probing": "正在试算",
+      "probingHint_other": "正在发送 {{count, number}} 次请求，可能要一两分钟。",
+      "priced": "{{source}}，平均每次 {{each}}{{offPeak}}。价格表更新于 {{date}}，以服务商账单为准。",
+      "sourceOfficial": "按 {{vendor}} 官方价估算",
+      "sourceMarket": "按其他服务商的常见价格估算，你用的服务可能更贵或更便宜",
+      "offPeakAll": "，现在开始的话全程是错峰价",
+      "offPeakNone": "，现在开始的话全程是高峰价，错峰时段便宜 {{saving}}%",
+      "offPeakPart": "，现在开始的话约 {{share}}% 的时间是错峰价，错峰时段便宜 {{saving}}%",
+      "noPrice": "价格表里没有这个模型，费用按服务商的单价 × token 数计算。",
+      "unmetered": "这个服务不返回用量，估不出费用。",
+      "codex": "Codex 用订阅额度，不另外花钱。"
+    },
     "purposes": {
       "assistant": {
         "label": "个人助手",
@@ -926,7 +967,6 @@
       "tuningInvalid": "并发、超时等其余选项有填得不对的，请到<a>设置</a>页的模型服务里改好",
       "checking": "正在检查",
       "chats": "聊天记录",
-      "chatsHint": "现在读的是安装时配置的聊天记录，上传后改读上传的聊天",
       "chatsUploadHint": "每个聊天是一个放着 CSV 的文件夹，以聊天对象命名。上传会替换之前上传的聊天",
       "chatCount_other": "{{count}} 个聊天",
       "problems": "开始前需要处理",
@@ -934,7 +974,15 @@
       "confirm": "确认并开始",
       "notice": "聊天内容可能包含身份、联系方式和私密对话，模型服务可能记录或留存这些内容。已经处理过的聊天不会再次发送。",
       "consent": "我确认有权处理这些聊天记录，并同意把聊天内容发送给 {{backend}}。",
-      "start": "开始构建"
+      "start": "开始构建",
+      "startNeeds": "开始构建前，还要先{{needs}}。",
+      "needs": {
+        "chats": "上传聊天记录",
+        "problems": "解决上面列出的问题",
+        "trial": "试算费用",
+        "trialCodex": "试算用量",
+        "consent": "勾选确认"
+      }
     },
     "upload": {
       "drop": "把聊天文件夹或 zip 拖到这里",
@@ -952,7 +1000,11 @@
       "cancel": "取消构建",
       "confirmCancelTitle": "取消这次构建？",
       "confirmCancel": "已经处理过的部分会保留，下次构建不用重新处理。",
-      "keep": "继续构建"
+      "keep": "继续构建",
+      "remaining": "预计还需 {{time}}",
+      "remainingCost": "预计还需 {{time}}、约 {{amount}}",
+      "estimated": "预计共 {{parts}}",
+      "overspent": "实际花费比开始前的估计高很多。可以取消构建，换设置后重新构建，已完成的请求不会重复计费。"
     },
     "quips": {
       "common": {
@@ -1016,6 +1068,9 @@
       },
       "stoppedAt": "停在「{{stage}}」",
       "stoppedBefore": "在第一个阶段开始前停止",
+      "usageLimit": "模型服务的使用额度用完了。等额度恢复后再重新构建。",
+      "spentCost": "已花费约 {{amount}}。",
+      "spentTokens": "已用 {{tokens}}。",
       "reviewsStay": "当前画像的审核记录留在旧版本里，打开新画像后，可以在设置页的「画像版本」切回。",
       "log": "日志文件：\n{{log}}",
       "another": "构建新画像",

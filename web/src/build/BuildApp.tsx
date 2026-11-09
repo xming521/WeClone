@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { ArrowRight, CircleAlert, CircleCheck, CircleDashed, CircleMinus, LoaderCircle } from 'lucide-react';
 import { Trans, useTranslation } from 'react-i18next';
-import { api, ApiError } from '../api';
+import { api, ApiError, errorCode } from '../api';
 import { replayNightIntro } from '../atlas/nightIntro';
 import i18n from '../i18n';
 import { BrandMark } from '../BrandMark';
@@ -14,6 +14,7 @@ import { useRun } from '../settings/useRun';
 import { useProfileStore } from '../store';
 import { useBuildStatus, useBuildStore } from './buildState';
 import { ChatUpload } from './ChatUpload';
+import { EstimateRow, trialNeeded } from './EstimateRow';
 import { ProblemText } from './problems';
 import { Party } from './Party';
 import { PurposeArt } from './PurposeArt';
@@ -21,13 +22,17 @@ import { BuildBar } from './BuildBar';
 import {
   buildStep,
   clock,
+  overspent,
+  projectBuild,
   type BuildCheck,
   type BuildStage,
   type BuildStatus,
+  type Estimate,
   type Problem,
   type Purpose,
   type StageState,
 } from './progress';
+import { amountText, estimatedTotal, spend, timeText } from './spend';
 import '../summary/summary.css';
 import '../assistant/assistant.css';
 import '../settings/settings.css';
@@ -42,6 +47,8 @@ const OUTPUTS = {
 } as const satisfies Record<Purpose, readonly ('profile' | 'summary' | 'style')[]>;
 // The clone's own requirement, shown on its card instead of in the list.
 const STYLE_PROBLEM = 'style_deps_missing';
+// No chats uploaded yet, which the reminder under the start button says.
+const CHATS_PROBLEM = 'chats_missing';
 const STAGE_ICONS = {
   pending: CircleDashed,
   running: LoaderCircle,
@@ -66,6 +73,23 @@ function useNow(live: boolean): number {
   return now;
 }
 
+/** How far a stage is: requests when it counts them, else the chats it has read. */
+function progressText(stage: BuildStage): string {
+  const counts = { done: stage.done ?? 0, total: stage.total ?? 0 };
+  return stage.unit === 'requests' ? i18n.t(($) => $.build.requestsDone, counts) : i18n.t(($) => $.build.files, counts);
+}
+
+/** What a stage has sent and cost. Its requests are left out when its progress already counts them. */
+function stageSpend(stage: BuildStage): string | null {
+  const usage = stage.usage;
+  if (!usage || usage.requests <= 0) return null;
+  const parts = [
+    stage.unit !== 'requests' ? i18n.t(($) => $.build.requests, { count: usage.requests }) : null,
+    usage.cost !== null ? amountText(usage.cost) : null,
+  ].filter(Boolean);
+  return parts.join(' · ') || null;
+}
+
 function StageList({ status }: { status: BuildStatus }) {
   const { t } = useTranslation();
   const now = useNow(status.state === 'running');
@@ -84,9 +108,8 @@ function StageList({ status }: { status: BuildStatus }) {
               {t(($) => $.build.stages[stage.key])}
               <span className="wc-sr">{t(($) => $.build.stageStates[stage.state])}</span>
             </span>
-            <span className="build-stage__count">
-              {stage.total != null && t(($) => $.build.files, { done: stage.done ?? 0, total: stage.total })}
-            </span>
+            <span className="build-stage__count">{stage.total != null && progressText(stage)}</span>
+            <span className="build-stage__spend">{stageSpend(stage)}</span>
             <span className="build-stage__time">{elapsed}</span>
           </li>
         );
@@ -168,6 +191,7 @@ function Prepare({ last }: { last: BuildStatus | null }) {
   const purposeId = useId();
   const chatsId = useId();
   const confirmId = useId();
+  const needsId = useId();
   const [purpose, setPurpose] = useState<Purpose>(last?.purpose ?? 'assistant');
   // Runs the check again.
   const [round, setRound] = useState(0);
@@ -179,6 +203,15 @@ function Prepare({ last }: { last: BuildStatus | null }) {
   const [pendingBackend, setPendingBackend] = useState<Provider | null>(null);
   const saveBackend = useRef<() => Promise<boolean>>(null);
   const [error, setError] = useState('');
+  // The estimate of what the build sends and costs, for the saved settings, and the trial that makes it more exact.
+  const [estimate, setEstimate] = useState<Estimate | null>(null);
+  const [estimating, setEstimating] = useState(false);
+  const [estimateError, setEstimateError] = useState('');
+  const [estimateRound, setEstimateRound] = useState(0);
+  const [probing, setProbing] = useState(false);
+  const [probeError, setProbeError] = useState<{ message: string; detail: string } | null>(null);
+  // When the last trial ended: an estimate asked for before that may not have it in, so it is not shown.
+  const probedAt = useRef(0);
 
   const runCheck = useCallback(async (purpose: Purpose) => {
     setChecking(true);
@@ -193,18 +226,75 @@ function Prepare({ last }: { last: BuildStatus | null }) {
     }
   }, []);
 
+  // A new build starts from its own upload, so chats uploaded on an earlier visit go before the first check.
+  const cleared = useRef<Promise<unknown>>(null);
   useEffect(() => {
-    void runCheck(purpose);
+    cleared.current ??= api.delete('data/uploaded').catch(() => undefined);
+    void cleared.current.then(() => runCheck(purpose));
   }, [purpose, round, runCheck]);
   const recheck = () => setRound((value) => value + 1);
+
+  // The estimate waits for a check that found nothing, and is made again after each check and after a retry, which is
+  // also what changing the purpose or saving the model settings leads to.
+  const estimable = Boolean(check) && !check?.problems.length && !checking;
+  useEffect(() => {
+    setEstimate(null);
+    setEstimateError('');
+    if (!estimable) return;
+    let stale = false;
+    const asked = Date.now();
+    setEstimating(true);
+    api
+      .get<Estimate>(`build/estimate?${new URLSearchParams({ purpose })}`)
+      .then((result) => {
+        if (!stale && asked >= probedAt.current) setEstimate(result);
+      })
+      .catch((reason: Error) => {
+        if (!stale) setEstimateError(reason.message);
+      })
+      .finally(() => {
+        if (!stale) setEstimating(false);
+      });
+    return () => {
+      stale = true;
+      setEstimating(false);
+    };
+  }, [estimable, purpose, round, estimateRound]);
+
+  // Sends the trial requests, which the estimate then comes from. Like starting, it reads the saved settings.
+  async function probe() {
+    setProbing(true);
+    setProbeError(null);
+    try {
+      if (pendingBackend && !(await saveBackend.current?.())) return;
+      setEstimate(await api.post<Estimate>('build/probe', { purpose }));
+      probedAt.current = Date.now();
+      setEstimateError('');
+    } catch (reason) {
+      const detail = reason instanceof ApiError ? reason.data.reason : null;
+      setProbeError({
+        message: (reason as Error).message,
+        // The service's own words, which the page cannot put in its own language.
+        detail:
+          ['probe_failed', 'usage_limit'].includes(errorCode(reason) ?? '') && typeof detail === 'string' ? detail : '',
+      });
+    } finally {
+      setProbing(false);
+    }
+  }
 
   async function start(event: FormEvent) {
     event.preventDefault();
     setBusy(true);
     setError('');
     try {
-      // A build reads the saved settings, so changes still in the form are saved first.
-      if (pendingBackend && !(await saveBackend.current?.())) return;
+      // A build reads the saved settings, so changes still in the form are saved first. A trial of the settings before
+      // does not price the new ones, which then wait for their own.
+      if (pendingBackend) {
+        if (!(await saveBackend.current?.())) return;
+        const fresh = await api.get<Estimate>(`build/estimate?${new URLSearchParams({ purpose })}`);
+        if (trialNeeded(fresh, false)) return;
+      }
       const body = { purpose, consent };
       useBuildStore.setState({ status: await api.post<BuildStatus>('build', body) });
       void useBuildStore.getState().refresh();
@@ -221,12 +311,30 @@ function Prepare({ last }: { last: BuildStatus | null }) {
   // What the check found about the saved model service is out of date while the form has changes, which starting
   // saves and checks again.
   const problems = (check?.problems ?? []).filter((problem) => !(pendingBackend && problem.backend));
-  const listed = problems.filter((problem) => problem.code !== STYLE_PROBLEM);
+  const listed = problems.filter((problem) => problem.code !== STYLE_PROBLEM && problem.code !== CHATS_PROBLEM);
   const styleProblems = problems.filter((problem) => problem.code === STYLE_PROBLEM);
   const backend = check?.backend;
   const provider = pendingBackend ?? backend?.provider;
   const chats = check?.chats;
   const ready = Boolean(check) && !problems.length && !checking;
+  // A build starts once a trial has priced it, unless it has nothing to try or the estimate could not be made.
+  const trialMissing = trialNeeded(estimate, Boolean(pendingBackend));
+  const startable = ready && consent && !trialMissing && Boolean(estimate || estimateError);
+  // What starting waits for, said under the button; the check and the estimate in progress say so themselves.
+  const needs = [
+    ...(!checking && problems.some((problem) => problem.code === CHATS_PROBLEM)
+      ? [t(($) => $.build.prepare.needs.chats)]
+      : []),
+    ...(listed.length && !checking ? [t(($) => $.build.prepare.needs.problems)] : []),
+    ...(trialMissing && !probing
+      ? [
+          (pendingBackend ?? estimate?.backend) === 'codex_exec'
+            ? t(($) => $.build.prepare.needs.trialCodex)
+            : t(($) => $.build.prepare.needs.trial),
+        ]
+      : []),
+    ...(consent ? [] : [t(($) => $.build.prepare.needs.consent)]),
+  ];
 
   return (
     <form className="build-form" onSubmit={(event) => void start(event)}>
@@ -254,7 +362,7 @@ function Prepare({ last }: { last: BuildStatus | null }) {
               key={item}
               purpose={item}
               checked={purpose === item}
-              disabled={busy}
+              disabled={busy || probing}
               onPick={() => setPurpose(item)}
             >
               {item === purpose &&
@@ -278,7 +386,6 @@ function Prepare({ last }: { last: BuildStatus | null }) {
             {chats ? (
               <>
                 {chats.count > 0 && <CircleCheck size={15} strokeWidth={2} aria-hidden="true" />}
-                {chats.source === 'config' && chats.platform === 'telegram' && <span>Telegram</span>}
                 {t(($) => $.build.prepare.chatCount, { count: chats.count })}
               </>
             ) : (
@@ -287,11 +394,10 @@ function Prepare({ last }: { last: BuildStatus | null }) {
           </span>
         }
       >
-        {chats?.source === 'config' && <p className="build-step__note">{t(($) => $.build.prepare.chatsHint)}</p>}
         <ChatUpload disabled={busy} empty={!chats?.count} onUploaded={() => setRound((value) => value + 1)} />
       </Step>
 
-      <Step n={3} id={confirmId} title={t(($) => $.build.prepare.confirm)} done={ready && consent}>
+      <Step n={3} id={confirmId} title={t(($) => $.build.prepare.confirm)} done={startable}>
         <div className="assistant-card build-panel">
           <div className="build-backend">
             <ModelSettings
@@ -345,6 +451,20 @@ function Prepare({ last }: { last: BuildStatus | null }) {
             </div>
           )}
 
+          {estimable && (
+            <EstimateRow
+              estimate={estimate}
+              unsaved={pendingBackend}
+              estimating={estimating}
+              unavailable={estimateError}
+              probing={probing}
+              probeError={probeError}
+              onProbe={() => void probe()}
+              onRetry={() => setEstimateRound((value) => value + 1)}
+              onDismissProbeError={() => setProbeError(null)}
+            />
+          )}
+
           <p className="build-notice">{t(($) => $.build.prepare.notice)}</p>
 
           {error && (
@@ -366,10 +486,22 @@ function Prepare({ last }: { last: BuildStatus | null }) {
                 })}
               </span>
             </label>
-            <button className="wc-btn wc-btn--primary wc-btn--lg" type="submit" disabled={!ready || !consent || busy}>
+            <button
+              className="wc-btn wc-btn--primary wc-btn--lg"
+              type="submit"
+              disabled={!startable || busy}
+              aria-describedby={needs.length ? needsId : undefined}
+            >
               {t(($) => $.build.prepare.start)}
             </button>
           </div>
+          {needs.length > 0 && !busy && (
+            <p className="build-needs" id={needsId}>
+              {t(($) => $.build.prepare.startNeeds, {
+                needs: new Intl.ListFormat(i18n.language, { type: 'conjunction' }).format(needs),
+              })}
+            </p>
+          )}
         </div>
       </Step>
     </form>
@@ -382,17 +514,34 @@ function Now({ status }: { status: BuildStatus }) {
   const now = useNow(true);
   const { step, steps } = buildStep(status);
   const stage = status.stages[step - 1];
+  const spent = spend(status.usage);
+  const projection = projectBuild(status, now);
+  // Before enough requests are in to project from, the estimate made before the build stands in.
+  const forecast = projection
+    ? t(($) => (projection.cost === null ? $.build.running.remaining : $.build.running.remainingCost), {
+        time: timeText(projection.seconds, projection.seconds),
+        amount: amountText(projection.cost ?? 0),
+      })
+    : estimatedTotal(status.estimate);
   return (
     <div className="build-now">
       <div className="build-now__text">
         <span className="build-now__step">{t(($) => $.build.running.step, { step, steps })}</span>
         <h3 className="build-now__stage">{t(($) => $.build.stages[stage.key])}</h3>
         <span className="build-now__meta">
-          {stage.total != null && <span>{t(($) => $.build.files, { done: stage.done ?? 0, total: stage.total })}</span>}
+          {stage.total != null && <span>{progressText(stage)}</span>}
           <span>
             {t(($) => $.build.running.elapsed, { time: clock((now - Date.parse(status.started_at)) / 1000) })}
           </span>
+          {spent && <span>{spent.text}</span>}
+          {forecast && <span>{forecast}</span>}
         </span>
+        {overspent(status, projection) && (
+          <p className="build-now__warn" role="status">
+            <CircleAlert size={15} strokeWidth={2} aria-hidden="true" />
+            {t(($) => $.build.running.overspent)}
+          </p>
+        )}
       </div>
       <BuildBar status={status} stage={stage.key} now={now} />
     </div>
@@ -457,6 +606,7 @@ function Celebration({ status }: { status: BuildStatus }) {
   // Counts the celebrations, so the picture can start again.
   const [round, setRound] = useState(0);
   const took = clock((Date.parse(status.finished_at ?? status.started_at) - Date.parse(status.started_at)) / 1000);
+  const spent = spend(status.usage);
   const see = () => useBuildStore.getState().see(status.run);
 
   async function open() {
@@ -495,6 +645,7 @@ function Celebration({ status }: { status: BuildStatus }) {
       <p className="build-done__facts">
         {status.chats != null && <span>{t(($) => $.build.finished.succeeded.read, { count: status.chats })}</span>}
         <span>{t(($) => $.build.finished.succeeded.took, { time: took })}</span>
+        {spent && <span>{spent.text}</span>}
       </p>
       <p className="summary-hint">
         {status.current ? t(($) => $.build.finished.succeeded.opened) : t(($) => $.build.finished.succeeded.hint)}
@@ -530,6 +681,7 @@ function Finished({ status, onAgain }: { status: BuildStatus; onAgain: () => voi
   const { t } = useTranslation();
   const stage = status.stages.find((item) => item.key === status.error?.key);
   const state = status.state as Exclude<BuildStatus['state'], 'running' | 'succeeded'>;
+  const spent = spend(status.usage);
   // The exception and the log, for a bug report: a cancelled build has nothing to report.
   const details = [
     status.error && [status.error.type, status.error.message].filter(Boolean).join(': '),
@@ -545,6 +697,13 @@ function Finished({ status, onAgain }: { status: BuildStatus; onAgain: () => voi
         <span className="assistant-state">{t(($) => $.build.purposes[status.purpose].label)}</span>
       </div>
       <p className="summary-hint">{t(($) => $.build.finished[state].hint)}</p>
+      {spent && (
+        <p className="summary-hint">
+          {spent.kind === 'cost'
+            ? t(($) => $.build.finished.spentCost, { amount: spent.value })
+            : t(($) => $.build.finished.spentTokens, { tokens: spent.value })}
+        </p>
+      )}
       {status.error && (
         <div className="build-problems" role="alert">
           <strong>
@@ -552,6 +711,7 @@ function Finished({ status, onAgain }: { status: BuildStatus; onAgain: () => voi
               ? t(($) => $.build.finished.stoppedAt, { stage: t(($) => $.build.stages[stage.key]) })
               : t(($) => $.build.finished.stoppedBefore)}
           </strong>
+          {status.error.type === 'UsageLimitReached' && <p>{t(($) => $.build.finished.usageLimit)}</p>}
         </div>
       )}
       {state !== 'cancelled' && details && <ErrorDetails text={details} />}

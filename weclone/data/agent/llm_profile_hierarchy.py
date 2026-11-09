@@ -17,6 +17,7 @@ from weclone.data.agent.organize_memories import LLMTasks, chinese_attr, save
 from weclone.prompts.memory_organization import PROFILE_DIMS, dimension_name
 from weclone.prompts.profile_hierarchy import SPLIT_SCHEMA, TOPIC_SCHEMA, split_prompt, topic_prompt
 from weclone.utils import secure_storage
+from weclone.utils.log import logger
 
 # Chat peer ids as organize_memories assigns them: P1, P2, ...
 PEER_ID = re.compile(r"(?<![A-Za-z0-9])P\d+(?![A-Za-z0-9])")
@@ -281,6 +282,14 @@ def main(argv: list[str] | None = None):
     }
     save(args.output_dir / "summary.json", summary)
     print(json.dumps(summary, ensure_ascii=False, indent=2), flush=True)
+    logger.info(
+        "Profile hierarchy: {counts[facts]} facts, {counts[domains]} domains, {counts[topics]} topics",
+        counts={
+            "facts": len(facts),
+            "domains": len(domains),
+            "topics": sum(len(domain["topics"]) for domain in domains),
+        },
+    )
 
 
 if __name__ == "__main__":

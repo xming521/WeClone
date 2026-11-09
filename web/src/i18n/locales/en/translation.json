@@ -75,7 +75,11 @@
     "settings_missing": "The settings file wasn't found. Set it up again as the installation docs describe",
     "settings_unreadable": "The settings file isn't formatted correctly. Check it and try again",
     "settings_changed": "The settings were changed elsewhere and have been read again. Make your change once more",
-    "model_settings_required": "Some required fields are empty"
+    "model_settings_required": "Some required fields are empty",
+    "probe_running": "A cost trial is already running",
+    "probe_failed": "The trial failed: the model service returned an error. Check the model settings and try again",
+    "estimate_failed": "Couldn't estimate. Check your chats and model settings, then try again",
+    "usage_limit": "Your model service's usage limit is used up. Try again after it resets"
   },
   "app": {
     "title": "My portrait · WeClone",
@@ -961,6 +965,47 @@
       "interrupted": "Interrupted"
     },
     "files": "{{done}}/{{total}} chats",
+    "requests_one": "{{count, number}} request",
+    "requests_other": "{{count, number}} requests",
+    "requestsDone": "{{done, number}} / {{total, number}} requests",
+    "cost": {
+      "about": "about {{amount}}",
+      "tokens": "about {{input}} input and {{output}} output tokens",
+      "minutes": "{{range}} min",
+      "hours": "{{range}} hr"
+    },
+    "estimate": {
+      "label": "Estimate",
+      "estimating": "Estimating",
+      "unavailable": "Can't estimate right now",
+      "figures": {
+        "cost": "Cost",
+        "time": "Time",
+        "requests": "Requests",
+        "input": "Input tokens",
+        "output": "Output tokens"
+      },
+      "invite_one": "A cost trial sends {{count, number}} chat excerpt to the model service, and the result is used in this build.",
+      "invite_other": "A cost trial sends {{count, number}} chat excerpts to the model service, and the results are used in this build.",
+      "inviteCodex_one": "A trial sends {{count, number}} chat excerpt to Codex to work out roughly how many tokens and how long this build takes. It uses your Codex quota, costs nothing extra, and its result is used in this build.",
+      "inviteCodex_other": "A trial sends {{count, number}} chat excerpts to Codex to work out roughly how many tokens and how long this build takes. It uses your Codex quota, costs nothing extra, and its results are used in this build.",
+      "probe": "Run cost trial",
+      "probeUsage": "Run usage trial",
+      "unsaved": "The model settings have unsaved changes, which the trial saves first.",
+      "processed": "These chats were processed before, so this build reuses the results and there is nothing to trial.",
+      "probing": "Running trial",
+      "probingHint_one": "Sending {{count, number}} request. This can take a minute or two.",
+      "probingHint_other": "Sending {{count, number}} requests. This can take a minute or two.",
+      "priced": "{{source}}: about {{each}} per request on average{{offPeak}}. Prices as of {{date}}. Your provider's bill is what counts.",
+      "sourceOfficial": "Estimated at {{vendor}}'s official prices",
+      "sourceMarket": "Estimated at other providers' common prices, which may differ from your service's",
+      "offPeakAll": ", all at the off-peak price if you start now",
+      "offPeakNone": ", all at the peak price if you start now, with off-peak hours {{saving}}% cheaper",
+      "offPeakPart": ", about {{share}}% of it at the off-peak price if you start now, with off-peak hours {{saving}}% cheaper",
+      "noPrice": "The price table doesn't have this model, so the cost is your provider's price times the tokens.",
+      "unmetered": "This service returns no usage, so the cost can't be estimated.",
+      "codex": "Codex runs on your subscription quota at no extra cost."
+    },
     "purposes": {
       "assistant": {
         "label": "Personal assistant",
@@ -981,7 +1026,6 @@
       "tuningInvalid": "Some options under Model service in <a>Settings</a>, such as concurrency or timeouts, aren't valid. Fix them there",
       "checking": "Checking",
       "chats": "Chats",
-      "chatsHint": "Reading the chats set up at installation. Once you upload, the uploaded chats are read instead",
       "chatsUploadHint": "Each chat is a folder of CSV files, named after the person you chatted with. An upload replaces the chats uploaded before",
       "chatCount_one": "{{count}} chat",
       "chatCount_other": "{{count}} chats",
@@ -990,7 +1034,15 @@
       "confirm": "Confirm and start",
       "notice": "Chats may contain identities, contact details and private conversations, and the model service may log or keep them. Chats already processed aren't sent again.",
       "consent": "I confirm I may process these chats and agree to send them to {{backend}}.",
-      "start": "Start building"
+      "start": "Start building",
+      "startNeeds": "Before you start, {{needs}}.",
+      "needs": {
+        "chats": "upload your chats",
+        "problems": "fix the problems listed above",
+        "trial": "run the cost trial",
+        "trialCodex": "run the usage trial",
+        "consent": "tick the confirmation"
+      }
     },
     "upload": {
       "drop": "Drop chat folders or zips here",
@@ -1009,7 +1061,11 @@
       "cancel": "Cancel build",
       "confirmCancelTitle": "Cancel this build?",
       "confirmCancel": "What's already processed is kept, so the next build doesn't redo it.",
-      "keep": "Keep building"
+      "keep": "Keep building",
+      "remaining": "About {{time}} left",
+      "remainingCost": "About {{time}} and {{amount}} left",
+      "estimated": "Estimated {{parts}} in all",
+      "overspent": "The actual cost is well above the estimate made before the build. You can cancel, change the settings and build again. Requests already done aren't billed twice."
     },
     "quips": {
       "common": {
@@ -1087,6 +1143,9 @@
       },
       "stoppedAt": "Stopped at “{{stage}}”",
       "stoppedBefore": "Stopped before the first stage",
+      "usageLimit": "Your model service's usage limit is used up. Build again after it resets.",
+      "spentCost": "Spent about {{amount}}.",
+      "spentTokens": "Used {{tokens}}.",
       "reviewsStay": "Your reviews stay with the portrait shown now. After opening the new one, you can switch back under Portrait versions in settings.",
       "log": "Log file:\n{{log}}",
       "another": "Build another",

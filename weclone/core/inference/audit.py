@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import os
 import time
-from dataclasses import asdict, is_dataclass
+from dataclasses import asdict, fields, is_dataclass
 from datetime import datetime
 from pathlib import Path
 from threading import Lock, get_ident
@@ -120,6 +120,16 @@ def _audit_metadata(payload: Mapping[str, Any]) -> dict[str, Any]:
         "error_category",
         "returncode",
         "web_search_calls",
+        # A request's own settings and the metadata its caller attaches: stage names, sizes and counts.
+        "effort",
+        "reasoning_effort",
+        "max_tokens",
+        "timeout",
+        "task",
+        "stage",
+        "samples",
+        "content_chars",
+        "include_current_state",
     }
     record = {
         key: value
@@ -133,21 +143,32 @@ def _audit_metadata(payload: Mapping[str, Any]) -> dict[str, Any]:
             for key, value in error.items()
             if key in {"type", "status_code", "request_id"} and isinstance(value, (str, int))
         }
-    for key in ("result", "response", "metadata"):
+    for key in ("request", "parameters", "result", "response", "metadata"):
         child = payload.get(key)
-        if not isinstance(child, Mapping):
+        if is_dataclass(child) and not isinstance(child, type):
+            # Its fields as they are: copying the messages to read a few scalars would cost a copy of the chat text.
+            child = {field.name: getattr(child, field.name) for field in fields(child)}
+        elif not isinstance(child, Mapping):
             model_dump = getattr(child, "model_dump", None)
             child = model_dump(mode="json") if callable(model_dump) else None
         if isinstance(child, Mapping):
             record[key] = _audit_metadata(child)
     usage = payload.get("usage")
     if isinstance(usage, Mapping):
-        record["usage"] = {
-            key: value
-            for key, value in usage.items()
-            if isinstance(value, (int, float)) and not isinstance(value, bool)
-        }
+        record["usage"] = _usage_numbers(usage)
     return record
+
+
+def _usage_numbers(usage: Mapping[str, Any]) -> dict[str, Any]:
+    """Token counts, with the nested ones such as reasoning and cached tokens."""
+    numbers = {}
+    for key, value in usage.items():
+        if isinstance(value, Mapping):
+            if nested := _usage_numbers(value):
+                numbers[str(key)] = nested
+        elif isinstance(value, (int, float)) and not isinstance(value, bool):
+            numbers[str(key)] = value
+    return numbers
 
 
 class LLMAuditLogger:
