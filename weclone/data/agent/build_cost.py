@@ -19,7 +19,7 @@ import pyjson5
 
 from weclone.core.inference._common import CODEX_REQUEST_INTERVAL_SECONDS
 from weclone.core.inference.model_prices import Price, lookup
-from weclone.core.inference.usage import read_usage
+from weclone.core.inference.usage import UsageLimitReached, read_usage
 from weclone.data.agent import distill_profile
 from weclone.data.agent.distill_windows import (
     ChatSample,
@@ -279,8 +279,12 @@ def estimate(config_path: Path, purpose: str, chats_folder: Path | None = None) 
 
 
 def _window(task: str, request, outcome) -> dict:
-    """What one probed window used, attempts that were sent again included."""
-    usages = [read_usage(response.metadata.get("usage")) for response in outcome.attempts]
+    """What one probed window used, attempts that were sent again included, by the client's retries too."""
+    usages = [
+        read_usage(usage)
+        for response in outcome.attempts
+        for usage in response.metadata.get("attempt_usages", [response.metadata.get("usage")])
+    ]
     found = [usage for usage in usages if usage is not None]
     return {
         "task": task,
@@ -351,7 +355,13 @@ def probe(config_path: Path, purpose: str, chats_folder: Path | None = None) -> 
                 )
                 for task, rows in batches.items()
             }
-            outcomes = {task: future.result() for task, future in futures.items()}
+            outcomes = {}
+            for task, future in futures.items():
+                try:
+                    outcomes[task] = future.result()
+                except UsageLimitReached:
+                    # The task started after the other met the limit, whose answers are still kept below.
+                    outcomes[task] = []
     finally:
         client.close()
 

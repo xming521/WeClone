@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Any
 
 from weclone.core.inference.llm_client import LLMRequest, LLMResponse
+from weclone.core.inference.usage import UsageLimitReached
 from weclone.data.agent.llm_cache import cache_key
 from weclone.prompts.distill_memory import build_window_extract_prompt
 
@@ -212,6 +213,7 @@ def generate_window_batch(client: Any, batch: list[tuple[list[ChatSample], LLMRe
                 outcome.attempts[-1] = replace(response, ok=False, error=outcome.error)
                 failed.append(i)
         pending = failed
-        if not pending:
+        # Past the usage limit a retry only raises, which would lose the answers this batch got.
+        if not pending or isinstance(getattr(client, "limit", None), UsageLimitReached):
             break
     return outcomes

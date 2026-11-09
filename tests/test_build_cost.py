@@ -186,14 +186,18 @@ def test_the_estimate_shows_only_what_is_known():
 class FakeClient:
     """Answers each window with an empty result per sample and DeepSeek-shaped usage."""
 
-    def __init__(self, fail=False, answers=None):
+    def __init__(self, fail=False, answers=None, retried=False):
         self.fail = fail
         # How many requests are answered before the usage limit, if there is one.
         self.answers = answers
+        # Each answer came on the client's second attempt, as after an empty response.
+        self.retried = retried
         self.limit = None
         self.sent = []
 
     def generate_batch(self, requests):
+        if self.limit is not None:
+            raise self.limit
         responses = []
         for request in requests:
             self.sent.append(request)
@@ -209,6 +213,7 @@ class FakeClient:
             results = [
                 {"sample_id": sid, f"{task}_memories": empty} for sid in request.metadata["sample_ids"]
             ]
+            usage = {"prompt_tokens": 1200, "completion_tokens": 300, "prompt_cache_hit_tokens": 800}
             responses.append(
                 LLMResponse(
                     ok=True,
@@ -216,13 +221,7 @@ class FakeClient:
                     parsed_json={"results": results},
                     model="deepseek-flash",
                     elapsed_s=3.0,
-                    metadata={
-                        "usage": {
-                            "prompt_tokens": 1200,
-                            "completion_tokens": 300,
-                            "prompt_cache_hit_tokens": 800,
-                        }
-                    },
+                    metadata={"usage": usage} | ({"attempt_usages": [usage, usage]} if self.retried else {}),
                 )
             )
         return responses
@@ -271,6 +270,11 @@ def test_a_probe_that_gets_no_answer_says_why(configured, monkeypatch):
     with pytest.raises(RuntimeError, match="bad key"):
         build_cost.probe(configured, "assistant")
     assert not build_cost.probes_path().exists()
+
+
+def test_a_probe_counts_every_attempt_the_client_sent(configured, monkeypatch):
+    monkeypatch.setattr(llm_client, "build_llm_client", lambda *args, **kwargs: FakeClient(retried=True))
+    assert build_cost.probe(configured, "assistant")["probe"]["input_tokens"] == 2 * 1200
 
 
 def test_a_probe_that_meets_the_usage_limit_keeps_the_answers_it_got(configured, monkeypatch):

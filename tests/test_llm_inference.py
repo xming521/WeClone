@@ -179,7 +179,8 @@ def test_every_attempt_counts_toward_the_usage_meter(api, monkeypatch):
         body=None,
     )
     create.side_effect = [error, completion()]
-    assert client.chat("score", retry_policy=RetryPolicy(max_retries=1, base_delay=0)).ok
+    result = client.chat("score", retry_policy=RetryPolicy(max_retries=1, base_delay=0))
+    assert result.ok and result.metadata["attempt_usages"][0] is None
     totals = meter.totals()
     assert totals["requests"] == 2 and totals["unmetered"] == 1
     assert (totals["input_tokens"], totals["output_tokens"], totals["cost"]) == (7, 3, None)
@@ -260,6 +261,8 @@ def test_empty_json_retry(api):
     result = client.chat("score", json_mode=True, retry_policy=RetryPolicy(max_retries=1))
     assert result.ok and result.parsed_json == {"score": 3}
     assert create.call_count == 2
+    # The empty answer was billed too.
+    assert len(result.metadata["attempt_usages"]) == 2
 
 
 def test_stream_is_merged_and_closed(api):

@@ -628,6 +628,8 @@ class OpenAICompatibleClient(BaseBatchMixin):
             params["response_format"] = {"type": "json_object"}
         policy = request.retry_policy or self.retry_policy
         empty_retries = 0
+        # Every attempt is billed, so a request sent more than once carries the usage of each.
+        usages: list[Any] = []
         for index in range(policy.max_retries + 1):
             if self._stop_event.is_set():
                 raise CancelledError("request interrupted")
@@ -638,7 +640,8 @@ class OpenAICompatibleClient(BaseBatchMixin):
                 raw = self.client.chat.completions.create(**params)
                 result = self._read_response(raw, request, model)
             except Exception as exc:
-                METER.record(getattr(exc, "partial_metadata", {}).get("usage"))
+                usages.append(getattr(exc, "partial_metadata", {}).get("usage"))
+                METER.record(usages[-1])
                 retry = index < policy.max_retries and policy.accepts(exc) and not self._stop_event.is_set()
                 delay = policy.delay(index) if retry else None
                 call.finish_attempt(
@@ -657,6 +660,8 @@ class OpenAICompatibleClient(BaseBatchMixin):
                             "the same parameters",
                             self.base_url,
                         )
+                    if len(usages) > 1:
+                        exc.partial_metadata = {**getattr(exc, "partial_metadata", {}), "attempt_usages": usages}
                     raise
                 logger.warning(
                     "LLM attempt {} failed: {}; retrying in {}s", attempt, type(exc).__name__, delay
@@ -678,10 +683,13 @@ class OpenAICompatibleClient(BaseBatchMixin):
                 will_retry=retry_empty,
                 retry_reason="empty_json" if retry_empty else None,
             )
-            METER.record(result.metadata.get("usage"))
+            usages.append(result.metadata.get("usage"))
+            METER.record(usages[-1])
             if retry_empty:
                 empty_retries += 1
                 continue
+            if len(usages) > 1:
+                result.metadata["attempt_usages"] = usages
             return result
         raise ValueError("retry policy max_retries must be nonnegative")
 
