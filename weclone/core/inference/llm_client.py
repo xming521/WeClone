@@ -720,7 +720,9 @@ class CodexExecClient(BaseBatchMixin):
             else {}
         )
         if request_interval_seconds is None:
-            request_interval_seconds = float(pacing.get("request_interval_seconds", CODEX_REQUEST_INTERVAL_SECONDS))
+            request_interval_seconds = float(
+                pacing.get("request_interval_seconds", CODEX_REQUEST_INTERVAL_SECONDS)
+            )
         if capacity_cooldown_seconds is None:
             capacity_cooldown_seconds = float(pacing.get("capacity_cooldown_seconds", 10.0))
         if request_interval_seconds < 0 or capacity_cooldown_seconds < 0:

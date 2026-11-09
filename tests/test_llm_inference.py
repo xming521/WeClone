@@ -20,8 +20,8 @@ from weclone.core.inference import (
     LLMRequest,
     OpenAICompatibleClient,
     RetryPolicy,
+    audit,
 )
-from weclone.core.inference import audit
 from weclone.core.inference.llm_client import make_request
 
 
