@@ -661,7 +661,10 @@ class OpenAICompatibleClient(BaseBatchMixin):
                             self.base_url,
                         )
                     if len(usages) > 1:
-                        exc.partial_metadata = {**getattr(exc, "partial_metadata", {}), "attempt_usages": usages}
+                        exc.partial_metadata = {
+                            **getattr(exc, "partial_metadata", {}),
+                            "attempt_usages": usages,
+                        }
                     raise
                 logger.warning(
                     "LLM attempt {} failed: {}; retrying in {}s", attempt, type(exc).__name__, delay
