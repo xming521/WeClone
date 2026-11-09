@@ -1,5 +1,6 @@
 import hashlib
 import json
+import subprocess
 import sys
 import threading
 import time
@@ -164,6 +165,24 @@ def test_provider_error_and_retry_override(api):
     result = client.chat("score")
     assert not result.ok and create.call_count == 1
     assert result.metadata == {"error_type": "RateLimitError", "http_status": 429}
+
+
+def test_every_attempt_counts_toward_the_usage_meter(api, monkeypatch):
+    from weclone.core.inference import llm_client, usage
+
+    meter = usage.Meter()
+    monkeypatch.setattr(llm_client, "METER", meter)
+    client, create = api
+    error = RateLimitError(
+        "limited",
+        response=httpx.Response(429, request=httpx.Request("POST", "http://example.invalid")),
+        body=None,
+    )
+    create.side_effect = [error, completion()]
+    assert client.chat("score", retry_policy=RetryPolicy(max_retries=1, base_delay=0)).ok
+    totals = meter.totals()
+    assert totals["requests"] == 2 and totals["unmetered"] == 1
+    assert (totals["input_tokens"], totals["output_tokens"], totals["cost"]) == (7, 3, None)
 
 
 def test_last_attempt_empty(api, tmp_path):
@@ -397,6 +416,12 @@ if prompt in {"capacity-event", "capacity-timeout"}:
     print(json.dumps({"type": "turn.failed", "error": {"code": "model_capacity_exceeded"}}), flush=True)
     if prompt == "capacity-timeout": time.sleep(10)
     sys.exit(1)
+if prompt == "limit":
+    # As Codex reports the plan's quota used up: the HTTP status in stderr, the message in its events.
+    sys.stderr.write("unexpected status 429 Too Many Requests")
+    print(json.dumps({"type": "error", "message": "You've hit your usage limit. Try again at 3:05 PM."}))
+    print(json.dumps({"type": "turn.failed", "error": {"message": "You've hit your usage limit. Try again at 3:05 PM."}}))
+    sys.exit(1)
 if prompt == "capacity-text":
     print(json.dumps({"type": "item.completed", "item": {"type": "agent_message", "text": "rate limit 429"}}))
 output = Path(sys.argv[sys.argv.index("--output-last-message") + 1])
@@ -602,6 +627,36 @@ def test_codex_failure_and_timeout(codex, prompt, timeout, error):
     result = codex.chat(prompt, timeout=timeout)
     assert not result.ok and result.metadata["error_type"] == error
     assert not list(codex.requests_dir.iterdir())
+
+
+def test_codex_sends_nothing_after_the_usage_limit(codex, monkeypatch):
+    from weclone.core.inference import llm_client, usage
+
+    meter = usage.Meter()
+    monkeypatch.setattr(llm_client, "METER", meter)
+    launches = []
+    popen = subprocess.Popen
+    monkeypatch.setattr(llm_client.subprocess, "Popen", lambda *a, **k: launches.append(a) or popen(*a, **k))
+    refused = codex.chat("limit")
+    assert not refused.ok and refused.metadata["error_category"] == "usage_limit"
+    # No pause for capacity, and no further launch: a batch raises the service's words.
+    assert codex._next_launch_at <= time.monotonic()
+    with pytest.raises(usage.UsageLimitReached, match="Try again at 3:05 PM"):
+        codex.chat_batch(["score", "score"])
+    assert not codex.chat("score").ok and len(launches) == 1
+    assert meter.limit == "You've hit your usage limit. Try again at 3:05 PM."
+    assert meter.totals()["requests"] == 1
+
+
+def test_a_codex_batch_that_meets_the_usage_limit_returns_what_it_got(codex):
+    from weclone.core.inference import usage
+
+    # The answers already used quota, so the batch hands them back and only the next one raises.
+    responses = codex.chat_batch(["score", "limit"])
+    assert len(responses) == 2
+    assert any(response.metadata.get("error_category") == "usage_limit" for response in responses)
+    with pytest.raises(usage.UsageLimitReached):
+        codex.chat_batch(["score"])
 
 
 def test_codex_rejects_multimodal_and_stream_before_launch(codex):

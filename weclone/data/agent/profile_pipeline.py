@@ -9,6 +9,7 @@ import os
 import shutil
 import signal
 import subprocess
+import threading
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from importlib.util import find_spec
@@ -19,6 +20,8 @@ import click
 import pyjson5
 from filelock import FileLock, Timeout
 
+from weclone.core.inference import usage
+from weclone.core.inference.usage import METER, UsageLimitReached
 from weclone.utils import secure_storage
 from weclone.utils.log import logger
 
@@ -124,7 +127,9 @@ def stage_list(purpose: str) -> list[tuple[int, str, str]]:
 
 
 def new_status(purpose: str, pid: int | None = None, pgid: int | None = None) -> dict:
-    """A build that has started and has no stage running yet."""
+    """A build that has started and has no stage running yet. `usage` is what its model calls used so far, in all
+    and in each stage, with the cost in US dollars, or none when the model has no price. `estimate` is
+    build_cost.describe() of the snapshot."""
     return {
         "purpose": purpose,
         "state": "running",
@@ -133,6 +138,8 @@ def new_status(purpose: str, pid: int | None = None, pgid: int | None = None) ->
         "started_at": _now(),
         "finished_at": None,
         "chats": None,
+        "usage": None,
+        "estimate": None,
         "stages": [
             {
                 "step": step,
@@ -140,8 +147,11 @@ def new_status(purpose: str, pid: int | None = None, pgid: int | None = None) ->
                 "state": "pending",
                 "started_at": None,
                 "finished_at": None,
+                # Requests done and in all, for the stages that count them.
                 "done": None,
                 "total": None,
+                "unit": None,
+                "usage": None,
             }
             for step, key, _ in stage_list(purpose)
         ],
@@ -150,7 +160,8 @@ def new_status(purpose: str, pid: int | None = None, pgid: int | None = None) ->
 
 
 class Build:
-    """The status file of one build, rewritten at every change."""
+    """The status file of one build, rewritten at every change, and every second while the model calls of the build
+    use more."""
 
     def __init__(self, run_dir: Path, purpose: str):
         self.run_dir = run_dir
@@ -158,31 +169,58 @@ class Build:
         self.steps = self.stages[-1][0]
         self.status = new_status(purpose, os.getpid(), os.getpgrp() if hasattr(os, "getpgrp") else None)
         self.current: dict | None = None
+        self.lock = threading.RLock()
+        self.started = self.stage_started = self.saved = METER.totals()
+        METER.limit = None
         self.saved_at = 0.0
         self.save()
 
     def save(self) -> None:
-        write_status(self.run_dir, self.status)
-        self.saved_at = monotonic()
+        with self.lock:
+            self.saved = METER.totals()
+            self.status["usage"] = usage.subtract(self.saved, self.started)
+            if self.current is not None:
+                self.current["usage"] = usage.subtract(self.saved, self.stage_started)
+            write_status(self.run_dir, self.status)
+            self.saved_at = monotonic()
 
     @contextmanager
     def stage(self, key: str):
         index, (step, _, label) = next((i, stage) for i, stage in enumerate(self.stages) if stage[1] == key)
-        self.current = self.status["stages"][index]
-        self.current.update(state="running", started_at=_now())
-        self.save()
+        with self.lock:
+            self.current = self.status["stages"][index]
+            self.current.update(state="running", started_at=_now())
+            self.stage_started = METER.totals()
+            self.save()
         with _stage(f"[{step}/{self.steps}] {label}", step=step, steps=self.steps):
-            yield
-        self.current.update(state="succeeded", finished_at=_now())
-        self.current = None
-        self.save()
+            # A stage that met the usage limit ends the build, also when it goes on without the answers or fails
+            # over them.
+            try:
+                yield
+            except Exception as exc:
+                if METER.limit is not None and not isinstance(exc, UsageLimitReached):
+                    raise UsageLimitReached(METER.limit) from exc
+                raise
+            if METER.limit is not None:
+                raise UsageLimitReached(METER.limit)
+        with self.lock:
+            self.current.update(state="succeeded", finished_at=_now())
+            self.save()
+            self.current = None
 
     def progress(self, done: int, total: int) -> None:
-        if self.current is None:
-            return
-        self.current.update(done=done, total=total)
-        if done in (0, total) or monotonic() - self.saved_at >= PROGRESS_SECONDS:
-            self.save()
+        """Requests done and in all, in the running stage."""
+        with self.lock:
+            if self.current is None:
+                return
+            self.current.update(done=done, total=total, unit="requests")
+            if done in (0, total) or monotonic() - self.saved_at >= PROGRESS_SECONDS:
+                self.save()
+
+    def _tick(self, stop: threading.Event) -> None:
+        while not stop.wait(PROGRESS_SECONDS):
+            if METER.totals() != self.saved:
+                self.save()
 
     @contextmanager
     def running(self):
@@ -192,6 +230,8 @@ class Build:
             raise BuildCancelled()
 
         previous = signal.signal(signal.SIGTERM, cancel)
+        stop = threading.Event()
+        threading.Thread(target=self._tick, args=(stop,), name="build-status", daemon=True).start()
         try:
             yield
         except (BuildCancelled, KeyboardInterrupt, click.Abort):
@@ -203,22 +243,24 @@ class Build:
         else:
             self.finish("succeeded")
         finally:
+            stop.set()
             signal.signal(signal.SIGTERM, previous)
 
     def finish(self, state: str, exc: BaseException | None = None) -> None:
-        if self.current is not None:
-            self.current.update(state=state, finished_at=_now())
-        if exc is not None:
-            step, key = (self.current["step"], self.current["key"]) if self.current else (None, None)
-            self.status["error"] = {
-                "step": step,
-                "key": key,
-                "type": type(exc).__name__,
-                # Persistent logs keep only the exception class in encrypted mode, and so does this file.
-                "message": "" if secure_storage.is_encrypted_mode() else str(exc)[:1000],
-            }
-        self.status.update(state=state, finished_at=_now())
-        self.save()
+        with self.lock:
+            if self.current is not None:
+                self.current.update(state=state, finished_at=_now())
+            if exc is not None:
+                step, key = (self.current["step"], self.current["key"]) if self.current else (None, None)
+                self.status["error"] = {
+                    "step": step,
+                    "key": key,
+                    "type": type(exc).__name__,
+                    # Persistent logs keep only the exception class in encrypted mode, and so does this file.
+                    "message": "" if secure_storage.is_encrypted_mode() else str(exc)[:1000],
+                }
+            self.status.update(state=state, finished_at=_now())
+            self.save()
 
 
 def _problem(code: str, message: str, **params) -> dict:
@@ -405,7 +447,7 @@ def run(
     confirmed: bool = False,
     chats_folder: Path | None = None,
 ) -> Path:
-    from weclone.data.agent import distill_profile
+    from weclone.data.agent import build_cost, distill_profile
     from weclone.data.agent.distill_style import run as distill_style
 
     secure_storage.configure(config_path)
@@ -446,6 +488,8 @@ def run(
     try:
         output_dir.mkdir(parents=True, exist_ok=True)
         record_build(output_dir)
+        settings = build_cost.llm_settings(config_path)
+        METER.price = build_cost.price_of(settings)
         build = Build(output_dir, purpose)
         with build.running():
             with _stage("启动：加载抽取与整理模块"):
@@ -460,7 +504,16 @@ def run(
             if not source_files:
                 raise FileNotFoundError(f"没有生成聊天样本：{people_dir}")
             logger.info("聊天样本准备完成：{counts[chats]} 个聊天文件。", counts={"chats": len(source_files)})
-            build.status["chats"] = len(source_files)
+            try:
+                plan, _ = build_cost.count(build_cost.chats_of_snapshot(people_dir), settings, purpose)
+                estimate = build_cost.describe(plan, build_cost.saved_probe(settings), settings)
+            except Exception as exc:
+                # The estimate only informs, so a build goes on without it.
+                logger.warning("构建前的估算失败：{error}", error=exc)
+                estimate = None
+            with build.lock:
+                build.status["chats"] = len(source_files)
+                build.status["estimate"] = estimate
 
             with build.stage("distill_profile"):
                 # Raises when samples failed. Rerunning build-profile into a new directory asks only for those.
@@ -469,7 +522,7 @@ def run(
                     output_dir=distill_dir,
                     config_path=config_path,
                     confirmed=True,
-                    on_file=build.progress,
+                    on_progress=build.progress,
                 )
             with build.stage("distill_event"):
                 distill_event.main(
@@ -477,7 +530,7 @@ def run(
                     output_dir=distill_dir,
                     config_path=config_path,
                     confirmed=True,
-                    on_file=build.progress,
+                    on_progress=build.progress,
                 )
 
             with build.stage("organize"):
@@ -524,6 +577,9 @@ def run(
             if with_style:
                 with build.stage("style"):
                     distill_style.main(style_argv)
+        # Chats uploaded from the web serve one build, so the next one starts from its own upload.
+        if chats_folder is not None and chats_folder.resolve() == UPLOAD_DIR.resolve():
+            shutil.rmtree(UPLOAD_DIR, ignore_errors=True)
     finally:
         lock.release()
     return result

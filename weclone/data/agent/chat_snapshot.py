@@ -82,14 +82,10 @@ def sessions(rows: pd.DataFrame) -> list[list[dict]]:
     return result
 
 
-def build_snapshot(
-    output_dir: Path, chat_args: MakeDatasetArgs, *, registry_path: Path | str = DEFAULT_REGISTRY_PATH
-) -> dict:
-    """Write one P{n}.json per contact (its sessions in time order) and a manifest into output_dir."""
+def contact_sessions(chat_args: MakeDatasetArgs) -> dict[str, tuple[str, list[list[dict]], int]]:
+    """Each contact's remark, its sessions long enough to keep, and how many short ones were left out, by contact
+    key. Contacts with nothing kept are left out."""
     secure_storage.ensure_unlocked()
-    output_dir = Path(output_dir)
-    if output_dir.exists() and any(output_dir.iterdir()):
-        raise ValueError(f"Snapshot directory is not empty: {output_dir}")
     contacts: dict[str, tuple[str, list[list[dict]], int]] = {}
     for key, chat in read_chats(chat_args).items():
         # The same chat exported into two folders must not count twice.
@@ -100,6 +96,31 @@ def build_snapshot(
         kept = [s for s in found if sum(len("".join(m["content"].split())) for m in s) >= MIN_SESSION_CHARS]
         if kept:
             contacts[key] = (chat["chat_with"], kept, len(found) - len(kept))
+    return contacts
+
+
+def session_items(kept: list[list[dict]], chat_with: str, chat_with_id: str | None) -> list[dict]:
+    """A contact's sessions as the items of its snapshot file."""
+    return [
+        {
+            "id": str(index),
+            "time": session[-1]["time"],
+            "chat_with": chat_with,
+            "chat_with_id": chat_with_id,
+            "messages": session,
+        }
+        for index, session in enumerate(kept)
+    ]
+
+
+def build_snapshot(
+    output_dir: Path, chat_args: MakeDatasetArgs, *, registry_path: Path | str = DEFAULT_REGISTRY_PATH
+) -> dict:
+    """Write one P{n}.json per contact (its sessions in time order) and a manifest into output_dir."""
+    output_dir = Path(output_dir)
+    if output_dir.exists() and any(output_dir.iterdir()):
+        raise ValueError(f"Snapshot directory is not empty: {output_dir}")
+    contacts = contact_sessions(chat_args)
     # New contacts are numbered in the order they first appear.
     ids = assign_contact_ids(
         sorted(contacts, key=lambda key: (contacts[key][1][0][0]["time"], key)), registry_path
@@ -109,16 +130,7 @@ def build_snapshot(
     summary = []
     for key in sorted(contacts, key=lambda key: int(ids[key][1:])):
         chat_with, kept, skipped = contacts[key]
-        items = [
-            {
-                "id": str(index),
-                "time": session[-1]["time"],
-                "chat_with": chat_with,
-                "chat_with_id": ids[key],
-                "messages": session,
-            }
-            for index, session in enumerate(kept)
-        ]
+        items = session_items(kept, chat_with, ids[key])
         secure_storage.write_json(output_dir / f"{ids[key]}.json", items, indent=4)
         summary.append(
             {

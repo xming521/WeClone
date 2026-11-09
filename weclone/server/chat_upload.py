@@ -123,6 +123,15 @@ class Uploads:
         self.discard(upload_id)
         return {"chats": len(chats)}
 
+    def clear(self):
+        """Removes the uploaded chats, as a new build starts from its own upload."""
+        if self.demo:
+            raise ApiError(409, "demo_data_fixed", "演示模式不能上传聊天记录")
+        with self.builds.lock:
+            if self.builds.running():
+                raise ApiError(409, "build_running", "已经有一次构建在运行")
+            shutil.rmtree(pipeline.UPLOAD_DIR, ignore_errors=True)
+
     def discard(self, upload_id: str):
         self.active.discard(upload_id)
         shutil.rmtree(STAGING_DIR / upload_id, ignore_errors=True)
@@ -163,6 +172,11 @@ def install_upload(app: FastAPI, builds, *, demo: bool) -> Uploads:
     def upload_discard(upload_id: str):
         uploads.staging(upload_id)
         uploads.discard(upload_id)
+        return {"ok": True}
+
+    @app.delete("/api/data/uploaded")
+    def uploaded_clear():
+        uploads.clear()
         return {"ok": True}
 
     return uploads

@@ -808,6 +808,14 @@
   align-items: center;
 }
 
+/* What the start button waits for, under it. */
+.build-needs {
+  margin: var(--space-2) 0 0;
+  color: var(--ink-3);
+  font: var(--text-caption);
+  text-align: right;
+}
+
 /* A sentence beside its box, so the check's one-line type gives way to the label's. */
 .wc-check.build-consent {
   flex: 1 1 20em;
@@ -838,7 +846,7 @@
 
 .build-stage {
   display: grid;
-  grid-template-columns: 16px 2.4em minmax(0, 1fr) auto auto;
+  grid-template-columns: 16px 2.4em minmax(0, 1fr) auto auto auto;
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-2) var(--space-3);
@@ -2344,4 +2352,91 @@
 .build-pill:focus-visible {
   outline: none;
   box-shadow: var(--focus-ring);
+}
+
+/* What the build has sent and cost, after the stage's progress; in the confirm step, the estimate of it. */
+.build-stage__spend {
+  min-width: 4.5em;
+  text-align: right;
+  font: var(--text-meta);
+  font-variant-numeric: tabular-nums;
+}
+
+.build-estimate__value {
+  margin-left: var(--space-3);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+.build-estimate {
+  margin-top: var(--space-4);
+}
+
+.build-estimate .settings-row__text {
+  gap: var(--space-1);
+}
+
+/* The estimate's figures, big as the overview's numbers, each over what it counts. */
+.build-estimate__figures {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: var(--space-1) 0;
+}
+
+.build-estimate__figures > div {
+  display: flex;
+  flex-direction: column;
+  min-width: 8em;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-control);
+  background: var(--well);
+}
+
+.build-estimate__figures strong {
+  color: var(--ink-1);
+  font: var(--text-numeral);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+.build-estimate__figures span {
+  color: var(--ink-3);
+  font: var(--text-caption);
+}
+
+@media (max-width: 560px) {
+  .build-estimate__figures > div {
+    min-width: 0;
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .build-estimate__figures strong {
+    font-size: 20px;
+    line-height: 24px;
+  }
+}
+
+.build-now__meta span + span::before {
+  margin-right: var(--space-3);
+  content: '·';
+}
+
+.build-now__warn {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-control);
+  background: var(--well);
+  color: var(--ink-1);
+  font: var(--text-caption);
+}
+
+.build-now__warn svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--danger);
 }

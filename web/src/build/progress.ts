@@ -1,12 +1,63 @@
 // Shapes of weclone/server/profile_build.py, with the status file of weclone/data/agent/profile_pipeline.py.
+import type { Vendor } from '../settings/modelSettings';
+
 export type Purpose = 'assistant' | 'clone';
 /** upload: the chats uploaded from the web. config: the platform and csv_folder of settings.jsonc. */
-export type ChatSource = 'upload' | 'config';
 export type StageKey =
   'snapshot' | 'distill_profile' | 'distill_event' | 'organize' | 'hierarchy' | 'summaries' | 'style';
 export type StageState = 'pending' | 'running' | 'succeeded' | 'failed' | 'cancelled';
 /** `interrupted`: the build process ended without recording how, as when the machine went down. */
 export type BuildState = 'running' | 'succeeded' | 'failed' | 'cancelled' | 'interrupted';
+
+/** What the model service has been asked and has answered so far. `cost` is in US dollars, null for a model the
+ * price table does not have. `unmetered` counts the requests the service returned no usage for. */
+export interface Usage {
+  requests: number;
+  unmetered: number;
+  input_tokens: number;
+  cached_tokens: number;
+  output_tokens: number;
+  reasoning_tokens: number;
+  cost: number | null;
+}
+
+/** What a build is expected to send and cost, from GET /api/build/estimate and POST /api/build/probe. Money is in
+ * US dollars, time in seconds. `probe` is the average of the trial requests, null until they were sent with the
+ * settings in force. */
+export interface Estimate {
+  backend: 'api' | 'codex_exec';
+  /** Requests the build sends: the extraction ones with no answer yet, the later stages, the speaking style. */
+  requests: number;
+  /** The requests a trial would send now: none when every extraction request has its answer already. */
+  probe_requests: number;
+  /** `later` is organizing, hierarchy and summaries together. */
+  plan: { distill_profile: number; distill_event: number; later: number; style: number };
+  probe: {
+    requests: number;
+    at: string;
+    input_tokens: number;
+    cached_tokens: number;
+    output_tokens: number;
+    reasoning_tokens: number;
+    seconds: number;
+  } | null;
+  /** The service returned no usage for the trial. */
+  unmetered: boolean;
+  input_tokens: number | null;
+  output_tokens: number | null;
+  cost: {
+    low: number;
+    high: number;
+    per_request: { low: number; high: number };
+    /** How much of the build's time, started now, falls in off-peak hours, for a price that has them. */
+    off_peak_share: number | null;
+    off_peak_saving: number | null;
+    source: 'official' | 'market';
+    vendor: Vendor | null;
+    prices_date: string;
+  } | null;
+  seconds: { low: number; high: number } | null;
+}
 
 export interface BuildStage {
   /** The [n/N] of the command line. */
@@ -18,6 +69,11 @@ export interface BuildStage {
   /** Chat files done and in all, for the stages that count them. */
   done: number | null;
   total: number | null;
+  /** What done and total count: `requests`. Null, or absent in a status file from before requests were counted, is
+   * chat files. */
+  unit?: 'requests' | null;
+  /** Absent in a status file from before usage was kept, which reads as null. */
+  usage?: Usage | null;
 }
 
 export interface BuildStatus {
@@ -34,6 +90,9 @@ export interface BuildStatus {
   run: string;
   current: boolean;
   log: string;
+  /** The build so far, and what it was expected to be after its first step. Absent in older status files. */
+  usage?: Usage | null;
+  estimate?: Estimate | null;
 }
 
 export interface Problem {
@@ -48,7 +107,7 @@ export interface Problem {
 export interface BuildCheck {
   backend: { provider: 'codex_exec' | 'api' | null; model: string | null; max_context_tokens: number | null };
   /** The chats the build would read: the uploaded ones when there are any. */
-  chats: { source: ChatSource; platform: 'chat' | 'telegram' | null; folder: string | null; count: number };
+  chats: { platform: 'chat' | 'telegram' | null; folder: string | null; count: number };
   problems: Problem[];
 }
 
@@ -99,4 +158,63 @@ export function clock(seconds: number): string {
   const [h, m, s] = [Math.floor(whole / 3600), Math.floor((whole % 3600) / 60), whole % 60];
   const pad = (value: number) => String(value).padStart(2, '0');
   return h ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
+}
+
+/** Fewer requests than this say too little about the pace and price of the rest. */
+export const PROJECT_AFTER_REQUESTS = 20;
+// A later stage (organizing, hierarchy, summaries) takes this many times as long per request as an extraction one,
+// as LATER_SECONDS of weclone/data/agent/build_cost.py.
+const LATER_SLOWDOWN = 2;
+
+export interface Projection {
+  /** Requests still to send, and the time and money they take, at the pace of the build so far. */
+  requests: number;
+  seconds: number;
+  /** In US dollars, null when the model has no price. */
+  cost: number | null;
+  /** The spent and the rest together. */
+  totalCost: number | null;
+}
+
+/** What is left of a running build, from its pace and price so far and the plan it started with. Null before it has
+ * sent enough requests to tell, or when the status has no usage or estimate. */
+export function projectBuild(status: BuildStatus, now: number): Projection | null {
+  const { usage, estimate } = status;
+  if (!usage || !estimate || usage.requests < PROJECT_AFTER_REQUESTS) return null;
+  const find = (key: BuildStage['key']) => status.stages.find((stage) => stage.key === key);
+  const started = find('distill_profile')?.started_at;
+  if (!started) return null;
+  const perRequest = Math.max(0, now - Date.parse(started)) / 1000 / usage.requests;
+
+  const extraction = (['distill_profile', 'distill_event'] as const).reduce((sum, key) => {
+    const stage = find(key);
+    if (stage?.state === 'succeeded') return sum;
+    if (stage?.state === 'running') return sum + Math.max(0, (stage.total ?? estimate.plan[key]) - (stage.done ?? 0));
+    return sum + estimate.plan[key];
+  }, 0);
+  const sent = (...keys: BuildStage['key'][]) => keys.reduce((sum, key) => sum + (find(key)?.usage?.requests ?? 0), 0);
+  const later =
+    find('summaries')?.state === 'succeeded'
+      ? 0
+      : Math.max(0, estimate.plan.later - sent('organize', 'hierarchy', 'summaries'));
+  const style =
+    !find('style') || find('style')?.state === 'succeeded' ? 0 : Math.max(0, estimate.plan.style - sent('style'));
+
+  const requests = extraction + later + style;
+  const cost = usage.cost === null ? null : (usage.cost / usage.requests) * requests;
+  return {
+    requests,
+    seconds: (extraction + style + later * LATER_SLOWDOWN) * perRequest,
+    cost,
+    totalCost: usage.cost === null || cost === null ? null : usage.cost + cost,
+  };
+}
+
+/** Whether a build costs far more than it was expected to: the spent and the rest together past this many times the
+ * top of the estimate. */
+export const OVERSPEND_FACTOR = 2;
+
+export function overspent(status: BuildStatus, projection: Projection | null): boolean {
+  const high = status.estimate?.cost?.high;
+  return projection?.totalCost != null && high != null && projection.totalCost > OVERSPEND_FACTOR * high;
 }

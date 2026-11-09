@@ -138,17 +138,19 @@ def test_an_encrypted_upload_stores_ciphertext_the_build_reads(web, tmp_path, ow
         assert len(files) == 2 and chat_csv.read_csv(files[0])["msg"].tolist() == ["你好"]
 
 
-def test_a_build_reads_the_uploaded_chats_when_there_are_any(web, tmp_path, monkeypatch):
-    client = web(platform="telegram")
+def test_a_web_build_reads_only_the_uploaded_chats(web, tmp_path, monkeypatch):
+    client = web()
+    # The chats of the config are for the command line.
+    (tmp_path / "csv" / "bob").mkdir(parents=True)
+    (tmp_path / "csv" / "bob" / "bob_0_1.csv").write_text(CSV)
     found = client.get("/api/build/check").json()
-    assert found["chats"]["source"] == "config" and "telegram_id_missing" in [p["code"] for p in found["problems"]]
+    assert found["chats"]["count"] == 0 and [p["code"] for p in found["problems"]] == ["chats_missing"]
     upload_id, _ = upload(client, {"alice/alice_0_1.csv": CSV.encode()})
     client.post(f"/api/data/uploads/{upload_id}/done")
 
     found = client.get("/api/build/check").json()
     assert found["problems"] == []
     assert found["chats"] == {
-        "source": "upload",
         "platform": "chat",
         "folder": str(pipeline.UPLOAD_DIR),
         "count": 1,
@@ -164,6 +166,12 @@ def test_a_build_reads_the_uploaded_chats_when_there_are_any(web, tmp_path, monk
     body = {"purpose": "assistant", "consent": True}
     assert client.post("/api/build", json=body).status_code == 202
     assert spawned[0][-2:] == ["--csv-folder", str(pipeline.UPLOAD_DIR)]
+    # A new build clears the chats uploaded for the one before, which a running build still reads.
+    monkeypatch.setattr(profile_build.Builds, "running", lambda self: True)
+    assert client.delete("/api/data/uploaded").json()["code"] == "build_running"
+    monkeypatch.setattr(profile_build.Builds, "running", lambda self: False)
+    assert client.delete("/api/data/uploaded").json() == {"ok": True}
+    assert client.get("/api/build/check").json()["chats"]["count"] == 0
 
 
 @pytest.mark.parametrize("size", [0, secure_storage.CHUNK_SIZE, 2 * secure_storage.CHUNK_SIZE + 7])

@@ -119,13 +119,15 @@ def test_chat_files_are_distilled_side_by_side(tmp_path, monkeypatch):
     }), encoding="utf-8")
     input_dir = tmp_path / "input"
     input_dir.mkdir()
+    chat = [{"id": "0", "time": "2026-01-01T00:00:00", "messages": [{"role": "assistant", "content": "在吗"}]}]
     for name in ("a.json", "b.json"):
-        (input_dir / name).write_text("[]", encoding="utf-8")
+        (input_dir / name).write_text(json.dumps(chat), encoding="utf-8")
     # Each file waits for the other, so a file that starts only after the previous one ends breaks the barrier.
     barrier = threading.Barrier(2, timeout=5)
 
     def process_file(source_path, **options):
         barrier.wait()
+        options["on_window"](1)
         return distill_profile.FileStats(pending=1, windows=1, calls=1)
 
     monkeypatch.setattr(llm_client, "build_llm_client", Mock())
@@ -134,7 +136,7 @@ def test_chat_files_are_distilled_side_by_side(tmp_path, monkeypatch):
 
     total = distill_profile.main(
         input_dir=input_dir, output_dir=tmp_path / "output", config_path=config_path,
-        confirmed=True, on_file=lambda done, files: progress.append((done, files)),
+        confirmed=True, on_progress=lambda done, requests: progress.append((done, requests)),
     )
 
     assert total == distill_profile.FileStats(pending=2, windows=2, calls=2)

@@ -223,6 +223,41 @@ export default interface Resources {
       "unused": "还没有机器人用过"
     },
     "build": {
+      "cost": {
+        "about": "约 {{amount}}",
+        "hours": "{{range}} 小时",
+        "minutes": "{{range}} 分钟",
+        "tokens": "输入约 {{input}}、输出约 {{output}} token"
+      },
+      "estimate": {
+        "codex": "Codex 用订阅额度，不另外花钱。",
+        "estimating": "正在估算",
+        "figures": {
+          "cost": "费用",
+          "input": "输入 token",
+          "output": "输出 token",
+          "requests": "请求次数",
+          "time": "用时"
+        },
+        "invite": "试算会把 {{count, number}} 段聊天发给模型服务，结果会用在这次构建里。",
+        "inviteCodex": "试算会把 {{count, number}} 段聊天发给 Codex，推算这次构建大约用多少 token、多长时间。用的是 Codex 额度，不花钱，结果会用在这次构建里。",
+        "label": "预计",
+        "noPrice": "价格表里没有这个模型，费用按服务商的单价 × token 数计算。",
+        "offPeakAll": "，现在开始的话全程是错峰价",
+        "offPeakNone": "，现在开始的话全程是高峰价，错峰时段便宜 {{saving}}%",
+        "offPeakPart": "，现在开始的话约 {{share}}% 的时间是错峰价，错峰时段便宜 {{saving}}%",
+        "priced": "{{source}}，平均每次 {{each}}{{offPeak}}。价格表更新于 {{date}}，以服务商账单为准。",
+        "probe": "试算费用",
+        "probeUsage": "试算用量",
+        "probing": "正在试算",
+        "probingHint": "正在发送 {{count, number}} 次请求，可能要一两分钟。",
+        "processed": "这些聊天之前处理过，这次直接沿用结果，不用试算。",
+        "sourceMarket": "按其他服务商的常见价格估算，你用的服务可能更贵或更便宜",
+        "sourceOfficial": "按 {{vendor}} 官方价估算",
+        "unavailable": "暂时估不出来",
+        "unmetered": "这个服务不返回用量，估不出费用。",
+        "unsaved": "模型设置改了还没保存，试算时会先保存。"
+      },
       "files": "{{done}}/{{total}} 个聊天",
       "finished": {
         "again": "重新构建",
@@ -242,6 +277,8 @@ export default interface Resources {
         "log": "日志文件：\n{{log}}",
         "open": "打开新画像",
         "reviewsStay": "当前画像的审核记录留在旧版本里，打开新画像后，可以在设置页的「画像版本」切回。",
+        "spentCost": "已花费约 {{amount}}。",
+        "spentTokens": "已用 {{tokens}}。",
         "stoppedAt": "停在「{{stage}}」",
         "stoppedBefore": "在第一个阶段开始前停止",
         "succeeded": {
@@ -253,7 +290,8 @@ export default interface Resources {
           "title": "恭喜，画像构建完成！",
           "took": "用时 {{time}}",
           "view": "去看看我的画像"
-        }
+        },
+        "usageLimit": "模型服务的使用额度用完了。等额度恢复后再重新构建。"
       },
       "indicator": {
         "done": "新画像已生成",
@@ -268,18 +306,25 @@ export default interface Resources {
         "backendHint": "在<a>设置</a>页的模型服务里更改",
         "chatCount": "{{count}} 个聊天",
         "chats": "聊天记录",
-        "chatsHint": "现在读的是安装时配置的聊天记录，上传后改读上传的聊天",
         "chatsUploadHint": "每个聊天是一个放着 CSV 的文件夹，以聊天对象命名。上传会替换之前上传的聊天",
         "checking": "正在检查",
         "confirm": "确认并开始",
         "consent": "我确认有权处理这些聊天记录，并同意把聊天内容发送给 {{backend}}。",
         "last": "上次构建完成于 {{time}}，已经打开。",
+        "needs": {
+          "chats": "上传聊天记录",
+          "consent": "勾选确认",
+          "problems": "解决上面列出的问题",
+          "trial": "试算费用",
+          "trialCodex": "试算用量"
+        },
         "notice": "聊天内容可能包含身份、联系方式和私密对话，模型服务可能记录或留存这些内容。已经处理过的聊天不会再次发送。",
         "problems": "开始前需要处理",
         "purpose": "选择用途",
         "purposeHint": "以后可以随时再构建另一种",
         "recheck": "重新检查",
         "start": "开始构建",
+        "startNeeds": "开始构建前，还要先{{needs}}。",
         "tuningInvalid": "并发、超时等其余选项有填得不对的，请到<a>设置</a>页的模型服务里改好"
       },
       "problems": {
@@ -339,13 +384,19 @@ export default interface Resources {
           "write": ["正在给每个板块写总结", "快好了，正在写最后几段"]
         }
       },
+      "requests": "{{count, number}} 次请求",
+      "requestsDone": "{{done, number}} / {{total, number}} 次请求",
       "running": {
         "cancel": "取消构建",
         "confirmCancel": "已经处理过的部分会保留，下次构建不用重新处理。",
         "confirmCancelTitle": "取消这次构建？",
         "elapsed": "已用 {{time}}",
+        "estimated": "预计共 {{parts}}",
         "keep": "继续构建",
         "leave": "关闭网页不会停止构建。",
+        "overspent": "实际花费比开始前的估计高很多。可以取消构建，换设置后重新构建，已完成的请求不会重复计费。",
+        "remaining": "预计还需 {{time}}",
+        "remainingCost": "预计还需 {{time}}、约 {{amount}}",
         "state": "构建中",
         "step": "第 {{step}} 步，共 {{steps}} 步"
       },
@@ -454,6 +505,7 @@ export default interface Resources {
       "demo_settings_fixed": "演示模式不能修改这项设置",
       "duplicate_domains": "批量操作不能包含重复板块",
       "duplicate_facts": "批量操作不能包含重复记录",
+      "estimate_failed": "估算失败，请检查聊天记录和模型设置后重试",
       "fact_changed": "记录已被修改，请刷新数据后核对并重试",
       "fact_not_found": "画像记录不存在",
       "location_invalid": "请选择已有维度或主题",
@@ -462,6 +514,8 @@ export default interface Resources {
       "not_set_up": "请先设置密码",
       "password_mismatch": "两次输入的密码不一致",
       "password_wrong": "密码错误",
+      "probe_failed": "试算失败，模型服务返回了错误，请检查模型设置后重试",
+      "probe_running": "已经有一次试算在运行",
       "profile_missing": "还没有画像，请先在「构建画像」页生成",
       "request_rejected": "请求验证失败",
       "run_building": "这个版本还在构建，不能删除",
@@ -487,7 +541,8 @@ export default interface Resources {
       "upload_not_found": "这次上传已经结束，请重新选择文件",
       "upload_path_invalid": "上传的文件名有问题，请重新选择文件夹或 zip",
       "upload_too_large": "解压后的文件超过了磁盘剩余空间",
-      "upload_zip_invalid": "这个 zip 打不开，可能已损坏或设了密码"
+      "upload_zip_invalid": "这个 zip 打不开，可能已损坏或设了密码",
+      "usage_limit": "模型服务的使用额度用完了，等额度恢复后再试"
     },
     "export": {
       "action": "导出当前视图",

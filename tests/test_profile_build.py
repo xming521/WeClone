@@ -1,10 +1,13 @@
 import json
 import time
+from functools import partial
 from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
+from weclone.core.inference.usage import UsageLimitReached
+from weclone.data.agent import build_cost
 from weclone.data.agent import profile_pipeline as pipeline
 from weclone.server import profile_review, profile_summary
 from weclone.server.profile_review import create_app
@@ -254,6 +257,31 @@ def test_an_encrypted_build_writes_with_the_session_key(web, monkeypatch, storag
     assert "event windows=7 error_type=none" in log and "event step=2 steps=" in log
 
 
+def test_the_web_estimates_and_probes(web, monkeypatch):
+    client = web()
+    monkeypatch.setattr(build_cost, "estimate", lambda *args: {"requests": 3})
+    assert client.get("/api/build/estimate?purpose=clone").json() == {"requests": 3}
+    monkeypatch.setattr(build_cost, "probe", lambda *args: {"requests": 1})
+    assert client.post("/api/build/probe", json={"purpose": "assistant"}).json() == {"requests": 1}
+
+    def failing(*args):
+        raise RuntimeError("Unauthorized: bad key")
+
+    monkeypatch.setattr(build_cost, "probe", failing)
+    response = client.post("/api/build/probe", json={"purpose": "assistant"})
+    assert response.status_code == 502 and response.json()["reason"] == "Unauthorized: bad key"
+
+    def limited(*args):
+        raise UsageLimitReached("You've hit your usage limit.")
+
+    monkeypatch.setattr(build_cost, "probe", limited)
+    response = client.post("/api/build/probe", json={"purpose": "assistant"})
+    assert (
+        response.json()["code"] == "usage_limit"
+        and response.json()["reason"] == "You've hit your usage limit."
+    )
+
+
 def test_the_demo_cannot_build_or_switch(tmp_path, storage):
     from weclone.server import app
 
@@ -429,3 +457,66 @@ def test_the_command_line_lists_every_problem_before_asking(monkeypatch, storage
         pipeline.run(with_style=False, output_dir=None, config_path=Path("settings.jsonc"))
     assert str(error.value) == "运行前检查没有通过：\n- dataset/csv 里没有聊天记录\n- Codex CLI 没有登录"
     assert not pipeline.RUNS_DIR.exists() or not any(pipeline.RUNS_DIR.iterdir())
+
+
+@pytest.mark.parametrize("fails", [False, True])
+def test_a_build_from_the_upload_clears_it_once_it_succeeds(monkeypatch, storage, tmp_path, fails):
+    from weclone.data.agent import (
+        chat_snapshot,
+        distill_event,
+        distill_profile,
+        llm_profile_hierarchy,
+        organize_memories,
+    )
+    from weclone.server import profile_summary
+
+    codex = {
+        "model": "m",
+        "effort": "low",
+        "batch_size": 1,
+        "timeout": 30,
+        "command": "codex",
+        "sandbox": "read-only",
+    }
+    settings = storage(extra={"codex_exec_args": codex})
+    (pipeline.UPLOAD_DIR / "chat").mkdir(parents=True)
+    (pipeline.UPLOAD_DIR / "chat" / "chat_1_1.csv").write_text("x")
+    found = {"backend": {"max_context_tokens": 64000}, "chats": {}, "problems": []}
+    monkeypatch.setattr(pipeline, "check", lambda *args, **kwargs: found)
+    monkeypatch.setattr(pipeline, "load_chat_args", lambda *args: None)
+    monkeypatch.setattr(chat_snapshot, "build_snapshot", lambda people, chats: None)
+    monkeypatch.setattr(distill_profile, "iter_chat_files", lambda people: [people / "chat.json"])
+    monkeypatch.setattr(build_cost, "count", lambda *args: ({}, {}))
+    monkeypatch.setattr(build_cost, "chats_of_snapshot", lambda people: [])
+    monkeypatch.setattr(build_cost, "describe", lambda *args: None)
+    for module in (distill_profile, distill_event):
+        monkeypatch.setattr(module, "main", lambda **kwargs: None)
+
+    def organize(argv):
+        if fails:
+            raise RuntimeError("3 LLM tasks failed")
+
+    def hierarchy(argv):
+        output = Path(argv[argv.index("--output-dir") + 1])
+        output.mkdir(parents=True)
+        (output / "profile_hierarchy.json").write_text("{}")
+
+    monkeypatch.setattr(organize_memories, "main", organize)
+    monkeypatch.setattr(llm_profile_hierarchy, "main", hierarchy)
+    monkeypatch.setattr(profile_summary, "build_summaries", lambda directory: "")
+    build = partial(
+        pipeline.run,
+        with_style=False,
+        output_dir=tmp_path / "run",
+        config_path=settings,
+        confirmed=True,
+        chats_folder=pipeline.UPLOAD_DIR,
+    )
+    if fails:
+        # A failed build is built again from the same upload.
+        with pytest.raises(RuntimeError):
+            build()
+        assert pipeline.count_csv_chats(pipeline.UPLOAD_DIR) == 1
+    else:
+        build()
+        assert not pipeline.UPLOAD_DIR.exists()

@@ -18,6 +18,8 @@ OPENAI_API_BASE_DELAY = 2.0
 OPENAI_API_MAX_DELAY = 60.0
 OPENAI_API_BACKOFF_FACTOR = 2.0
 OPENAI_API_JITTER = True
+# Seconds between two launches of codex exec, unless codex_exec_args sets request_interval_seconds.
+CODEX_REQUEST_INTERVAL_SECONDS = 1.0
 
 
 def project_root() -> Path:

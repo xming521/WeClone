@@ -6,6 +6,7 @@ import signal
 import subprocess
 import sys
 import threading
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal
@@ -13,6 +14,8 @@ from typing import Literal
 from fastapi import FastAPI
 from pydantic import BaseModel, ConfigDict, Field
 
+from weclone.core.inference.usage import UsageLimitReached
+from weclone.data.agent import build_cost
 from weclone.data.agent import profile_pipeline as pipeline
 from weclone.server import style_view
 from weclone.server.errors import ApiError
@@ -20,6 +23,8 @@ from weclone.utils import secure_storage as secure
 from weclone.utils.log import REDACT_ENV
 
 CLI_SCRIPT = Path(__file__).resolve().parents[1] / "cli.py"
+# How long a build that has written how it ended may take to exit.
+EXIT_SECONDS = 5.0
 
 
 def run_complete(run: Path) -> bool:
@@ -55,16 +60,20 @@ def config_path() -> Path:
     return Path(os.environ.get("WECLONE_CONFIG_PATH", secure.ROOT / "settings.jsonc"))
 
 
-def chats_folder() -> Path | None:
-    """The folder a build reads: the chats uploaded from the web when there are any, else None for the platform and
-    csv_folder of the config."""
-    return pipeline.UPLOAD_DIR if pipeline.count_csv_chats(pipeline.UPLOAD_DIR) else None
+def chats_folder() -> Path:
+    """The folder a web build reads: only the chats uploaded for it, never the csv_folder of the config."""
+    return pipeline.UPLOAD_DIR
 
 
 class BuildStart(BaseModel):
     model_config = ConfigDict(extra="forbid")
     purpose: Literal["assistant", "clone"]
     consent: bool
+
+
+class BuildProbe(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    purpose: Literal["assistant", "clone"]
 
 
 class RunChoice(BaseModel):
@@ -83,6 +92,7 @@ class Builds:
         self.process: subprocess.Popen | None = None
         self.cancelled: Path | None = None
         self.lock = threading.Lock()
+        self.probing = threading.Lock()
         # A server started on a run keeps showing it over a build that ended before it started.
         if runs.chosen and not demo:
             run = pipeline.last_build()
@@ -95,6 +105,17 @@ class Builds:
 
     def running(self) -> bool:
         return self.started_here() or pipeline.build_running()
+
+    def busy(self) -> bool:
+        """Whether a build runs, waiting for one that has written how it ended to exit."""
+        deadline = time.monotonic() + EXIT_SECONDS
+        while self.running():
+            run = pipeline.last_build()
+            status = pipeline.read_status(run) if run is not None else None
+            if status is None or status["state"] == "running" or time.monotonic() >= deadline:
+                return True
+            time.sleep(0.05)
+        return False
 
     def state(self, run: Path, status: dict) -> str:
         # The build running now, if any, is the latest one.
@@ -133,10 +154,39 @@ class Builds:
     def check(self, purpose: str) -> dict:
         if self.demo:
             raise ApiError(409, "demo_build_disabled", "演示模式不能构建画像")
-        folder = chats_folder()
-        found = pipeline.check(config_path(), purpose, chats_folder=folder)
-        found["chats"] = {"source": "upload" if folder else "config", **found["chats"]}
-        return found
+        return pipeline.check(config_path(), purpose, chats_folder=chats_folder())
+
+    def estimate(self, purpose: str) -> dict:
+        if self.demo:
+            raise ApiError(409, "demo_build_disabled", "演示模式不能构建画像")
+        try:
+            return build_cost.estimate(config_path(), purpose, chats_folder())
+        except (OSError, ValueError, KeyError) as exc:
+            raise ApiError(422, "estimate_failed", f"估算失败：{exc}") from exc
+
+    def probe(self, request: BuildProbe) -> dict:
+        """Sends a few of the build's requests to measure what one uses. They count toward a build started meanwhile
+        only if they finish first."""
+        if self.demo:
+            raise ApiError(409, "demo_build_disabled", "演示模式不能构建画像")
+        if self.busy():
+            raise ApiError(409, "build_running", "已经有一次构建在运行")
+        if not self.probing.acquire(blocking=False):
+            raise ApiError(409, "probe_running", "正在试算")
+        try:
+            return build_cost.probe(config_path(), request.purpose, chats_folder())
+        except RuntimeError as exc:
+            # The service's own words, as the test of the connection shows them, but not in encrypted mode.
+            detail = "" if secure.is_encrypted_mode() else str(exc)
+            if isinstance(exc, UsageLimitReached):
+                raise ApiError(
+                    429, "usage_limit", f"模型服务的使用额度用完了：{detail}", reason=detail
+                ) from exc
+            raise ApiError(502, "probe_failed", f"试算失败：{detail}", reason=detail) from exc
+        except (OSError, ValueError, KeyError) as exc:
+            raise ApiError(422, "estimate_failed", f"估算失败：{exc}") from exc
+        finally:
+            self.probing.release()
 
     def start(self, request: BuildStart) -> dict | None:
         if self.demo:
@@ -144,7 +194,7 @@ class Builds:
         if not request.consent:
             raise ApiError(422, "consent_required", "请先确认把聊天内容发送给模型服务")
         with self.lock:
-            if self.running():
+            if self.busy():
                 raise ApiError(409, "build_running", "已经有一次构建在运行")
             folder = chats_folder()
             found = pipeline.check(config_path(), request.purpose, chats_folder=folder)
@@ -156,8 +206,7 @@ class Builds:
             pipeline.write_status(run, pipeline.new_status(request.purpose))
             pipeline.record_build(run)
             args = ["build-profile", "--purpose", request.purpose, "--output-dir", str(run), "--yes"]
-            if folder is not None:
-                args += ["--csv-folder", str(folder)]
+            args += ["--csv-folder", str(folder)]
             self.process = self.spawn(run, args)
             self.cancelled = None
         return self.latest()
@@ -280,6 +329,14 @@ def install_build(app: FastAPI, runs, *, demo: bool, script: Path | None = None)
     @app.get("/api/build/check")
     def build_check(purpose: Literal["assistant", "clone"] = "assistant"):
         return builds.check(purpose)
+
+    @app.get("/api/build/estimate")
+    def build_estimate(purpose: Literal["assistant", "clone"] = "assistant"):
+        return builds.estimate(purpose)
+
+    @app.post("/api/build/probe")
+    def build_probe(request: BuildProbe):
+        return builds.probe(request)
 
     @app.get("/api/build")
     def build_status():

@@ -108,6 +108,7 @@ exclude = ["*tests*", "*archive*", "weclone-cloud*"]
 
 [tool.setuptools.package-data]
 "weclone.web" = ["dist/*", "dist/assets/*"]
+"weclone.core.inference" = ["model_prices.json"]
 
 [tool.pyright]
 typeCheckingMode = "basic"

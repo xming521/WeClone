@@ -80,6 +80,12 @@ def group_samples(
     return groups
 
 
+def window_prompt(samples: list[ChatSample], *, task: str, target_role: str) -> str:
+    prompt = build_window_extract_prompt(task, include_current_state=samples[0].include_current_state)
+    body = "\n\n".join(render_sample(s.item, sample_id=s.sample_id, target_role=target_role) for s in samples)
+    return prompt.replace("{{CHAT_SAMPLES}}", body)
+
+
 def make_window_request(
     samples: list[ChatSample],
     *,
@@ -91,10 +97,8 @@ def make_window_request(
     effort: str | None,
     max_tokens: int | None,
 ) -> LLMRequest:
-    prompt = build_window_extract_prompt(task, include_current_state=samples[0].include_current_state)
-    body = "\n\n".join(render_sample(s.item, sample_id=s.sample_id, target_role=target_role) for s in samples)
     return LLMRequest.from_prompt(
-        prompt.replace("{{CHAT_SAMPLES}}", body),
+        window_prompt(samples, task=task, target_role=target_role),
         provider=provider,
         model=model,
         effort=effort,
