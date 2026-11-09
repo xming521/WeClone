@@ -26,6 +26,7 @@ try:
             build.progress(0, 2)
             if os.environ["FAKE_BUILD"] == "fail":
                 print("printed private text", flush=True)
+                log.logger.info("{name}: windows={windows}", name="private name", windows=7)
                 raise RuntimeError("fake failure with private text")
             while os.environ["FAKE_BUILD"] == "wait":
                 time.sleep(0.05)

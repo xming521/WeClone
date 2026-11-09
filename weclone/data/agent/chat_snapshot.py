@@ -139,8 +139,13 @@ def build_snapshot(
     }
     secure_storage.write_json(output_dir / MANIFEST_NAME, manifest)
     logger.info(
-        f"Chat snapshot: {len(summary)} contacts, {sum(c['sessions'] for c in summary)} sessions "
-        f"({sum(c['skipped_short_sessions'] for c in summary)} short ones skipped), saved to {output_dir}"
+        "Chat snapshot: {contacts} contacts, {sessions} sessions ({skipped} short ones skipped), {messages} messages, "
+        "saved to {output_dir}",
+        contacts=len(summary),
+        sessions=sum(c["sessions"] for c in summary),
+        skipped=sum(c["skipped_short_sessions"] for c in summary),
+        messages=sum(c["messages"] for c in summary),
+        output_dir=output_dir,
     )
     return manifest
 

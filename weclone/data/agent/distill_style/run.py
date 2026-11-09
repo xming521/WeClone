@@ -79,6 +79,7 @@ from weclone.data.agent.distill_style.stats import LENGTH_STRATA, RELIABILITY
 from weclone.data.agent.distill_style.taxonomy import CATEGORIES, extractors_for, selected_categories
 from weclone.data.agent.distill_style.wire import WIRE_VERSION
 from weclone.utils import secure_storage
+from weclone.utils.log import logger
 
 ROOT = Path(__file__).resolve().parents[4]
 OUTPUT_ROOT = ROOT / "dataset/res_csv/agent/distill/style"
@@ -530,10 +531,12 @@ def main(argv=None):
     output.mkdir(parents=True, exist_ok=False)
     inputs = prepare_inputs(args)
     records, grouping = inputs["records"], inputs["grouping"]
-    print(
-        f"Input: {len(records)} windows, time window {inputs['window']['state']}; "
-        f"{len(grouping['corpora'])} group corpora with >= {args.min_group_messages} messages",
-        flush=True,
+    logger.info(
+        "Input: {windows} windows, time window {state}; {corpora} group corpora with >= {min_messages} messages",
+        windows=len(records),
+        state=inputs["window"]["state"],
+        corpora=len(grouping["corpora"]),
+        min_messages=args.min_group_messages,
     )
     frozen = secure_storage.read_json(args.frozen) if args.frozen else None
     modules = extractors_for(categories)
@@ -549,10 +552,13 @@ def main(argv=None):
             "group_ids": sampling["group_ids"],
         }
         write_json(output / "sampling.json", sampling)
-        print(
-            f"Semantic sample: {len(selected)}/{len(records)} windows "
-            f"({sampling['pooled_selected']} person, group floor {sampling['group_floor']}); seed={args.sample_seed}",
-            flush=True,
+        logger.info(
+            "Semantic sample: {selected}/{windows} windows ({pooled} person, group floor {floor}); seed={seed}",
+            selected=len(selected),
+            windows=len(records),
+            pooled=sampling["pooled_selected"],
+            floor=sampling["group_floor"],
+            seed=args.sample_seed,
         )
     shared_judge = make_judge(args, None) if args.llm and any(m not in LOCAL_ONLY for m in modules) else None
     # Producers are submitted before the groups that wait for them.

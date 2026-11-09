@@ -104,6 +104,7 @@ def make_window_request(
             "task": f"{task}_distill",
             "source_file": str(source_path),
             "sample_ids": [s.sample_id for s in samples],
+            "samples": len(samples),
             "include_current_state": samples[0].include_current_state,
             "content_chars": sum(content_chars(s.item) for s in samples),
         },

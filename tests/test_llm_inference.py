@@ -20,6 +20,7 @@ from weclone.core.inference import (
     OpenAICompatibleClient,
     RetryPolicy,
 )
+from weclone.core.inference import audit
 from weclone.core.inference.llm_client import make_request
 
 
@@ -102,6 +103,23 @@ def test_response_model_validation_and_audit(api, tmp_path):
     assert events[0]["request"]["response_model"]["schema"]["required"] == ["score"]
     assert events[0]["request"]["metadata"]["api_key"] == "[REDACTED]"
     assert events[-1]["result"]["parsed_model"] == {"score": 3}
+
+
+def test_encrypted_audit_keeps_counts_and_drops_text(tmp_path, monkeypatch):
+    monkeypatch.setattr(audit, "is_encrypted_mode", lambda: True)
+    metadata = {"task": "state_distill", "samples": 2, "content_chars": 120, "source_file": "private.json"}
+    request = LLMRequest.from_prompt("private chat", metadata=metadata)
+    with LLMAuditLogger(tmp_path, strict=True).start_call(request=request, provider="api", model="m") as call:
+        usage = {"completion_tokens": 50, "completion_tokens_details": {"reasoning_tokens": 40, "x": None}}
+        call.finish({"ok": True, "text": "private", "metadata": {"reasoning": "private", "usage": usage}})
+    text = "".join(path.read_text(encoding="utf-8") for path in tmp_path.glob("*.jsonl"))
+    started, finished = [json.loads(line) for line in text.splitlines()]
+    assert "private" not in text
+    assert started["request"]["metadata"] == {"task": "state_distill", "samples": 2, "content_chars": 120}
+    assert finished["result"]["metadata"]["usage"] == {
+        "completion_tokens": 50,
+        "completion_tokens_details": {"reasoning_tokens": 40},
+    }
 
 
 @pytest.mark.parametrize(

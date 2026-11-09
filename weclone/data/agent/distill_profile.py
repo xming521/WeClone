@@ -410,7 +410,13 @@ def process_task_file(
                 calls += len(outcome.attempts)
                 if outcome.error:
                     failed += len(outcome.samples)
-                    logger.warning(f"LLM window failed for {source_path.name}: {outcome.error}")
+                    logger.warning(
+                        "LLM window failed for {file}: {error}",
+                        file=source_path.name,
+                        error=outcome.error,
+                        samples=len(outcome.samples),
+                        attempts=len(outcome.attempts),
+                    )
                 else:
                     for sample in outcome.samples:
                         answer = written_answer(task, outcome.results[sample.sample_id])
@@ -428,7 +434,17 @@ def process_task_file(
         secure_storage.resolve_path(output_path).unlink(missing_ok=True)
     else:
         atomic_save_any_json(output_path, source_data, indent=indent)
-    log(f"{source_path.name}: extracted={len(pending) - failed} failed={failed} calls={calls}")
+    logger.info(
+        "{file}: extracted={extracted} failed={failed} calls={calls}",
+        file=source_path.name,
+        total=len(items),
+        cached=cached,
+        pending=len(pending),
+        windows=len(request_rows),
+        extracted=len(pending) - failed,
+        failed=failed,
+        calls=calls,
+    )
     return FileStats(cached, len(pending), len(request_rows), failed, calls)
 
 
@@ -467,13 +483,20 @@ def run_task(
         raise SystemExit("已取消蒸馏；未写入结果或调用模型。")
 
     cache = LLMCache()
-    log(f"输入目录: {args.input_dir}  文件数: {len(source_files)}")
+    logger.info("输入目录: {input_dir}  文件数: {files}", input_dir=args.input_dir, files=len(source_files))
     log(f"输出目录: {args.output_dir}")
     log(f"结果缓存: {cache.path}")
     log(f"写回字段: {TASK_OUTPUTS[task][1]}")
-    log(
-        f"provider={args.llm_provider} model={request_model} "
-        f"effort={request_effort or args.reasoning_effort} batch_size={args.batch_size} dry_run={args.dry_run}"
+    logger.info(
+        "provider={provider} model={model} effort={effort} batch_size={batch_size} "
+        "max_samples_per_window={max_samples_per_window} max_content_chars={max_content_chars} dry_run={dry_run}",
+        provider=args.llm_provider,
+        model=request_model,
+        effort=request_effort or args.reasoning_effort,
+        batch_size=args.batch_size,
+        max_samples_per_window=args.max_samples_per_window,
+        max_content_chars=args.max_content_chars,
+        dry_run=args.dry_run,
     )
 
     client = None
@@ -538,9 +561,15 @@ def run_task(
         files.shutdown(wait=True)
 
     total = FileStats(*(sum(values) for values in zip(*stats))) if stats else FileStats()
-    log(
-        f"完成: cached={total.cached} pending={total.pending} windows={total.windows} "
-        f"failed={total.failed} llm_calls={total.calls} dry_run={args.dry_run}"
+    logger.info(
+        "完成: cached={cached} pending={pending} windows={windows} failed={failed} llm_calls={llm_calls} "
+        "dry_run={dry_run}",
+        cached=total.cached,
+        pending=total.pending,
+        windows=total.windows,
+        failed=total.failed,
+        llm_calls=total.calls,
+        dry_run=args.dry_run,
     )
     if total.failed:
         raise RuntimeError(

@@ -24,10 +24,18 @@ def _persistent_log_format(record) -> str:
     prefix = "{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | {name}:{function}:{line}"
     if _encrypted_logging():
         # Arbitrary messages and traceback locals can contain chat text. Retain
-        # only location, severity, timestamp and exception class in disk logs.
+        # only location, severity, timestamp, exception class and the numbers a
+        # call passes as keyword fields, such as how many chats or requests. A
+        # call passes counts, sizes and settings that way, never a number taken
+        # from a chat such as an account or phone number.
         exception = record.get("exception")
         error_type = exception.type.__name__ if exception else "none"
-        return prefix + f" | event error_type={error_type}\n"
+        numbers = "".join(
+            f" {key}={value}"
+            for key, value in record["extra"].items()
+            if key.isidentifier() and isinstance(value, (int, float))
+        )
+        return prefix + f" | event{numbers} error_type={error_type}\n"
     return prefix + " - {message}\n{exception}"
 
 

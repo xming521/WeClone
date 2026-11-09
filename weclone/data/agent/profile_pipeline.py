@@ -20,6 +20,7 @@ import pyjson5
 from filelock import FileLock, Timeout
 
 from weclone.utils import secure_storage
+from weclone.utils.log import logger
 
 RUNS_DIR = secure_storage.ROOT / "dataset/res_csv/agent/profile_runs"
 LOCK_NAME = ".build.lock"
@@ -54,20 +55,27 @@ def _now() -> str:
 
 
 @contextmanager
-def _stage(label: str):
+def _stage(label: str, **numbers):
+    """Logs the start and end of a stage. The numbers, such as its step, stay in an encrypted log too."""
     started = perf_counter()
-    click.echo(f"[WeClone] I | {datetime.now():%H:%M:%S} | {label}：开始")
+    logger.info("{label}：开始", label=label, **numbers)
     try:
         yield
     except BaseException as exc:
-        click.echo(
-            f"[WeClone] E | {datetime.now():%H:%M:%S} | {label}：失败（{type(exc).__name__}），"
-            f"耗时 {perf_counter() - started:.1f} 秒"
+        logger.error(
+            "{label}：失败（{error}），耗时 {seconds} 秒",
+            label=label,
+            error=type(exc).__name__,
+            seconds=round(perf_counter() - started, 1),
+            **numbers,
         )
         raise
     else:
-        click.echo(
-            f"[WeClone] I | {datetime.now():%H:%M:%S} | {label}：完成，耗时 {perf_counter() - started:.1f} 秒"
+        logger.info(
+            "{label}：完成，耗时 {seconds} 秒",
+            label=label,
+            seconds=round(perf_counter() - started, 1),
+            **numbers,
         )
 
 
@@ -165,7 +173,7 @@ class Build:
         self.current = self.status["stages"][index]
         self.current.update(state="running", started_at=_now())
         self.save()
-        with _stage(f"[{step}/{self.steps}] {label}"):
+        with _stage(f"[{step}/{self.steps}] {label}", step=step, steps=self.steps):
             yield
         self.current.update(state="succeeded", finished_at=_now())
         self.current = None
@@ -453,7 +461,7 @@ def run(
             source_files = list(distill_profile.iter_chat_files(people_dir))
             if not source_files:
                 raise FileNotFoundError(f"没有生成聊天样本：{people_dir}")
-            click.echo(f"聊天样本准备完成：{len(source_files)} 个聊天文件。")
+            logger.info("聊天样本准备完成：{chats} 个聊天文件。", chats=len(source_files))
             build.status["chats"] = len(source_files)
 
             with build.stage("distill_profile"):
