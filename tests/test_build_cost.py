@@ -261,7 +261,14 @@ def test_a_probe_measures_real_windows_and_caches_their_answers(configured, monk
     assert after["probe"] == probed["probe"]
     stored = json.loads(build_cost.probes_path().read_text())
     assert len(stored) == 1 and "AuthenticationError" not in json.dumps(stored)
-    configured.write_text(configured.read_text().replace("deepseek-flash", "deepseek-v4-pro"))
+    config = json.loads(configured.read_text())
+    # Larger windows send more per request, so they need a trial of their own, as another model does.
+    config["agent_distill_args"]["max_content_chars"] = 800
+    configured.write_text(json.dumps(config))
+    assert build_cost.estimate(configured, "assistant")["probe"] is None
+    del config["agent_distill_args"]["max_content_chars"]
+    config["make_dataset_args"]["model_name"] = "deepseek-v4-pro"
+    configured.write_text(json.dumps(config))
     assert build_cost.estimate(configured, "assistant")["probe"] is None
 
 

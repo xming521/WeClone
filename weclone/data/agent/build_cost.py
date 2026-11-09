@@ -72,10 +72,14 @@ def price_of(args: SimpleNamespace) -> Price | None:
 
 
 def settings_key(args: SimpleNamespace) -> str:
-    """What a probe's usage depends on: the service, the model and how it is asked to think."""
+    """What a probe's usage depends on: the service, the model, how it is asked to think, and how much each request
+    sends and may answer."""
+    shape = (args.max_samples_per_window, args.max_content_chars, args.max_tokens)
     if args.llm_provider == "api":
-        return cache_key("api", args.base_url, args.model_name, args.reasoning_effort, args.extra_body)
-    return cache_key("codex_exec", args.model, args.effort)
+        return cache_key(
+            "api", args.base_url, args.model_name, args.reasoning_effort, args.extra_body, *shape
+        )
+    return cache_key("codex_exec", args.model, args.effort, *shape)
 
 
 def probes_path() -> Path:
