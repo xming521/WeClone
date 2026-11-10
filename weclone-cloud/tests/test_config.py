@@ -2,13 +2,46 @@ from __future__ import annotations
 
 import pytest
 from weclone_cloud.config import ApiSettings, FinetuneSettings
+from weclone_cloud.providers import API_PROVIDER_REGISTRY
 
 
-def test_defaults_target_deepseek():
+def test_defaults_target_minimax():
     settings = ApiSettings()
-    assert settings.base_url == "https://api.deepseek.com"
-    assert settings.model == "deepseek-flash"
-    assert settings.resolved_thinking == "disabled"
+    assert settings.provider == "minimax"
+    assert settings.region == "global_en"
+    assert settings.base_url == "https://api.minimax.io/v1"
+    assert settings.model == "MiniMax-M3.1-Flash"
+    assert settings.extra_body == {"reasoning_effort": "max"}
+    assert settings.price_currency == "USD"
+
+
+def test_minimax_registry_contains_current_models_and_regions():
+    preset = API_PROVIDER_REGISTRY["minimax"]
+    assert preset["default_model"] == "MiniMax-M3.1-Flash"
+    assert set(preset["models"]) == {"MiniMax-M3.1-Flash", "MiniMax-M3"}
+    assert preset["endpoints"] == {
+        "global_en": "https://api.minimax.io/v1",
+        "cn_zh": "https://api.minimaxi.com/v1",
+    }
+    assert preset["models"]["MiniMax-M3.1-Flash"]["context_window"] == 1_000_000
+    assert preset["models"]["MiniMax-M3"]["pricing_tiers"]["priority_multiplier"] == 1.5
+
+
+def test_minimax_china_region_uses_regional_endpoint():
+    settings = ApiSettings(provider="minimax", region="cn_zh")
+    assert settings.base_url == "https://api.minimaxi.com/v1"
+
+
+def test_minimax_m3_does_not_send_reasoning_effort():
+    settings = ApiSettings(provider="minimax", model="MiniMax-M3")
+    assert settings.extra_body == {}
+
+
+def test_explicit_endpoint_and_model_remain_custom():
+    settings = ApiSettings(base_url="https://gateway.example/v1", model="example-model")
+    assert settings.provider == "custom"
+    assert settings.base_url == "https://gateway.example/v1"
+    assert settings.model == "example-model"
 
 
 def test_thinking_auto_only_for_deepseek():
@@ -31,7 +64,13 @@ def test_estimate_cost_with_prices():
 
 
 def test_estimate_cost_without_prices_returns_none():
-    assert ApiSettings(api_key="k").estimate_cost({"prompt_tokens": 10}) is None
+    settings = ApiSettings(
+        provider="custom",
+        base_url="https://gateway.example/v1",
+        model="example-model",
+        api_key="k",
+    )
+    assert settings.estimate_cost({"prompt_tokens": 10}) is None
 
 
 def test_missing_key_raises(monkeypatch):
