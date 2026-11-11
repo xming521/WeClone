@@ -63,6 +63,10 @@ class ApiSettings(_Section):
                 f"缺少 API Key：请设置环境变量 {self.api_key_env}"
                 f'（PowerShell: $env:{self.api_key_env}="sk-..."）。'
             )
+        if not key.isascii():
+            raise ConfigError(
+                "API Key 含非 ASCII 字符（很可能粘成了占位符，如 sk-你的key）；请换成真实 key 后重试。"
+            )
         return key
 
     @property

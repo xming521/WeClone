@@ -3,40 +3,43 @@ chcp 65001 >nul
 title weclone-cloud - wechat stack
 cd /d "%~dp0"
 
+rem ASCII-only: cmd parses .cmd with the OEM codepage, so non-ASCII text inside
+rem parenthesised blocks can split lines and break the script.
+
 echo ==========================================================
-echo   weclone-cloud  接入微信
-echo   顺序：分身 -^> 微信协议端 -^> LangBot
+echo   weclone-cloud  wechat stack
+echo   order: persona -^> WeChatPad -^> LangBot
 echo ==========================================================
 echo.
 
 where docker >nul 2>nul
 if errorlevel 1 (
-  echo [错误] 没找到 docker，请先安装 Docker Desktop 并启动它。
+  echo [ERROR] docker not found. Install and start Docker Desktop first.
   echo.
   pause
   exit /b 1
 )
 docker info >nul 2>nul
 if errorlevel 1 (
-  echo [错误] Docker 引擎还没就绪，请等托盘图标变绿后重试。
+  echo [ERROR] Docker engine is not ready. Wait until the whale icon is green.
   echo.
   pause
   exit /b 1
 )
 
 if not exist ".venv\Scripts\python.exe" (
-  echo [错误] 还没安装依赖，请先双击 setup.cmd
+  echo [ERROR] dependencies missing. Run setup.cmd first.
   pause
   exit /b 1
 )
 
-echo [1/4] 启动分身（新窗口，必须保持打开）...
+echo [1/4] starting persona in a new window (keep it open) ...
 start "weclone persona" cmd /k "%~dp0start-persona-docker.cmd"
 timeout /t 8 >nul
 
-echo [2/4] 启动微信协议端 ...
+echo [2/4] starting WeChatPad ...
 if not exist "wechatpad-src\docker-compose.yml" (
-  echo       首次运行，需要克隆 WeChatPadPro ...
+  echo        first run: cloning WeChatPadPro ...
   powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0tools\prepare_wechatpad.ps1"
 ) else (
   pushd "wechatpad-src"
@@ -44,9 +47,9 @@ if not exist "wechatpad-src\docker-compose.yml" (
   popd
 )
 
-echo [3/4] 启动 LangBot ...
+echo [3/4] starting LangBot ...
 if not exist "langbot-src\docker\docker-compose.yaml" (
-  echo       首次运行，需要克隆 LangBot ...
+  echo        first run: cloning LangBot ...
   powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0tools\prepare_langbot.ps1"
 )
 if exist "langbot-src\docker\docker-compose.yaml" (
@@ -56,17 +59,17 @@ if exist "langbot-src\docker\docker-compose.yaml" (
   popd
 )
 
-echo [4/4] 状态 ...
+echo [4/4] status ...
 echo.
 docker ps --format "{{.Names}}  {{.Status}}"
 echo.
 echo ==========================================================
-echo   分身 : http://127.0.0.1:8010/
+echo   persona : http://127.0.0.1:8010/
 echo   LangBot : http://localhost:5300
-echo   微信扫码 : 见 docs\runbook.md 第三节
+echo   WeChat login: see docs\runbook.md section 3
 echo.
-echo   首次使用还需要在 LangBot 里配置模型和微信适配器，
-echo   步骤见 docs\install.md 第 5、6 节。
+echo   First run still needs the model + WeChatPad adapter configured
+echo   inside LangBot; see docs\install.md sections 5 and 6.
 echo ==========================================================
 echo.
 pause

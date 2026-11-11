@@ -136,11 +136,15 @@ def doctor(ctx: click.Context) -> None:
     table.add_row("微调服务", "·", f"{config.finetune.provider} @ {config.finetune.base_url}")
     table.add_row("微调基座", "·", config.finetune.base_model)
 
-    try:
-        config.finetune.resolved_key
-        table.add_row("微调 Key", "OK", f"env:{config.finetune.api_key_env}")
-    except ConfigError as exc:
-        table.add_row("微调 Key", "ERR", str(exc))
+    if config.finetune.provider == "generic":
+        # generic 只导出 JSONL，不需要任何微调 key，别把用户吓一跳
+        table.add_row("微调 Key", "·", "generic 模式不需要（只导出 JSONL）")
+    else:
+        try:
+            config.finetune.resolved_key
+            table.add_row("微调 Key", "OK", f"env:{config.finetune.api_key_env}")
+        except ConfigError as exc:
+            table.add_row("微调 Key", "ERR", str(exc))
 
     try:
         serve_key = config.serve.resolved_key
