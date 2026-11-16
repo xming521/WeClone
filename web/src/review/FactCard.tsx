@@ -108,7 +108,7 @@ export function FactCard({
         <div className="evidence-items">
           <div className="evidence-item">
             <strong>{fact.original.attr}</strong>
-            <p>{fact.original.value}</p>
+            <p>{displayProfileText(fact.original.value)}</p>
           </div>
           {fact.source_ids.map((id, index) => {
             const source = sources?.[id];

@@ -81,7 +81,7 @@ def apply_common_decorators(capture_output_enabled=False):
 )
 @click.pass_context
 def cli(ctx, config_path):
-    """WeClone: Build a portrait of your life. Assistants that know you. Clones that talk like you."""
+    """WeClone: Build a portrait of your life. Assistants that know you better. Clones that sound more like you."""
     # Only show community info when no subcommand is invoked
     if ctx.invoked_subcommand is None:
         show_community_info()

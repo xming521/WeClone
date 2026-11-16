@@ -283,6 +283,20 @@ function Prepare({ last }: { last: BuildStatus | null }) {
     }
   }
 
+  // The clone's build stops at the portrait and the speaking style for now, so picking it asks first.
+  async function pick(item: Purpose) {
+    if (
+      item === 'clone' &&
+      !(await confirm({
+        title: t(($) => $.build.prepare.confirmCloneTitle),
+        body: t(($) => $.build.prepare.confirmClone),
+        action: t(($) => $.build.prepare.chooseClone),
+      }))
+    )
+      return;
+    setPurpose(item);
+  }
+
   async function start(event: FormEvent) {
     event.preventDefault();
     setBusy(true);
@@ -363,7 +377,7 @@ function Prepare({ last }: { last: BuildStatus | null }) {
               purpose={item}
               checked={purpose === item}
               disabled={busy || probing}
-              onPick={() => setPurpose(item)}
+              onPick={() => void pick(item)}
             >
               {item === purpose &&
                 styleProblems.map((problem) => (

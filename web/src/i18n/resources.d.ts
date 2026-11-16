@@ -308,7 +308,10 @@ export default interface Resources {
         "chats": "聊天记录",
         "chatsUploadHint": "每个聊天是一个放着 CSV 的文件夹，以聊天对象命名。上传会替换之前上传的聊天",
         "checking": "正在检查",
+        "chooseClone": "选择 AI 分身",
         "confirm": "确认并开始",
+        "confirmClone": "从画像到分身的完整流程还在开发中。现在构建只会整理出画像和语言风格，还得不到能和你对话的分身。",
+        "confirmCloneTitle": "仍然选择 AI 分身？",
         "consent": "我确认有权处理这些聊天记录，并同意把聊天内容发送给 {{backend}}。",
         "last": "上次构建完成于 {{time}}，已经打开。",
         "needs": {

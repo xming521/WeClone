@@ -1,7 +1,7 @@
 [project]
 name = "WeClone"
 version = "1.0.4"
-description = "Build a portrait of your life. Assistants that know you. Clones that talk like you."
+description = "Build a portrait of your life. Assistants that know you better. Clones that sound more like you."
 authors = [{ name = "xming521" }]
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
