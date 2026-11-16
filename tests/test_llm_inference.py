@@ -10,7 +10,14 @@ from unittest.mock import Mock
 
 import httpx
 import pytest
-from openai import BadRequestError, InternalServerError, RateLimitError
+from openai import (
+    APIConnectionError,
+    APIStatusError,
+    APITimeoutError,
+    BadRequestError,
+    InternalServerError,
+    RateLimitError,
+)
 from openai.types.chat import ChatCompletion, ChatCompletionChunk
 from pydantic import BaseModel
 
@@ -707,3 +714,24 @@ def test_retry_status_filter_and_exception_filter():
     server_error = InternalServerError("failed", response=httpx.Response(500, request=request), body=None)
     assert policy.accepts(rate_limited)
     assert not policy.accepts(server_error)
+
+
+@pytest.mark.parametrize(
+    "status,retried",
+    [(400, False), (401, False), (402, False), (403, False), (404, False), (422, False)]
+    + [(408, True), (409, True), (429, True), (500, True), (503, True)],
+)
+def test_default_policy_retries_only_statuses_a_resend_can_clear(status, retried):
+    response = httpx.Response(status, request=httpx.Request("POST", "http://example.invalid"))
+    assert RetryPolicy().accepts(APIStatusError("failed", response=response, body=None)) is retried
+
+
+def test_default_policy_does_not_resend_a_request_that_timed_out_unanswered():
+    request = httpx.Request("POST", "http://example.invalid")
+    unanswered, unsent = APITimeoutError(request=request), APITimeoutError(request=request)
+    unanswered.__cause__ = httpx.ReadTimeout("no answer", request=request)
+    unsent.__cause__ = httpx.ConnectTimeout("no connection", request=request)
+    assert not RetryPolicy().accepts(unanswered)
+    assert not RetryPolicy().accepts(httpx.ReadTimeout("stream stalled", request=request))
+    assert RetryPolicy().accepts(unsent)
+    assert RetryPolicy().accepts(APIConnectionError(request=request))

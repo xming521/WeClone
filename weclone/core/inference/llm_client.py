@@ -15,7 +15,7 @@ from typing import Any, Callable, Iterable, Literal, Protocol
 
 import httpx
 import pyjson5
-from openai import BadRequestError, OpenAI
+from openai import APITimeoutError, BadRequestError, OpenAI
 from pydantic import BaseModel
 
 from weclone.utils.secure_storage import is_encrypted_mode, runtime_directory
@@ -58,7 +58,14 @@ class RetryPolicy:
     def accepts(self, exc: Exception) -> bool:
         status = getattr(exc, "status_code", None)
         if status is not None:
-            return status in self.retry_statuses if self.retry_statuses is not None else status != 400
+            if self.retry_statuses is not None:
+                return status in self.retry_statuses
+            # The statuses the OpenAI SDK retries; any other 4xx (key, balance, model name, parameters) repeats.
+            return status in (408, 409, 429) or status >= 500
+        # A request that timed out waiting for its answer reached the provider, which bills it all the same,
+        # and sent again it mostly times out again.
+        if isinstance(exc.__cause__ if isinstance(exc, APITimeoutError) else exc, httpx.ReadTimeout):
+            return False
         return isinstance(exc, self.retry_exceptions)
 
     def delay(self, attempt: int) -> float:
