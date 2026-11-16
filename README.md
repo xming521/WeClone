@@ -3,7 +3,7 @@
   <img alt="WeClone" src="https://docs.weclone.love/img/banner-light.webp">
 </picture>
 
-<h3 align="center">Build a portrait of your life. Assistants that know you. Clones that talk like you.</h3>
+<h3 align="center">Build a portrait of your life. Assistants that know you better. Clones that sound more like you.</h3>
 
 <div align="center">
 

@@ -2,7 +2,7 @@
   <source media="(prefers-color-scheme: dark)" srcset="https://docs.weclone.love/img/banner-dark.webp">
   <img alt="WeClone" src="https://docs.weclone.love/img/banner-light.webp">
 </picture>
-<h3 align="center">绘制你的人生画像，让助手懂你，让分身像你</h3>
+<h3 align="center">绘制你的人生画像，让助手更懂你，让分身更像你</h3>
 
 
 <div align="center">
